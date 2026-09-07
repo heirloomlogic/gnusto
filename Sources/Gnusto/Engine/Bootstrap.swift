@@ -726,6 +726,45 @@ enum Bootstrap {
                     "custom action for intent \"\(action.intent.raw)\" overrides an "
                         + "earlier custom action of the same intent.")
             }
+            // Not a rung on the chain above, because it is the one complaint
+            // that isn't exclusive with the others: a second line row on the
+            // same stub intent has two things wrong with it and should hear
+            // both. Reclaiming a stub verb with a *closure* is silent and stays
+            // silent — that is a game taking the verb over. Reclaiming one with
+            // a bare line is almost always a game that only wanted to change
+            // the words, and paid the whole default for it: the reach guard,
+            // the object's name, its number agreement and the
+            // yourself/somebodyElse guards, all of which `text.stubs` keeps.
+            // (#233)
+            if case .line(_, let requiresObject, _) = action.kind {
+                if DefaultActions.stubIntents.contains(action.intent) {
+                    actionWarnings.append(
+                        "default line for intent \"\(action.intent.raw)\" replaces the "
+                            + "engine's stub verb; assign text.stubs.\(action.intent.raw) "
+                            + "instead, which keeps the verb's own guards.")
+                }
+                // The mirror of ``StubVerb/namesObject``, which the engine's own
+                // table is held to by review. A `naming:` line is a sentence
+                // built out of the object's name and has nothing at all to say
+                // without one, so a row using it under a verb that also parses
+                // bare answers that command with the *parser's* failure — "I
+                // didn't understand that sentence" — and charges a turn for it.
+                // Neither half looks wrong on its own, which is why this is
+                // checked here, the one place both are in scope.
+                if requiresObject {
+                    let bareRows = syntaxRules.filter {
+                        $0.intent == action.intent && !$0.elements.contains(.directObject)
+                    }
+                    if let bare = bareRows.first {
+                        actionWarnings.append(
+                            "the default line for intent \"\(action.intent.raw)\" names its "
+                                + "object, but the verb row \"\(bare.patternDescription)\" "
+                                + "takes none; that command would answer with a parse error. "
+                                + "Use action(.\(action.intent.raw), orBare:naming:), which "
+                                + "asks for both halves.")
+                    }
+                }
+            }
             actionOverrides[action.intent] = action
         }
 

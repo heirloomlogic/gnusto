@@ -603,7 +603,7 @@ struct DungeonVolcano: GameContent {
     var verbs: [SyntaxRule] { [.cross] }
 
     var actions: [IntentAction] {
-        action(.cross) { try reply(Prose.crossNothingHere) }
+        action(.cross, say: Prose.crossNothingHere)
     }
 
     // MARK: - Map

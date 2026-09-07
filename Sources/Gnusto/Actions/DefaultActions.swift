@@ -22,19 +22,28 @@ enum DefaultActions {
                 message: frame.definition.text.doesNotKnowHow(actor.definiteNoun))
         }
         if let override = frame.definition.actionOverrides[command.intent] {
-            try override.body()
+            switch override.kind {
+            case .body(let body):
+                try body()
+            case .line(_, _, let render):
+                // A custom verb carrying its own default line takes the stub
+                // path, guard and all — which is the whole reason the spelling
+                // exists, since the closure above skips `requireReach` and a
+                // custom intent has no `reach:` column anywhere else. The
+                // column is read back through `reachRequirement(of:in:)` and
+                // not out of the row, so that stage 0 and this stage cannot
+                // disagree about what the verb has to touch.
+                try sayLine(
+                    reach: reachRequirement(of: command.intent, in: frame.definition),
+                    render, for: command, frame: frame)
+            }
             return
         }
         if let handler = coresByIntent[command.intent]?.handler {
             try handler(command, frame)
         } else if let stub = stubsByIntent[command.intent] {
             // A stub verb: a word the parser knows with no mechanic behind it.
-            // The reach guard first, so `squeeze water` through a shut glass
-            // bottle answers what `push water` answers.
-            try requireReach(stub.reach, for: command, frame: frame)
-            // `say`, not `reply`, so `after` rules still get their turn and the
-            // world clock advances — flailing at the chair takes time.
-            frame.say(stub.line(frame.definition.text, command))
+            try sayLine(reach: stub.reach, stub.line, for: command, frame: frame)
         } else {
             // Nothing claims this intent. The parser understood the sentence —
             // a row produced the intent or we would not be here — so this is
@@ -817,6 +826,34 @@ enum DefaultActions {
         return item
     }
 
+    /// Speaks a default line — a stub verb's, or a custom verb's own. Written
+    /// once because the two are the same path by construction: that a game's
+    /// invented verb answers exactly as the engine's own stubs do is the claim
+    /// ``action(_:reach:say:)`` makes, and a second copy here is where it would
+    /// quietly stop being true.
+    ///
+    /// The reach guard comes first, so `squeeze water` through a shut glass
+    /// bottle answers what `push water` answers. Then `say`, not `reply`, so
+    /// `after` rules still get their turn and the world clock advances —
+    /// flailing at the chair takes time.
+    ///
+    /// - Parameters:
+    ///   - reach: the verb's declared reach column.
+    ///   - render: the sentence, given the game's text table and the command.
+    ///   - command: the command being answered.
+    ///   - frame: the live turn frame.
+    /// - Throws: ``TurnInterrupt/refused(message:)`` when a slot the verb has
+    ///   to touch is out of arm's reach.
+    private static func sayLine(
+        reach: Reach,
+        _ render: @Sendable (GameText, Command) -> String,
+        for command: Command,
+        frame: TurnFrame
+    ) throws {
+        try requireReach(reach, for: command, frame: frame)
+        frame.say(render(frame.definition.text, command))
+    }
+
     /// Refuses a stub verb whose objects the player can see but not touch —
     /// the same `cantReach` line, from the same set, that every core physical
     /// default answers with. Which slots are checked is the stub's own call:
@@ -852,7 +889,8 @@ enum DefaultActions {
     static func requireReachRules(for command: Command, frame: TurnFrame) throws {
         let rules = frame.definition.rules
         guard !rules.itemReach.isEmpty, command.actor == nil else { return }
-        for case let item? in reachRequirement(of: command.intent).slots(of: command)
+        let requirement = reachRequirement(of: command.intent, in: frame.definition)
+        for case let item? in requirement.slots(of: command)
         where !Visibility.reachRuleAllows(item.id, for: .player, frame: frame) {
             try refuse(
                 rules.itemReach[item.id]?.refusal

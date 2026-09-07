@@ -347,8 +347,8 @@ struct DungeonPalantir: GameContent {
     var verbs: [SyntaxRule] { [.putUnder, .lookThrough] }
 
     var actions: [IntentAction] {
-        action(.putUnder) { try reply(Prose.matNowhereToPutIt) }
-        action(.lookThrough) { try reply(Prose.nothingToLookThrough) }
+        action(.putUnder, say: Prose.matNowhereToPutIt)
+        action(.lookThrough, say: Prose.nothingToLookThrough)
     }
 
     // MARK: - Map

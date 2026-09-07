@@ -112,12 +112,7 @@ extension StubVerb {
         reach: Reach,
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
-            guard let object = command.directObject else { return text.didntUnderstand() }
-            guard !object.isPlayer else { return text.stubs.yourself() }
-            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
-            return line(text, object.definiteNoun)
-        }
+        .init(intent, patterns, reach, line: nameCascade(line))
     }
 
     /// A stub whose line **owns a nameless half**, so it is handed an optional
@@ -161,7 +156,44 @@ extension StubVerb {
         guardsActors: Bool = false,
         _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
+        .init(intent, patterns, reach, line: optionalNameCascade(guardsActors: guardsActors, line))
+    }
+
+    /// ``named``'s guard cascade, without the rows — the renderer on its own.
+    ///
+    /// Split out because a *custom* verb wants the identical cascade and has no
+    /// business declaring engine rows to get it: ``action(_:reach:naming:)``
+    /// hands its line through here, so a game's invented verb answers `squeeze
+    /// me` and `squeeze the troll` in exactly the words the engine's own stubs
+    /// do. One implementation, two doors.
+    ///
+    /// - Parameter line: the sentence, given the object's rendered name.
+    /// - Returns: a renderer over the whole command.
+    static func nameCascade(
+        _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
+    ) -> @Sendable (GameText, Command) -> String {
+        { text, command in
+            guard let object = command.directObject else { return text.didntUnderstand() }
+            guard !object.isPlayer else { return text.stubs.yourself() }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
+            return line(text, object.definiteNoun)
+        }
+    }
+
+    /// ``optionallyNamed``'s guard cascade, without the rows, for the reason
+    /// ``nameCascade(_:)`` is split out. ``action(_:orBare:reach:guardsActors:naming:)``
+    /// is the other door.
+    ///
+    /// - Parameters:
+    ///   - guardsActors: whether somebody else gets
+    ///     ``GameText/StubReplies/somebodyElse`` rather than the line.
+    ///   - line: the sentence, given the object's rendered name or `nil`.
+    /// - Returns: a renderer over the whole command.
+    static func optionalNameCascade(
+        guardsActors: Bool,
+        _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
+    ) -> @Sendable (GameText, Command) -> String {
+        { text, command in
             guard let object = command.directObject, !object.isPlayer else {
                 return line(text, nil)
             }
@@ -774,10 +806,30 @@ extension DefaultActions {
     /// the two dispatch tables `run(_:frame:)` already uses rather than a third
     /// keyed copy of them.
     ///
-    /// A custom intent is in neither and takes ``Reach/notNeeded``: a verb the
-    /// game invented is a verb the game defines the reach of, in its own rule.
-    static func reachRequirement(of intent: Intent) -> Reach {
-        coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach ?? .notNeeded
+    /// A custom verb that declared a default *line* — ``action(_:reach:say:)``
+    /// and its siblings — states its own `reach:` there, and it is read **last**
+    /// rather than first. A line row reclaiming a verb the engine already
+    /// declares is reclaiming its *answer*, not its physics: `take` has to be
+    /// able to touch what it takes whoever writes the sentence, so the standard
+    /// table's column stands and the row's is ignored. Reading the row first
+    /// let `action(.take, say: …)` drop `take` to ``Reach/notNeeded`` and
+    /// silently switch off every `reach { … }` rule in the game for that verb.
+    ///
+    /// This is the only reader of the column, for either stage: `run` asks it
+    /// too rather than destructuring the row, so stage 0 and stage 4 cannot
+    /// disagree about what a verb has to touch.
+    ///
+    /// A custom intent answered by a *closure* is in none of the three and
+    /// takes ``Reach/notNeeded``, unchanged: a verb whose whole behavior the
+    /// game wrote is a verb the game guards in its own rule.
+    static func reachRequirement(of intent: Intent, in definition: GameDefinition) -> Reach {
+        if let declared = coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach {
+            return declared
+        }
+        if case .line(let reach, _, _) = definition.actionOverrides[intent]?.kind {
+            return reach
+        }
+        return .notNeeded
     }
 }
 

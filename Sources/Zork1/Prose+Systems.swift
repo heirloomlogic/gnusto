@@ -23,14 +23,14 @@ extension Prose {
     // answers politely instead of "I didn't understand that."
 
     /// This game's own. `V-WIND` (`gverbs.zil:1608`) is "You cannot wind up a
-    /// X.", which a row **can** now name — ``ZorkSystems/playWith(_:)`` does
-    /// exactly that for `raise` and `lower` — but only at the cost of the
-    /// source's indefinite article, which no named line in the engine deals in.
-    /// `raise` and `lower` paid it because their lines were false in a room with
-    /// a rope in it; this one is about the thing already and the canary claims
-    /// the verb wherever winding is the puzzle, so the reproduction would buy a
-    /// departure and reach nobody. #325 corrected the reason, which used to be
-    /// that a row is handed no name.
+    /// X.", which a row **can** now name — the `naming:` rows for `raise` and
+    /// `lower` do exactly that — but only at the cost of the source's
+    /// indefinite article, which no named line in the engine deals in. `raise`
+    /// and `lower` paid it because their lines were false in a room with a rope
+    /// in it; this one is about the thing already and the canary claims the verb
+    /// wherever winding is the puzzle, so the reproduction would buy a departure
+    /// and reach nobody. #325 corrected the reason, which used to be that a row
+    /// is handed no name.
     static let verbWindNothing = "That isn't something you can wind."
 
     /// `V-INFLATE` (`gverbs.zil:758`).

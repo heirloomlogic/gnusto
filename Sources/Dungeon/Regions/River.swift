@@ -597,7 +597,7 @@ struct DungeonRiver: GameContent {
 
     /// The battle cry, anywhere there is nothing to leap from.
     var actions: [IntentAction] {
-        action(.geronimo) { try reply(Prose.geronimoNotInBarrel) }
+        action(.geronimo, say: Prose.geronimoNotInBarrel)
     }
 
     // MARK: - Map

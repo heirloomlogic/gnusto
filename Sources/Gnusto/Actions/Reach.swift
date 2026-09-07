@@ -1,6 +1,6 @@
 /// Which object slots a verb needs within arm's reach, as opposed to merely in
-/// view. Declared by every row of both halves of the standard table — ``CoreVerb``
-/// and ``StubVerb`` — so the answer is stated once per verb and derived from
+/// view. Declared by every row of both halves of the standard table — `CoreVerb`
+/// and `StubVerb` — so the answer is stated once per verb and derived from
 /// there.
 ///
 /// Parser scope is the *visible* set, which admits what can be seen through the
@@ -15,7 +15,13 @@
 /// of throwing. Nothing wants the indirect object alone: the two-slot verbs that
 /// care about the container also want the thing going into it, and a direct
 /// object already in the player's hands passes for free.
-enum Reach: Sendable {
+///
+/// Public because a game's own verb has to be able to say it: a custom verb
+/// that carries its own default line — ``action(_:reach:say:)`` and its
+/// siblings — declares this column exactly as the two halves of the standard
+/// table do, and it is the only place an invented verb can state what it has
+/// to touch.
+public enum Reach: Sendable {
     /// Works at a distance — or takes no object at all.
     case notNeeded
     /// The direct object must be reachable.
