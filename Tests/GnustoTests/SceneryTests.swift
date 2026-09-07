@@ -49,9 +49,9 @@ struct SceneryTests {
     }
 
     @Test func sceneryScopeFollowsItsPlacement() async throws {
-        let transcript = try await play(fresh: SceneryGame(compact: true), ["north", "x wall"])
+        let transcript = try await play(fresh: SceneryGame(compact: true), ["north", "x wall"], seed: 0)
         #expect(!turnOutput(of: "x wall", in: transcript).contains("Mortar fills the cracks."))
-        let explicit = try await play(fresh: SceneryGame(compact: false), ["north", "x wall"])
+        let explicit = try await play(fresh: SceneryGame(compact: false), ["north", "x wall"], seed: 0)
         #expect(transcript == explicit)
     }
 

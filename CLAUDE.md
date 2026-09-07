@@ -318,7 +318,7 @@ computed `static var`, which rebuilds it on every read.
 - **Two texts on an item's own Bool are a trait, not a rule.**
   `description(when: \.isOpen, "…", otherwise: "…")` and
   `firstSight(when:_:otherwise:)` go in the trait block (`\.isLit`, `\.isLocked`,
-  `\.isRevealed`, `\.isWorn`, an actor's `\.isUnconscious`), and the bootstrap
+  `\.isWorn`, an actor's `\.isUnconscious`), and the bootstrap
   **warns** when a branch can never print — `\.isOpen` on something not
   `openable`, and on the listing channel `\.isHeld` (never listed while held) or
   `\.isTouched` without `alwaysListed`. They lower into the `describe`/`presence`

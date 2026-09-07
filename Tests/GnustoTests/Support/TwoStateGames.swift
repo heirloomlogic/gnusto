@@ -15,7 +15,7 @@ struct TwoStateGame: Game {
     }
     let lamp: Item
     let chest: Item
-    let gem: Item
+    let cloak: Item
     let sentry: Actor
     let annex: TwoStateAnnex
 
@@ -42,11 +42,11 @@ struct TwoStateGame: Game {
                 firstSight(when: \.isOpen, Self.chestOpenHere, otherwise: Self.chestShutHere)
             }
         }
-        gem = Item {
-            name("gem")
-            hidden
+        cloak = Item {
+            name("cloak")
+            wearable
             if compact {
-                description(when: \.isRevealed, Self.gemFound, otherwise: Self.gemUnseen)
+                description(when: \.isWorn, Self.cloakWorn, otherwise: Self.cloakOff)
             }
         }
         sentry = Actor {
@@ -69,7 +69,7 @@ struct TwoStateGame: Game {
         player.starts(in: hall)
         lamp.starts(in: hall)
         chest.starts(in: hall)
-        gem.starts(in: hall)
+        cloak.starts(in: hall)
         sentry.starts(in: hall)
     }
 
@@ -78,13 +78,9 @@ struct TwoStateGame: Game {
             lamp.describe { lamp.isLit ? Self.lampOn : Self.lampOff }
             chest.describe { chest.isOpen ? Self.chestOpen : Self.chestShut }
             chest.presence { chest.isOpen ? Self.chestOpenHere : Self.chestShutHere }
-            gem.describe { gem.isRevealed ? Self.gemFound : Self.gemUnseen }
+            cloak.describe { cloak.isWorn ? Self.cloakWorn : Self.cloakOff }
             sentry.describe { sentry.isUnconscious ? Self.sentryDown : Self.sentryUp }
             sentry.presence { sentry.isUnconscious ? Self.sentryDownHere : Self.sentryUpHere }
-        }
-        hall.before(.jump) {
-            gem.reveal()
-            try reply("A gem winks up at you from between the flagstones.")
         }
         sentry.before(.attack) {
             sentry.isUnconscious = true
@@ -102,8 +98,8 @@ struct TwoStateGame: Game {
     static let chestShut = "A squat chest, its lid down."
     static let chestOpenHere = "An open chest gapes in the corner."
     static let chestShutHere = "A squat chest sits in the corner."
-    static let gemFound = "A gem, winking."
-    static let gemUnseen = "You have not found it yet."
+    static let cloakWorn = "The cloak hangs from your shoulders."
+    static let cloakOff = "A velvet cloak, folded."
     static let sentryDown = "The sentry is out cold."
     static let sentryUp = "A sentry, watching you."
     static let sentryDownHere = "A sentry lies unconscious on the floor."

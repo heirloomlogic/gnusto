@@ -121,29 +121,40 @@ struct TwoStateText: Sendable {
         Accessor(keyPath: \Item.isLocked, name: "\\.isLocked") { item, _ in
             item.isLockable ? nil : "has no lockedBy entry; the flag never changes"
         },
-        Accessor(keyPath: \Item.isRevealed, name: "\\.isRevealed") { item, _ in
-            item.isHidden ? nil : "is not hidden; the flag never changes"
+        // Neither channel is asked about a `hidden` thing before `reveal()`,
+        // and anything else is revealed from the start: the false text is
+        // unreachable either way.
+        Accessor(keyPath: \Item.isRevealed, name: "\\.isRevealed") { _, _ in
+            "is never described before it is revealed"
         },
         Accessor(keyPath: \Item.isWorn, name: "\\.isWorn") { item, _ in
             item.isWearable ? nil : "is not wearable; the flag never changes"
         },
         // The listing stops at the first touch unless `alwaysListed`, so on
-        // that channel the touched text is never reached.
+        // that channel the touched text is never reached. An actor's listing
+        // line is a standing one and never spent, so the gate is not theirs.
         Accessor(keyPath: \Item.isTouched, name: "\\.isTouched") { item, channel in
-            channel == .firstSight && !item.isAlwaysListed
+            channel == .firstSight && !item.isAlwaysListed && !item.isActor
                 ? "is not alwaysListed; the listing stops at the first touch" : nil
         },
-        // A held thing is never in a room listing.
-        Accessor(keyPath: \Item.isHeld, name: "\\.isHeld") { _, channel in
-            channel == .firstSight ? "is never listed while it is held" : nil
+        // Scenery and people are never held; anything else is never in a room
+        // listing while it is.
+        Accessor(keyPath: \Item.isHeld, name: "\\.isHeld") { item, channel in
+            if !item.isTakable {
+                "can never be held; the flag never changes"
+            } else if channel == .firstSight {
+                "is never listed while it is held"
+            } else {
+                nil
+            }
         },
         // Neither channel is asked about a thing the player cannot see.
         Accessor(keyPath: \Item.isVisible, name: "\\.isVisible") { _, _ in
             "is only described while it is visible"
         },
         Accessor(keyPath: \Actor.isUnconscious, name: "\\Actor.isUnconscious") { _, _ in nil },
-        Accessor(keyPath: \Actor.isRevealed, name: "\\Actor.isRevealed") { item, _ in
-            item.isHidden ? nil : "is not hidden; the flag never changes"
+        Accessor(keyPath: \Actor.isRevealed, name: "\\Actor.isRevealed") { _, _ in
+            "is never described before it is revealed"
         },
         Accessor(keyPath: \Actor.isVisible, name: "\\Actor.isVisible") { _, _ in
             "is only described while it is visible"
@@ -219,7 +230,7 @@ public func description(_ text: String) -> ItemTrait {
 
 /// An examine text in two states, picked by one of the item's own Bools on
 /// every read — the declarative form of an ``Item/describe(_:)`` rule that is
-/// one `if` on `isOpen`, `isLit`, `isLocked`, `isRevealed` or `isWorn`:
+/// one `if` on `isOpen`, `isLit`, `isLocked` or `isWorn`:
 ///
 /// ```swift
 /// let lantern = Item {
@@ -231,11 +242,11 @@ public func description(_ text: String) -> ItemTrait {
 /// }
 /// ```
 ///
-/// What this buys over the closure is a check: the bootstrap **warns** when the
-/// Bool can never change — `\.isOpen` on an item that is not `openable`,
-/// `\.isLit` on one that is not a `lightSource` — because then one of the two
-/// texts never prints, and a closure reading the same Bool would be wrong in
-/// silence.
+/// What this buys over the closure is a check: the bootstrap **warns** when one
+/// of the two texts can never print — `\.isOpen` on an item that is not
+/// `openable`, `\.isLit` on one that is not a `lightSource`, `\.isRevealed` on
+/// anything, since nothing is described before it is revealed — where a
+/// closure reading the same Bool would be wrong in silence.
 ///
 /// A Bool the block cannot see — another entity's state, a `@Global` — is an
 /// ``Item/describe(_:)`` rule, and declaring both on one item is a fatal

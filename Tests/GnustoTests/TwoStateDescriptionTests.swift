@@ -12,7 +12,7 @@ struct TwoStateDescriptionTests {
     @Test(arguments: [
         ["x lamp", "turn on lamp", "x lamp", "turn off lamp", "x lamp"],
         ["x chest", "look", "open chest", "x chest", "look", "take chest", "look", "x chest"],
-        ["x gem", "jump", "x gem"],
+        ["x cloak", "take cloak", "wear cloak", "x cloak", "remove cloak", "x cloak"],
         ["x sentry", "look", "attack sentry", "x sentry", "look"],
         ["east", "x box", "open box", "x box", "close box", "x box"],
         ["x lamp", "touch lamp", "x lamp", "undo", "x lamp"],
@@ -195,7 +195,13 @@ struct TwoStateDescriptionTests {
             }
             let watcher = Actor {
                 name("watcher")
+                hidden
                 firstSight(when: \Actor.isRevealed, "A watcher steps out.", otherwise: "Nobody.")
+            }
+            let statue = Item {
+                name("statue")
+                scenery
+                description(when: \.isHeld, "Heavy in your arms.", otherwise: "A statue.")
             }
             var map: WorldMap {
                 player.starts(in: room)
@@ -203,6 +209,7 @@ struct TwoStateDescriptionTests {
                 candle.starts(in: room)
                 pebble.starts(in: room)
                 watcher.starts(in: room)
+                statue.starts(in: room)
             }
         }
         let (definition, _) = try Bootstrap.build(DeadBranchGame())
@@ -215,10 +222,16 @@ struct TwoStateDescriptionTests {
             definition.warnings.contains {
                 $0.contains("item \"candle\" declares firstSight(when: \\.isLit, …) but is not a lightSource")
             })
-        // The root spelled out reaches the same gate as the implied one.
+        // Nothing is described before it is revealed, `hidden` or not, so the
+        // false text is dead on any entity — the root spelled out included.
         #expect(
             definition.warnings.contains {
-                $0.contains("item \"watcher\" declares firstSight(when: \\Actor.isRevealed, …) but is not hidden")
+                $0.contains(
+                    "item \"watcher\" declares firstSight(when: \\Actor.isRevealed, …) but is never described before")
+            })
+        #expect(
+            definition.warnings.contains {
+                $0.contains("item \"statue\" declares description(when: \\.isHeld, …) but can never be held")
             })
         // Any item can be touched, so on the examine channel the pair is live.
         #expect(!definition.warnings.contains { $0.contains("pebble") })
@@ -249,15 +262,22 @@ struct TwoStateDescriptionTests {
                 name("ghost")
                 description(when: \.isVisible, "A ghost.", otherwise: "Nothing.")
             }
+            // An actor's listing line is standing, never spent on a touch.
+            let sentry = Actor {
+                name("sentry")
+                firstSight(when: \.isTouched, "The sentry you shoved.", otherwise: "A sentry.")
+            }
             var map: WorldMap {
                 player.starts(in: room)
                 coin.starts(in: room)
                 token.starts(in: room)
                 locket.starts(in: room)
                 ghost.starts(in: room)
+                sentry.starts(in: room)
             }
         }
         let (definition, _) = try Bootstrap.build(ListingGame())
+        #expect(!definition.warnings.contains { $0.contains("\"sentry\"") })
         #expect(
             definition.warnings.contains {
                 $0.contains("item \"coin\" declares firstSight(when: \\.isTouched, …) but is not alwaysListed")
@@ -317,9 +337,18 @@ struct TwoStateDescriptionTests {
                 firstSight("A lantern lies here.")
                 description(when: \.isLit, "It burns.", otherwise: "A lantern lies here.")
             }
+            // Two empty arms are two fall-throughs to the stock line, not one
+            // sentence shared.
+            let hatch = Item {
+                name("hatch")
+                openable
+                firstSight(when: \.isOpen, "", otherwise: "A hatch is set in the floor.")
+                description(when: \.isOpen, "", otherwise: "A hatch, shut.")
+            }
             var map: WorldMap {
                 player.starts(in: room)
                 lantern.starts(in: room)
+                hatch.starts(in: room)
             }
         }
         let (definition, _) = try Bootstrap.build(SharedLineGame())
@@ -327,6 +356,7 @@ struct TwoStateDescriptionTests {
             definition.warnings.contains {
                 $0.contains("item \"lantern\" gives one sentence to firstSight(…) and description(…)")
             })
+        #expect(!definition.warnings.contains { $0.contains("\"hatch\" gives one sentence") })
     }
 
     @Test func aBuriedListingLineIsNamedAsTheTrait() throws {
