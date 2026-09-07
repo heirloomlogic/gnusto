@@ -256,9 +256,6 @@ struct ZorkHouse: GameContent {
         trait(.depositValue, 1)
     }
 
-    /// Whether the canary has been wrecked by forcing the egg open by hand.
-    @Global var canaryRuined = false
-
     /// Whether the songbird has already answered the canary. The bauble drops
     /// exactly once; a second winding only chirps.
     @Global var baubleDropped = false

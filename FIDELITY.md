@@ -989,8 +989,8 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   when he dies. The service is silent (you aren't watching) and is cancelled if he dies first.
 - **The jewel-encrusted egg is now an openable container.** Forcing it open *by hand* (the
   built-in `open`) wrecks the canary — the intact `golden clockwork canary` is swapped for a
-  worthless `broken clockwork canary` and a `canaryRuined` flag is set. Only the thief's
-  careful hands (above) open it without ruin.
+  worthless `broken clockwork canary`. Only the thief's careful hands (above) open it
+  without ruin.
 
 ### Mechanics still simplified or deferred
 
