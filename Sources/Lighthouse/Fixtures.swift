@@ -26,10 +26,10 @@ import Gnusto
 struct Fixtures: GameContent {
     // MARK: - The jetty
 
-    let sea = Item.backdrop(
+    let sea = Item.scenery(
         "sea",
-        adjectives: ["cold"],
-        synonyms: ["water", "tide", "waves", "wave", "ebb"],
+        adjectives: "cold",
+        synonyms: "water", "tide", "waves", "wave", "ebb",
         description:
             """
             Coming in, the way it comes in twice a day whether or not anybody is
@@ -38,9 +38,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let planks = Item.backdrop(
+    let planks = Item.scenery(
         "timber jetty",
-        synonyms: ["planks", "plank", "boards", "board", "footings", "footing"],
+        synonyms: "planks", "plank", "boards", "board", "footings", "footing",
         description:
             """
             Timber on stone footings, and the timber is the part that gets
@@ -49,9 +49,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let boat = Item.backdrop(
+    let boat = Item.scenery(
         "keeper's boat",
-        synonyms: ["mooring", "dinghy"],
+        synonyms: "mooring", "dinghy",
         description:
             """
             An open boat, rowed out and rowed back for forty years, with the
@@ -60,10 +60,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let lighthouse = Item.backdrop(
+    let lighthouse = Item.scenery(
         "lighthouse",
-        adjectives: ["dark", "white"],
-        synonyms: ["tower"],
+        adjectives: "dark", "white",
+        synonyms: "tower",
         description:
             """
             Stone, tapered, whitewashed to the gallery rail, and dark at the top
@@ -81,10 +81,10 @@ struct Fixtures: GameContent {
     /// `stone` is a synonym rather than an adjective on purpose: the name makes
     /// it an adjective already, and the last word of a typed phrase has to be a
     /// noun, so `x stone` needs it declared on this side.
-    let wall = Item.backdrop(
+    let wall = Item.scenery(
         "stone wall",
-        adjectives: ["round"],
-        synonyms: ["stone", "walls", "tower", "lighthouse"],
+        adjectives: "round",
+        synonyms: "stone", "walls", "tower", "lighthouse",
         description:
             """
             Blocks the length of your forearm, laid in a circle thick enough that
@@ -92,9 +92,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let stairs = Item.backdrop(
+    let stairs = Item.scenery(
         "stone stairs",
-        synonyms: ["stair", "staircase", "steps", "step", "treads", "tread", "rail"],
+        synonyms: "stair", "staircase", "steps", "step", "treads", "tread", "rail",
         description:
             """
             They climb into the dark and go on climbing. Every tread is hollowed
@@ -105,9 +105,9 @@ struct Fixtures: GameContent {
 
     // MARK: - The storeroom
 
-    let rope = Item.backdrop(
+    let rope = Item.scenery(
         "coiled rope",
-        synonyms: ["ropes", "coil", "coils", "pegs", "peg"],
+        synonyms: "ropes", "coil", "coils", "pegs", "peg",
         description:
             """
             Hung on pegs by size, largest to the left. Somebody put them in that
@@ -115,9 +115,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let stores = Item.backdrop(
+    let stores = Item.scenery(
         "stores",
-        synonyms: ["store", "things", "gear", "supplies", "tar", "brine"],
+        synonyms: "store", "things", "gear", "supplies", "tar", "brine",
         description:
             """
             Tar and brine and forty years of things put where they go. Nobody on

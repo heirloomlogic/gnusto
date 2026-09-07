@@ -210,6 +210,8 @@ public let wearable = ItemTrait(kind: .wearable)
 /// asked — and a list that leaves things out is the worse answer, the more so
 /// when the fitting is a puzzle (Dungeon's balloon receptacle is `scenery`, and
 /// is where the newspaper burns). The two are meant to differ.
+///
+/// Declare a whole fixture in one call with ``Item/scenery(_:adjectives:synonyms:description:_:)``.
 public let scenery = ItemTrait(kind: .scenery)
 
 /// The item's listing paragraph keeps printing after the player has touched

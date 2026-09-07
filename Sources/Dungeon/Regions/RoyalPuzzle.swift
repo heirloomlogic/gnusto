@@ -390,27 +390,27 @@ struct DungeonRoyalPuzzle: GameContent {
     // MARK: - The slit and the two faces of the door
 
     /// `CPSLT`. A container of capacity 4, which is exactly the card's `OSIZE`.
-    let slit = Item.backdrop(
+    let slit = Item.scenery(
         "small slit",
-        synonyms: ["slit", "slot"],
+        synonyms: "slit", "slot",
         description: Prose.puzzleSlit
     ) {
         container
     }
 
     /// `CPDOR`, the face of the door inside the puzzle.
-    let steelDoor = Item.backdrop(
+    let steelDoor = Item.scenery(
         "steel door",
-        synonyms: ["door"],
+        synonyms: "door",
         description: Prose.puzzleSteelDoor
     ) {
         door
     }
 
     /// `CPDR2`, the same door from the Side Room, where it has a handle.
-    let sideDoor = Item.backdrop(
+    let sideDoor = Item.scenery(
         "steel door",
-        synonyms: ["door"],
+        synonyms: "door",
         description: Prose.puzzleSideRoomDoor
     ) {
         door
@@ -424,9 +424,9 @@ struct DungeonRoyalPuzzle: GameContent {
     /// static text and no `floor`: the state is the room's own, and the floor
     /// up here is what the hole is cut *in* — the sand is ten feet under it.
     /// (#233)
-    let anteroomSand = Item.backdrop("sand", adjectives: ["pale", "smooth"], synonyms: ["sand", "sandstone"])
+    let anteroomSand = Item.scenery("sand", adjectives: "pale", "smooth", synonyms: "sand", "sandstone")
 
-    let hole = Item.backdrop("hole", synonyms: ["opening"])
+    let hole = Item.scenery("hole", synonyms: "opening")
 
     /// The four walls the source addresses by compass side. Not by material:
     /// there is no sandstone-wall object and no marble-wall object anywhere in
@@ -436,7 +436,7 @@ struct DungeonRoyalPuzzle: GameContent {
     /// name a direction, so they are the only ones that can say what is actually
     /// on that side. The `describe { }` rules read the grid.
     private static func compassWall(_ side: Direction) -> Item {
-        Item.backdrop("\(side.rawValue) wall", synonyms: ["walls"])
+        Item.scenery("\(side.rawValue) wall", synonyms: "walls")
     }
 
     let northWall = compassWall(.north)
@@ -448,14 +448,14 @@ struct DungeonRoyalPuzzle: GameContent {
     /// names a side, so neither can be pushed on its own — `push marble wall`
     /// gets the syntax back. Given a direction, though, the direction is the
     /// whole of the instruction, and `push marble wall north` shoves north.
-    let marbleWall = Item.backdrop("marble wall", synonyms: ["marble"], description: Prose.puzzleWallExamined)
+    let marbleWall = Item.scenery("marble wall", synonyms: "marble", description: Prose.puzzleWallExamined)
 
-    let sandstoneWall = Item.backdrop("sandstone wall", synonyms: ["sandstone"], description: Prose.puzzleWallExamined)
+    let sandstoneWall = Item.scenery("sandstone wall", synonyms: "sandstone", description: Prose.puzzleWallExamined)
 
     /// No static description: which of the two ladders is beside you, and
     /// whether one is at all, is a question about the square you are standing
     /// in. A `describe { }` rule answers it.
-    let ladder = Item.backdrop("ladder", synonyms: ["rungs"])
+    let ladder = Item.scenery("ladder", synonyms: "rungs")
 
     /// No static description either, for ``ladder``'s reason: whether the
     /// opening is over your head is a question about the square you are
@@ -465,9 +465,9 @@ struct DungeonRoyalPuzzle: GameContent {
     /// "It is a long way above your head" was read from all sixty-four
     /// squares, including the sixty-three where `up` answers "There is no way
     /// up from here." (#233)
-    let ceilingOpening = Item.backdrop("circular opening", adjectives: ["large"], synonyms: ["opening", "ceiling"])
+    let ceilingOpening = Item.scenery("circular opening", adjectives: "large", synonyms: "opening", "ceiling")
 
-    let sand = Item.backdrop("sand", synonyms: ["floor"], description: Prose.puzzleSandExamined)
+    let sand = Item.scenery("sand", synonyms: "floor", description: Prose.puzzleSandExamined)
 
     // MARK: - State
 

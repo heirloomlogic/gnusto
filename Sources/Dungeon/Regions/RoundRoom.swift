@@ -163,26 +163,26 @@ struct DungeonRoundRoom: GameContent {
     /// The Round Room's whirring is the one thing about it a player can point
     /// at, and the Winding Passage two milestones from now names it from the
     /// far side.
-    let machinery = Item.backdrop(
-        "machinery", adjectives: ["unseen"], synonyms: ["machine", "whirring", "whir", "floor"])
+    let machinery = Item.scenery(
+        "machinery", adjectives: "unseen", synonyms: "machine", "whirring", "whir", "floor")
 
     /// And the eight ways out the room is entirely a description of. A rule
     /// rather than a constant, for the reason the room itself is one: while the
     /// carousel turns, which passage is which is the thing that will not hold
     /// still. (#233)
-    let roundRoomPassages = Item.backdrop(
+    let roundRoomPassages = Item.scenery(
         "passages",
-        adjectives: ["stone"],
-        synonyms: ["passage", "passages", "exits", "exit"]
+        adjectives: "stone",
+        synonyms: "passage", "passages", "exits", "exit"
     ) {
         plural
     }
 
-    let eastWestStairway = Item.backdrop(
-        "stairway", adjectives: ["narrow"], synonyms: ["stairs", "stair", "steps"], description: Prose.eastWestStairway)
+    let eastWestStairway = Item.scenery(
+        "stairway", adjectives: "narrow", synonyms: "stairs", "stair", "steps", description: Prose.eastWestStairway)
 
-    let ravine = Item.backdrop(
-        "ravine", adjectives: ["deep"], synonyms: ["steps", "staircase", "stairs", "stair", "crawlway"],
+    let ravine = Item.scenery(
+        "ravine", adjectives: "deep", synonyms: "steps", "staircase", "stairs", "stair", "crawlway",
         description: Prose.ravine)
 
     /// Named `chasmEdge` rather than `chasm` because ``chasmRoom`` — the room
@@ -191,19 +191,19 @@ struct DungeonRoundRoom: GameContent {
     /// no constraint on this one: a bundle's entity IDs are namespaced under its
     /// type, so that one is `DungeonCellar.chasm` and this one would be
     /// `DungeonRoundRoom.chasm`.
-    let chasmEdge = Item.backdrop("chasm", synonyms: ["crack", "path"], description: Prose.chasmScenery)
+    let chasmEdge = Item.scenery("chasm", synonyms: "crack", "path", description: Prose.chasmScenery)
 
-    let canyon = Item.backdrop(
-        "canyon", adjectives: ["deep"], synonyms: ["edge", "water"], description: Prose.canyonScenery)
+    let canyon = Item.scenery(
+        "canyon", adjectives: "deep", synonyms: "edge", "water", description: Prose.canyonScenery)
 
-    let loudRoomCeiling = Item.backdrop(
-        "ceiling", synonyms: ["stairway", "roar", "noise"], description: Prose.loudRoomCeiling)
+    let loudRoomCeiling = Item.scenery(
+        "ceiling", synonyms: "stairway", "roar", "noise", description: Prose.loudRoomCeiling)
 
-    let dampEarth = Item.backdrop(
-        "earth", adjectives: ["damp"], synonyms: ["ground", "dirt", "crack"], description: Prose.dampEarth)
+    let dampEarth = Item.scenery(
+        "earth", adjectives: "damp", synonyms: "ground", "dirt", "crack", description: Prose.dampEarth)
 
     /// The North-South Passage names its fork and nothing else.
-    let passageFork = Item.backdrop("fork", synonyms: ["passage"], description: Prose.passageFork)
+    let passageFork = Item.scenery("fork", synonyms: "passage", description: Prose.passageFork)
 
     // MARK: - Map
 

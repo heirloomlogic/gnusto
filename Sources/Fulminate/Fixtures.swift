@@ -31,10 +31,10 @@ struct Fixtures: GameContent {
     /// The hall's description sends the player south down it, and the aftermath
     /// of the blast sends the dust along it, and until now neither sentence had
     /// a word behind it.
-    let hallPassage = Item.backdrop(
+    let hallPassage = Item.scenery(
         "passage",
-        adjectives: ["kitchen", "service", "narrow"],
-        synonyms: ["passageway", "corridor", "hallway"],
+        adjectives: "kitchen", "service", "narrow",
+        synonyms: "passageway", "corridor", "hallway",
         description:
             """
             It runs back past the foot of the stairs to the kitchen door. The shortest
@@ -48,10 +48,10 @@ struct Fixtures: GameContent {
     /// Mrs. Kettle's evening is measured against this: the pot goes on at a
     /// quarter to six, which is how she can put a time to Teague coming down her
     /// back stairs. Her departure line and three of her replies name it.
-    let pot = Item.backdrop(
+    let pot = Item.scenery(
         "pot",
-        adjectives: ["iron", "black", "supper"],
-        synonyms: ["pan", "stockpot", "supper", "stew"],
+        adjectives: "iron", "black", "supper",
+        synonyms: "pan", "stockpot", "supper", "stew",
         description:
             """
             Big enough for a household, and filled tonight for one fewer than that. It
@@ -64,10 +64,10 @@ struct Fixtures: GameContent {
 
     /// As far into the evening as Mrs. Vane intends to go. Her arrival line and
     /// her presence line both put her on it and no further.
-    let backStep = Item.backdrop(
+    let backStep = Item.scenery(
         "step",
-        adjectives: ["kitchen", "stone", "back"],
-        synonyms: ["steps", "doorstep", "threshold"],
+        adjectives: "kitchen", "stone", "back",
+        synonyms: "steps", "doorstep", "threshold",
         description:
             """
             One worn stone outside the kitchen door, and the last swept thing between the

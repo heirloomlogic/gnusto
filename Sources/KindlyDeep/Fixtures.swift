@@ -38,9 +38,9 @@ struct Fixtures: GameContent {
     // backdrop scenery in this engine — and each stretch of it has a different
     // thing to say anyway.
 
-    let fallEntry = Item.backdrop(
+    let fallEntry = Item.scenery(
         "entry",
-        synonyms: ["entries", "roadway"],
+        synonyms: "entries", "roadway",
         description:
             """
             The main entry, which stops here now. You have walked it in the dark twice a
@@ -49,9 +49,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let stableEntry = Item.backdrop(
+    let stableEntry = Item.scenery(
         "entry",
-        synonyms: ["entries", "roadway"],
+        synonyms: "entries", "roadway",
         description:
             """
             The stable entry, running back east toward the fall. Wide enough for a mule
@@ -60,9 +60,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let shelterEntry = Item.backdrop(
+    let shelterEntry = Item.scenery(
         "entry",
-        synonyms: ["entries", "roadway"],
+        synonyms: "entries", "roadway",
         description:
             """
             The entry runs past above you, back up to the north. Down here you are out of
@@ -70,9 +70,9 @@ struct Fixtures: GameContent {
             """
     )
 
-    let forksEntry = Item.backdrop(
+    let forksEntry = Item.scenery(
         "entry",
-        synonyms: ["entries", "roadway"],
+        synonyms: "entries", "roadway",
         description:
             """
             The entry ends its useful career here, at the mouth of the old works. What
@@ -82,10 +82,10 @@ struct Fixtures: GameContent {
 
     // MARK: - The Stable
 
-    let stableWalls = Item.backdrop(
+    let stableWalls = Item.scenery(
         "walls",
-        adjectives: ["stable"],
-        synonyms: ["wall", "whitewash", "whitewashed", "stable"],
+        adjectives: "stable",
+        synonyms: "wall", "whitewash", "whitewashed", "stable",
         description:
             """
             Whitewashed, and recently. Lime over rock, laid on to throw what light there
@@ -94,10 +94,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let stableFloor = Item.backdrop(
+    let stableFloor = Item.scenery(
         "floor",
-        adjectives: ["worn", "brick"],
-        synonyms: ["brick", "bricks", "paving"],
+        adjectives: "worn", "brick",
+        synonyms: "brick", "bricks", "paving",
         description:
             """
             Worn brick, laid in a herringbone by somebody who did not have to and swept
@@ -108,9 +108,9 @@ struct Fixtures: GameContent {
 
     // MARK: - The Shelter Hole
 
-    let shelterRib = Item.backdrop(
+    let shelterRib = Item.scenery(
         "rib",
-        synonyms: ["shelter", "hole", "timbers", "floor"],
+        synonyms: "shelter", "hole", "timbers", "floor",
         description:
             """
             The shelter hole is cut square into the rib and timbered honestly, which is
@@ -121,9 +121,9 @@ struct Fixtures: GameContent {
 
     // MARK: - The Low Crawl
 
-    let crawlRock = Item.backdrop(
+    let crawlRock = Item.scenery(
         "rock",
-        synonyms: ["stone", "sides", "roof", "wall", "walls", "floor", "shadow"],
+        synonyms: "stone", "sides", "roof", "wall", "walls", "floor", "shadow",
         description:
             """
             Rock above, rock below, and rock at both elbows, close enough that the lamp
@@ -132,10 +132,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let crawlItself = Item.backdrop(
+    let crawlItself = Item.scenery(
         "crawl",
-        adjectives: ["low", "dark"],
-        synonyms: ["gap"],
+        adjectives: "low", "dark",
+        synonyms: "gap",
         description:
             """
             From the inside it is simply the shape you are: a gap the fall did not quite
@@ -148,10 +148,10 @@ struct Fixtures: GameContent {
     /// The fall reaches this far. It is the same event as the Fresh Fall's wall
     /// of rock — but that item is a room away, and the Forks' own paragraph names
     /// the fall twice while pointing at the gap along the edge of it.
-    let forksFall = Item.backdrop(
+    let forksFall = Item.scenery(
         "fall",
-        adjectives: ["fresh", "fallen"],
-        synonyms: ["rubble", "rock", "rocks"],
+        adjectives: "fresh", "fallen",
+        synonyms: "rubble", "rock", "rocks",
         description:
             """
             The far edge of the same fall, come round the corner to meet you. It left the
@@ -161,9 +161,9 @@ struct Fixtures: GameContent {
 
     // MARK: - The Shaft Bottom
 
-    let shaftWall = Item.backdrop(
+    let shaftWall = Item.scenery(
         "wall",
-        synonyms: ["walls"],
+        synonyms: "walls",
         description:
             """
             Rock, squared off where the sinkers squared it forty years ago, with the bell
@@ -174,10 +174,10 @@ struct Fixtures: GameContent {
 
     /// The crawl's other mouth. The room's own paragraph names it, now that the
     /// crawl runs both ways.
-    let shaftCrawl = Item.backdrop(
+    let shaftCrawl = Item.scenery(
         "crawl",
-        adjectives: ["low", "dark"],
-        synonyms: ["gap", "floor"],
+        adjectives: "low", "dark",
+        synonyms: "gap", "floor",
         description:
             """
             The crawl comes out here at floor level, beside the air-door, looking from
@@ -188,10 +188,10 @@ struct Fixtures: GameContent {
 
     // MARK: - The Old Works
 
-    let oldProps = Item.backdrop(
+    let oldProps = Item.scenery(
         "props",
-        adjectives: ["standing", "old"],
-        synonyms: ["prop", "timbers", "timber", "floor"],
+        adjectives: "standing", "old",
+        synonyms: "prop", "timbers", "timber", "floor",
         description:
             """
             Props set forty years ago and still standing, which says something for the
@@ -200,10 +200,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let oldAir = Item.backdrop(
+    let oldAir = Item.scenery(
         "air",
-        adjectives: ["sweet", "still"],
-        synonyms: ["sweetness", "quiet"],
+        adjectives: "sweet", "still",
+        synonyms: "sweetness", "quiet",
         description:
             """
             It smells faintly sweet, and it is perfectly still, and there is nothing

@@ -85,10 +85,10 @@ struct Lighthouse: Game {
     /// the first visit and go on saying it after the key was pocketed, because a
     /// listing line runs until its own item is touched and nothing ever touches
     /// a shelf.
-    let shelf = Item.backdrop(
+    let shelf = Item.scenery(
         "stone shelf",
-        adjectives: ["worn"],
-        synonyms: ["ledge", "slab"],
+        adjectives: "worn",
+        synonyms: "ledge", "slab",
         description:
             """
             A slab set into the wall at hand height, and one spot on it is
@@ -110,10 +110,10 @@ struct Lighthouse: Game {
     /// is all this needs to add — the parser knows "storeroom" and "door" from
     /// the name. The `storeroom` synonym is what makes the *noun* answer, since
     /// the base's description names the storeroom before the player has seen it.
-    let storeroomDoor = Item.backdrop(
+    let storeroomDoor = Item.scenery(
         "storeroom door",
-        adjectives: ["stout"],
-        synonyms: ["storeroom"],
+        adjectives: "stout",
+        synonyms: "storeroom",
         description:
             """
             Stout, salt-swollen, and hung to open inward, which is how you hang a
@@ -131,10 +131,10 @@ struct Lighthouse: Game {
     /// way the shelf used to announce the key twice. Scenery also makes it a
     /// fixture, which it is — see the refusal in `rules`, which says so in the
     /// game's voice rather than the engine's.
-    let chest = Item.backdrop(
+    let chest = Item.scenery(
         "heavy chest",
-        adjectives: ["sea"],
-        synonyms: ["clasp", "wire", "trunk"],
+        adjectives: "sea",
+        synonyms: "clasp", "wire", "trunk",
         description:
             """
             A brine-swollen sea chest, its clasp mended twice with copper wire —

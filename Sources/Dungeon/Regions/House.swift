@@ -54,32 +54,32 @@ struct DungeonHouse: GameContent {
     ///
     /// Its examine text is a rule rather than a constant, because `isOpen` is
     /// exactly the fact the sentence is about — see ``DungeonHouse/houseRules``.
-    let window = Item.backdrop(
+    let window = Item.scenery(
         "kitchen window",
-        adjectives: ["kitchen", "small", "narrow"],
-        synonyms: ["window"]
+        adjectives: "kitchen", "small", "narrow",
+        synonyms: "window"
     ) {
         openable
     }
 
     /// The kitchen names a staircase and a chimney; both answer.
-    let kitchenStaircase = Item.backdrop(
-        "staircase", adjectives: ["dark"], synonyms: ["stairs", "stairway", "staircase"],
+    let kitchenStaircase = Item.scenery(
+        "staircase", adjectives: "dark", synonyms: "stairs", "stairway", "staircase",
         description: Prose.kitchenStaircase)
 
     /// The way west, which the Kitchen's paragraph names and nothing answered
     /// for. (#233)
-    let kitchenPassage = Item.backdrop(
-        "passage", adjectives: ["west", "western"], synonyms: ["passage", "passageway"],
+    let kitchenPassage = Item.scenery(
+        "passage", adjectives: "west", "western", synonyms: "passage", "passageway",
         description: Prose.kitchenPassage)
 
-    let kitchenChimney = Item.backdrop(
-        "chimney", adjectives: ["dark"], synonyms: ["chimney"], description: Prose.kitchenChimney)
+    let kitchenChimney = Item.scenery(
+        "chimney", adjectives: "dark", synonyms: "chimney", description: Prose.kitchenChimney)
 
-    let kitchenTable = Item.backdrop(
+    let kitchenTable = Item.scenery(
         "kitchen table",
-        adjectives: ["kitchen", "wooden"],
-        synonyms: ["table"],
+        adjectives: "kitchen", "wooden",
+        synonyms: "table",
         description: Prose.kitchenTable
     ) {
         surface
@@ -200,30 +200,30 @@ struct DungeonHouse: GameContent {
         trait(.weight, 30)
     }
 
-    let mantelpiece = Item.backdrop(
-        "mantelpiece", adjectives: ["stone"], synonyms: ["mantel", "hooks", "hook", "fireplace"],
+    let mantelpiece = Item.scenery(
+        "mantelpiece", adjectives: "stone", synonyms: "mantel", "hooks", "hook", "fireplace",
         description: Prose.mantelpiece)
 
     /// The way east, the living room's first noun. No `door`: the gothic door
     /// and the trap door already answer to that in here, and a third would make
     /// the parser ask a question with three answers for no gain. (#233)
-    let livingRoomDoorway = Item.backdrop(
-        "doorway", adjectives: ["east", "eastern"], synonyms: ["doorway", "archway"],
+    let livingRoomDoorway = Item.scenery(
+        "doorway", adjectives: "east", "eastern", synonyms: "doorway", "archway",
         description: Prose.livingRoomDoorway)
 
     /// Pushing it reveals the trap door.
-    let rug = Item.backdrop(
-        "oriental rug", adjectives: ["oriental", "large"], synonyms: ["rug", "carpet"], description: Prose.rug)
+    let rug = Item.scenery(
+        "oriental rug", adjectives: "oriental", "large", synonyms: "rug", "carpet", description: Prose.rug)
 
     /// The gothic door west, nailed shut. It opens only when the cyclops
     /// smashes his way through from the maze — a later milestone — so this
     /// bundle declares the door and the host will declare the exit.
     /// Described by a host rule, for the reason ``livingRoom`` is: the state
     /// that breaks this door open is ``DungeonMaze``'s. (#329)
-    let woodenDoor = Item.backdrop(
+    let woodenDoor = Item.scenery(
         "wooden door",
-        adjectives: ["wooden", "west", "western", "gothic"],
-        synonyms: ["door", "lettering", "letters"]
+        adjectives: "wooden", "west", "western", "gothic",
+        synonyms: "door", "lettering", "letters"
     ) {
         // Nailed shut and read rather than opened, so no exit hangs on it.
         door
@@ -231,10 +231,10 @@ struct DungeonHouse: GameContent {
 
     /// Shared between ``livingRoom`` and ``cellar``, so the slam is felt from
     /// both sides.
-    let trapDoor = Item.backdrop(
+    let trapDoor = Item.scenery(
         "trap door",
-        adjectives: ["trap", "dusty"],
-        synonyms: ["trapdoor", "door"],
+        adjectives: "trap", "dusty",
+        synonyms: "trapdoor", "door",
         description: Prose.trapDoor
     ) {
         openable
@@ -245,10 +245,10 @@ struct DungeonHouse: GameContent {
     /// nobody's doing and never comes off in this milestone.
     @Global var trapDoorBarred = false
 
-    let trophyCase = Item.backdrop(
+    let trophyCase = Item.scenery(
         "trophy case",
-        adjectives: ["trophy"],
-        synonyms: ["case"]
+        adjectives: "trophy",
+        synonyms: "case"
     ) {
         container
         openable
@@ -322,10 +322,10 @@ struct DungeonHouse: GameContent {
         trait(.weapon, true)
     }
 
-    let atticTable = Item.backdrop(
+    let atticTable = Item.scenery(
         "dusty table",
-        adjectives: ["dusty", "rickety"],
-        synonyms: ["table"],
+        adjectives: "dusty", "rickety",
+        synonyms: "table",
         description: Prose.atticTable
     ) {
         surface
@@ -346,18 +346,18 @@ struct DungeonHouse: GameContent {
 
     // MARK: - Cellar
 
-    let cellarRamp = Item.backdrop(
-        "metal ramp", adjectives: ["steep", "metal"], synonyms: ["ramp"], description: Prose.cellarRamp)
+    let cellarRamp = Item.scenery(
+        "metal ramp", adjectives: "steep", "metal", synonyms: "ramp", description: Prose.cellarRamp)
 
     /// Two items, because the Cellar's paragraph names two different holes in
     /// two different walls. One item answering both under one description is
     /// the defect this round is about at a smaller scale. (#233)
-    let cellarPassage = Item.backdrop(
-        "passageway", adjectives: ["narrow", "east", "eastern"], synonyms: ["passage", "passageway"],
+    let cellarPassage = Item.scenery(
+        "passageway", adjectives: "narrow", "east", "eastern", synonyms: "passage", "passageway",
         description: Prose.cellarPassage)
 
-    let cellarCrawlway = Item.backdrop(
-        "crawlway", adjectives: ["south", "southern"], synonyms: ["crawlway", "crawl"],
+    let cellarCrawlway = Item.scenery(
+        "crawlway", adjectives: "south", "southern", synonyms: "crawlway", "crawl",
         description: Prose.cellarCrawlway)
 
     // MARK: - Map

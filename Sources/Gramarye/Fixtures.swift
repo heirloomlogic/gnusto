@@ -27,10 +27,10 @@ struct Fixtures: GameContent {
     /// Where the intro says the spellbook is, and therefore the first thing a
     /// player reaches for. A `surface`, so the book can actually be on it and
     /// the room listing says so.
-    let desk = Item.backdrop(
+    let desk = Item.scenery(
         "desk",
-        adjectives: ["writing", "littered"],
-        synonyms: ["table", "inkwells", "inkwell", "ink", "quills", "quill"],
+        adjectives: "writing", "littered",
+        synonyms: "table", "inkwells", "inkwell", "ink", "quills", "quill",
         description:
             """
             A working surface under a working man's idea of order: inkwells at three
@@ -44,10 +44,10 @@ struct Fixtures: GameContent {
     /// Not `book`: the spellbook owns that word, the intro tells the player to
     /// go and read it, and a shelf full of the ones he never opens has the
     /// weaker claim.
-    let books = Item.backdrop(
+    let books = Item.scenery(
         "books",
-        adjectives: ["shelved", "bound"],
-        synonyms: ["shelves", "shelf", "volumes", "volume", "library"],
+        adjectives: "shelved", "bound",
+        synonyms: "shelves", "shelf", "volumes", "volume", "library",
         description:
             """
             Wall to wall and floor to ceiling, spines in nine languages and at least one
@@ -56,10 +56,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let studyWalls = Item.backdrop(
+    let studyWalls = Item.scenery(
         "study wall",
-        adjectives: ["west", "warm"],
-        synonyms: ["wall", "walls", "stone", "stones", "tower", "room", "study"],
+        adjectives: "west", "warm",
+        synonyms: "wall", "walls", "stone", "stones", "tower", "room", "study",
         description:
             """
             Tower stone, warm from the candle and from three centuries of somebody being
@@ -68,10 +68,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let candle = Item.backdrop(
+    let candle = Item.scenery(
         "candle",
-        adjectives: ["burning", "tallow"],
-        synonyms: ["candles", "candlelight", "flame"],
+        adjectives: "burning", "tallow",
+        synonyms: "candles", "candlelight", "flame",
         description:
             """
             Burning steadily on a saucer of its own drippings. It has been lit since dawn
@@ -79,10 +79,10 @@ struct Fixtures: GameContent {
             """
     )
 
-    let cauldrons = Item.backdrop(
+    let cauldrons = Item.scenery(
         "cauldrons",
-        adjectives: ["cracked", "stacked"],
-        synonyms: ["cauldron", "pots", "pot", "stack"],
+        adjectives: "cracked", "stacked",
+        synonyms: "cauldron", "pots", "pot", "stack",
         description:
             """
             Stacked in the corner, three deep, two of them cracked clean through. You know
@@ -93,10 +93,10 @@ struct Fixtures: GameContent {
 
     /// The master, and everything he left with. One description that is true of
     /// all of them, because all of them went down the hill in the same hurry.
-    let master = Item.backdrop(
+    let master = Item.scenery(
         "master",
-        adjectives: ["absent", "hurrying"],
-        synonyms: ["wizard", "mage", "cloak", "staff", "hat", "robes", "robe", "letters", "letter", "circle"],
+        adjectives: "absent", "hurrying",
+        synonyms: "wizard", "mage", "cloak", "staff", "hat", "robes", "robe", "letters", "letter", "circle",
         description:
             """
             Halfway to the Circle by now, in the cloak, the robes, and the hat he found in
@@ -108,10 +108,10 @@ struct Fixtures: GameContent {
 
     /// Visible from the open window, which is also the road the blocked exits
     /// refuse to let you take.
-    let hill = Item.backdrop(
+    let hill = Item.scenery(
         "hill",
-        adjectives: ["green", "steep"],
-        synonyms: ["road", "track", "lane", "path", "slope"],
+        adjectives: "green", "steep",
+        synonyms: "road", "track", "lane", "path", "slope",
         description:
             """
             Green, steep, and going down to a road with nobody on it. He was making better
@@ -125,10 +125,10 @@ struct Fixtures: GameContent {
     /// the barrier at the north end, and a second claim on the word turns
     /// `OPEN WALL` — the refusal that clues the whole scroll puzzle — into a
     /// disambiguation question.
-    let galleryStone = Item.backdrop(
+    let galleryStone = Item.scenery(
         "gallery",
-        adjectives: ["cold", "long"],
-        synonyms: ["walls", "stone", "stones", "stonework", "tower", "air"],
+        adjectives: "cold", "long",
+        synonyms: "walls", "stone", "stones", "stonework", "tower", "air",
         description:
             """
             Cold tower stone, unrelieved for the whole length of the gallery. Nobody has
@@ -138,10 +138,10 @@ struct Fixtures: GameContent {
 
     // MARK: - The undercroft
 
-    let vault = Item.backdrop(
+    let vault = Item.scenery(
         "vaulting",
-        adjectives: ["low", "chalky"],
-        synonyms: ["vault", "cellar", "ceiling", "stone", "stones", "tower", "air", "magic", "undercroft"],
+        adjectives: "low", "chalky",
+        synonyms: "vault", "cellar", "ceiling", "stone", "stones", "tower", "air", "magic", "undercroft",
         description:
             """
             Low ribs of stone springing from the floor and meeting overhead, chalky to look
@@ -153,10 +153,10 @@ struct Fixtures: GameContent {
     /// Named in the intro, in `firebolt`'s success line, and in the ending, and
     /// until now not a word the one room containing it knew. A `surface`, so the
     /// amulet hangs on it rather than lying on the floor beside it.
-    let hook = Item.backdrop(
+    let hook = Item.scenery(
         "iron hook",
-        adjectives: ["plain", "bent"],
-        synonyms: ["peg", "nail"],
+        adjectives: "plain", "bent",
+        synonyms: "peg", "nail",
         description:
             """
             Driven into the vault stone at head height and bent up at the tip. The last of

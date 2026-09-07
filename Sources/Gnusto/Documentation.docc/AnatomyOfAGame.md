@@ -42,17 +42,19 @@ This works because each ``Location`` and ``Item`` mints a private identity token
 
 References are always compile-checked. `cloak.after(.take)`, `hook.holds(cloak)`, `foyer.north(bar)` — every one is ordinary property access, so renaming a room or deleting an item breaks the build instead of the running game.
 
-## Backdrop scenery
+## Scenery
 
-Every noun a room description names should answer when the player examines it. Declare a fixture with ``Item/backdrop(_:adjectives:synonyms:description:_:)``:
+Every noun a room description names should answer when the player examines it. Declare a fixture with ``Item/scenery(_:adjectives:synonyms:description:_:)``:
 
 ```swift
-let wall = Item.backdrop(
-    "stone wall", adjectives: ["rough"], synonyms: ["masonry", "old brickwork"],
+let wall = Item.scenery(
+    "stone wall", adjectives: "rough", synonyms: "masonry", "old brickwork",
     description: "Mortar fills the cracks.")
 ```
 
 This creates an ordinary ``Item`` with a name, vocabulary, examine text, and the ``scenery`` trait. The fixture cannot be taken and gets no stock room-listing sentence. The name and synonyms contribute nouns and adjectives through the usual parser rules: `stone wall` answers to `wall` and `stone wall`; `old brickwork` adds `brickwork` and the adjective `old`.
+
+`adjectives:` and `synonyms:` are variadic, so they read the way ``adjectives(_:)`` and ``synonyms(_:)`` read inside an `Item { }` block — one phrase per argument, no brackets. A synonym is a noun phrase, not a single word, which is why `old brickwork` above counts as one argument.
 
 Store it on your game or content bundle and place it in `map`, just like any other item:
 
@@ -66,12 +68,12 @@ var map: WorldMap {
 All arguments after the name are optional. Use the trailing trait block when scenery has another role:
 
 ```swift
-let niche = Item.backdrop("shadowed niche", synonyms: ["alcove"]) {
+let niche = Item.scenery("shadowed niche", synonyms: "alcove") {
     container
 }
 ```
 
-The niche can hold things and take item rules. For text that changes during play, omit `description:` and attach a `niche.describe { … }` rule. Without either description, examining it uses the game's stock examine line. Placement determines where a backdrop is visible, just as it does for other items.
+The niche can hold things and take item rules. For text that changes during play, omit `description:` and attach a `niche.describe { … }` rule. Without either description, examining it uses the game's stock examine line. Placement determines where a piece of scenery is visible, just as it does for other items.
 
 ## The parts of the `Game` protocol
 

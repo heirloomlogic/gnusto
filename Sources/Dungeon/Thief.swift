@@ -109,8 +109,8 @@ struct DungeonThief: GameContent {
     /// every room he walks into. It travels with him, so it leaves scope when
     /// he does, and it is not loot anybody takes off him while he is standing
     /// up. (#329)
-    let thiefBag = Item.backdrop(
-        "large bag", adjectives: ["large"], synonyms: ["bag", "sack"], description: Prose.thiefBag)
+    let thiefBag = Item.scenery(
+        "large bag", adjectives: "large", synonyms: "bag", "sack", description: Prose.thiefBag)
 
     // MARK: - Rules
 

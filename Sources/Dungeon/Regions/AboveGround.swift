@@ -73,33 +73,33 @@ struct DungeonAboveGround: GameContent {
     // every side of it" needs one scenery item per room. All four share a name
     // and a description, so they read as the same house.
 
-    let whiteHouseAtWest = Item.backdrop(
-        "white house", adjectives: ["white", "colonial"], description: Prose.whiteHouse)
+    let whiteHouseAtWest = Item.scenery(
+        "white house", adjectives: "white", "colonial", description: Prose.whiteHouse)
 
-    let whiteHouseAtNorth = Item.backdrop(
-        "white house", adjectives: ["white", "colonial"], description: Prose.whiteHouse)
+    let whiteHouseAtNorth = Item.scenery(
+        "white house", adjectives: "white", "colonial", description: Prose.whiteHouse)
 
-    let whiteHouseAtSouth = Item.backdrop(
-        "white house", adjectives: ["white", "colonial"], description: Prose.whiteHouse)
+    let whiteHouseAtSouth = Item.scenery(
+        "white house", adjectives: "white", "colonial", description: Prose.whiteHouse)
 
-    let whiteHouseAtBehind = Item.backdrop(
-        "white house", adjectives: ["white", "colonial"], description: Prose.whiteHouse)
+    let whiteHouseAtBehind = Item.scenery(
+        "white house", adjectives: "white", "colonial", description: Prose.whiteHouse)
 
     /// Barred, and named at both the north and south sides, because both
     /// descriptions mention them.
-    let barredWindowsAtNorth = Item.backdrop(
-        "barred windows", adjectives: ["barred"], synonyms: ["window", "windows", "bars"],
+    let barredWindowsAtNorth = Item.scenery(
+        "barred windows", adjectives: "barred", synonyms: "window", "windows", "bars",
         description: Prose.barredWindows)
 
-    let barredWindowsAtSouth = Item.backdrop(
-        "barred windows", adjectives: ["barred"], synonyms: ["window", "windows", "bars"],
+    let barredWindowsAtSouth = Item.scenery(
+        "barred windows", adjectives: "barred", synonyms: "window", "windows", "bars",
         description: Prose.barredWindows)
 
     /// Locked, with no key anywhere in the game — the mainframe's joke. The
     /// east exit out of ``westOfHouse`` refuses with the same line.
-    let frontDoor = Item.backdrop(
+    let frontDoor = Item.scenery(
         "front door",
-        adjectives: ["front", "boarded", "oak"],
+        adjectives: "front", "boarded", "oak",
         description: Prose.frontDoor
     ) {
         // Boarded: a door with nowhere to go, so the map cannot say it is one.
@@ -111,10 +111,10 @@ struct DungeonAboveGround: GameContent {
     /// survives it, and in fact prints on every look, because `touched` is set
     /// by TAKE and TAKE is what the trait refuses. See `FIDELITY.md`'s
     /// milestone 1. (#286)
-    let mailbox = Item.backdrop(
+    let mailbox = Item.scenery(
         "small mailbox",
-        adjectives: ["small"],
-        synonyms: ["box"],
+        adjectives: "small",
+        synonyms: "box",
         description: Prose.mailbox
     ) {
         firstSight(Prose.mailboxInPlace)
@@ -232,9 +232,9 @@ struct DungeonAboveGround: GameContent {
     private static func forestStand(
         _ nouns: ItemTrait = synonyms("tree", "forest", "woods", "wood")
     ) -> Item {
-        Item.backdrop(
+        Item.scenery(
             "trees",
-            adjectives: ["large", "tall"],
+            adjectives: "large", "tall",
             description: Prose.forestTrees
         ) {
             // `wood` as well as `woods`: the Clearing's paragraph calls the
@@ -280,8 +280,8 @@ struct DungeonAboveGround: GameContent {
     /// differs is where it goes. The Clearing's goes home and Canyon Bottom's
     /// runs north under the wall. (#233)
     private static func pathScenery(_ text: String) -> Item {
-        Item.backdrop(
-            "path", adjectives: ["beaten", "narrow"], synonyms: ["path", "track", "trail"], description: text)
+        Item.scenery(
+            "path", adjectives: "beaten", "narrow", synonyms: "path", "track", "trail", description: text)
     }
 
     let pathAtSouthOfHouse = pathScenery(Prose.pathAtSouth)
@@ -291,18 +291,18 @@ struct DungeonAboveGround: GameContent {
 
     /// The game's opening room names a field and nothing in it answered for
     /// one. (#233)
-    let openField = Item.backdrop(
-        "field", adjectives: ["open"], synonyms: ["field", "grass", "ground"], description: Prose.openField)
+    let openField = Item.scenery(
+        "field", adjectives: "open", synonyms: "field", "grass", "ground", description: Prose.openField)
 
     /// The clearing named from Behind House, one room short of it. Its own item
     /// and not a synonym on the path: a track and the place the track goes are
     /// two things, which is the whole argument of this repair.
-    let clearingFromBehindHouse = Item.backdrop("clearing", description: Prose.clearingFromBehindHouse)
+    let clearingFromBehindHouse = Item.scenery("clearing", description: Prose.clearingFromBehindHouse)
 
     /// And the clearing the whole wood is arranged around. No `trees` —
     /// ``treesAroundClearing`` owns those, and it is the item about them.
-    let clearingGround = Item.backdrop(
-        "clearing", adjectives: ["open"], synonyms: ["clearing", "ground"], description: Prose.clearingGround)
+    let clearingGround = Item.scenery(
+        "clearing", adjectives: "open", synonyms: "clearing", "ground", description: Prose.clearingGround)
 
     /// The one tree worth climbing, and the only one the parser prefers to the
     /// stand of scenery around it (it is the sole `tree` in its room).
@@ -310,15 +310,15 @@ struct DungeonAboveGround: GameContent {
     // item in its room, and the room's paragraph says *large trees all
     // around* before it says *one particularly large tree*. The stand beside
     // it owns the plural now, and `tree` still means this one. (#332)
-    let greatTree = Item.backdrop(
-        "large tree", adjectives: ["large", "gnarled", "particularly"], synonyms: ["tree", "branches", "branch"],
+    let greatTree = Item.scenery(
+        "large tree", adjectives: "large", "gnarled", "particularly", synonyms: "tree", "branches", "branch",
         description: Prose.greatTree)
 
     /// The tree seen from the perch. Same tree, other end — and its own line,
     /// because ``Prose/greatTree`` offers the branches as a way up and points
     /// at an egg that up here is listed beside the player.
-    let treeFromAbove = Item.backdrop(
-        "large tree", adjectives: ["large", "gnarled"], synonyms: ["tree", "trees", "branches", "branch"],
+    let treeFromAbove = Item.scenery(
+        "large tree", adjectives: "large", "gnarled", synonyms: "tree", "trees", "branches", "branch",
         description: Prose.greatTreeFromAbove)
 
     /// Two channels, not one, the same way the pile of leaves is. "Beside you
@@ -335,9 +335,9 @@ struct DungeonAboveGround: GameContent {
     /// `bird` is an adjective alongside `birds` because the tokenizer drops a
     /// trailing `'s`, so a player typing `bird's nest` hands the parser
     /// `["bird", "nest"]` and matched nothing.
-    let nest = Item.backdrop(
+    let nest = Item.scenery(
         "birds nest",
-        adjectives: ["small", "bird", "birds"],
+        adjectives: "small", "bird", "birds",
         description: Prose.nestExamined
     ) {
         firstSight(Prose.nest)
@@ -386,23 +386,23 @@ struct DungeonAboveGround: GameContent {
     /// mainframe answers for it anyway, in every forest room, rather than
     /// letting "You can't see any such thing" stand against a bird the game
     /// keeps mentioning.
-    let songbirdDeep = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdDeep = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
-    let songbirdSouth = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdSouth = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
-    let songbirdTree = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdTree = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
-    let songbirdCanyonEdge = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdCanyonEdge = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
-    let songbirdNorth = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdNorth = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
-    let songbirdAloft = Item.backdrop(
-        "songbird", adjectives: ["song"], synonyms: ["bird"], description: Prose.songbirdNotHere)
+    let songbirdAloft = Item.scenery(
+        "songbird", adjectives: "song", synonyms: "bird", description: Prose.songbirdNotHere)
 
     // MARK: - The clearing
 
@@ -427,10 +427,10 @@ struct DungeonAboveGround: GameContent {
     /// never the author's, so the pile still announces itself and still cannot
     /// be picked up. Nothing in the game marks the leaves touched, so the line
     /// prints on every look, which is what the source does.
-    let leaves = Item.backdrop(
+    let leaves = Item.scenery(
         "pile of leaves",
-        adjectives: ["dead"],
-        synonyms: ["leaves", "leaf", "pile"],
+        adjectives: "dead",
+        synonyms: "leaves", "leaf", "pile",
         description: Prose.leavesExamined
     ) {
         firstSight(Prose.leaves)
@@ -444,10 +444,10 @@ struct DungeonAboveGround: GameContent {
     /// and `x lock` answered "You can't see any such thing" to all three.
     /// `grating` needs no synonym of its own: it is the last word of the name,
     /// which is the noun.
-    let grating = Item.backdrop(
+    let grating = Item.scenery(
         "iron grating",
-        adjectives: ["iron", "metal"],
-        synonyms: ["grate", "lock"]
+        adjectives: "iron", "metal",
+        synonyms: "grate", "lock"
     ) {
         container
         openable
@@ -496,39 +496,39 @@ struct DungeonAboveGround: GameContent {
     /// is west and south of this square, an ordinary exit the player walked out
     /// of, so answering `x forest` with "too far off to make out more than the
     /// shape" was the far thing speaking for the near one. (#286)
-    let distantViewAtTop = Item.backdrop(
-        "view", adjectives: ["distant", "marvelous"],
-        synonyms: ["cliffs", "falls", "rainbow", "dam", "river", "water", "aragain"], description: Prose.distantView)
+    let distantViewAtTop = Item.scenery(
+        "view", adjectives: "distant", "marvelous",
+        synonyms: "cliffs", "falls", "rainbow", "dam", "river", "water", "aragain", description: Prose.distantView)
 
     /// No *passage* here, unlike its two siblings' catch-alls: the Rocky Ledge
     /// puts a passage directly below the player and the distant view is about
     /// the miles beyond, so the one noun that is not far away gets
     /// ``rockyLedgePassage`` instead.
-    let distantViewAtLedge = Item.backdrop(
-        "view", adjectives: ["distant"], synonyms: ["falls", "river", "water", "aragain", "flow"],
+    let distantViewAtLedge = Item.scenery(
+        "view", adjectives: "distant", synonyms: "falls", "river", "water", "aragain", "flow",
         description: Prose.distantView)
 
-    let distantViewAtBottom = Item.backdrop(
-        "stream", adjectives: ["lesser"], synonyms: ["falls", "runoff", "river", "water", "aragain", "flow"],
+    let distantViewAtBottom = Item.scenery(
+        "stream", adjectives: "lesser", synonyms: "falls", "runoff", "river", "water", "aragain", "flow",
         description: Prose.canyonStream)
 
     /// The passage the Rocky Ledge places directly below the player, which the
     /// falls go into and nobody follows. Its own item because the three views
     /// above answer for what is miles off, and this is not.
-    let rockyLedgePassage = Item.backdrop(
-        "passage", adjectives: ["impassable"], synonyms: ["passage", "passageway"], description: Prose.rockyLedgePassage
+    let rockyLedgePassage = Item.scenery(
+        "passage", adjectives: "impassable", synonyms: "passage", "passageway", description: Prose.rockyLedgePassage
     )
 
-    let cliffAtTop = Item.backdrop(
-        "cliff", adjectives: ["rocky", "sheer"], synonyms: ["ledge", "wall", "walls", "canyon"],
+    let cliffAtTop = Item.scenery(
+        "cliff", adjectives: "rocky", "sheer", synonyms: "ledge", "wall", "walls", "canyon",
         description: Prose.cliff)
 
-    let cliffAtLedge = Item.backdrop(
-        "cliff", adjectives: ["rocky", "sheer"], synonyms: ["ledge", "wall", "walls", "canyon"],
+    let cliffAtLedge = Item.scenery(
+        "cliff", adjectives: "rocky", "sheer", synonyms: "ledge", "wall", "walls", "canyon",
         description: Prose.cliff)
 
-    let cliffAtBottom = Item.backdrop(
-        "cliff", adjectives: ["rocky", "sheer"], synonyms: ["ledge", "wall", "walls", "canyon"],
+    let cliffAtBottom = Item.scenery(
+        "cliff", adjectives: "rocky", "sheer", synonyms: "ledge", "wall", "walls", "canyon",
         description: Prose.cliff)
 
     // MARK: - The post

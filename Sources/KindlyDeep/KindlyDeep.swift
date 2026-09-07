@@ -302,9 +302,9 @@ struct KindlyDeep: Game, GameMain {
         hidden
     }
 
-    let hay = Item.backdrop(
+    let hay = Item.scenery(
         "hay",
-        adjectives: ["good", "dry"],
+        adjectives: "good", "dry",
         description:
             """
             Good hay, kept dry. Biscuit's, by rights. It is no use to you at all, which is the first honest thing
@@ -312,15 +312,15 @@ struct KindlyDeep: Game, GameMain {
             """
     )
 
-    let straw = Item.backdrop(
-        "straw", adjectives: ["clean", "deep"], synonyms: ["heap", "bed"],
+    let straw = Item.scenery(
+        "straw", adjectives: "clean", "deep", synonyms: "heap", "bed",
         description:
             "Clean straw, deep enough to lie in. It has been a long time since anything looked more like a bed.")
 
-    let bench = Item.backdrop(
+    let bench = Item.scenery(
         "bench",
-        adjectives: ["timber", "worn"],
-        synonyms: ["seat", "initials"],
+        adjectives: "timber", "worn",
+        synonyms: "seat", "initials",
         description:
             """
             A plank bench worn smooth by men waiting out a trip, with two initials cut into the end of it by
@@ -328,10 +328,10 @@ struct KindlyDeep: Game, GameMain {
             """
     )
 
-    let rubble = Item.backdrop(
+    let rubble = Item.scenery(
         "fall",
-        adjectives: ["fresh", "fallen"],
-        synonyms: ["rubble", "rock", "rocks", "roof", "timber", "timbers", "wall", "prop", "props", "dust"],
+        adjectives: "fresh", "fallen",
+        synonyms: "rubble", "rock", "rocks", "roof", "timber", "timbers", "wall", "prop", "props", "dust",
         description:
             """
             Rock and splintered prop, packed tight and gone quiet — the settled kind of fall, the kind that has
@@ -340,10 +340,10 @@ struct KindlyDeep: Game, GameMain {
             """
     )
 
-    let rails = Item.backdrop(
+    let rails = Item.scenery(
         "rails",
-        adjectives: ["iron", "buried"],
-        synonyms: ["rail", "track", "tracks", "gauge"],
+        adjectives: "iron", "buried",
+        synonyms: "rail", "track", "tracks", "gauge",
         description:
             """
             Two iron rails running out of the fall and away east, the gauge of a mine car and a mule. They are the
@@ -353,10 +353,10 @@ struct KindlyDeep: Game, GameMain {
         plural
     }
 
-    let stall = Item.backdrop(
+    let stall = Item.scenery(
         "stall",
-        adjectives: ["open"],
-        synonyms: ["name", "chalk"],
+        adjectives: "open",
+        synonyms: "name", "chalk",
         description:
             """
             Biscuit's stall, swept and standing open, his name chalked over it by somebody who took trouble with
@@ -365,10 +365,10 @@ struct KindlyDeep: Game, GameMain {
     )
 
     /// The stable's own water, dry — the reason the canteen is the whole clock.
-    let trough = Item.backdrop(
+    let trough = Item.scenery(
         "water trough",
-        adjectives: ["dry", "empty"],
-        synonyms: ["basin"],
+        adjectives: "dry", "empty",
+        synonyms: "basin",
         description:
             """
             The mule trough, dry as a flue. The line that fed it came down the main entry, and the main entry is the
@@ -376,10 +376,10 @@ struct KindlyDeep: Game, GameMain {
             """
     )
 
-    let cornBin = Item.backdrop(
+    let cornBin = Item.scenery(
         "corn bin",
-        adjectives: ["loose"],
-        synonyms: ["board", "boards"],
+        adjectives: "loose",
+        synonyms: "board", "boards",
         description:
             """
             A corn bin with a loose board along its foot — the sort of gap a man uses when he wants a thing to be
@@ -392,18 +392,18 @@ struct KindlyDeep: Game, GameMain {
     /// west exit (so `open door` at the Shaft Bottom triggers the rejoin, §6).
     /// A door with a bad side and a good one has to say which side you are on:
     /// its description is a `describe` rule keyed on where you are standing.
-    let airDoor = Item.backdrop(
+    let airDoor = Item.scenery(
         "air-door",
-        adjectives: ["ventilation", "stout", "jammed"],
-        synonyms: ["airdoor", "bar", "frame", "hinges"]
+        adjectives: "ventilation", "stout", "jammed",
+        synonyms: "airdoor", "bar", "frame", "hinges"
     ) {
         openable
     }
 
-    let crawl = Item.backdrop(
+    let crawl = Item.scenery(
         "crawl",
-        adjectives: ["low", "dark"],
-        synonyms: ["gap", "floor"],
+        adjectives: "low", "dark",
+        synonyms: "gap", "floor",
         description:
             """
             Room enough for a man on his hands and knees, if the man is motivated. It was not cut; it was left, by
@@ -413,10 +413,10 @@ struct KindlyDeep: Game, GameMain {
 
     /// The mouth of the bad air, named by the room and by Biscuit's refusal —
     /// so it had better answer when the player looks at it.
-    let oldHeading = Item.backdrop(
+    let oldHeading = Item.scenery(
         "old works",
-        adjectives: ["abandoned"],
-        synonyms: ["heading", "workings", "mouth", "silence"],
+        adjectives: "abandoned",
+        synonyms: "heading", "workings", "mouth", "silence",
         description:
             """
             An old heading, worked out and left, running north into a dark that gives nothing back. The air coming
@@ -427,12 +427,12 @@ struct KindlyDeep: Game, GameMain {
     /// Its examine text is a `describe` rule keyed on `beamHauled` (§D): the
     /// static trait went on putting it across the gate one turn after the game
     /// narrated it being dragged off.
-    let beam = Item.backdrop("beam", adjectives: ["twelve-foot", "poplar", "fallen"], synonyms: ["timber"])
+    let beam = Item.scenery("beam", adjectives: "twelve-foot", "poplar", "fallen", synonyms: "timber")
 
-    let shaft = Item.backdrop(
+    let shaft = Item.scenery(
         "hoisting shaft",
-        adjectives: ["cold"],
-        synonyms: ["ladderway", "air"],
+        adjectives: "cold",
+        synonyms: "ladderway", "air",
         description:
             """
             The shaft, going up out of the lamplight and on going up: four hundred feet of it, with weather at the
@@ -444,11 +444,11 @@ struct KindlyDeep: Game, GameMain {
     /// Likewise a `describe` rule: the gate is the way out once the beam is off
     /// it, and calling it "perfectly useless" at that point is the room telling
     /// the player the opposite of what just happened.
-    let cageGate = Item.backdrop("cage gate", adjectives: ["barred"], synonyms: ["cage", "frame"])
+    let cageGate = Item.scenery("cage gate", adjectives: "barred", synonyms: "cage", "frame")
 
-    let bell = Item.backdrop(
+    let bell = Item.scenery(
         "signal bell",
-        synonyms: ["rope", "pull", "cord", "bracket"],
+        synonyms: "rope", "pull", "cord", "bracket",
         description:
             """
             The signal bell and its rope, polished by a thousand gloved pulls. One ring travels all the way up the
@@ -456,9 +456,9 @@ struct KindlyDeep: Game, GameMain {
             """
     )
 
-    let tack = Item.backdrop(
+    let tack = Item.scenery(
         "haul tack",
-        synonyms: ["collar", "chains", "harness", "singletree", "peg"],
+        synonyms: "collar", "chains", "harness", "singletree", "peg",
         description:
             """
             Haul tack on its peg: collar, trace chains, and a singletree, all sized for a mule who has worn them

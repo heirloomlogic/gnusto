@@ -6,10 +6,16 @@ extension Item {
     /// Additional traits can make it a container, surface, or other fixture.
     ///
     /// ```swift
-    /// let wall = Item.backdrop("stone wall", synonyms: ["masonry"],
-    ///                          description: "Mortar fills the cracks.")
-    /// let niche = Item.backdrop("shadowed niche") { container }
+    /// let wall = Item.scenery("stone wall", synonyms: "masonry",
+    ///                         description: "Mortar fills the cracks.")
+    /// let niche = Item.scenery("shadowed niche") { container }
     /// ```
+    ///
+    /// The traits are spelled `ItemTrait(kind:)` rather than through the
+    /// `name(_:)` / `adjectives(_:)` / `synonyms(_:)` directives because two of
+    /// them cannot be reached from here: the directives are variadic and Swift
+    /// has no splat, and inside `extension Item` the bare `scenery` resolves to
+    /// this function rather than to the trait.
     ///
     /// - Parameters:
     ///   - name: the item's display name.
@@ -18,25 +24,21 @@ extension Item {
     ///   - description: optional examine text; omit it when using a `describe` rule.
     ///   - traits: additional item traits.
     /// - Returns: an ordinary item with the `scenery` trait.
-    public static func backdrop(
+    public static func scenery(
         _ name: String,
-        adjectives: [String] = [],
-        synonyms: [String] = [],
+        adjectives: String...,
+        synonyms: String...,
         description: String? = nil,
         @ItemBuilder _ traits: () -> [ItemTrait] = { [] }
     ) -> Item {
         Item {
             ItemTrait(kind: .name(name))
-            if !adjectives.isEmpty {
-                ItemTrait(kind: .adjectives(adjectives))
-            }
-            if !synonyms.isEmpty {
-                ItemTrait(kind: .synonyms(synonyms))
-            }
+            ItemTrait(kind: .adjectives(adjectives))
+            ItemTrait(kind: .synonyms(synonyms))
             if let description {
                 ItemTrait(kind: .description(description))
             }
-            scenery
+            ItemTrait(kind: .scenery)
             for trait in traits() {
                 trait
             }

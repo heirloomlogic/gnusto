@@ -47,17 +47,17 @@ struct DungeonRiddle: GameContent {
     /// guards is conditional on the answer and not on the door's state — the
     /// source's own arrangement, where `RIDDL`'s east exit tests `RIDDLE-FLAG`
     /// and the door object only describes itself.
-    let stoneDoor = Item.backdrop(
+    let stoneDoor = Item.scenery(
         "stone door",
-        adjectives: ["great", "stone", "dressed"],
-        synonyms: ["door", "doorway", "stone"]
+        adjectives: "great", "stone", "dressed",
+        synonyms: "door", "doorway", "stone"
     ) {
         door
     }
 
-    let riddleLintel = Item.backdrop(
-        "inscription", adjectives: ["cut", "carved"],
-        synonyms: ["lintel", "words", "word", "writing", "riddle", "wall", "walls"],
+    let riddleLintel = Item.scenery(
+        "inscription", adjectives: "cut", "carved",
+        synonyms: "lintel", "words", "word", "writing", "riddle", "wall", "walls",
         description: Prose.riddleInscription)
 
     /// The pearls. The mainframe pays **9** to find and **5** to case, which is
@@ -74,10 +74,10 @@ struct DungeonRiddle: GameContent {
         trait(.depositValue, 5)
     }
 
-    let pearlRoomShelves = Item.backdrop(
+    let pearlRoomShelves = Item.scenery(
         "shelves",
-        adjectives: ["bare", "empty"],
-        synonyms: ["shelf", "brackets", "bracket", "closet", "broom", "brooms"],
+        adjectives: "bare", "empty",
+        synonyms: "shelf", "brackets", "bracket", "closet", "broom", "brooms",
         description: Prose.pearlRoomShelves
     ) {
         plural
