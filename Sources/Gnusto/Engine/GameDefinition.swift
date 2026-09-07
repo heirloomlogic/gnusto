@@ -18,10 +18,6 @@ enum ExitTarget: Sendable {
 struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
-    /// A `description(when:_:otherwise:)` trait, lowered by Bootstrap into the
-    /// rule table's describe slot. Kept here so the trait can be diagnosed
-    /// against a static `description` or a `describe { … }` rule.
-    var twoStateDescription: LocationTwoStateText?
     var inherentlyLit = true
     /// The description is state the player is changing, so it prints on every
     /// description rather than only the first. See the `alwaysDescribed` trait.
@@ -33,7 +29,6 @@ struct LocationDefinition: Sendable {
             switch trait.kind {
             case .name(let text): name = text
             case .description(let text): description = text
-            case .twoStateDescription(let pair): twoStateDescription = pair
             case .dark: inherentlyLit = false
             case .alwaysDescribed: isAlwaysDescribed = true
             case .custom(let key, let value): customTraits[key] = value
@@ -47,7 +42,8 @@ struct ItemDefinition: Sendable {
     var name: String?
     var description: String?
     /// A `description(when:_:otherwise:)` trait, lowered by Bootstrap into the
-    /// rule table's describe slot. See `LocationDefinition.twoStateDescription`.
+    /// rule table's describe slot. Kept here so the trait can be diagnosed
+    /// against a static `description` or a `describe { … }` rule.
     var twoStateDescription: TwoStateText?
     var adjectives: [String] = []
     var synonyms: [String] = []
@@ -60,11 +56,26 @@ struct ItemDefinition: Sendable {
     var firstSight: String?
     /// A `firstSight(when:_:otherwise:)` trait, lowered into the presence slot.
     var twoStateFirstSight: TwoStateText?
-    /// The two-state texts this item declares, each with the trait's name for
-    /// a diagnostic — the one list every check over them walks.
-    var twoStateTexts: [(pair: TwoStateText, trait: String)] {
-        [(twoStateDescription, "description"), (twoStateFirstSight, "firstSight")]
-            .compactMap { pair, trait in pair.map { ($0, trait) } }
+    /// The two-state texts this item declares, each with its channel — the one
+    /// list every check over them walks. Most items declare none, and answer
+    /// without allocating.
+    var twoStateTexts: [(pair: TwoStateText, channel: TwoStateText.Channel)] {
+        guard twoStateDescription != nil || twoStateFirstSight != nil else { return [] }
+        return [(twoStateDescription, .description), (twoStateFirstSight, .firstSight)]
+            .compactMap { pair, channel in pair.map { ($0, channel) } }
+    }
+
+    /// Every sentence this item's examine channel can print, static or
+    /// two-state; empty when it has none. For the one-sentence-on-both-channels
+    /// warning, which is about the words rather than the spelling.
+    var descriptionTexts: [String] {
+        description.map { [$0] } ?? twoStateDescription.map { [$0.text, $0.otherwise] } ?? []
+    }
+
+    /// Every sentence this item's listing channel can print. See
+    /// ``descriptionTexts``.
+    var firstSightTexts: [String] {
+        firstSight.map { [$0] } ?? twoStateFirstSight.map { [$0.text, $0.otherwise] } ?? []
     }
     var isWearable = false
     var isScenery = false

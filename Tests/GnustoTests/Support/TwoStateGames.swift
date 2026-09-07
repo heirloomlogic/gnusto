@@ -11,9 +11,8 @@ struct TwoStateGame: Game {
 
     let hall = Location {
         name("Hall")
-        description("A bare hall. A cellar lies south, and a closet east.")
+        description("A bare hall. A closet lies east.")
     }
-    let cellar: Location
     let lamp: Item
     let chest: Item
     let gem: Item
@@ -26,14 +25,6 @@ struct TwoStateGame: Game {
 
     init(compact: Bool) {
         self.compact = compact
-        cellar = Location {
-            name("Cellar")
-            dark
-            if compact {
-                description(
-                    when: \.isLit, Self.cellarLit, otherwise: Self.cellarDark)
-            }
-        }
         lamp = Item {
             name("brass lamp")
             adjectives("brass")
@@ -61,8 +52,9 @@ struct TwoStateGame: Game {
         sentry = Actor {
             name("sentry")
             if compact {
-                description(
-                    when: \Actor.isUnconscious, Self.sentryDown, otherwise: Self.sentryUp)
+                // One with the root implied and one with it spelled: both
+                // resolutions of the disfavored Actor overload, pinned.
+                description(when: \.isUnconscious, Self.sentryDown, otherwise: Self.sentryUp)
                 firstSight(
                     when: \Actor.isUnconscious, Self.sentryDownHere, otherwise: Self.sentryUpHere)
             }
@@ -73,7 +65,6 @@ struct TwoStateGame: Game {
     var content: GameContents { annex }
 
     var map: WorldMap {
-        hall.south(cellar)
         hall.east(annex.closet)
         player.starts(in: hall)
         lamp.starts(in: hall)
@@ -84,7 +75,6 @@ struct TwoStateGame: Game {
 
     var rules: Rules {
         if !compact {
-            cellar.describe { cellar.isLit ? Self.cellarLit : Self.cellarDark }
             lamp.describe { lamp.isLit ? Self.lampOn : Self.lampOff }
             chest.describe { chest.isOpen ? Self.chestOpen : Self.chestShut }
             chest.presence { chest.isOpen ? Self.chestOpenHere : Self.chestShutHere }
@@ -106,8 +96,6 @@ struct TwoStateGame: Game {
         }
     }
 
-    static let cellarLit = "A low cellar, its walls sweating in the lamplight."
-    static let cellarDark = "A cellar you cannot see."
     static let lampOn = "The lamp burns with a steady yellow flame."
     static let lampOff = "A brass lamp, unlit."
     static let chestOpen = "The chest stands open, and empty."

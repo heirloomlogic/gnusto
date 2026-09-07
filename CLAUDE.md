@@ -315,16 +315,19 @@ computed `static var`, which rebuilds it on every read.
   `describe { }`, or `firstSight(…)` plus `presence { }`, on one entity is a fatal
   `BootstrapError`. So is declaring the rule twice. Precedence for descriptions:
   runtime assignment > rule > static trait. Presence has no runtime setter.
-- **Two texts on the entity's own Bool are a trait, not a rule.**
+- **Two texts on an item's own Bool are a trait, not a rule.**
   `description(when: \.isOpen, "…", otherwise: "…")` and
   `firstSight(when:_:otherwise:)` go in the trait block (`\.isLit`, `\.isLocked`,
-  `\.isRevealed`, `\.isWorn`, a room's `\.isLit`/`\.isVisited`, an actor's
-  `\.isUnconscious`), and the bootstrap **warns** when the Bool can never change
-  — `\.isOpen` on something not `openable` — because then one text never prints.
-  They lower into the `describe`/`presence` slot, so they exclude the rule and
-  the plain trait alike. A Bool the block cannot see — a `@Global`, another
-  entity's state — is still a `describe { }`; a trait block runs in a
-  stored-property initializer and can name nothing but its own entity.
+  `\.isRevealed`, `\.isWorn`, an actor's `\.isUnconscious`), and the bootstrap
+  **warns** when a branch can never print — `\.isOpen` on something not
+  `openable`, and on the listing channel `\.isHeld` (never listed while held) or
+  `\.isTouched` without `alwaysListed`. They lower into the `describe`/`presence`
+  slot, so they exclude the rule and the plain trait alike. **No `Location`
+  form**: the describer marks a room visited before reading its description and
+  prints `pitchBlack` instead of it in the dark, so a room's two Bools are each
+  one-armed. A Bool the block cannot see — a `@Global`, another entity's state —
+  is still a `describe { }`; a trait block runs in a stored-property initializer
+  and can name nothing but its own entity.
 - **A revisited room is described briefly.** UNDO, RESTORE and walking back in
   through an exit all re-describe as an *entry*, which prints the room name and
   the item paragraphs but skips `description(…)`/`describe { }`. For a room whose

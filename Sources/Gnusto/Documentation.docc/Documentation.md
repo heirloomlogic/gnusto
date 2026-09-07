@@ -63,8 +63,9 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``synonyms(_:)``
 - ``firstSight(_:)``
 - ``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)``
-- ``description(when:_:otherwise:)-(KeyPath<Location,Bool>&Sendable,_,_)``
+- ``description(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)``
 - ``firstSight(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)``
+- ``firstSight(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)``
 - ``dark``
 - ``alwaysDescribed``
 - ``alwaysListed``

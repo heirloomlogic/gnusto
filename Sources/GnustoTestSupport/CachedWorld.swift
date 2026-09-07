@@ -14,7 +14,7 @@ private let preparedGames = Mutex<[ObjectIdentifier: PreparedGame]>([:])
 /// What `GNUSTO_SEED` asked of the suite, read once per process — `cachedWorld`
 /// runs thousands of times in a suite, and a typo deserves one complaint rather
 /// than thousands.
-private let environmentSeedRequest: SeedRequest = {
+let environmentSeedRequest: SeedRequest = {
     let request = SeedRequest(environment: ProcessInfo.processInfo.environment)
     if let complaint = request.complaint { writeToStandardError(complaint) }
     return request

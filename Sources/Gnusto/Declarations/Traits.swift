@@ -3,7 +3,6 @@ public struct LocationTrait: Sendable {
     enum Kind: Sendable {
         case name(String)
         case description(String)
-        case twoStateDescription(LocationTwoStateText)
         case dark
         case alwaysDescribed
         case custom(key: String, value: StateValue)
@@ -47,8 +46,7 @@ public struct ItemTrait: Sendable {
 }
 
 /// Two texts and the live Bool that picks between them: the payload of
-/// `description(when:_:otherwise:)` and `firstSight(when:_:otherwise:)` on an
-/// item or actor. ``LocationTwoStateText`` is the room's.
+/// `description(when:_:otherwise:)` and `firstSight(when:_:otherwise:)`.
 ///
 /// The key path is applied to the entity's own proxy on every read, so it is
 /// the one Bool a trait block can name — the block runs in a stored-property
@@ -57,105 +55,122 @@ public struct ItemTrait: Sendable {
 /// rule fills, so precedence, the reentry guard and the empty-text fallback
 /// are the rule's, unchanged.
 struct TwoStateText: Sendable {
-    enum Condition: Sendable {
-        case item(any KeyPath<Item, Bool> & Sendable)
-        case actor(any KeyPath<Actor, Bool> & Sendable)
+    /// Which text the pair supplies. The listing channel is gated on more than
+    /// the examine channel is — a held thing is never listed, a touched one
+    /// only under `alwaysListed` — so a Bool can be dead on one and live on
+    /// the other.
+    enum Channel: Sendable {
+        case description
+        case firstSight
+
+        /// The trait's name for a diagnostic.
+        var traitName: String {
+            switch self {
+            case .description: "description"
+            case .firstSight: "firstSight"
+            }
+        }
     }
 
-    let condition: Condition
+    /// The key path as declared, for naming it in a diagnostic and for the
+    /// dead-branch table; `read` is the same key path already bound to the
+    /// proxy it applies to, which is how an `Actor` Bool reads off the item
+    /// storage every actor shares.
+    let keyPath: any AnyKeyPath & Sendable
+    let read: @Sendable (Item) -> Bool
+    /// The key path is rooted in `Actor`, so it needs a person to apply to.
+    let needsActor: Bool
     /// Printed while the condition is true.
     let text: String
     /// Printed while it is false.
     let otherwise: String
 
-    /// One row per Bool an author could reasonably key on: its spelling for a
-    /// diagnostic, since a key path carries no name of its own, and — where the
-    /// item needs a trait for the Bool to move at all — the words for that
-    /// trait's absence. A key path off the table still works; it just has no
-    /// name to print and no dead branch to warn about.
-    private struct Accessor {
-        let keyPath: AnyKeyPath
-        let name: String
-        let deadWhen: ((ItemDefinition) -> String?)?
+    init(_ keyPath: KeyPath<Item, Bool> & Sendable, _ text: String, otherwise: String) {
+        self.keyPath = keyPath
+        self.read = { $0[keyPath: keyPath] }
+        self.needsActor = false
+        self.text = text
+        self.otherwise = otherwise
     }
 
-    /// Computed rather than stored: `AnyKeyPath` is not `Sendable`, and this
-    /// is read only while a bootstrap diagnostic is being written.
-    private static var accessors: [Accessor] {
-        [
-            Accessor(keyPath: \Item.isOpen, name: "\\.isOpen") { $0.isOpenable ? nil : "is not openable" },
-            Accessor(keyPath: \Item.isLit, name: "\\.isLit") {
-                $0.isLightSource ? nil : "is not a lightSource"
-            },
-            Accessor(keyPath: \Item.isLocked, name: "\\.isLocked") {
-                $0.isLockable ? nil : "has no lockedBy entry"
-            },
-            Accessor(keyPath: \Item.isRevealed, name: "\\.isRevealed") { $0.isHidden ? nil : "is not hidden" },
-            Accessor(keyPath: \Item.isWorn, name: "\\.isWorn") { $0.isWearable ? nil : "is not wearable" },
-            Accessor(keyPath: \Item.isTouched, name: "\\.isTouched", deadWhen: nil),
-            Accessor(keyPath: \Item.isHeld, name: "\\.isHeld", deadWhen: nil),
-            Accessor(keyPath: \Item.isVisible, name: "\\.isVisible", deadWhen: nil),
-            Accessor(keyPath: \Actor.isUnconscious, name: "\\Actor.isUnconscious", deadWhen: nil),
-            Accessor(keyPath: \Actor.isRevealed, name: "\\Actor.isRevealed", deadWhen: nil),
-            Accessor(keyPath: \Actor.isVisible, name: "\\Actor.isVisible", deadWhen: nil),
-        ]
+    init(_ keyPath: KeyPath<Actor, Bool> & Sendable, _ text: String, otherwise: String) {
+        self.keyPath = keyPath
+        self.read = { Actor($0)[keyPath: keyPath] }
+        self.needsActor = true
+        self.text = text
+        self.otherwise = otherwise
     }
+
+    /// One row per Bool an author could reasonably key on: its spelling for a
+    /// diagnostic, and — where a branch can never print — the words for why.
+    /// A key path off the table still works, named by its own description,
+    /// with no dead branch to warn about.
+    private struct Accessor: Sendable {
+        let keyPath: any AnyKeyPath & Sendable
+        let name: String
+        let deadWhen: @Sendable (ItemDefinition, Channel) -> String?
+    }
+
+    private static let accessors: [Accessor] = [
+        Accessor(keyPath: \Item.isOpen, name: "\\.isOpen") { item, _ in
+            item.isOpenable ? nil : "is not openable; the flag never changes"
+        },
+        Accessor(keyPath: \Item.isLit, name: "\\.isLit") { item, _ in
+            item.isLightSource ? nil : "is not a lightSource; the flag never changes"
+        },
+        Accessor(keyPath: \Item.isLocked, name: "\\.isLocked") { item, _ in
+            item.isLockable ? nil : "has no lockedBy entry; the flag never changes"
+        },
+        Accessor(keyPath: \Item.isRevealed, name: "\\.isRevealed") { item, _ in
+            item.isHidden ? nil : "is not hidden; the flag never changes"
+        },
+        Accessor(keyPath: \Item.isWorn, name: "\\.isWorn") { item, _ in
+            item.isWearable ? nil : "is not wearable; the flag never changes"
+        },
+        // The listing stops at the first touch unless `alwaysListed`, so on
+        // that channel the touched text is never reached.
+        Accessor(keyPath: \Item.isTouched, name: "\\.isTouched") { item, channel in
+            channel == .firstSight && !item.isAlwaysListed
+                ? "is not alwaysListed; the listing stops at the first touch" : nil
+        },
+        // A held thing is never in a room listing.
+        Accessor(keyPath: \Item.isHeld, name: "\\.isHeld") { _, channel in
+            channel == .firstSight ? "is never listed while it is held" : nil
+        },
+        // Neither channel is asked about a thing the player cannot see.
+        Accessor(keyPath: \Item.isVisible, name: "\\.isVisible") { _, _ in
+            "is only described while it is visible"
+        },
+        Accessor(keyPath: \Actor.isUnconscious, name: "\\Actor.isUnconscious") { _, _ in nil },
+        Accessor(keyPath: \Actor.isRevealed, name: "\\Actor.isRevealed") { item, _ in
+            item.isHidden ? nil : "is not hidden; the flag never changes"
+        },
+        Accessor(keyPath: \Actor.isVisible, name: "\\Actor.isVisible") { _, _ in
+            "is only described while it is visible"
+        },
+    ]
 
     private var accessor: Accessor? {
-        let keyPath: AnyKeyPath =
-            switch condition {
-            case .item(let keyPath): keyPath
-            case .actor(let keyPath): keyPath
-            }
-        return Self.accessors.first { $0.keyPath == keyPath }
+        Self.accessors.first { $0.keyPath == keyPath }
     }
 
     /// The condition's spelling for a diagnostic, the way an author wrote it.
     var conditionName: String {
-        accessor?.name ?? "a key path"
+        accessor?.name ?? "\(keyPath)"
     }
 
-    /// Whether the Bool is one only an ``Actor`` carries.
-    var isActorKeyPath: Bool {
-        if case .actor = condition { true } else { false }
-    }
-
-    /// Why one of the two texts can never print, or `nil` when both can: the
-    /// trait the key path's Bool reads, missing from the item.
-    func deadBranch(on item: ItemDefinition) -> String? {
-        accessor?.deadWhen?(item)
+    /// Why one of the two texts can never print on this channel, or `nil`
+    /// when both can.
+    func deadBranch(on item: ItemDefinition, channel: Channel) -> String? {
+        accessor?.deadWhen(item, channel)
     }
 
     /// The closure Bootstrap files where a `describe { … }` / `presence { … }`
-    /// rule's would go: the key path applied to the entity's live proxy, on
-    /// every read. An `.actor` condition needs the actor-shaped view of the
-    /// same token. The closure lives as long as the game, so it captures the
-    /// two strings and nothing else.
+    /// rule's would go: the Bool read off the entity's live proxy, on every
+    /// read. Captures the proxy and the two strings.
     func lowered(onto item: Item) -> @Sendable () -> String {
-        let (text, otherwise) = (text, otherwise)
-        switch condition {
-        case .item(let keyPath):
-            return { item[keyPath: keyPath] ? text : otherwise }
-        case .actor(let keyPath):
-            let actor = Actor(item)
-            return { actor[keyPath: keyPath] ? text : otherwise }
-        }
-    }
-}
-
-/// ``TwoStateText`` for a location: the payload of the `Location` form of
-/// `description(when:_:otherwise:)`. No dead-branch table, because a room's
-/// two Bools both move on any room — `isVisited` on the first lit look, and
-/// `isLit` by author code even where the room was never declared `dark`.
-struct LocationTwoStateText: Sendable {
-    let condition: any KeyPath<Location, Bool> & Sendable
-    let text: String
-    let otherwise: String
-
-    /// See ``TwoStateText/lowered(onto:)``.
-    func lowered(onto location: Location) -> @Sendable () -> String {
-        let (condition, text, otherwise) = (condition, text, otherwise)
-        return { location[keyPath: condition] ? text : otherwise }
+        let (read, text, otherwise) = (read, text, otherwise)
+        return { read(item) ? text : otherwise }
     }
 }
 
@@ -189,38 +204,6 @@ public func name(_ text: String) -> ItemTrait {
 /// - Returns: the description trait.
 public func description(_ text: String) -> LocationTrait {
     LocationTrait(kind: .description(text))
-}
-
-/// A long description in two states, picked by one of the location's own Bools
-/// on every read — the declarative form of a ``Location/describe(_:)`` rule
-/// that is one `if` on `isLit` or `isVisited`:
-///
-/// ```swift
-/// let cellar = Location {
-///     name("Cellar")
-///     dark
-///     description(when: \.isLit,
-///         "A low cellar, its walls sweating in the lamplight.",
-///         otherwise: "You can feel the damp, and hear something drip.")
-/// }
-/// ```
-///
-/// A Bool the block cannot see — another entity's state, a `@Global` — is a
-/// ``Location/describe(_:)`` rule, and declaring both on one location is a
-/// fatal bootstrap diagnostic, as is pairing this with a static
-/// `description(…)`.
-///
-/// - Parameters:
-///   - condition: the location's own Bool accessor.
-///   - text: the description while the condition is true.
-///   - otherwise: the description while it is false.
-/// - Returns: the description trait.
-public func description(
-    when condition: KeyPath<Location, Bool> & Sendable, _ text: String, otherwise: String
-) -> LocationTrait {
-    LocationTrait(
-        kind: .twoStateDescription(
-            LocationTwoStateText(condition: condition, text: text, otherwise: otherwise)))
 }
 
 /// The text shown when the item is examined (or read).
@@ -257,6 +240,11 @@ public func description(_ text: String) -> ItemTrait {
 /// A Bool the block cannot see — another entity's state, a `@Global` — is an
 /// ``Item/describe(_:)`` rule, and declaring both on one item is a fatal
 /// bootstrap diagnostic, as is pairing this with a static `description(…)`.
+/// A ``Location`` has no form of this: the room describer sets `isVisited`
+/// before it reads the description and prints ``GameText/pitchBlack`` in place
+/// of it while the room is dark, so both of a room's own Bools are one-armed
+/// as the player sees them — a room's live text is a ``Location/describe(_:)``
+/// rule.
 ///
 /// - Parameters:
 ///   - condition: the item's own Bool accessor.
@@ -266,9 +254,7 @@ public func description(_ text: String) -> ItemTrait {
 public func description(
     when condition: KeyPath<Item, Bool> & Sendable, _ text: String, otherwise: String
 ) -> ItemTrait {
-    ItemTrait(
-        kind: .twoStateDescription(
-            TwoStateText(condition: .item(condition), text: text, otherwise: otherwise)))
+    ItemTrait(kind: .twoStateDescription(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
 /// ``description(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)`` keyed on one of an actor's own
@@ -288,9 +274,7 @@ public func description(
 public func description(
     when condition: KeyPath<Actor, Bool> & Sendable, _ text: String, otherwise: String
 ) -> ItemTrait {
-    ItemTrait(
-        kind: .twoStateDescription(
-            TwoStateText(condition: .actor(condition), text: text, otherwise: otherwise)))
+    ItemTrait(kind: .twoStateDescription(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
 /// Additional words the parser accepts before the item's noun.
@@ -386,8 +370,11 @@ public func firstSight(_ text: String) -> ItemTrait {
 /// ```
 ///
 /// The same warning and the same exclusions as
-/// ``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)``: a Bool that can never change is warned
-/// about, and a `presence { … }` rule or a static `firstSight(…)` beside it is
+/// ``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)``, plus
+/// what the listing channel adds: it is never asked about a held thing, and it
+/// stops at the first touch unless the item is ``alwaysListed``, so `\.isHeld`
+/// and `\.isTouched` are warned about here where they are live on the examine
+/// channel. A `presence { … }` rule or a static `firstSight(…)` beside it is
 /// fatal.
 ///
 /// - Parameters:
@@ -398,9 +385,7 @@ public func firstSight(_ text: String) -> ItemTrait {
 public func firstSight(
     when condition: KeyPath<Item, Bool> & Sendable, _ text: String, otherwise: String
 ) -> ItemTrait {
-    ItemTrait(
-        kind: .twoStateFirstSight(
-            TwoStateText(condition: .item(condition), text: text, otherwise: otherwise)))
+    ItemTrait(kind: .twoStateFirstSight(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
 /// ``firstSight(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)`` keyed on one of an actor's own
@@ -416,9 +401,7 @@ public func firstSight(
 public func firstSight(
     when condition: KeyPath<Actor, Bool> & Sendable, _ text: String, otherwise: String
 ) -> ItemTrait {
-    ItemTrait(
-        kind: .twoStateFirstSight(
-            TwoStateText(condition: .actor(condition), text: text, otherwise: otherwise)))
+    ItemTrait(kind: .twoStateFirstSight(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
 /// The location has no light of its own; it is dark unless lit by author code
