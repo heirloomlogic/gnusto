@@ -29,15 +29,25 @@ public struct IntentAction: Sendable {
     /// two doors.
     ///
     /// `body` is arbitrary behavior and stage 4 simply runs it. `line` is a
-    /// sentence and a `reach:` column — everything ``StubVerb`` holds except
-    /// the rows, which a custom verb already declared for itself in `verbs`.
-    /// Keeping the reach beside the renderer rather than inside it is what lets
-    /// stage 0 read the column too: `DefaultActions.reachRequirement(of:in:)`
-    /// needs the answer before any rule runs, and a closure that guards
-    /// internally could only answer at stage 4.
+    /// sentence, a `reach:` column and one flag — everything ``StubVerb`` holds
+    /// except the rows, which a custom verb already declared for itself in
+    /// `verbs`. Keeping the reach beside the renderer rather than inside it is
+    /// what lets stage 0 read the column too:
+    /// `DefaultActions.reachRequirement(of:in:)` needs the answer before any
+    /// rule runs, and a closure that guards internally could only answer at
+    /// stage 4.
+    ///
+    /// `requiresObject` is ``StubVerb/namesObject``'s question asked from the
+    /// other side. `naming:` builds a sentence out of the object's name and has
+    /// nothing to say without one, so a row using it under a verb that also
+    /// parses bare would answer `hoot` with the *parser's* failure and charge a
+    /// turn for it. The engine's own table forbids that shape by review; a
+    /// game's is checked at bootstrap, which is the only place both the row and
+    /// the verb's rows are in scope.
     enum Kind: Sendable {
         case body(@Sendable () throws -> Void)
-        case line(reach: Reach, render: @Sendable (GameText, Command) -> String)
+        case line(
+            reach: Reach, requiresObject: Bool, render: @Sendable (GameText, Command) -> String)
     }
 
     let intent: Intent
@@ -64,14 +74,17 @@ public struct IntentAction: Sendable {
     /// - Parameters:
     ///   - intent: the intent this line answers.
     ///   - reach: which object slots the player has to be able to touch.
+    ///   - requiresObject: whether the sentence has anything to say about a
+    ///     command that named nothing.
     ///   - render: the sentence, given the game's text table and the command.
     init(
         _ intent: Intent,
         reach: Reach,
+        requiresObject: Bool = false,
         render: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
-        self.kind = .line(reach: reach, render: render)
+        self.kind = .line(reach: reach, requiresObject: requiresObject, render: render)
     }
 
     /// A copy of this action whose body runs with `namespace` bound as the
@@ -161,7 +174,10 @@ public func action(
 ///     adopting this spelling never silently tightens a verb. It is a real
 ///     question and the engine cannot guess it: `wind the clock` wants
 ///     ``Reach/directObject``, and `raise the basket` — a chain hoist worked
-///     from the far end of a shaft — does not.
+///     from the far end of a shaft — does not. It is read only for a verb the
+///     *game* invented. A row reclaiming a built-in or a stub reclaims that
+///     verb's answer and not its physics, so the standard table's column
+///     stands: `take` has to reach what it takes whoever writes the sentence.
 ///   - line: the sentence.
 /// - Returns: the intent action.
 public func action(
@@ -207,7 +223,9 @@ public func action(
     reach: Reach = .notNeeded,
     naming line: @escaping @Sendable (GameText.Noun) -> String
 ) -> IntentAction {
-    IntentAction(intent, reach: reach, render: StubVerb.nameCascade { _, noun in line(noun) })
+    IntentAction(
+        intent, reach: reach, requiresObject: true,
+        render: StubVerb.nameCascade { _, noun in line(noun) })
 }
 
 /// A custom verb's own default line, for a verb the player may use **with an

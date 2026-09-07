@@ -131,6 +131,36 @@ struct DefaultLineTests {
         #expect(turnOutput(of: "squeeze sponge", in: transcript).contains("The sponge weeps"))
     }
 
+    /// A `naming:` line has nothing to say about a command that named nothing,
+    /// so under a verb that also parses bare it answers with the parser's own
+    /// failure and charges a turn. The engine's table is held to the mirror of
+    /// this by review (``StubVerb/namesObject``); a game's is checked here,
+    /// because neither half looks wrong on its own.
+    @Test func aNamingLineUnderABareRowIsCaughtAtBootstrap() async throws {
+        let (definition, _) = try Bootstrap.build(BareRowNamingGame())
+
+        #expect(
+            definition.warnings.contains {
+                $0.contains("hoot") && $0.contains("orBare:naming:")
+            }, "\(definition.warnings)")
+
+        // And this is the transcript it is warning about.
+        let transcript = try await play(BareRowNamingGame(), ["hoot", "hoot at owl"])
+        #expect(turnOutput(of: "hoot at owl", in: transcript).contains("does not hoot back"))
+        #expect(!turnOutput(of: "hoot", in: transcript).contains("does not hoot back"))
+    }
+
+    /// A line row on a **built-in** reclaims the verb's answer, not its
+    /// physics. Reading the row's `reach:` first let `action(.take, say: …)`
+    /// drop `take` to ``Reach/notNeeded`` and switch off every `reach { … }`
+    /// rule in the game for that verb.
+    @Test func aLineRowCannotLoosenABuiltInVerbsReach() async throws {
+        let transcript = try await play(BuiltInLineGame(), ["take crank"])
+
+        #expect(turnOutput(of: "take crank", in: transcript).contains("The grille is in the way."))
+        #expect(!turnOutput(of: "take crank", in: transcript).contains("stay that way"))
+    }
+
     /// A *closure* on a stub intent stays silent, as it always has: that is a
     /// game taking the verb over rather than re-voicing it.
     @Test func aClosureOnAStubIntentStaysSilent() throws {

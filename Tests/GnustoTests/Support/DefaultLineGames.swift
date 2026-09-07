@@ -17,6 +17,8 @@ extension Intent {
     #verb("scold", ["scold", .directObject])
     /// Used with an object or without one, so one declaration owns both halves.
     #verb("whistle", ["whistle"], ["whistle", "at", .directObject])
+    /// The same shape answered by the wrong factory, which bootstrap catches.
+    #verb("hoot", ["hoot"], ["hoot", "at", .directObject])
 }
 
 /// The default-line fixture: one room, one verb per shape, and everything the
@@ -105,6 +107,70 @@ struct DefaultLineGame: Game {
         crank.starts(in: workshop)
         bellows.starts(in: workshop)
         porter.starts(in: workshop)
+    }
+}
+
+/// A `naming:` row under a verb that also parses bare. `hoot` names nothing, so
+/// the line has nothing to build a sentence out of and the command would answer
+/// with the parser's own failure — and cost a turn doing it. Bootstrap says so
+/// and names the factory that asks for both halves.
+struct BareRowNamingGame: Game {
+    let title = "Bare Row"
+    let intro = "A wood at dusk."
+
+    let wood = Location {
+        name("Wood")
+        description("A wood at dusk.")
+    }
+
+    let owl = Item {
+        name("stone owl")
+        adjectives("stone")
+    }
+
+    var verbs: [SyntaxRule] {
+        [.hoot]
+    }
+
+    var actions: [IntentAction] {
+        action(.hoot, naming: { "\($0.sentenceCased) does not hoot back." })
+    }
+
+    var map: WorldMap {
+        player.starts(in: wood)
+        owl.starts(in: wood)
+    }
+}
+
+/// A `.line` row on a **built-in** verb. It reclaims the verb's answer, not its
+/// physics: `take` still has to reach what it takes, whatever `reach:` the row
+/// asked for, or the row would switch off every `reach { … }` rule in the game
+/// for that verb.
+struct BuiltInLineGame: Game {
+    let title = "Built-in Line"
+    let intro = "A vault with a crank behind a grille."
+
+    let vault = Location {
+        name("Vault")
+        description("A cramped stone vault.")
+    }
+
+    let crank = Item {
+        name("iron crank")
+        adjectives("iron")
+    }
+
+    var actions: [IntentAction] {
+        action(.take, reach: .notNeeded, say: "Your hands are full of nothing, and stay that way.")
+    }
+
+    var rules: Rules {
+        crank.reach(otherwise: "The grille is in the way.") { false }
+    }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+        crank.starts(in: vault)
     }
 }
 

@@ -25,12 +25,17 @@ enum DefaultActions {
             switch override.kind {
             case .body(let body):
                 try body()
-            case .line(let reach, let render):
+            case .line(_, _, let render):
                 // A custom verb carrying its own default line takes the stub
                 // path, guard and all — which is the whole reason the spelling
                 // exists, since the closure above skips `requireReach` and a
-                // custom intent has no `reach:` column anywhere else.
-                try sayLine(reach: reach, render, for: command, frame: frame)
+                // custom intent has no `reach:` column anywhere else. The
+                // column is read back through `reachRequirement(of:in:)` and
+                // not out of the row, so that stage 0 and this stage cannot
+                // disagree about what the verb has to touch.
+                try sayLine(
+                    reach: reachRequirement(of: command.intent, in: frame.definition),
+                    render, for: command, frame: frame)
             }
             return
         }
