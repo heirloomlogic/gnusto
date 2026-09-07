@@ -28,7 +28,7 @@ struct TwoStateDescriptionTests {
             fresh: TwoStateGame(compact: true),
             [
                 "x lamp", "turn on lamp", "examine lamp", "look", "open chest", "x chest",
-                "attack sentry", "x sentry", "l",
+                "attack sentry", "x sentry", "l", "take cloak", "wear cloak", "x cloak",
             ], seed: 0)
         #expect(turnOutput(of: "x lamp", in: transcript).contains(TwoStateGame.lampOff))
         #expect(turnOutput(of: "examine lamp", in: transcript).contains(TwoStateGame.lampOn))
@@ -38,6 +38,7 @@ struct TwoStateDescriptionTests {
         #expect(turnOutput(of: "x sentry", in: transcript).contains(TwoStateGame.sentryDown))
         #expect(turnOutput(of: "l", in: transcript).contains(TwoStateGame.chestOpenHere))
         #expect(turnOutput(of: "l", in: transcript).contains(TwoStateGame.sentryDownHere))
+        #expect(turnOutput(of: "x cloak", in: transcript).contains(TwoStateGame.cloakWorn))
     }
 
     @Test func runtimeAssignmentStillWins() async throws {
@@ -198,18 +199,12 @@ struct TwoStateDescriptionTests {
                 hidden
                 firstSight(when: \Actor.isRevealed, "A watcher steps out.", otherwise: "Nobody.")
             }
-            let statue = Item {
-                name("statue")
-                scenery
-                description(when: \.isHeld, "Heavy in your arms.", otherwise: "A statue.")
-            }
             var map: WorldMap {
                 player.starts(in: room)
                 slab.starts(in: room)
                 candle.starts(in: room)
                 pebble.starts(in: room)
                 watcher.starts(in: room)
-                statue.starts(in: room)
             }
         }
         let (definition, _) = try Bootstrap.build(DeadBranchGame())
@@ -228,10 +223,6 @@ struct TwoStateDescriptionTests {
             definition.warnings.contains {
                 $0.contains(
                     "item \"watcher\" declares firstSight(when: \\Actor.isRevealed, …) but is never described before")
-            })
-        #expect(
-            definition.warnings.contains {
-                $0.contains("item \"statue\" declares description(when: \\.isHeld, …) but can never be held")
             })
         // Any item can be touched, so on the examine channel the pair is live.
         #expect(!definition.warnings.contains { $0.contains("pebble") })

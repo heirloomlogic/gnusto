@@ -137,16 +137,10 @@ struct TwoStateText: Sendable {
             channel == .firstSight && !item.isAlwaysListed && !item.isActor
                 ? "is not alwaysListed; the listing stops at the first touch" : nil
         },
-        // Scenery and people are never held; anything else is never in a room
-        // listing while it is.
-        Accessor(keyPath: \Item.isHeld, name: "\\.isHeld") { item, channel in
-            if !item.isTakable {
-                "can never be held; the flag never changes"
-            } else if channel == .firstSight {
-                "is never listed while it is held"
-            } else {
-                nil
-            }
+        // A held thing is never in a room listing. Not gated on takability:
+        // `moveToPlayer()` hands over scenery as readily as loot.
+        Accessor(keyPath: \Item.isHeld, name: "\\.isHeld") { _, channel in
+            channel == .firstSight ? "is never listed while it is held" : nil
         },
         // Neither channel is asked about a thing the player cannot see.
         Accessor(keyPath: \Item.isVisible, name: "\\.isVisible") { _, _ in

@@ -616,11 +616,13 @@ enum Bootstrap {
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
         }
-        // A two-state text keyed on a Bool the item cannot change is a text
-        // with one branch: `isOpen` on anything not `openable` is a constant,
-        // and so are `isLit` without `lightSource`, `isLocked` without a lock,
-        // `isRevealed` without `hidden` and `isWorn` without `wearable`. The
-        // closure form is wrong in silence here; the trait form can say so.
+        // A two-state text with a branch that can never print: `isOpen` on
+        // anything not `openable` is a constant, and so are `isLit` without
+        // `lightSource`, `isLocked` without a lock and `isWorn` without
+        // `wearable`; nothing is described before it is revealed; and the
+        // listing channel has gates of its own. The rows are the table in
+        // `TwoStateText`. The closure form is wrong in silence here; the trait
+        // form can say so.
         for (id, item) in items {
             for (pair, channel) in item.twoStateTexts {
                 guard let why = pair.deadBranch(on: item, channel: channel) else { continue }
