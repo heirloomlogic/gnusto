@@ -87,6 +87,38 @@ world.before(.ring) {
 }
 ```
 
+## Give the verb a default line
+
+Every noun your rules don't cover falls through to "You can't do that.", and for most verbs that is one sentence short of what the game wanted to say. Write the sentence in the `actions` block:
+
+```swift
+var actions: [IntentAction] {
+    action(.ring, reach: .directObject, say: "It is not a thing that rings.")
+}
+```
+
+This is not shorthand for `action(.ring) { try reply(…) }`, and the difference is worth knowing before you reach for the closure. A closure is dispatched out of the override table, which returns *before* the reach guard runs — and a custom intent declares no ``Reach`` column anywhere else, so a verb answered by a closure cannot be guarded at all. `ring the bell` through the glass of a shut case answers as though you were holding it. A verb answered by a line takes the path a stub verb takes, and `reach:` is the column that path reads. It defaults to ``Reach/notNeeded``, which is what a custom intent has today, so adopting the spelling never tightens a verb behind your back — say `reach: .directObject` where the verb has to touch what it names.
+
+Where the sentence names the thing, `naming:` hands it over as a ``GameText/Noun`` — a rendered phrase with its article and its number, so a verb that has to agree conjugates itself. It also answers the two nouns a line about an object can't be about: the player gets ``GameText/StubReplies/yourself`` and everybody else gets ``GameText/StubReplies/somebodyElse``, rather than being written about as furniture.
+
+```swift
+action(.scold, naming: { "\($0.sentenceCased) \($0.verb("takes", "take")) no notice." })
+```
+
+And a verb the player may use with an object or without one — `whistle` and `whistle at the dog` — owns both halves in one declaration, because a game that wrote only the naming half would leave the other command answered by the engine's narrator:
+
+```swift
+action(.whistle, orBare: "You whistle at nobody in particular.", guardsActors: true) {
+    "You whistle at \($0), which changes nothing."
+}
+```
+
+The line is a **floor**, not a refusal: it is spoken with `say` rather than `reply`, exactly as a stub verb's is, so the `after` rules still get their turn and the clock still advances. Anything that wants to answer *instead* promotes itself the ordinary way, in a `before` rule — which is why the fixture above can keep `bell.before(.ring)` and add the line underneath it.
+
+Keep the closure for a verb that *does* something: reads state, moves the world, ends the game. A row means this game has behavior here; if all it has is a sentence, write the sentence.
+
+One verb this does not apply to. An **engine stub** — `squeeze`, `dig`, `climb` — already has a word, a line and a reach column, so changing its words is an assignment (`text.stubs.squeeze = …`) and not a row. Writing `action(.squeeze, say: …)` works and warns, because a row there gives up the verb's rows along with everything else in this section. See <doc:StubVerbs>.
+
 ## Shape the pattern
 
 A pattern reads the way it's typed. Some shapes, from the standard table and beyond:

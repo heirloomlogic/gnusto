@@ -97,44 +97,28 @@ struct ZorkSystems: GameContent {
         SyntaxRule("hi", intent: .greet)
     }
 
-    /// The two guards a stub **line** gets for free and an `action(…)` row does
-    /// not: `DefaultActions.run` answers `yourself` and `somebodyElse` before a
-    /// row is ever consulted, so a row that widened its sentence to name its
-    /// object will happily say "Playing in this way with yourself…". Every row
-    /// below that names what it was aimed at calls this first. (#325)
-    private func refuseIfPerson(_ object: Item) throws {
-        guard object.isActor else { return }
-        if object.isPlayer { try reply(gameText.stubs.yourself()) }
-        try reply(gameText.stubs.somebodyElse(object.definiteNoun))
-    }
-
-    /// `V-LOWER`'s `HACK-HACK` stem (`gverbs.zil:902`), which `V-RAISE` calls
-    /// outright (`:1131`). Both rows declare a direct object, so the `guard` is
-    /// the same safety net `MeleeCombat`'s `.attack` row writes and not a
-    /// player-facing path.
-    private func playWith(_ object: Item?) throws -> Never {
-        guard let object else { try reply(Prose.playingWithIt("it")) }
-        try refuseIfPerson(object)
-        try reply(Prose.playingWithIt("\(object.definiteNoun)"))
-    }
-
     var actions: [IntentAction] {
-        action(.wind) { try reply(Prose.verbWindNothing) }
-        action(.inflate) { try reply(Prose.verbInflateNothing) }
-        action(.deflate) { try reply(Prose.verbDeflateNothing) }
-        action(.launch) { try reply(Prose.verbLaunchNothing) }
+        action(.wind, say: Prose.verbWindNothing)
+        action(.inflate, say: Prose.verbInflateNothing)
+        action(.deflate, say: Prose.verbDeflateNothing)
+        action(.launch, say: Prose.verbLaunchNothing)
         // `V-RAISE` is `V-LOWER` (`gverbs.zil:1131`), which names the thing;
-        // both rows used to survey a room instead. (#325)
-        action(.raise) { try playWith(command.directObject) }
-        action(.lower) { try playWith(command.directObject) }
+        // both rows used to survey a room instead. (#325) `naming:` is where
+        // the two guards that repair needed come from — the player gets
+        // `yourself` and everybody else gets `somebodyElse`, so the sentence
+        // never says "Playing in this way with yourself has no effect." The
+        // game used to write that cascade out by hand, twice, because a row
+        // was the only door a custom verb had. (#404)
+        action(.raise, naming: { Prose.playingWithIt("\($0)") })
+        action(.lower, naming: { Prose.playingWithIt("\($0)") })
         // `TURN OBJECT WITH OBJECT` routes to `V-TURN` in the source
         // (`gsyntax.zil:505`), whose whole body is the line the stub floor's
         // `turn` already carries (`gverbs.zil:1506`). (#325)
-        action(.turnWith) { try reply(Prose.verbTurnNoEffect) }
-        action(.ring) { try reply(Prose.verbRingNothing) }
-        action(.echo) { try reply(Prose.verbEcho) }
-        action(.odysseus) { try reply(Prose.verbMagicWordInert) }
-        action(.fix) { try reply(Prose.verbFixNothing) }
+        action(.turnWith, say: Prose.verbTurnNoEffect)
+        action(.ring, say: Prose.verbRingNothing)
+        action(.echo, say: Prose.verbEcho)
+        action(.odysseus, say: Prose.verbMagicWordInert)
+        action(.fix, say: Prose.verbFixNothing)
 
         // `.diagnose` has no stage-4 default here — the host answers it, since
         // the report reads the host's death counter (see ``Zork1.actions``).
@@ -142,12 +126,15 @@ struct ZorkSystems: GameContent {
         // Nothing else belongs in this block. Every **engine stub** this game
         // re-voices — the thirteen that used to sit here, and the thirty-four
         // that never had a line at all — is now `text.stubs` in ``Zork1``, which
-        // is ``Prose/stubFloor``. An `action(…)` row on a stub intent claims the
-        // verb outright: `DefaultActions.run` returns from the override before
-        // `requireReach`, so the row silently gave up the engine's reach guard,
-        // the object's name, its number agreement and the
+        // is ``Prose/stubFloor``. An `action(…)` *closure* on a stub intent
+        // claims the verb outright: `DefaultActions.run` returns from the
+        // override before `requireReach`, so the row silently gave up the
+        // engine's reach guard, the object's name, its number agreement and the
         // `yourself`/`somebodyElse` guards, none of which this game meant to
-        // trade away for a change of voice. (#242)
+        // trade away for a change of voice. (#242) The `say:` and `naming:`
+        // rows above keep all four — that is what the spelling is for — and
+        // bootstrap now warns for one written on a stub intent, where
+        // `text.stubs` is still the shorter road. (#404)
     }
 }
 

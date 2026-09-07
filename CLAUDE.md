@@ -417,6 +417,21 @@ computed `static var`, which rebuilds it on every read.
   plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers
   `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not
   `text.stubs.attack`.
+- **A custom verb has no stub line to assign, so its sentence is a row — but
+  the row can be a *line* rather than a closure.** `action(.wind, reach:
+  .directObject, say: Prose.cannotWind)`, `action(_:reach:naming:)` and
+  `action(_:orBare:reach:guardsActors:naming:)` are the three shapes, one per
+  `StubVerb` factory, and they route the verb through the stub path: the reach
+  guard, the object's rendered `Noun`, its number agreement and the
+  `yourself`/`somebodyElse` guards, none of which `action(.wind) { try
+  reply(…) }` can have — `actionOverrides` returns before `requireReach`, and a
+  custom intent declares no `reach:` column anywhere else. `reach:` defaults to
+  `.notNeeded`, which is what a custom intent has today, so the spelling never
+  tightens a verb silently; Dungeon's basket is raised from the far end of a
+  shaft and a `.directObject` default broke that walkthrough. The line is a
+  **floor**, said with `say` and not `reply`, so `after` rules still run and a
+  `before` rule still promotes itself above it. On an *engine stub* intent it
+  works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.
 - **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
   answers them before the pipeline, so no rule sees them and `action(.save)` never
   runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather

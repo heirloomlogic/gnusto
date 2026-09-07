@@ -22,7 +22,17 @@ enum DefaultActions {
                 message: frame.definition.text.doesNotKnowHow(actor.definiteNoun))
         }
         if let override = frame.definition.actionOverrides[command.intent] {
-            try override.body()
+            switch override.kind {
+            case .body(let body):
+                try body()
+            case .line(let reach, let render):
+                // A custom verb carrying its own default line takes the stub
+                // path, guard and all — which is the whole reason the spelling
+                // exists, since the closure above skips `requireReach` and a
+                // custom intent has no `reach:` column anywhere else.
+                try requireReach(reach, for: command, frame: frame)
+                frame.say(render(frame.definition.text, command))
+            }
             return
         }
         if let handler = coresByIntent[command.intent]?.handler {
@@ -852,7 +862,8 @@ enum DefaultActions {
     static func requireReachRules(for command: Command, frame: TurnFrame) throws {
         let rules = frame.definition.rules
         guard !rules.itemReach.isEmpty, command.actor == nil else { return }
-        for case let item? in reachRequirement(of: command.intent).slots(of: command)
+        let requirement = reachRequirement(of: command.intent, in: frame.definition)
+        for case let item? in requirement.slots(of: command)
         where !Visibility.reachRuleAllows(item.id, for: .player, frame: frame) {
             try refuse(
                 rules.itemReach[item.id]?.refusal

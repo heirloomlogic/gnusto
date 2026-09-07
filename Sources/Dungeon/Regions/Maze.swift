@@ -340,7 +340,7 @@ struct DungeonMaze: GameContent {
 
     /// The shout, anywhere the cyclops is not.
     var actions: [IntentAction] {
-        action(.odysseus) { try reply(Prose.odysseusElsewhere) }
+        action(.odysseus, say: Prose.odysseusElsewhere)
     }
 
     // MARK: - Map

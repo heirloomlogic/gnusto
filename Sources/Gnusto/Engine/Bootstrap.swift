@@ -721,6 +721,20 @@ enum Bootstrap {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides the "
                         + "built-in default of the same intent.")
+            } else if case .line = action.kind,
+                DefaultActions.stubIntents.contains(action.intent)
+            {
+                // Reclaiming a stub verb with a *closure* is silent, and stays
+                // silent: that is a game taking the verb over. Reclaiming one
+                // with a bare line is almost always a game that only wanted to
+                // change the words, and paid the whole default for it — the
+                // reach guard, the object's name, its number agreement and the
+                // yourself/somebodyElse guards — when `text.stubs` would have
+                // kept all four. (#233)
+                actionWarnings.append(
+                    "default line for intent \"\(action.intent.raw)\" replaces the "
+                        + "engine's stub verb; assign text.stubs.\(action.intent.raw) "
+                        + "instead, which keeps the verb's own guards.")
             } else if actionOverrides[action.intent] != nil {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides an "

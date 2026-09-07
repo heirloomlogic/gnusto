@@ -239,36 +239,39 @@ struct DungeonSystems: GameContent {
     }
 
     var actions: [IntentAction] {
-        action(.wind) { try reply(Prose.verbWindNothing) }
-        action(.echo) { try reply(Prose.verbEcho) }
+        action(.wind, say: Prose.verbWindNothing)
+        action(.echo, say: Prose.verbEcho)
         // The one line for a word spoken where nothing is listening for one.
         // The riddle's door and the Dungeon Master both promote themselves
         // above it with `reply`, so it prints only when neither is asking.
-        action(.answer) { try reply(Prose.verbAnswerNothingListening) }
-        action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
-        action(.plug) { try reply(Prose.verbPlugNothing) }
-        action(.ring) { try reply(Prose.verbRingNothing) }
-        action(.melt) { try reply(Prose.verbMeltNothing) }
-        action(.exorcise) { try reply(Prose.verbExorciseNothing) }
-        action(.raise) { try reply(Prose.verbRaiseNothing) }
-        action(.lower) { try reply(Prose.verbLowerNothing) }
-        action(.inflate) { try reply(Prose.verbInflateNothing) }
-        action(.deflate) { try reply(Prose.verbDeflateNothing) }
+        action(.answer, say: Prose.verbAnswerNothingListening)
+        action(.turnWith, say: Prose.verbTurnWithNothing)
+        action(.plug, say: Prose.verbPlugNothing)
+        action(.ring, say: Prose.verbRingNothing)
+        action(.melt, say: Prose.verbMeltNothing)
+        action(.exorcise, say: Prose.verbExorciseNothing)
+        action(.raise, say: Prose.verbRaiseNothing)
+        action(.lower, say: Prose.verbLowerNothing)
+        action(.inflate, say: Prose.verbInflateNothing)
+        action(.deflate, say: Prose.verbDeflateNothing)
         // Both magic words fall through to the same shrug; the host answers
         // them in the two rooms that share the granite wall.
-        action(.temple) { try reply(Prose.graniteWordInert) }
-        action(.treasure) { try reply(Prose.graniteWordInert) }
+        action(.temple, say: Prose.graniteWordInert)
+        action(.treasure, say: Prose.graniteWordInert)
         // `.diagnose` has no default here: the host answers it, because the
         // report reads the host's death counter.
         //
         // Nothing else belongs in this block. Every **engine stub** this game
         // re-voices — the seventeen that used to sit here, and the thirty that
         // never had a line at all — is now `text.stubs` in ``Dungeon``, which
-        // is ``Prose/stubFloor``. An `action(…)` row on a stub intent claims
-        // the verb outright: `DefaultActions.run` returns from the override
-        // before `requireReach`, so the row silently gave up the engine's reach
-        // guard, the object's name, its number agreement and the
-        // `yourself`/`somebodyElse` guards, none of which this game meant to
-        // trade away for a change of voice. (#233)
+        // is ``Prose/stubFloor``. An `action(…)` *closure* on a stub intent
+        // claims the verb outright: `DefaultActions.run` returns from the
+        // override before `requireReach`, so the row silently gave up the
+        // engine's reach guard, the object's name, its number agreement and
+        // the `yourself`/`somebodyElse` guards, none of which this game meant
+        // to trade away for a change of voice. (#233) The `say:` rows above
+        // keep the reach guard — that is what the spelling is for — and
+        // bootstrap now warns for one written on a stub intent, where
+        // `text.stubs` keeps all four.
     }
 }

@@ -185,10 +185,14 @@ struct Fulminate: Game, GameMain {
         // flat on your back in the yard, the parlour full of armchairs, the
         // carriage house while it is still standing — are rules.
         //
-        // Each of these is an assignment and not an `action(…)` row: a row
-        // returns from `actionOverrides` before `requireReach` and gives up the
-        // reach guard, the rendered name, number agreement and the
-        // `yourself`/`somebodyElse` guards along with it.
+        // Each of these is an assignment and not an `action(…)` row: a closure
+        // row returns from `actionOverrides` before `requireReach` and gives up
+        // the reach guard, the rendered name, number agreement and the
+        // `yourself`/`somebodyElse` guards along with it. A `say:`/`naming:`
+        // row keeps all four, but it is still the wrong door here — these verbs
+        // already have engine rows, and a row would throw those away for a
+        // change of voice. It is what `action(_:reach:say:)` is for on a verb
+        // this game *invented*, which is `.accuse`. (#404)
         //
         // The naming halves are what a bare sentence could not do. A room claim
         // asked about a named thing is wrong twice over — it is a claim about

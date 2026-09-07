@@ -171,13 +171,24 @@ The assignment keeps the reach guard, the object's rendered name, its number
 agreement, and the ``GameText/StubReplies/yourself`` and
 ``GameText/StubReplies/somebodyElse`` guards — and, since wanting the name is
 now something an assignment can do, it has stopped being a reason to reach for a
-row at all. The row keeps none of them, and
-nothing warns — a row and an assignment look equally reasonable at the call site.
-`Sources/Dungeon/` re-skinned seventeen stubs with rows and had given all four
-away without noticing.
+row at all. A row whose body is a *closure* keeps none of them and stays silent,
+because that is a game taking the verb over. `Sources/Dungeon/` re-skinned
+seventeen stubs that way and had given all four away without noticing.
+
+A row whose body is a *line* — ``action(_:reach:say:)`` and its siblings, the
+spelling a **custom** verb uses to carry its own default — works on a stub
+intent too, and warns, naming the `text.stubs` slot it should have been. There
+is no case where it is the right answer: the assignment is the same sentence and
+keeps the verb's own rows.
 
 **The rule of thumb:** an `actions` row means *this game has behavior here*. If
 all it has is a sentence, assign the sentence.
+
+That rule of thumb has a mirror, and it is where the line factories belong. A
+verb the *game* invented has no stub row to assign to, and until it has an
+answer it falls through to "You can't do that." — so its sentence goes in an
+`actions` row, and the line spelling is what gets that row the guards this
+section is about. See <doc:AddingCustomVerbs>, "Give the verb a default line".
 
 ### Use `reply`, not `say`
 
