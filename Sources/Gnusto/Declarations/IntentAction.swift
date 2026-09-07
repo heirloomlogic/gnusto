@@ -147,7 +147,7 @@ public func action(
 ///
 /// **Choosing this form for a verb whose rows carry a `.directObject` is a
 /// choice, and it has a cost.** The engine forbids the same shape in its own
-/// table — ``StubVerb/namesObject`` and the `everyStubWithAnObjectSlotCanNameIt`
+/// table — `StubVerb.namesObject` and the `everyStubWithAnObjectSlotCanNameIt`
 /// test are #245 — because a line that cannot say what the player pointed at
 /// looks correct from both sides and is wrong from neither. A game is allowed
 /// it, because a game may be reproducing a source whose answer is genuinely

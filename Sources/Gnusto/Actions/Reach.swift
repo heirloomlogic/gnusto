@@ -1,6 +1,6 @@
 /// Which object slots a verb needs within arm's reach, as opposed to merely in
-/// view. Declared by every row of both halves of the standard table — ``CoreVerb``
-/// and ``StubVerb`` — so the answer is stated once per verb and derived from
+/// view. Declared by every row of both halves of the standard table — `CoreVerb`
+/// and `StubVerb` — so the answer is stated once per verb and derived from
 /// there.
 ///
 /// Parser scope is the *visible* set, which admits what can be seen through the
