@@ -601,7 +601,7 @@ public struct Item: Sendable, Equatable {
     /// ```
     ///
     /// Two texts on one of the item's **own** Bools want no rule: that is
-    /// ``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)`` in the trait block, which the
+    /// ``description(when:_:otherwise:)-vsee`` in the trait block, which the
     /// bootstrap can check. Declared in a `rules` block. A runtime override
     /// (`item.description = "…"`) still wins over it; a static
     /// `description(…)` trait on the same item, or a second `describe` rule
@@ -621,7 +621,7 @@ public struct Item: Sendable, Equatable {
     /// ```
     ///
     /// Two lines on one of the item's **own** Bools want no rule: that is
-    /// ``firstSight(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)`` in the trait block.
+    /// ``firstSight(when:_:otherwise:)-4m9f`` in the trait block.
     ///
     /// On an item this is the paragraph shown until the player touches it — in
     /// place of whichever stock listing sentence the room would otherwise have

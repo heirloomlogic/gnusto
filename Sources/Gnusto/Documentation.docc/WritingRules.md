@@ -140,7 +140,7 @@ let lantern = Item {
 }
 ```
 
-``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)`` reads the key path off the lantern every time it is examined, so the text always reflects the current state. ``firstSight(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)`` is the same shape one channel over, for the room-listing paragraph, and an ``Actor`` may key either on `\.isUnconscious`. A ``Location`` has no form of this, because both of a room's own Bools are one-armed as the player sees them: the describer marks the room visited before it reads the description, and prints ``GameText/pitchBlack`` in place of it while the room is dark. A room's live text is a `describe { }` rule.
+``description(when:_:otherwise:)-vsee`` reads the key path off the lantern every time it is examined, so the text always reflects the current state. ``firstSight(when:_:otherwise:)-4m9f`` is the same shape one channel over, for the room-listing paragraph, and an ``Actor`` may key either on `\.isUnconscious`. A ``Location`` has no form of this, because both of a room's own Bools are one-armed as the player sees them: the describer marks the room visited before it reads the description, and prints ``GameText/pitchBlack`` in place of it while the room is dark. A room's live text is a `describe { }` rule.
 
 What the trait buys over a closure is a check. `\.isOpen` on an item that is not `openable` is a constant, and so are `\.isLit` without `lightSource`, `\.isLocked` without a lock, `\.isRevealed` without `hidden` and `\.isWorn` without `wearable`: one of the two texts can never print. The listing channel adds two of its own, because it is never asked about a held thing and stops at the first touch unless the item is ``alwaysListed``, so `firstSight(when: \.isHeld, …)` and `firstSight(when: \.isTouched, …)` have a dead branch where the examine channel does not; and nothing is described while it is invisible, so `\.isVisible` is dead on either. The bootstrap **warns** about each, naming the item and why. A closure reading the same Bool is wrong in silence.
 
@@ -247,7 +247,7 @@ Reach for `arrive(at:)` when the game is *putting* the player somewhere — a tr
 
 ## Live room-listing lines with `presence`
 
-`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe` — including the trait form: a paragraph that turns on the entity's own Bool is ``firstSight(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)`` in the trait block, and needs no rule.
+`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe` — including the trait form: a paragraph that turns on the entity's own Bool is ``firstSight(when:_:otherwise:)-4m9f`` in the trait block, and needs no rule.
 
 ```swift
 var rules: Rules {

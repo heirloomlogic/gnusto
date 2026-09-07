@@ -257,7 +257,7 @@ public func description(
     ItemTrait(kind: .twoStateDescription(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
-/// ``description(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)`` keyed on one of an actor's own
+/// ``description(when:_:otherwise:)-6k474`` keyed on one of an actor's own
 /// Bools — `\.isUnconscious`, which only an ``Actor`` has. On anything but an
 /// actor the trait is a fatal bootstrap diagnostic.
 ///
@@ -370,7 +370,7 @@ public func firstSight(_ text: String) -> ItemTrait {
 /// ```
 ///
 /// The same warning and the same exclusions as
-/// ``description(when:_:otherwise:)-(KeyPath<Item,Bool>&Sendable,_,_)``, plus
+/// ``description(when:_:otherwise:)-vsee``, plus
 /// what the listing channel adds: it is never asked about a held thing, and it
 /// stops at the first touch unless the item is ``alwaysListed``, so `\.isHeld`
 /// and `\.isTouched` are warned about here where they are live on the examine
@@ -388,7 +388,7 @@ public func firstSight(
     ItemTrait(kind: .twoStateFirstSight(TwoStateText(condition, text, otherwise: otherwise)))
 }
 
-/// ``firstSight(when:_:otherwise:)-(KeyPath<Actor,Bool>&Sendable,_,_)`` keyed on one of an actor's own
+/// ``firstSight(when:_:otherwise:)-7r6ql`` keyed on one of an actor's own
 /// Bools — the standing presence line of a person who may be lying
 /// unconscious. Disfavored for the reason the description form is.
 ///
