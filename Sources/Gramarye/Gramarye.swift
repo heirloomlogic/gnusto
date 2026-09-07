@@ -111,10 +111,10 @@ struct Gramarye: Game, GameMain {
     /// niche` refuses anything that isn't one, and the room listing has to
     /// agree with what `x niche` says. Not `openable`: a container that isn't
     /// openable is always open, which a hole in a wall is.
-    let niche = Item.backdrop(
+    let niche = Item.scenery(
         "shadowed niche",
-        adjectives: ["shadowed", "dark"],
-        synonyms: ["niche", "alcove", "shadow"]
+        adjectives: "shadowed", "dark",
+        synonyms: "niche", "alcove", "shadow"
     ) {
         container
     }
@@ -132,10 +132,10 @@ struct Gramarye: Game, GameMain {
 
     /// Starts open with its wards dormant; a draught from the study window
     /// seals it a few turns in (see `timers`), which is when the puzzle begins.
-    let wardedDoor = Item.backdrop(
+    let wardedDoor = Item.scenery(
         "warded door",
-        adjectives: ["warded", "heavy"],
-        synonyms: ["door", "frame"]
+        adjectives: "warded", "heavy",
+        synonyms: "door", "frame"
     ) {
         openable
         startsOpen
@@ -148,17 +148,14 @@ struct Gramarye: Game, GameMain {
     ///
     /// Declared here rather than in ``Fixtures`` because its two states read
     /// the door, and a bundle cannot see the host's items.
-    let wardingMarks = Item.backdrop(
-        "warding marks", adjectives: ["old"],
-        synonyms: ["mark", "wards", "ward", "warding", "sigils", "sigil", "markings"])
+    let wardingMarks = Item.scenery(
+        "warding marks", adjectives: "old",
+        synonyms: "mark", "wards", "ward", "warding", "sigils", "sigil", "markings")
 
-    let graniteWall = Item.backdrop(
+    let graniteWall = Item.scenery(
         "granite wall",
-        adjectives: ["granite", "blank", "dressed"],
-        synonyms: [
-            "wall", "granite", "seams", "seam", "passage",
-            "mist", "archway", "arch", "curtain",
-        ]
+        adjectives: "granite", "blank", "dressed",
+        synonyms: "wall", "granite", "seams", "seam", "passage", "mist", "archway", "arch", "curtain"
     ) {
         // Both states of the same item: the granite, and the mist that replaces
         // it. One item, so the gallery's two descriptions answer to one noun
@@ -181,10 +178,10 @@ struct Gramarye: Game, GameMain {
 
     /// The open study window — the quiet culprit whose draught seals the door.
     /// Scenery, hiding in plain sight until the master names it at the end.
-    let window = Item.backdrop(
+    let window = Item.scenery(
         "study window",
-        adjectives: ["study", "open"],
-        synonyms: ["window", "draught", "draft", "breeze", "air", "morning"],
+        adjectives: "study", "open",
+        synonyms: "window", "draught", "draft", "breeze", "air", "morning",
         description:
             """
             The study window stands open to the morning. A pleasant draught comes and goes. It is the least suspicious
@@ -206,10 +203,10 @@ struct Gramarye: Game, GameMain {
     /// What is left of the golem. The ending inventories it as "redistributed
     /// evenly across the floor" and the master regards it, so it has to be on
     /// the floor to be regarded; `hidden` until the firebolt makes it.
-    let rubble = Item.backdrop(
+    let rubble = Item.scenery(
         "rubble",
-        adjectives: ["baked", "fired"],
-        synonyms: ["clay", "shards", "shard", "fragments", "pieces", "dust"],
+        adjectives: "baked", "fired",
+        synonyms: "clay", "shards", "shard", "fragments", "pieces", "dust",
         description:
             """
             An even layer of fired clay across the flags, still warm, in pieces small enough that nobody is going to

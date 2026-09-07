@@ -99,33 +99,33 @@ struct ZorkRoundRoom: GameContent {
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.eastWestPassage`.
-    let passageStairway = Item.backdrop(
-        "narrow stairway", adjectives: ["narrow"], synonyms: ["stairway", "staircase", "stairs"],
+    let passageStairway = Item.scenery(
+        "narrow stairway", adjectives: "narrow", synonyms: "stairway", "staircase", "stairs",
         description: Prose.passageStairway)
 
     /// (#407) Named by `Prose.roundRoom`. The splitter cuts `cave-ins` at the
     /// hyphen, so the declared name carries the same split.
-    let caveIns = Item.backdrop("cave-ins", synonyms: ["cave-in", "rubble"], description: Prose.caveIns)
+    let caveIns = Item.scenery("cave-ins", synonyms: "cave-in", "rubble", description: Prose.caveIns)
 
     /// (#407) Named by `Prose.chasmRoom`. A different chasm from
     /// ``ZorkCellar/chasm`` at East of Chasm.
-    let chasmAtChasmRoom = Item.backdrop("chasm", description: Prose.chasmRoomChasm)
+    let chasmAtChasmRoom = Item.scenery("chasm", description: Prose.chasmRoomChasm)
 
     /// (#407) Named by `Prose.chasmRoom`.
-    let chasmRoomCrack = Item.backdrop("crack", description: Prose.chasmRoomCrack)
+    let chasmRoomCrack = Item.scenery("crack", description: Prose.chasmRoomCrack)
 
     /// (#407) Named by `Prose.deepCanyon`.
-    let deepCanyonStairway = Item.backdrop("stairway", synonyms: ["stairs"], description: Prose.deepCanyonStairway)
+    let deepCanyonStairway = Item.scenery("stairway", synonyms: "stairs", description: Prose.deepCanyonStairway)
 
     /// (#407) Named by `Prose.dampCave`.
-    let dampCaveCrack = Item.backdrop("crack", description: Prose.dampCaveCrack)
+    let dampCaveCrack = Item.scenery("crack", description: Prose.dampCaveCrack)
 
     /// (#407) Named by `Prose.loudRoom`.
-    let loudRoomCeiling = Item.backdrop("ceiling", description: Prose.loudRoomCeiling)
+    let loudRoomCeiling = Item.scenery("ceiling", description: Prose.loudRoomCeiling)
 
     /// (#407) Named by `Prose.loudRoom`.
-    let loudRoomStairway = Item.backdrop(
-        "stone stairway", adjectives: ["stone"], synonyms: ["stairway", "staircase", "stairs"],
+    let loudRoomStairway = Item.scenery(
+        "stone stairway", adjectives: "stone", synonyms: "stairway", "staircase", "stairs",
         description: Prose.loudRoomStairway)
 
     // MARK: - Map

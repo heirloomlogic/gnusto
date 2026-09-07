@@ -193,8 +193,8 @@ struct DungeonMaze: GameContent {
     /// Scenery, and best left alone: the ghost who owns these bones takes a
     /// dim view of being handled. The curse is host-wired, since it banishes
     /// your valuables to a ``DungeonTemple`` room.
-    let skeleton = Item.backdrop(
-        "skeleton", synonyms: ["skeleton", "bones", "body", "remains", "adventurer"], description: Prose.skeleton)
+    let skeleton = Item.scenery(
+        "skeleton", synonyms: "skeleton", "bones", "body", "remains", "adventurer", description: Prose.skeleton)
 
     let burnedOutLantern = Item {
         name("burned-out lantern")
@@ -209,8 +209,8 @@ struct DungeonMaze: GameContent {
     /// share, which is the only hint the game gives that the two rooms are one
     /// word apart. The Temple's half is ``DungeonTemple``'s, declared with the
     /// rest of that room in milestone 3.
-    let graniteWall = Item.backdrop(
-        "granite wall", adjectives: ["granite", "solid", "north"], synonyms: ["wall", "granite"],
+    let graniteWall = Item.scenery(
+        "granite wall", adjectives: "granite", "solid", "north", synonyms: "wall", "granite",
         description: Prose.graniteWall)
 
     // MARK: - Scenery
@@ -219,10 +219,10 @@ struct DungeonMaze: GameContent {
     /// nineteen passages and dead ends prints the same two nouns. Built from a
     /// factory for the same reason the rooms are.
     private static func twistyScenery() -> Item {
-        Item.backdrop(
+        Item.scenery(
             "passages",
-            adjectives: ["twisty", "little"],
-            synonyms: ["maze", "passage", "walls", "wall"],
+            adjectives: "twisty", "little",
+            synonyms: "maze", "passage", "walls", "wall",
             description: Prose.mazeWalls
         ) {
             plural
@@ -230,8 +230,8 @@ struct DungeonMaze: GameContent {
     }
 
     private static func deadEndScenery() -> Item {
-        Item.backdrop(
-            "dead end", adjectives: ["dead"], synonyms: ["end", "maze", "wall", "walls", "rock", "passage"],
+        Item.scenery(
+            "dead end", adjectives: "dead", synonyms: "end", "maze", "wall", "walls", "rock", "passage",
             description: Prose.deadEndWalls)
     }
 
@@ -257,42 +257,42 @@ struct DungeonMaze: GameContent {
     let deadEndWalls3 = deadEndScenery()
     let deadEndWalls4 = deadEndScenery()
 
-    let treasureRoomBags = Item.backdrop(
+    let treasureRoomBags = Item.scenery(
         "discarded bags",
-        adjectives: ["discarded"],
-        synonyms: ["bags", "bag", "floor", "exit", "passage"],
+        adjectives: "discarded",
+        synonyms: "bags", "bag", "floor", "exit", "passage",
         description: Prose.treasureRoomBags
     ) {
         plural
     }
 
-    let strangePassageWalls = Item.backdrop(
-        "passage", adjectives: ["long"], synonyms: ["passage", "entrance", "walls", "wall"],
+    let strangePassageWalls = Item.scenery(
+        "passage", adjectives: "long", synonyms: "passage", "entrance", "walls", "wall",
         description: Prose.strangePassageWalls)
     // `wooden` and `old` because the room's own paragraph calls it "an old
     // wooden door" — the same door ``DungeonHouse/woodenDoor`` answers for
     // on the near side, and the two phrasings have to reach the item that
     // is about the room the reader is standing in. (#329)
 
-    let cyclopsSizedHole = Item.backdrop(
-        "hole", adjectives: ["large", "cyclops-sized", "wooden", "old"], synonyms: ["hole", "door", "opening"],
+    let cyclopsSizedHole = Item.scenery(
+        "hole", adjectives: "large", "cyclops-sized", "wooden", "old", synonyms: "hole", "door", "opening",
         description: Prose.cyclopsSizedHole)
 
     /// Described by a rule, and it answers CLIMB: it is the room's only way
     /// up, and a room that names a way through has promised the verb.
-    let cyclopsStaircase = Item.backdrop("staircase", synonyms: ["staircase", "stairs", "stair", "exit"])
+    let cyclopsStaircase = Item.scenery("staircase", synonyms: "staircase", "stairs", "stair", "exit")
 
     /// The wall he goes through, which is the room's only piece of state and
     /// so has to answer differently on either side of the event.
-    let cyclopsNorthWall = Item.backdrop(
-        "north wall", adjectives: ["north", "solid"], synonyms: ["wall", "walls", "opening", "hole", "rock"])
+    let cyclopsNorthWall = Item.scenery(
+        "north wall", adjectives: "north", "solid", synonyms: "wall", "walls", "opening", "hole", "rock")
 
     /// The marks on the walls that the cyclops's own line points at, and that
     /// stay there after he has gone.
-    let cyclopsBloodstains = Item.backdrop(
+    let cyclopsBloodstains = Item.scenery(
         "bloodstains",
-        adjectives: ["dried", "dark"],
-        synonyms: ["bloodstains", "blood", "stains"],
+        adjectives: "dried", "dark",
+        synonyms: "bloodstains", "blood", "stains",
         description: Prose.cyclopsBloodstains
     ) {
         plural

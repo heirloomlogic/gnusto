@@ -120,26 +120,26 @@ struct DungeonCellar: GameContent {
 
     // MARK: - Items
 
-    let chasm = Item.backdrop("chasm", synonyms: ["chasm", "pit"], description: Prose.chasm)
+    let chasm = Item.scenery("chasm", synonyms: "chasm", "pit", description: Prose.chasm)
 
-    let crawlwayHole = Item.backdrop(
-        "hole", adjectives: ["ragged"], synonyms: ["hole"], description: Prose.crawlwayHole)
+    let crawlwayHole = Item.scenery(
+        "hole", adjectives: "ragged", synonyms: "hole", description: Prose.crawlwayHole)
 
     /// The people the Gallery's paragraph names twice and the painting's
     /// listing line a third time. (#329)
-    let galleryVandals = Item.backdrop(
+    let galleryVandals = Item.scenery(
         "vandals",
-        adjectives: ["tasteful"],
-        synonyms: ["vandal", "vandals", "thieves", "thief"],
+        adjectives: "tasteful",
+        synonyms: "vandal", "vandals", "thieves", "thief",
         description: Prose.galleryVandals
     ) {
         plural
     }
 
     /// And the three ways out the same sentence says they used. (#329)
-    let galleryExits = Item.backdrop(
+    let galleryExits = Item.scenery(
         "exits",
-        synonyms: ["exit", "exits"],
+        synonyms: "exit", "exits",
         description: Prose.galleryExits
     ) {
         plural
@@ -158,10 +158,10 @@ struct DungeonCellar: GameContent {
     }
 
     /// The Troll Room's walls carry his housekeeping, and the room says so.
-    let bloodstains = Item.backdrop(
+    let bloodstains = Item.scenery(
         "bloodstains",
-        adjectives: ["deep"],
-        synonyms: ["bloodstain", "stains", "scratches", "scratch", "walls", "wall"],
+        adjectives: "deep",
+        synonyms: "bloodstain", "stains", "scratches", "scratch", "walls", "wall",
         description: Prose.bloodstains
     ) {
         plural
@@ -170,28 +170,28 @@ struct DungeonCellar: GameContent {
     /// The room's first noun, and the one the troll's own line is about — he
     /// "blocks all passages out of the room" — with nothing in the room to
     /// answer it. (#233)
-    let trollRoomPassages = Item.backdrop(
+    let trollRoomPassages = Item.scenery(
         "passages",
-        synonyms: ["passage", "passages", "exits", "exit"],
+        synonyms: "passage", "passages", "exits", "exit",
         description: Prose.trollRoomPassages
     ) {
         plural
     }
 
     /// The Studio's 69 colors are the joke, so they answer for themselves.
-    let paints = Item.backdrop(
+    let paints = Item.scenery(
         "paints",
-        adjectives: ["splattered"],
-        synonyms: ["paint", "colors", "colours", "walls", "floor", "doors"],
+        adjectives: "splattered",
+        synonyms: "paint", "colors", "colours", "walls", "floor", "doors",
         description: Prose.paints
     ) {
         plural
     }
 
-    let chimney = Item.backdrop(
-        "chimney", adjectives: ["dark", "narrow"], synonyms: ["chimney"], description: Prose.chimney)
+    let chimney = Item.scenery(
+        "chimney", adjectives: "dark", "narrow", synonyms: "chimney", description: Prose.chimney)
 
-    let fireplace = Item.backdrop("fireplace", synonyms: ["hearth"], description: Prose.fireplace)
+    let fireplace = Item.scenery("fireplace", synonyms: "hearth", description: Prose.fireplace)
 
     // MARK: - Map
 

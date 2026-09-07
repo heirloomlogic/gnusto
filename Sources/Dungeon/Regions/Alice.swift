@@ -147,38 +147,38 @@ struct DungeonAlice: GameContent {
     /// `ETCH1` and the `WELL` global together: one item answers *well*,
     /// *wall*, *walls* and *etchings* at the bottom of the shaft, where the
     /// source has a global and a room object doing the same two jobs.
-    let etchingsBelow = Item.backdrop(
-        "wall with etchings", adjectives: ["brick", "damp"],
-        synonyms: ["etchings", "etching", "walls", "wall", "well", "brickwork", "mortar"],
+    let etchingsBelow = Item.scenery(
+        "wall with etchings", adjectives: "brick", "damp",
+        synonyms: "etchings", "etching", "walls", "wall", "well", "brickwork", "mortar",
         description: Prose.etchingsBelow)
 
     /// `ETCH2` and the same global at the top. The `crack` and the `floor` are
     /// not the ring of letters and stopped being synonyms for it: the room puts
     /// them across the doorway east, which is somewhere to walk and not
     /// something to read. (#286)
-    let etchingsAbove = Item.backdrop(
-        "wall with etchings", adjectives: ["carved"], synonyms: ["etchings", "etching", "walls", "wall", "well"],
+    let etchingsAbove = Item.scenery(
+        "wall with etchings", adjectives: "carved", synonyms: "etchings", "etching", "walls", "wall", "well",
         description: Prose.etchingsAbove)
 
     /// The crack the Top of Well's own last sentence is about, which the
     /// etchings were answering for. (#286)
-    let crackAtTopOfWell = Item.backdrop(
-        "crack", adjectives: ["small"], synonyms: ["crack", "floor"], description: Prose.topOfWellCrack)
+    let crackAtTopOfWell = Item.scenery(
+        "crack", adjectives: "small", synonyms: "crack", "floor", description: Prose.topOfWellCrack)
 
     // MARK: - The Tea Room
 
     /// `ATABL`.
-    let teaTable = Item.backdrop(
+    let teaTable = Item.scenery(
         "large oblong table",
-        adjectives: ["large", "oblong", "long"],
-        synonyms: ["table", "tea", "objects", "setting"],
+        adjectives: "large", "oblong", "long",
+        synonyms: "table", "tea", "objects", "setting",
         description: Prose.teaTable
     ) {
         surface
     }
 
-    let mouseHole = Item.backdrop(
-        "small hole", adjectives: ["small", "eastern"], synonyms: ["hole", "corner"], description: Prose.mouseHole)
+    let mouseHole = Item.scenery(
+        "small hole", adjectives: "small", "eastern", synonyms: "hole", "corner", description: Prose.mouseHole)
 
     /// `ECAKE`. Eating it in the Tea Room drops you to mouse scale under the
     /// table.
@@ -224,37 +224,37 @@ struct DungeonAlice: GameContent {
     // MARK: - Under the table
 
     /// `POSTS`. The table's legs, from four inches up.
-    let posts = Item.backdrop(
+    let posts = Item.scenery(
         "group of wooden posts",
-        adjectives: ["wooden", "four"],
-        synonyms: ["posts", "post", "roof", "area"],
+        adjectives: "wooden", "four",
+        synonyms: "posts", "post", "roof", "area",
         description: Prose.posts
     ) {
         plural
     }
 
-    let postsChasm = Item.backdrop(
-        "large chasm", adjectives: ["large"], synonyms: ["chasm", "edge", "floor"], description: Prose.postsChasm)
+    let postsChasm = Item.scenery(
+        "large chasm", adjectives: "large", synonyms: "chasm", "edge", "floor", description: Prose.postsChasm)
 
     /// `POOL`. Goes up in steam when the red cake goes in.
     // Not `depression`: the hollow is there when the pool is not, and this
     // item vanishes when the cake dries it. ``poolDepression`` owns the
     // word. (#332)
-    let poolOfSewage = Item.backdrop(
-        "pool of sewage", adjectives: ["large", "brown"], synonyms: ["pool", "sewage", "goop"],
+    let poolOfSewage = Item.scenery(
+        "pool of sewage", adjectives: "large", "brown", synonyms: "pool", "sewage", "goop",
         description: Prose.poolOfSewage)
 
     /// The hollow itself, in both of the room's states. `depression` was a
     /// synonym on ``poolOfSewage`` and the pool `vanish()`es when the red cake
     /// dries it, so the drained paragraph printed the word with nothing left to
     /// answer it. (#332)
-    let poolDepression = Item.backdrop(
-        "depression", adjectives: ["depressed", "stained"], synonyms: ["depression", "hollow", "half"])
+    let poolDepression = Item.scenery(
+        "depression", adjectives: "depressed", "stained", synonyms: "depression", "hollow", "half")
 
     /// `PLEAK`. Out of reach from down here, which `reach(otherwise:)` says
     /// once instead of four times.
     // Described by a rule: the steam takes the leak with it.
-    let leak = Item.backdrop("leak", adjectives: ["large"], synonyms: ["ceiling", "crack", "drip"])
+    let leak = Item.scenery("leak", adjectives: "large", synonyms: "ceiling", "crack", "drip")
 
     /// `FLASK`. A trap: the liquid is not for drinking and the stopper is not
     /// for pulling.
@@ -305,9 +305,9 @@ struct DungeonAlice: GameContent {
         trait(.weight, 3)
     }
 
-    let lowRoomCeiling = Item.backdrop(
-        "low ceiling", adjectives: ["low", "very"],
-        synonyms: ["ceiling", "rock", "walls", "wall", "ways", "way", "exits", "exit"],
+    let lowRoomCeiling = Item.scenery(
+        "low ceiling", adjectives: "low", "very",
+        synonyms: "ceiling", "rock", "walls", "wall", "ways", "way", "exits", "exit",
         description: Prose.lowRoomCeiling)
 
     // MARK: - The buttons
@@ -321,8 +321,8 @@ struct DungeonAlice: GameContent {
     /// and none of the three was the answer. Those three words now belong to
     /// the two things the sentence is actually about. (#286)
     private static func buttonScenery(_ shape: String) -> Item {
-        Item.backdrop(
-            "\(shape) button", adjectives: [shape], synonyms: ["button", "buttons"], description: Prose.button(shape))
+        Item.scenery(
+            "\(shape) button", adjectives: shape, synonyms: "button", "buttons", description: Prose.button(shape))
     }
 
     let roundButton = buttonScenery("round")
@@ -330,10 +330,10 @@ struct DungeonAlice: GameContent {
     let triangularButton = buttonScenery("triangular")
 
     /// The bank the three buttons are set in. (#286)
-    let controlBank = Item.backdrop(
+    let controlBank = Item.scenery(
         "controls",
-        adjectives: ["unlabelled"],
-        synonyms: ["controls", "control", "bank", "panel", "plate"],
+        adjectives: "unlabelled",
+        synonyms: "controls", "control", "bank", "panel", "plate",
         description: Prose.controlBank
     ) {
         // `plate`: this item's own description opens with "A plate of dull
@@ -349,13 +349,13 @@ struct DungeonAlice: GameContent {
     // into this room, so claiming it here would re-open the disambiguation
     // the trim above closes. The paragraph prints "machinery" and never
     // "machine".
-    let machineRoomMachinery = Item.backdrop(
-        "machinery", adjectives: ["running"], synonyms: ["machinery"], description: Prose.machineRoomMachinery)
+    let machineRoomMachinery = Item.scenery(
+        "machinery", adjectives: "running", synonyms: "machinery", description: Prose.machineRoomMachinery)
 
     // MARK: - The closet, the sphere and the cage
 
-    let alarmSticker = Item.backdrop(
-        "small sticker", adjectives: ["small"], synonyms: ["sticker", "wall", "walls", "label"],
+    let alarmSticker = Item.scenery(
+        "small sticker", adjectives: "small", synonyms: "sticker", "wall", "walls", "label",
         description: Prose.alarmSticker)
 
     /// `SPHER`. Six to find and six to case, and the alarm is on the pedestal
@@ -376,8 +376,8 @@ struct DungeonAlice: GameContent {
     /// The same stone twice: once from the closet and once through the bars of
     /// the cage standing on it. Only the sentence differs.
     private static func pedestalScenery(_ text: String) -> Item {
-        Item.backdrop(
-            "low pedestal", adjectives: ["low", "stone"], synonyms: ["pedestal", "dish", "stand"], description: text)
+        Item.scenery(
+            "low pedestal", adjectives: "low", "stone", synonyms: "pedestal", "dish", "stand", description: text)
     }
 
     /// What the cage's paragraph names on the other side of the bars. The cage
@@ -394,33 +394,33 @@ struct DungeonAlice: GameContent {
     /// failed on it, which is how it was found. The engine matches people from
     /// the start now, so the noun is safe and the room answers for everything
     /// it prints. (#332)
-    let closetThroughTheBars = Item.backdrop(
-        "closet", adjectives: ["dingy"], synonyms: ["closet", "room"], description: Prose.closetThroughTheBars)
+    let closetThroughTheBars = Item.scenery(
+        "closet", adjectives: "dingy", synonyms: "closet", "room", description: Prose.closetThroughTheBars)
 
     let pedestalThroughTheBars = Self.pedestalScenery(Prose.pedestalThroughTheBars)
 
     /// The machine itself, seen through the bars. It answers to the noun the
     /// room prints; the actor it names is still the one an order reaches, and
     /// the two no longer compete — see ``closetThroughTheBars``.
-    let robotThroughTheBars = Item.backdrop(
-        "robot", adjectives: ["dented"], synonyms: ["robot", "robby", "machine"], description: Prose.robotThroughTheBars
+    let robotThroughTheBars = Item.scenery(
+        "robot", adjectives: "dented", synonyms: "robot", "robby", "machine", description: Prose.robotThroughTheBars
     )
 
-    let stickerThroughTheBars = Item.backdrop(
-        "small sticker", adjectives: ["small", "alarm"], synonyms: ["sticker", "label"],
+    let stickerThroughTheBars = Item.scenery(
+        "small sticker", adjectives: "small", "alarm", synonyms: "sticker", "label",
         description: Prose.stickerThroughTheBars)
 
     /// `RCAGE`. The cage as it looks from *outside* — from the Dingy Closet,
     /// which is where the robot has to be able to see it. Offstage until the
     /// alarm fires.
-    let steelCage = Item.backdrop(
-        "steel cage", adjectives: ["steel"], synonyms: ["cage", "bars", "bar"], description: Prose.cageBars)
+    let steelCage = Item.scenery(
+        "steel cage", adjectives: "steel", synonyms: "cage", "bars", "bar", description: Prose.cageBars)
 
     /// The same cage from inside it, which is a different room.
-    let cageBars = Item.backdrop(
+    let cageBars = Item.scenery(
         "steel bars",
-        adjectives: ["steel", "thick"],
-        synonyms: ["bars", "bar", "cage", "floor"],
+        adjectives: "steel", "thick",
+        synonyms: "bars", "bar", "cage", "floor",
         description: Prose.cageBars
     ) {
         plural
@@ -431,12 +431,12 @@ struct DungeonAlice: GameContent {
     /// — `x vent` did not even get as far as a refusal, it got *"I don't know
     /// the word"*. Neither is hidden: the only frame in which a player can be
     /// standing in this room is the frame in which the gas is arriving. (#286)
-    let gasInCage = Item.backdrop(
-        "colorless gas", adjectives: ["colorless", "odorless"], synonyms: ["gas", "vapor", "fumes"],
+    let gasInCage = Item.scenery(
+        "colorless gas", adjectives: "colorless", "odorless", synonyms: "gas", "vapor", "fumes",
         description: Prose.cageGasItself)
 
-    let ventInCage = Item.backdrop(
-        "vent", adjectives: ["floor"], synonyms: ["vent", "grille", "grate"], description: Prose.cageVent)
+    let ventInCage = Item.scenery(
+        "vent", adjectives: "floor", synonyms: "vent", "grille", "grate", description: Prose.cageVent)
 
     /// `CAGE`. What is left once the robot has had it up off the floor.
     let mangledCage = Item {

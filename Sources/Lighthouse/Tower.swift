@@ -30,20 +30,20 @@ struct Tower: GameContent {
     /// a live ``Item/describe(_:)`` keyed on ``Item/isLit``, and the winning rule
     /// sets that trait before it ends the game — so the lit branch is reachable,
     /// and a save taken at the final move restores a lighthouse that is lit.
-    let beacon = Item.backdrop(
+    let beacon = Item.scenery(
         "beacon",
-        adjectives: ["great", "brass"],
-        synonyms: ["beam", "light", "reservoir", "carriage", "ring"]
+        adjectives: "great", "brass",
+        synonyms: "beam", "light", "reservoir", "carriage", "ring"
     ) {
         lightSource
     }
 
     // MARK: - The nouns the Lamp Room's description prints
 
-    let glass = Item.backdrop(
+    let glass = Item.scenery(
         "glass",
-        adjectives: ["curved", "salt"],
-        synonyms: ["panes", "pane", "window", "windows"],
+        adjectives: "curved", "salt",
+        synonyms: "panes", "pane", "window", "windows",
         description:
             """
             Curved panes in a brass frame, every one of them clean on the inside.
@@ -51,10 +51,10 @@ struct Tower: GameContent {
             """
     )
 
-    let night = Item.backdrop(
+    let night = Item.scenery(
         "night",
-        adjectives: ["black"],
-        synonyms: ["sky"],
+        adjectives: "black",
+        synonyms: "sky",
         description:
             """
             Black, and up against the glass on every side of you. Somewhere out
@@ -66,10 +66,10 @@ struct Tower: GameContent {
     /// The same synonym list as the base's stone flight, deliberately: two
     /// staircases in one game should answer to the same words and let the room
     /// decide which one the player means.
-    let stairs = Item.backdrop(
+    let stairs = Item.scenery(
         "spiral stairs",
-        adjectives: ["iron"],
-        synonyms: ["stair", "staircase", "steps", "step", "treads", "tread", "rail"],
+        adjectives: "iron",
+        synonyms: "stair", "staircase", "steps", "step", "treads", "tread", "rail",
         description:
             """
             Iron, and narrow enough that two people meeting on them would have to

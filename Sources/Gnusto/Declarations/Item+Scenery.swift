@@ -6,9 +6,9 @@ extension Item {
     /// Additional traits can make it a container, surface, or other fixture.
     ///
     /// ```swift
-    /// let wall = Item.backdrop("stone wall", synonyms: ["masonry"],
-    ///                          description: "Mortar fills the cracks.")
-    /// let niche = Item.backdrop("shadowed niche") { container }
+    /// let wall = Item.scenery("stone wall", synonyms: "masonry",
+    ///                         description: "Mortar fills the cracks.")
+    /// let niche = Item.scenery("shadowed niche") { container }
     /// ```
     ///
     /// - Parameters:
@@ -18,10 +18,10 @@ extension Item {
     ///   - description: optional examine text; omit it when using a `describe` rule.
     ///   - traits: additional item traits.
     /// - Returns: an ordinary item with the `scenery` trait.
-    public static func backdrop(
+    public static func scenery(
         _ name: String,
-        adjectives: [String] = [],
-        synonyms: [String] = [],
+        adjectives: String...,
+        synonyms: String...,
         description: String? = nil,
         @ItemBuilder _ traits: () -> [ItemTrait] = { [] }
     ) -> Item {
@@ -36,7 +36,7 @@ extension Item {
             if let description {
                 ItemTrait(kind: .description(description))
             }
-            scenery
+            ItemTrait(kind: .scenery)
             for trait in traits() {
                 trait
             }

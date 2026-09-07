@@ -107,8 +107,8 @@ struct ZorkTemple: GameContent {
         trait(.depositValue, 6)  // case
     }
 
-    let railing = Item.backdrop(
-        "wooden railing", adjectives: ["wooden"], synonyms: ["rail", "railing"], description: Prose.templeRailing)
+    let railing = Item.scenery(
+        "wooden railing", adjectives: "wooden", synonyms: "rail", "railing", description: Prose.templeRailing)
 
     let bell = Item {
         name("brass bell")
@@ -188,22 +188,22 @@ struct ZorkTemple: GameContent {
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.domeRoom`.
-    let dome = Item.backdrop("large dome", adjectives: ["large"], synonyms: ["dome"], description: Prose.dome)
+    let dome = Item.scenery("large dome", adjectives: "large", synonyms: "dome", description: Prose.dome)
 
     /// (#407) Named by `Prose.torchRoom`.
-    let torchRoomDoorway = Item.backdrop(
-        "prominent doorway", adjectives: ["prominent"], synonyms: ["doorway", "door"],
+    let torchRoomDoorway = Item.scenery(
+        "prominent doorway", adjectives: "prominent", synonyms: "doorway", "door",
         description: Prose.torchRoomDoorway)
 
     /// (#407) Named by `Prose.torchRoom` — the same dome ``dome`` names, but
     /// this room is the one it is the ceiling of, so it gets its own line.
-    let domeAtTorch = Item.backdrop("dome", description: Prose.domeFromBelow)
+    let domeAtTorch = Item.scenery("dome", description: Prose.domeFromBelow)
 
     /// (#407) Named by `Prose.torchRoom`.
-    let marblePedestal = Item.backdrop(
+    let marblePedestal = Item.scenery(
         "white marble pedestal",
-        adjectives: ["white", "marble"],
-        synonyms: ["pedestal"],
+        adjectives: "white", "marble",
+        synonyms: "pedestal",
         description: Prose.marblePedestal
     ) {
         surface
@@ -211,71 +211,71 @@ struct ZorkTemple: GameContent {
 
     /// (#407) Named by `Prose.temple`; `prayer` is the same inscription by
     /// what it probably is.
-    let templeInscription = Item.backdrop(
-        "ancient inscription", adjectives: ["ancient"], synonyms: ["inscription", "prayer"],
+    let templeInscription = Item.scenery(
+        "ancient inscription", adjectives: "ancient", synonyms: "inscription", "prayer",
         description: Prose.templeInscription)
 
     /// (#407) Named by `Prose.temple`.
-    let templeStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.templeStaircase)
+    let templeStaircase = Item.scenery("staircase", synonyms: "stairs", description: Prose.templeStaircase)
 
     /// (#407) Named by `Prose.temple`.
-    let marblePillars = Item.backdrop(
-        "huge marble pillars", adjectives: ["huge", "marble"], synonyms: ["pillars", "pillar"],
+    let marblePillars = Item.scenery(
+        "huge marble pillars", adjectives: "huge", "marble", synonyms: "pillars", "pillar",
         description: Prose.templePillars)
 
     /// (#407) Named by `Prose.temple`.
-    let templeGraniteWall = Item.backdrop(
-        "granite wall", adjectives: ["granite", "west", "solid"], synonyms: ["granite", "wall"],
+    let templeGraniteWall = Item.scenery(
+        "granite wall", adjectives: "granite", "west", "solid", synonyms: "granite", "wall",
         description: Prose.templeGraniteWall)
 
     /// (#407) Named by `Prose.egyptRoom`.
-    let egyptTomb = Item.backdrop(
-        "egyptian tomb", adjectives: ["egyptian"], synonyms: ["tomb"], description: Prose.egyptTomb)
+    let egyptTomb = Item.scenery(
+        "egyptian tomb", adjectives: "egyptian", synonyms: "tomb", description: Prose.egyptTomb)
 
     /// (#407) Named by `Prose.egyptRoom`, beyond the audit's list.
-    let egyptStaircase = Item.backdrop(
-        "ascending staircase", adjectives: ["ascending"], synonyms: ["staircase", "stairs"],
+    let egyptStaircase = Item.scenery(
+        "ascending staircase", adjectives: "ascending", synonyms: "staircase", "stairs",
         description: Prose.egyptStaircase)
 
     /// (#407) Named by `Prose.templeCave`, beyond the audit's list.
-    let caveStaircase = Item.backdrop(
-        "dark staircase", adjectives: ["dark", "forbidding"], synonyms: ["staircase", "stairs"],
+    let caveStaircase = Item.scenery(
+        "dark staircase", adjectives: "dark", "forbidding", synonyms: "staircase", "stairs",
         description: Prose.caveStaircase)
 
     /// (#407) Named by `Prose.landOfDead`, beyond the audit's list.
-    let deadPassage = Item.backdrop("passage", description: Prose.deadPassage)
+    let deadPassage = Item.scenery("passage", description: Prose.deadPassage)
 
     /// (#407) Named by `Prose.altar`.
-    let altarStone = Item.backdrop("altar", description: Prose.altarStone)
+    let altarStone = Item.scenery("altar", description: Prose.altarStone)
 
     /// (#407) Named by `Prose.altar`.
-    let altarHole = Item.backdrop("small hole", adjectives: ["small"], synonyms: ["hole"], description: Prose.altarHole)
+    let altarHole = Item.scenery("small hole", adjectives: "small", synonyms: "hole", description: Prose.altarHole)
 
     /// (#407) Named by `Prose.entranceToHades`.
-    let hadesGateway = Item.backdrop(
-        "large gateway", adjectives: ["large"], synonyms: ["gate", "gateway"], description: Prose.hadesGateway)
+    let hadesGateway = Item.scenery(
+        "large gateway", adjectives: "large", synonyms: "gate", "gateway", description: Prose.hadesGateway)
 
     /// (#407) Named by `Prose.entranceToHades` — the verse inscribed on the
     /// gateway, kept as a form because its arrangement is the content.
-    let hadesInscription = Item.backdrop(
-        "inscription", synonyms: ["verse", "writing"], description: Prose.hadesInscription)
+    let hadesInscription = Item.scenery(
+        "inscription", synonyms: "verse", "writing", description: Prose.hadesInscription)
 
     /// (#407) Named by `Prose.entranceToHades`.
-    let mangledBodies = Item.backdrop(
-        "pile of mangled bodies", adjectives: ["mangled"], synonyms: ["bodies", "body", "pile"],
+    let mangledBodies = Item.scenery(
+        "pile of mangled bodies", adjectives: "mangled", synonyms: "bodies", "body", "pile",
         description: Prose.mangledBodies)
 
     /// (#407) Named by `Prose.entranceToHades` — narrative, not a fixture,
     /// but the engine's rule is that every noun a room description prints
     /// must be answerable.
-    let lamentingVoices = Item.backdrop("voices", synonyms: ["voice"], description: Prose.lamentingVoices)
+    let lamentingVoices = Item.scenery("voices", synonyms: "voice", description: Prose.lamentingVoices)
 
     /// (#407) Named by `Prose.landOfDead`.
-    let lostSouls = Item.backdrop(
-        "lost souls", adjectives: ["lost"], synonyms: ["souls", "soul"], description: Prose.lostSouls)
+    let lostSouls = Item.scenery(
+        "lost souls", adjectives: "lost", synonyms: "souls", "soul", description: Prose.lostSouls)
 
     /// (#407) Named by `Prose.landOfDead`.
-    let adventurerRemains = Item.backdrop("remains", description: Prose.adventurerRemains)
+    let adventurerRemains = Item.scenery("remains", description: Prose.adventurerRemains)
 
     // MARK: - State
 

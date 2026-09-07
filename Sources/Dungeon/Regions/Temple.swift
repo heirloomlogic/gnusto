@@ -184,16 +184,16 @@ struct DungeonTemple: GameContent {
 
     // MARK: - The Rocky Crawl
 
-    let rockyCrawlRubble = Item.backdrop(
-        "loose rock", adjectives: ["loose"],
-        synonyms: ["rocks", "rock", "ceiling", "floor", "passages", "passage", "corners", "corner"],
+    let rockyCrawlRubble = Item.scenery(
+        "loose rock", adjectives: "loose",
+        synonyms: "rocks", "rock", "ceiling", "floor", "passages", "passage", "corners", "corner",
         description: Prose.rockyCrawlRubble)
 
     // MARK: - The Dome Room
 
-    let railing = Item.backdrop("wooden railing", adjectives: ["wooden"], synonyms: ["rail", "railing"])
+    let railing = Item.scenery("wooden railing", adjectives: "wooden", synonyms: "rail", "railing")
 
-    let dome = Item.backdrop("dome", adjectives: ["large"], synonyms: ["ceiling", "drop"], description: Prose.domeRoom)
+    let dome = Item.scenery("dome", adjectives: "large", synonyms: "ceiling", "drop", description: Prose.domeRoom)
 
     /// The railing end of the knot, offstage until ``ropeTiedToRailing``. The
     /// Torch Room's end is ``ropeAboveTheTorchRoom``; why one rope needs two
@@ -218,15 +218,15 @@ struct DungeonTemple: GameContent {
         trait(.depositValue, 6)
     }
 
-    let marblePedestal = Item.backdrop(
-        "white marble pedestal", adjectives: ["white", "marble"], synonyms: ["pedestal"],
+    let marblePedestal = Item.scenery(
+        "white marble pedestal", adjectives: "white", "marble", synonyms: "pedestal",
         description: Prose.marblePedestal)
 
     /// The dome and its railing seen from below, and the west doorway the
     /// mainframe's Torch Room has and Zork I's does not. One fixture answering
     /// the nouns the room prints.
-    let torchRoomFittings = Item.backdrop(
-        "doorway", synonyms: ["dome", "railing", "rail", "staircase", "stairs", "wall", "walls"],
+    let torchRoomFittings = Item.scenery(
+        "doorway", synonyms: "dome", "railing", "rail", "staircase", "stairs", "wall", "walls",
         description: Prose.torchRoomDoorway)
 
     // MARK: - The Grail Room
@@ -244,12 +244,12 @@ struct DungeonTemple: GameContent {
         trait(.depositValue, 5)
     }
 
-    let grailPedestal = Item.backdrop(
-        "stone pedestal", adjectives: ["stone"], synonyms: ["pedestal"], description: Prose.grailPedestal)
+    let grailPedestal = Item.scenery(
+        "stone pedestal", adjectives: "stone", synonyms: "pedestal", description: Prose.grailPedestal)
 
-    let grailStairs = Item.backdrop(
+    let grailStairs = Item.scenery(
         "flight of stairs",
-        synonyms: ["stairs", "staircase", "passages", "passage"],
+        synonyms: "stairs", "staircase", "passages", "passage",
         description: Prose.grailStairs
     ) {
         plural
@@ -264,26 +264,26 @@ struct DungeonTemple: GameContent {
         trait(.weight, 10)
     }
 
-    let prayerInscription = Item.backdrop(
-        "ancient inscription", adjectives: ["ancient"], synonyms: ["prayer", "inscription", "writing"],
+    let prayerInscription = Item.scenery(
+        "ancient inscription", adjectives: "ancient", synonyms: "prayer", "inscription", "writing",
         description: Prose.prayerInscription)
 
-    let marblePillars = Item.backdrop(
+    let marblePillars = Item.scenery(
         "marble pillars",
-        adjectives: ["huge", "marble"],
-        synonyms: ["pillars", "pillar", "entrance"],
+        adjectives: "huge", "marble",
+        synonyms: "pillars", "pillar", "entrance",
         description: Prose.marblePillars
     ) {
         plural
     }
 
-    let graniteWall = Item.backdrop(
-        "granite wall", adjectives: ["solid", "granite", "north"], synonyms: ["wall", "walls"],
+    let graniteWall = Item.scenery(
+        "granite wall", adjectives: "solid", "granite", "north", synonyms: "wall", "walls",
         description: Prose.graniteWall)
 
     // MARK: - The Altar
 
-    let altarStone = Item.backdrop("altar", synonyms: ["slab", "stone"], description: Prose.altarStone)
+    let altarStone = Item.scenery("altar", synonyms: "slab", "stone", description: Prose.altarStone)
 
     let blackBook = Item {
         name("black book")
@@ -322,13 +322,13 @@ struct DungeonTemple: GameContent {
         trait(.depositValue, 7)
     }
 
-    let egyptianStaircase = Item.backdrop(
-        "ascending staircase", adjectives: ["ascending"], synonyms: ["staircase", "stairs", "stair"],
+    let egyptianStaircase = Item.scenery(
+        "ascending staircase", adjectives: "ascending", synonyms: "staircase", "stairs", "stair",
         description: Prose.egyptianStaircase)
 
-    let egyptianDoors = Item.backdrop(
+    let egyptianDoors = Item.scenery(
         "doors",
-        synonyms: ["door", "doorway", "doorways", "tomb"],
+        synonyms: "door", "doorway", "doorways", "tomb",
         description: Prose.egyptianDoors
     ) {
         plural
@@ -336,7 +336,7 @@ struct DungeonTemple: GameContent {
 
     // MARK: - The glacier
 
-    let glacier = Item.backdrop("glacier", adjectives: ["great", "cold", "icy"], synonyms: ["ice", "mass", "wall"])
+    let glacier = Item.scenery("glacier", adjectives: "great", "cold", "icy", synonyms: "ice", "mass", "wall")
 
     // MARK: - The Ruby Room
 
@@ -350,10 +350,10 @@ struct DungeonTemple: GameContent {
         trait(.depositValue, 8)
     }
 
-    let rubyRoomPassages = Item.backdrop(
+    let rubyRoomPassages = Item.scenery(
         "narrow passages",
-        adjectives: ["narrow", "small"],
-        synonyms: ["passages", "passage", "chamber"],
+        adjectives: "narrow", "small",
+        synonyms: "passages", "passage", "chamber",
         description: Prose.rubyRoom
     ) {
         plural
@@ -361,31 +361,31 @@ struct DungeonTemple: GameContent {
 
     // MARK: - The Engravings Cave
 
-    let engravings = Item.backdrop(
-        "wall with engravings", adjectives: ["old", "beautiful"],
-        synonyms: ["engravings", "engraving", "inscription", "wall", "walls"], description: Prose.engravings)
+    let engravings = Item.scenery(
+        "wall with engravings", adjectives: "old", "beautiful",
+        synonyms: "engravings", "engraving", "inscription", "wall", "walls", description: Prose.engravings)
 
     // MARK: - Hades
 
-    let hadesGates = Item.backdrop(
-        "gate", adjectives: ["large", "iron"], synonyms: ["gates", "gateway"], description: Prose.hadesGates)
+    let hadesGates = Item.scenery(
+        "gate", adjectives: "large", "iron", synonyms: "gates", "gateway", description: Prose.hadesGates)
 
-    let spirits = Item.backdrop(
+    let spirits = Item.scenery(
         "number of ghosts",
-        adjectives: ["evil"],
-        synonyms: ["spirits", "spirit", "ghosts", "ghost", "fiends", "fiend", "wraiths", "wraith"]
+        adjectives: "evil",
+        synonyms: "spirits", "spirit", "ghosts", "ghost", "fiends", "fiend", "wraiths", "wraith"
     ) {
         // Described by a rule: the exorcism sends them through the walls.
         plural
     }
 
-    let pileOfCorpses = Item.backdrop(
-        "pile of mangled bodies", adjectives: ["mangled"],
-        synonyms: ["corpses", "corpse", "bodies", "body", "pile", "desolation"], description: Prose.pileOfCorpses)
+    let pileOfCorpses = Item.scenery(
+        "pile of mangled bodies", adjectives: "mangled",
+        synonyms: "corpses", "corpse", "bodies", "body", "pile", "desolation", description: Prose.pileOfCorpses)
 
-    let pileOfBodies = Item.backdrop(
-        "stack of remains", adjectives: ["previous"],
-        synonyms: ["remains", "bodies", "body", "adventurers", "adventurer", "souls", "corner"],
+    let pileOfBodies = Item.scenery(
+        "stack of remains", adjectives: "previous",
+        synonyms: "remains", "bodies", "body", "adventurers", "adventurer", "souls", "corner",
         description: Prose.pileOfBodies)
 
     // MARK: - Map

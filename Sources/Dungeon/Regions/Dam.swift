@@ -179,15 +179,15 @@ struct DungeonDam: GameContent {
     // rather than a second thing standing beside it, so it is a synonym and
     // not an item. (#332)
 
-    let dam = Item.backdrop(
-        "dam", synonyms: ["gate", "gates", "fcd", "sluice", "concrete"], description: Prose.damItem)
+    let dam = Item.scenery(
+        "dam", synonyms: "gate", "gates", "fcd", "sluice", "concrete", description: Prose.damItem)
 
-    let bolt = Item.backdrop("metal bolt", adjectives: ["metal", "large"], synonyms: ["nut"], description: Prose.bolt)
+    let bolt = Item.scenery("metal bolt", adjectives: "metal", "large", synonyms: "nut", description: Prose.bolt)
 
-    let bubble = Item.backdrop("green bubble", adjectives: ["green", "small", "plastic"], description: Prose.bubble)
+    let bubble = Item.scenery("green bubble", adjectives: "green", "small", "plastic", description: Prose.bubble)
 
-    let controlPanel = Item.backdrop(
-        "control panel", adjectives: ["control"], synonyms: ["panel"], description: Prose.controlPanel)
+    let controlPanel = Item.scenery(
+        "control panel", adjectives: "control", synonyms: "panel", description: Prose.controlPanel)
 
     // MARK: - Dam Lobby
 
@@ -216,28 +216,28 @@ struct DungeonDam: GameContent {
         trait(.burnable, true)
     }
 
-    let receptionDesk = Item.backdrop(
-        "reception desk", adjectives: ["reception"], synonyms: ["desk"], description: Prose.receptionDesk)
+    let receptionDesk = Item.scenery(
+        "reception desk", adjectives: "reception", synonyms: "desk", description: Prose.receptionDesk)
 
     // MARK: - Maintenance Room
 
-    let blueButton = Item.backdrop(
-        "blue button", adjectives: ["blue"], synonyms: ["switch"], description: Prose.plainButton("blue"))
+    let blueButton = Item.scenery(
+        "blue button", adjectives: "blue", synonyms: "switch", description: Prose.plainButton("blue"))
 
-    let redButton = Item.backdrop(
-        "red button", adjectives: ["red"], synonyms: ["switch"], description: Prose.plainButton("red"))
+    let redButton = Item.scenery(
+        "red button", adjectives: "red", synonyms: "switch", description: Prose.plainButton("red"))
 
-    let brownButton = Item.backdrop(
-        "brown button", adjectives: ["brown"], synonyms: ["switch"], description: Prose.plainButton("brown"))
+    let brownButton = Item.scenery(
+        "brown button", adjectives: "brown", synonyms: "switch", description: Prose.plainButton("brown"))
 
-    let yellowButton = Item.backdrop(
-        "yellow button", adjectives: ["yellow"], synonyms: ["switch"], description: Prose.plainButton("yellow"))
+    let yellowButton = Item.scenery(
+        "yellow button", adjectives: "yellow", synonyms: "switch", description: Prose.plainButton("yellow"))
 
     /// The four of them as a group, so `examine buttons` answers instead of
     /// asking which colour you meant.
-    let buttonPanel = Item.backdrop(
+    let buttonPanel = Item.scenery(
         "group of buttons",
-        synonyms: ["buttons", "wall", "walls"],
+        synonyms: "buttons", "wall", "walls",
         description: Prose.buttonPanel
     ) {
         plural
@@ -245,9 +245,9 @@ struct DungeonDam: GameContent {
 
     /// The mainframe's buttons are labelled in EBCDIC, which is the joke; the
     /// answer is Zork I's, which made the same joke about Greek.
-    let buttonLabels = Item.backdrop(
+    let buttonLabels = Item.scenery(
         "labels",
-        synonyms: ["label", "script", "lettering", "writing"],
+        synonyms: "label", "script", "lettering", "writing",
         description: Prose.buttonLabels
     ) {
         plural
@@ -255,10 +255,10 @@ struct DungeonDam: GameContent {
 
     /// The mainframe's own joke: the chests the room is named for are empty,
     /// and bolted down besides.
-    let toolChests = Item.backdrop(
+    let toolChests = Item.scenery(
         "group of tool chests",
-        adjectives: ["tool"],
-        synonyms: ["chests", "chest"],
+        adjectives: "tool",
+        synonyms: "chests", "chest",
         description: Prose.toolChests
     ) {
         plural
@@ -267,23 +267,23 @@ struct DungeonDam: GameContent {
     /// The equipment the room is missing and the wreckage the wrench lies in.
     /// One item: what is *gone* is one sentence, and it is not the sentence
     /// ``toolChests`` tells about what is still here. (#233)
-    let maintenanceWreckage = Item.backdrop(
-        "wreckage", synonyms: ["wreckage", "equipment", "junk", "debris"], description: Prose.maintenanceWreckage)
+    let maintenanceWreckage = Item.scenery(
+        "wreckage", synonyms: "wreckage", "equipment", "junk", "debris", description: Prose.maintenanceWreckage)
 
     /// The room's own two ways out. No `door`/`doors` — ``privateDoorways``
     /// owns those in the Lobby and there is no reason to widen the word here.
-    let maintenanceDoorways = Item.backdrop(
+    let maintenanceDoorways = Item.scenery(
         "doorways",
-        adjectives: ["open"],
-        synonyms: ["doorway", "doorways"],
+        adjectives: "open",
+        synonyms: "doorway", "doorways",
         description: Prose.maintenanceDoorways
     ) {
         plural
     }
 
-    let leak = Item.backdrop(
+    let leak = Item.scenery(
         "leak",
-        synonyms: ["drip", "pipe", "hole"]
+        synonyms: "drip", "pipe", "hole"
     ) {
         hidden
     }
@@ -291,10 +291,10 @@ struct DungeonDam: GameContent {
     /// The water on the floor, which is a different thing from the hole it
     /// comes out of. Revealed by the same button, and described off
     /// ``floodLevel``, because how deep it is *is* the examine. (#329)
-    let floodWater = Item.backdrop(
+    let floodWater = Item.scenery(
         "water",
-        adjectives: ["rising", "cold"],
-        synonyms: ["water", "flood", "stream"]
+        adjectives: "rising", "cold",
+        synonyms: "water", "flood", "stream"
     ) {
         hidden
     }
@@ -381,11 +381,11 @@ struct DungeonDam: GameContent {
     /// records under "every printed noun answers".
     // Described by a rule: the gates decide whether there is any water in
     // it, and the room the player is standing in is the reservoir bed.
-    let reservoirWater = Item.backdrop(
-        "reservoir", adjectives: ["large"], synonyms: ["water", "lake", "mud", "bed", "shore", "shores", "dam"])
+    let reservoirWater = Item.scenery(
+        "reservoir", adjectives: "large", synonyms: "water", "lake", "mud", "bed", "shore", "shores", "dam")
 
-    let reservoirFromSouth = Item.backdrop(
-        "reservoir", adjectives: ["large"], synonyms: ["water", "lake", "stream", "mud"],
+    let reservoirFromSouth = Item.scenery(
+        "reservoir", adjectives: "large", synonyms: "water", "lake", "stream", "mud",
         description: Prose.reservoirFromShore)
 
     /// The path and the cliff it climbs — one fitting, because the room's own
@@ -393,56 +393,56 @@ struct DungeonDam: GameContent {
     /// Deep Canyon. `cliff` used to sit on ``reservoirFromSouth``, so the
     /// wall at the player's back answered with a sentence about the water
     /// behind them. (#329)
-    let reservoirSouthPath = Item.backdrop(
-        "steep path", adjectives: ["steep"], synonyms: ["path", "cliff", "edge", "ledge"],
+    let reservoirSouthPath = Item.scenery(
+        "steep path", adjectives: "steep", synonyms: "path", "cliff", "edge", "ledge",
         description: Prose.reservoirSouthPath)
 
-    let reservoirFromNorth = Item.backdrop(
-        "reservoir", adjectives: ["large"], synonyms: ["water", "lake", "stream", "mud", "tunnel"],
+    let reservoirFromNorth = Item.scenery(
+        "reservoir", adjectives: "large", synonyms: "water", "lake", "stream", "mud", "tunnel",
         description: Prose.reservoirFromShore)
 
     /// No `path`: Stream View stands the player *on a path beside* the stream,
     /// so that noun is the ground and belongs to ``streamViewBank``. (#233)
-    let streamWater = Item.backdrop(
-        "stream", adjectives: ["gently", "flowing"], synonyms: ["water", "cleft", "brook"],
+    let streamWater = Item.scenery(
+        "stream", adjectives: "gently", "flowing", synonyms: "water", "cleft", "brook",
         description: Prose.streamWater)
 
     /// Which is also where the wire is lying — "A coil of thin shiny wire lies
     /// on the bank." — and the word went unanswered.
-    let streamViewBank = Item.backdrop(
-        "bank", adjectives: ["wet", "stone"], synonyms: ["bank", "banks", "path", "shore"],
+    let streamViewBank = Item.scenery(
+        "bank", adjectives: "wet", "stone", synonyms: "bank", "banks", "path", "shore",
         description: Prose.streamViewBank)
 
-    let streamChannel = Item.backdrop(
-        "beach", adjectives: ["narrow"], synonyms: ["shore", "stream", "water", "walls", "wall"],
+    let streamChannel = Item.scenery(
+        "beach", adjectives: "narrow", synonyms: "shore", "stream", "water", "walls", "wall",
         description: Prose.streamChannel)
 
     /// Described by a rule: the bolt this room's own control panel carries is
     /// what decides whether there is any water out there to look at.
-    let damView = Item.backdrop("reservoir", adjectives: ["wide"], synonyms: ["water", "lake", "path", "paths"])
+    let damView = Item.scenery("reservoir", adjectives: "wide", synonyms: "water", "lake", "path", "paths")
     // `concrete`: both paragraphs about this dam count its concrete by the
     // foot, and the word answered nowhere. It is what the dam is made of
     // rather than a second thing standing beside it, so it is a synonym and
     // not an item. (#332)
 
-    let damFromBelow = Item.backdrop(
-        "dam", synonyms: ["gate", "gates", "fcd", "sluice", "concrete"], description: Prose.damItem)
+    let damFromBelow = Item.scenery(
+        "dam", synonyms: "gate", "gates", "fcd", "sluice", "concrete", description: Prose.damItem)
 
-    let privateDoorways = Item.backdrop(
+    let privateDoorways = Item.scenery(
         "doorways",
-        adjectives: ["private", "open"],
-        synonyms: ["doorway", "door", "doors", "path"],
+        adjectives: "private", "open",
+        synonyms: "doorway", "door", "doors", "path",
         description: Prose.privateDoorways
     ) {
         plural
     }
 
-    let river = Item.backdrop("river", adjectives: ["frigid"], synonyms: ["water"], description: Prose.frigidRiver)
+    let river = Item.scenery("river", adjectives: "frigid", synonyms: "water", description: Prose.frigidRiver)
 
-    let whiteCliffs = Item.backdrop(
+    let whiteCliffs = Item.scenery(
         "white cliffs",
-        adjectives: ["white"],
-        synonyms: ["cliff", "cliffs", "wall", "walls"],
+        adjectives: "white",
+        synonyms: "cliff", "cliffs", "wall", "walls",
         description: Prose.whiteCliffs
     ) {
         plural

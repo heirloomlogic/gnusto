@@ -224,8 +224,8 @@ struct ZorkMaze: GameContent {
     /// Disturbing them (take/search/move) wakes the ghost, who banishes your
     /// valuables to the Land of the Dead — host-wired, since the destination is
     /// a ``ZorkTemple`` room (see `FIDELITY.md`).
-    let skeleton = Item.backdrop(
-        "skeleton", adjectives: ["bones"], synonyms: ["skeleton", "bones", "body"], description: Prose.skeleton)
+    let skeleton = Item.scenery(
+        "skeleton", adjectives: "bones", synonyms: "skeleton", "bones", "body", description: Prose.skeleton)
 
     /// The dead adventurer's own lantern, long since burned out — takeable
     /// junk, no light left in it.
@@ -240,24 +240,24 @@ struct ZorkMaze: GameContent {
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.cyclopsRoom`.
-    let cyclopsStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.cyclopsStaircase)
+    let cyclopsStaircase = Item.scenery("staircase", synonyms: "stairs", description: Prose.cyclopsStaircase)
 
     /// (#407) Named by `Prose.treasureRoom`.
-    let discardedBags = Item.backdrop(
-        "discarded bags", adjectives: ["discarded"], synonyms: ["bags", "bag"], description: Prose.discardedBags)
+    let discardedBags = Item.scenery(
+        "discarded bags", adjectives: "discarded", synonyms: "bags", "bag", description: Prose.discardedBags)
 
     /// (#407) Named by `Prose.treasureRoom`.
-    let graniteWall = Item.backdrop(
-        "granite wall", adjectives: ["granite", "solid", "east"], synonyms: ["granite", "wall"],
+    let graniteWall = Item.scenery(
+        "granite wall", adjectives: "granite", "solid", "east", synonyms: "granite", "wall",
         description: Prose.treasureRoomGranite)
 
     /// (#407) Named by `Prose.strangePassage`.
-    let strangePassageDoor = Item.backdrop(
-        "old wooden door", adjectives: ["old", "wooden"], synonyms: ["door"], description: Prose.strangePassageDoor)
+    let strangePassageDoor = Item.scenery(
+        "old wooden door", adjectives: "old", "wooden", synonyms: "door", description: Prose.strangePassageDoor)
 
     /// (#407) Named by `Prose.strangePassage`.
-    let cyclopsOpening = Item.backdrop(
-        "large opening", adjectives: ["large"], synonyms: ["opening"], description: Prose.strangePassageOpening)
+    let cyclopsOpening = Item.scenery(
+        "large opening", adjectives: "large", synonyms: "opening", description: Prose.strangePassageOpening)
 
     // MARK: - State
 

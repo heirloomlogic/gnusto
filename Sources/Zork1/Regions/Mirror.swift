@@ -98,52 +98,52 @@ struct ZorkMirror: GameContent {
 
     /// The enormous mirror in the northern Mirror Room. Touching it (the
     /// `before(.touch)` rule below) whisks you to the southern room.
-    let mirrorNorth = Item.backdrop("mirror", adjectives: ["enormous"], synonyms: ["mirror", "reflection"])
+    let mirrorNorth = Item.scenery("mirror", adjectives: "enormous", synonyms: "mirror", "reflection")
 
     /// The enormous mirror in the southern Mirror Room — touch it to return
     /// north.
-    let mirrorSouth = Item.backdrop("mirror", adjectives: ["enormous"], synonyms: ["mirror", "reflection"])
+    let mirrorSouth = Item.scenery("mirror", adjectives: "enormous", synonyms: "mirror", "reflection")
 
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.mirrorRoomNorth` — the wall the mirror fills.
-    let wallAtMirrorNorth = Item.backdrop(
-        "south wall", adjectives: ["south"], synonyms: ["wall"], description: Prose.mirrorRoomWall)
+    let wallAtMirrorNorth = Item.scenery(
+        "south wall", adjectives: "south", synonyms: "wall", description: Prose.mirrorRoomWall)
 
     /// (#407) Named by `Prose.mirrorRoomSouth`.
-    let wallAtMirrorSouth = Item.backdrop(
-        "south wall", adjectives: ["south"], synonyms: ["wall"], description: Prose.mirrorRoomWall)
+    let wallAtMirrorSouth = Item.scenery(
+        "south wall", adjectives: "south", synonyms: "wall", description: Prose.mirrorRoomWall)
 
     /// (#407) Named by `Prose.mirrorRoomNorth` and `Prose.mirrorRoomSouth` —
     /// beyond the audit's list; one per room.
-    let ceilingAtMirrorNorth = Item.backdrop(
-        "tall ceiling", adjectives: ["tall"], synonyms: ["ceiling", "ceilings"], description: Prose.mirrorRoomCeiling)
+    let ceilingAtMirrorNorth = Item.scenery(
+        "tall ceiling", adjectives: "tall", synonyms: "ceiling", "ceilings", description: Prose.mirrorRoomCeiling)
 
-    let ceilingAtMirrorSouth = Item.backdrop(
-        "tall ceiling", adjectives: ["tall"], synonyms: ["ceiling", "ceilings"], description: Prose.mirrorRoomCeiling)
+    let ceilingAtMirrorSouth = Item.scenery(
+        "tall ceiling", adjectives: "tall", synonyms: "ceiling", "ceilings", description: Prose.mirrorRoomCeiling)
 
     /// (#407) Named by `Prose.smallCave`.
-    let smallCaveStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.smallCaveStaircase)
+    let smallCaveStaircase = Item.scenery("staircase", synonyms: "stairs", description: Prose.smallCaveStaircase)
 
     /// (#407) Named by `Prose.atlantisRoom`.
-    let atlantisStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.atlantisStaircase)
+    let atlantisStaircase = Item.scenery("staircase", synonyms: "stairs", description: Prose.atlantisStaircase)
 
     /// (#407) Named by `Prose.slideRoom`; the quoted "Granite Wall" and the
     /// word `granite` name the same etching.
-    let etchedLetters = Item.backdrop(
-        "etched letters", adjectives: ["etched"], synonyms: ["letters", "lettering", "granite wall", "granite"],
+    let etchedLetters = Item.scenery(
+        "etched letters", adjectives: "etched", synonyms: "letters", "lettering", "granite wall", "granite",
         description: Prose.etchedLetters)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let metalSlide = Item.backdrop(
-        "steep metal slide", adjectives: ["steep", "metal"], synonyms: ["slide"], description: Prose.metalSlide)
+    let metalSlide = Item.scenery(
+        "steep metal slide", adjectives: "steep", "metal", synonyms: "slide", description: Prose.metalSlide)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let slideRoomRock = Item.backdrop("rock", description: Prose.slideRoomRock)
+    let slideRoomRock = Item.scenery("rock", description: Prose.slideRoomRock)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let slideRoomOpening = Item.backdrop(
-        "small opening", adjectives: ["small"], synonyms: ["opening"], description: Prose.slideRoomOpening)
+    let slideRoomOpening = Item.scenery(
+        "small opening", adjectives: "small", synonyms: "opening", description: Prose.slideRoomOpening)
 
     // MARK: - State
 

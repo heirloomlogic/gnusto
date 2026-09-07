@@ -138,10 +138,10 @@ struct DungeonPalantir: GameContent {
 
     /// `PDOOR`. No static description: whether the mat is under it is a fact
     /// the paragraph carries.
-    let oakDoor = Item.backdrop(
+    let oakDoor = Item.scenery(
         "door made of oak",
-        adjectives: ["oak", "oaken", "massive", "wooden"],
-        synonyms: ["door", "doors"]
+        adjectives: "oak", "oaken", "massive", "wooden",
+        synonyms: "door", "doors"
     ) {
         openable
     }
@@ -149,9 +149,9 @@ struct DungeonPalantir: GameContent {
     /// `PWIND`, filed in both rooms. Two items, one window — the shape
     /// ``DungeonMirror`` already uses for its pair of mirrors.
     private static func barredWindow() -> Item {
-        Item.backdrop(
-            "barred window", adjectives: ["barred", "small", "iron"],
-            synonyms: ["window", "windows", "bars", "bar", "grille"], description: Prose.barredWindow)
+        Item.scenery(
+            "barred window", adjectives: "barred", "small", "iron",
+            synonyms: "window", "windows", "bars", "bar", "grille", description: Prose.barredWindow)
     }
 
     let tinyRoomWindow = barredWindow()
@@ -161,10 +161,10 @@ struct DungeonPalantir: GameContent {
     /// open, which is what makes the punch possible at all. No static
     /// description: which way it is hinged is the whole of what it says.
     private static func metalLid(startsOpen open: Bool) -> Item {
-        Item.backdrop(
+        Item.scenery(
             "metal lid",
-            adjectives: ["metal", "small", "hinged"],
-            synonyms: ["lid", "cover", "plate"]
+            adjectives: "metal", "small", "hinged",
+            synonyms: "lid", "cover", "plate"
         ) {
             openable
             if open { startsOpen }
@@ -177,9 +177,9 @@ struct DungeonPalantir: GameContent {
     /// `PKH1` and `PKH2`. Containers, because what is in one is the puzzle; no
     /// static description, because what is in one changes.
     private static func keyhole() -> Item {
-        Item.backdrop(
+        Item.scenery(
             "keyhole",
-            synonyms: ["hole", "lock", "keyholes"]
+            synonyms: "hole", "lock", "keyholes"
         ) {
             container
         }
@@ -203,10 +203,10 @@ struct DungeonPalantir: GameContent {
 
     /// `PTABL`. The blue sphere sits on it, which is what Zork II's line for
     /// that sphere says, so the surface has to be real.
-    let dustyTable = Item.backdrop(
+    let dustyTable = Item.scenery(
         "dusty table",
-        adjectives: ["dusty", "wooden", "plain"],
-        synonyms: ["table", "tables", "dust", "floor"],
+        adjectives: "dusty", "wooden", "plain",
+        synonyms: "table", "tables", "dust", "floor",
         description: Prose.dustyTable
     ) {
         surface
@@ -221,10 +221,10 @@ struct DungeonPalantir: GameContent {
     /// Sooty Room's, because in the Sooty Room the glow is the stove's and the
     /// stove is standing right there. Two rooms, one noun, two answers.
     private static func narrowCrack(_ text: String, alsoTheGlow: Bool) -> Item {
-        Item.backdrop(
+        Item.scenery(
             "narrow crack",
-            adjectives: ["narrow", "very", "small"],
-            synonyms: ["crack", "cracks", "fissure", "chink"],
+            adjectives: "narrow", "very", "small",
+            synonyms: "crack", "cracks", "fissure", "chink",
             description: text
         ) {
             if alsoTheGlow { synonyms("glow", "light", "wall") }
@@ -236,9 +236,9 @@ struct DungeonPalantir: GameContent {
 
     /// `STOVE`. Mainframe-only, and the source of the light in two rooms that
     /// are nowhere near each other.
-    let coalStove = Item.backdrop(
-        "old coal stove", adjectives: ["old", "coal", "iron", "squat"],
-        synonyms: ["stove", "fire", "coals", "embers", "glow", "soot", "ceiling", "floor"], description: Prose.coalStove
+    let coalStove = Item.scenery(
+        "old coal stove", adjectives: "old", "coal", "iron", "squat",
+        synonyms: "stove", "fire", "coals", "embers", "glow", "soot", "ceiling", "floor", description: Prose.coalStove
     )
 
     // MARK: - The chute's furniture
@@ -247,8 +247,8 @@ struct DungeonPalantir: GameContent {
     /// through `SLIDEBIT`. The Slide Room's own is ``DungeonMirror``'s
     /// `metalSlide`; these four are the rooms below it.
     private static func chuteWall() -> Item {
-        Item.backdrop(
-            "metal chute", adjectives: ["metal", "steep", "sheet"], synonyms: ["chute", "shaft", "walls", "wall"],
+        Item.scenery(
+            "metal chute", adjectives: "metal", "steep", "sheet", synonyms: "chute", "shaft", "walls", "wall",
             description: Prose.chute)
     }
 
@@ -301,15 +301,15 @@ struct DungeonPalantir: GameContent {
         chuteStretchRopes.contains { $0.0 == named }
     }
 
-    let slideLedgeOpening = Item.backdrop(
-        "low opening", adjectives: ["low", "narrow"], synonyms: ["opening", "gap", "doorway", "soot", "ledge"],
+    let slideLedgeOpening = Item.scenery(
+        "low opening", adjectives: "low", "narrow", synonyms: "opening", "gap", "doorway", "soot", "ledge",
         description: Prose.slideLedgeOpening)
 
     /// The Tiny Room is bare, and *bare* is a thing a player will look at.
-    let tinyRoomWalls = Item.backdrop(
+    let tinyRoomWalls = Item.scenery(
         "bare walls",
-        adjectives: ["bare", "empty"],
-        synonyms: ["wall", "walls", "passage", "floor", "room", "dust"],
+        adjectives: "bare", "empty",
+        synonyms: "wall", "walls", "passage", "floor", "room", "dust",
         description: Prose.tinyRoomWalls
     ) {
         plural
