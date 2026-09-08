@@ -64,7 +64,6 @@ struct Cavern: Game {
     var rules: Rules {
         melee.villain(
             troll, key: "troll", strength: 2,
-            weapons: [sword],
             prose: MeleeCombat.VillainProse(
                 miss: ["The troll swings; the axe bites air."],
                 wound: ["Your blow lands, and the troll grunts."],
@@ -93,6 +92,12 @@ struct Cavern: Game {
 The two calls share a `key:`, and that is the whole of the connection between
 them. A villain registered with `villain` alone never fights back and stays down
 for good once knocked out; one given an `aggression` daemon wakes up on his own.
+
+Every item carrying ``Gnusto/TraitKey/weapon`` is eligible by default. A named
+weapon must carry the trait and be held. With no weapon named, the keenest held
+trait-marked item is chosen; ties follow the inventory's stable item-ID order.
+Pass `weapons:` only when a particular villain has a narrower vulnerability:
+the supplied items form a restriction, and each must still carry `.weapon`.
 
 ## The numbers
 

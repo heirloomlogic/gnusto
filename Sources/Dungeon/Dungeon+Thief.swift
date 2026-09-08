@@ -198,13 +198,13 @@ extension Dungeon {
     /// The second half of the same list. Split when hazard #174 was thought to
     /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreThiefRules: Rules {
-        // The fight. He carries two hits, like the troll, and dies to the same
-        // two blades. When he falls, everything in his bag falls with him —
+        // The fight. He carries two hits, like the troll, and any trait-marked
+        // weapon can hurt him. When he falls, everything in his bag falls with
+        // him —
         // and that is all that happens. Zork I's thief unbars the trap door on
         // his way out; this game's trap door was never his, and stays shut.
         melee.villain(
             thief.thief, key: "thief", strength: 2,
-            weapons: [house.sword, house.knife],
             prose: MeleeCombat.VillainProse(
                 miss: [Prose.thiefMiss1, Prose.thiefMiss2],
                 wound: [Prose.thiefWound1, Prose.thiefWound2],

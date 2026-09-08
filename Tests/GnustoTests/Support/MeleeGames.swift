@@ -3,8 +3,9 @@ import GnustoActors
 import GnustoMeleeCombat
 
 /// Fixture for `GnustoMeleeCombat`: one arena, a sparring dummy villain
-/// (strength 3) that hits back, a real sword, and a feather that is very
-/// much not a weapon. `defeated` records the onDefeat callback firing.
+/// (strength 3) that hits back, a trait-marked sword, and a feather that is
+/// very much not a weapon. The villain deliberately supplies no weapon list:
+/// `defeated` records the onDefeat callback firing.
 struct ArenaGame: Game {
     let title = "Arena"
     let intro = "Sand, chalk lines, and poor decisions."
@@ -53,7 +54,6 @@ struct ArenaGame: Game {
     var rules: Rules {
         melee.villain(
             dummy, key: "dummy", strength: 3,
-            weapons: [sword],
             prose: MeleeCombat.VillainProse(
                 miss: ["Your swing kicks up sand."],
                 wound: ["Burlap tears."],
@@ -122,6 +122,12 @@ struct AmbushGame: Game {
         adjectives("birch")
     }
 
+    let sabre = Item {
+        name("cavalry sabre")
+        adjectives("cavalry")
+        trait(.weapon, true)
+    }
+
     @Global var truce = false
 
     let melee = MeleeCombat()
@@ -136,6 +142,7 @@ struct AmbushGame: Game {
         bandit.starts(in: clearing)
         cosh.starts(in: clearing)
         twig.starts(in: clearing)
+        sabre.starts(in: clearing)
     }
 
     var verbs: [SyntaxRule] {
@@ -146,7 +153,8 @@ struct AmbushGame: Game {
     var rules: Rules {
         melee.villain(
             bandit, key: "bandit", strength: 4,
-            weapons: [cosh],
+            // `twig` proves a restriction cannot promote an unmarked item.
+            weapons: [cosh, twig],
             prose: MeleeCombat.VillainProse(
                 miss: ["The cosh thumps into bark."],
                 wound: ["The bandit takes it on the forearm."],
@@ -172,6 +180,58 @@ struct AmbushGame: Game {
                 miss: ["The bandit lunges and comes up short."],
                 wound: ["The bandit opens a cut along your arm."],
                 playerDeath: "The bandit puts his knife somewhere final."))
+    }
+}
+
+/// Fixture for automatic weapon choice: both weapons are held, and the
+/// unrestricted villain must choose the keener one for a bare attack.
+struct WeaponChoiceGame: Game {
+    let title = "Weapon Choice"
+    let intro = "Two blades and one target."
+
+    let range = Location {
+        name("Range")
+        description("A straw target waits at the far end.")
+    }
+
+    let target = Actor {
+        name("straw target")
+        adjectives("straw")
+    }
+
+    let clumsyBlade = Item {
+        name("clumsy blade")
+        adjectives("clumsy")
+        trait(.weapon, true)
+        trait(.weaponStrength, 1)
+    }
+
+    let keenBlade = Item {
+        name("keen blade")
+        adjectives("keen")
+        trait(.weapon, true)
+        trait(.weaponStrength, 3)
+    }
+
+    let melee = MeleeCombat()
+
+    var content: GameContents { melee }
+
+    var map: WorldMap {
+        player.starts(in: range)
+        target.starts(in: range)
+        clumsyBlade.startsHeld
+        keenBlade.startsHeld
+    }
+
+    var rules: Rules {
+        melee.villain(
+            target, key: "target", strength: 100,
+            prose: MeleeCombat.VillainProse(
+                miss: ["The blade misses the straw."],
+                wound: ["The blade slices the straw."],
+                knockout: "The target topples.",
+                death: "The target is cut down."))
     }
 }
 
@@ -222,7 +282,6 @@ struct SkulkerGame: Game {
     var rules: Rules {
         melee.villain(
             skulker, key: "skulker", strength: 4,
-            weapons: [dirk],
             prose: MeleeCombat.VillainProse(
                 miss: ["The dirk finds nothing but air."],
                 wound: ["The skulker hisses through his teeth."],
@@ -295,7 +354,6 @@ struct GatedArenaGame: Game {
     var rules: Rules {
         melee.villain(
             heckler, key: "heckler", strength: 3,
-            weapons: [club],
             prose: MeleeCombat.VillainProse(
                 miss: ["Your swing whiffs."],
                 wound: ["The heckler grunts."],
@@ -398,7 +456,6 @@ struct CutpurseGame: Game {
     var rules: Rules {
         melee.villain(
             cutpurse, key: "cutpurse", strength: 4,
-            weapons: [cudgel],
             prose: MeleeCombat.VillainProse(
                 miss: ["The cudgel whistles past his ear."],
                 wound: ["He takes it across the shoulder."],

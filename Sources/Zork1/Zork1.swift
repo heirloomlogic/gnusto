@@ -617,11 +617,10 @@ struct Zork1: Game, GameMain {
             try refuse(Prose.skeletonLeaveItBe)
         }
 
-        // The troll, fought with the house's blades — entities from two
-        // bundles, so the host wires them. Strength 2 is the original's.
+        // The troll, fought with anything marked as a weapon. Strength 2 is
+        // the original's.
         melee.villain(
             cellar.troll, key: "troll", strength: 2,
-            weapons: [house.sword, house.knife],
             prose: MeleeCombat.VillainProse(
                 miss: [Prose.trollMiss1, Prose.trollMiss2],
                 wound: [Prose.trollWound1, Prose.trollWound2],
@@ -753,7 +752,6 @@ struct Zork1: Game, GameMain {
         // the trap door he bolted from below swings free.
         melee.villain(
             thief.thief, key: "thief", strength: 2,
-            weapons: [house.sword, house.knife],
             prose: MeleeCombat.VillainProse(
                 miss: [Prose.thiefMiss1, Prose.thiefMiss2],
                 wound: [Prose.thiefWound1, Prose.thiefWound2],
