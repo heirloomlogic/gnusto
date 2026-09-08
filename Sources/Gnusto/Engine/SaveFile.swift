@@ -157,9 +157,11 @@ struct SaveFile: Codable {
         guard let file = try? JSONDecoder().decode(SaveFile.self, from: data)
         else { throw .unreadable }
         guard file.state.isConsistent(with: definition) else { throw .inconsistent }
-        return reconcile(
+        let reconciled = reconcile(
             file.state, with: definition, pristineState: pristineState,
             declaredTimerNames: file.declaredTimerNames)
+        guard reconciled.isConsistent(with: definition) else { throw .inconsistent }
+        return reconciled
     }
 
     /// Settles a validated save against what this build actually declares, so

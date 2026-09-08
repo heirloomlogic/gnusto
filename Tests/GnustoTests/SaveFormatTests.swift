@@ -122,6 +122,31 @@ struct SaveFormatTests {
         }
     }
 
+    /// The placement edge added by the current build points from `newBox` to
+    /// `oldBox`. A crafted older save can carry the opposite edge while
+    /// omitting `newBox`'s placement, so each state is acyclic on its own but
+    /// naively combining them closes a loop.
+    private struct NestedAdditionGame: Game {
+        let title = "Nested Addition"
+        let intro = "Boxes within boxes."
+
+        let room = Location { name("Room") }
+        let oldBox = Item {
+            name("old box")
+            container
+        }
+        let newBox = Item {
+            name("new box")
+            container
+        }
+
+        var map: WorldMap {
+            player.starts(in: room)
+            oldBox.starts(in: room)
+            newBox.starts(inside: oldBox)
+        }
+    }
+
     /// `SaveRestoreTests` and `TimerTests` each spell this privately too — the
     /// established shape for a throwaway save path in this suite. Lifting the
     /// three into `GnustoTestSupport` is worth doing and is not this change's
@@ -612,6 +637,34 @@ struct SaveFormatTests {
         // pristine schedule established by Bootstrap.
         #expect(restored.activeFuses == ["stableFuse": 3, "newFuse": 5])
         #expect(restored.activeDaemons == ["stableDaemon", "newDaemon"])
+    }
+
+    @Test("reconciliation cannot introduce a placement cycle")
+    func reconciliationCannotIntroduceAPlacementCycle() throws {
+        let path = Self.temporarySavePath("reconciled-cycle")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let (definition, pristineState) = try Bootstrap.buildCore(NestedAdditionGame())
+
+        // This save predates newBox's placement but names the now-declared box
+        // as oldBox's holder. The saved graph is acyclic and referentially
+        // valid; seeding newBox inside oldBox would add the reverse edge.
+        var savedState = WorldState(playerLocation: EntityID("room"))
+        savedState.place(EntityID("oldBox"), .inside(EntityID("newBox")))
+        #expect(savedState.isConsistent(with: definition))
+        try SaveFile.write(
+            savedState, title: NestedAdditionGame().title,
+            to: URL(fileURLWithPath: path))
+
+        do {
+            _ = try SaveFile.read(
+                from: URL(fileURLWithPath: path), matching: definition,
+                pristineState: pristineState)
+            Issue.record("restore accepted a placement cycle created during reconciliation")
+        } catch .inconsistent {
+            // The crafted graph must be rejected before it reaches the engine.
+        } catch {
+            Issue.record("restore failed for the wrong reason: \(error)")
+        }
     }
 
     @Test("reconciling a save with the same definition preserves its schedule and placements")
