@@ -124,6 +124,8 @@ struct ParserTests {
             "take cloak examine hook",  // known verb
             "take cloak east",  // known direction
             "take cloak and go east",  // a second command is not an object-list member
+            "get up",  // a syntax word cannot fill the final object slot
+            "take east",  // nor can a bare direction
         ])
     func knownSyntaxAfterAResolvedFinalObjectIsAMalformedSentence(_ input: String) throws {
         let parser = try Self.makeParser()
@@ -150,6 +152,9 @@ struct ParserTests {
             parser.parse("take cloak grue", scope: Self.fullScope)
                 == .failure(.unknownWord("grue")))
         #expect(
+            parser.parse("take cloak and go grue", scope: Self.fullScope)
+                == .failure(.unknownWord("grue")))
+        #expect(
             parser.parse("take message with hook", scope: foyerScope)
                 == .failure(.notInScope))
 
@@ -167,6 +172,22 @@ struct ParserTests {
         #expect(
             nounWithPreposition.parse(
                 "take cup of tea", scope: Scope(visibleItems: [EntityID("cup")]))
+                == .failure(.notInScope))
+
+        var directionNameVocabulary = Vocabulary()
+        directionNameVocabulary.verbWords = ["take"]
+        directionNameVocabulary.directions = ["east": .east]
+        directionNameVocabulary.itemLexicons = [
+            EntityID("cloak"): ItemLexicon(nouns: ["cloak"]),
+            EntityID("eastDoor"): ItemLexicon(nouns: ["door"], adjectives: ["east"]),
+        ]
+        directionNameVocabulary.finalize()
+        let directionNameParser = StandardParser(
+            vocabulary: directionNameVocabulary,
+            syntaxRules: [SyntaxRule("take", .directObject, intent: .take)])
+        #expect(
+            directionNameParser.parse(
+                "take cloak and east door", scope: Scope(visibleItems: [EntityID("cloak")]))
                 == .failure(.notInScope))
     }
 

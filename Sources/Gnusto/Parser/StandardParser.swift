@@ -880,7 +880,12 @@ struct StandardParser {
                 // A resolved list member followed by a fresh command is not a
                 // second noun: `take cloak and go east` is one malformed
                 // sentence, rather than a thing the player cannot see.
-                if !ids.isEmpty, let first = piece.first, isSyntaxWord(first) {
+                if !ids.isEmpty,
+                    case .notInScope = error,
+                    let first = piece.first,
+                    isSyntaxWord(first),
+                    !isKnownNounPhrase(Array(piece))
+                {
                     return .failure(.unmatchedSyntax)
                 }
                 // `piece.startIndex` is its offset within the slot's phrase,
@@ -1059,15 +1064,26 @@ struct StandardParser {
     private func hasSyntaxTail(
         afterNounIn tokens: [String], scope: Scope, distant: Set<EntityID>
     ) -> Bool {
-        guard tokens.count > 1 else { return false }
+        // A complete noun name wins even when its first word also belongs to
+        // grammar, and even when that noun is presently out of scope.
+        guard !isKnownNounPhrase(tokens) else { return false }
+        guard let first = tokens.first else { return false }
+        if tokens.count == 1 { return isSyntaxWord(first) }
+
         for split in tokens.indices.dropFirst() where isSyntaxWord(tokens[split]) {
             if case .success = resolveNoun(
                 Array(tokens[..<split]), in: scope, alsoConsidering: distant)
             {
-                return !vocabulary.itemLexicons.values.contains { $0.matches(tokens) }
+                return true
             }
         }
         return false
+    }
+
+    /// Whether the complete phrase names any item in the game's lexicon,
+    /// regardless of whether the item is currently in scope.
+    private func isKnownNounPhrase(_ tokens: [String]) -> Bool {
+        vocabulary.itemLexicons.values.contains { $0.matches(tokens) }
     }
 
     /// A word that belongs to sentence grammar rather than a noun phrase.
