@@ -1535,6 +1535,13 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
   item rule — and waking him costs what striking him costs. He is the only
   sleeper in the game. The floor keeps the non-actor branch, which is what a line
   can word.
+- **`talk` renders two of `V-TELL`'s three branches.** `TALK TO` is `V-TELL`
+  (`gsyntax.zil:421`), and the stub line reproduces its non-actor branch ("You can't
+  talk to the X!", `gverbs.zil:1399`) and `V-SAY`'s line for addressing yourself
+  (`:1194`). The actor branch — "The X pauses for a moment, perhaps thinking that you
+  should reread the manual." — is not rendered, because a stub line is handed a name
+  and cannot see whether it belongs to a person; the troll, the thief and the cyclops
+  get the non-actor branch, which is at least true of them.
 
 ### Inventions — Zork I has no such verb at all
 
@@ -1547,14 +1554,6 @@ rude — but no ZIL routine stands behind them and none is cited at its assignme
 `taste`, `dive`, `empty` — plus `yourself`, for which no ZIL routine ever had to render the
 player's name, and `throwAt`, whose `THROW AT` requires an actor
 (`gsyntax.zil:486`) and drops the object rather than refusing.
-
-**`talk` renders two of `V-TELL`'s three branches.** `TALK TO` is `V-TELL`
-(`gsyntax.zil:421`), and the stub line reproduces its non-actor branch ("You can't
-talk to the X!", `gverbs.zil:1399`) and `V-SAY`'s line for addressing yourself
-(`:1194`). The actor branch — "The X pauses for a moment, perhaps thinking that you
-should reread the manual." — is not rendered, because a stub line is handed a name
-and cannot see whether it belongs to a person; the troll, the thief and the cyclops
-get the non-actor branch, which is at least true of them.
 
 **Five of them were about the room or its company, and #325 moved them off it.**
 `buy` said "This is a dungeon, not a bazaar!" in the open field the game starts in.

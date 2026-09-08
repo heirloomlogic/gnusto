@@ -70,8 +70,9 @@ public struct Clock: GameContent {
     /// How the time is spelled for the player.
     public let format: TimeFormat
 
-    /// The clock's own voice: the one line the mechanics print. Override it
-    /// after construction to re-skin.
+    /// The clock's own voice: the one line the mechanics print. Override the
+    /// line at init to re-skin; the clock stores its table as a `let`, so init
+    /// is the only chance.
     public struct Text: Sendable {
         /// The `time` verb's reply, handed the time spelled the way ``format``
         /// spells it, as a `GameText.Word`. Written with `.naming`, because a

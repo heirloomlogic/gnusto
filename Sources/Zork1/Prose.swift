@@ -17,14 +17,10 @@ enum Prose {
     // MARK: - The grue
 
     /// The grue's two lines, as the plugin takes them.
-
     static let grueText: DangerousDark.Text = {
         var text = DangerousDark.Text()
-
         text.warning = grueWarning
-
         text.death = grueDeath
-
         return text
     }()
 

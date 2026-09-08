@@ -46,17 +46,22 @@ bundle's namespace.
 
 ## The verbs
 
-| What the player types | Intent |
-|---|---|
-| `ask the butler about the murder` | `.ask` |
-| `tell the butler about the letter` | `.tell` |
-| `show the letter to the butler` | `.show` |
-| `talk to the butler`, `speak with the butler` | `.talk` |
-| `hello`, `hi` | `.greet` |
+| What the player types | Intent | Whose row |
+|---|---|---|
+| `ask the butler about the murder` | `.ask` | this library's |
+| `tell the butler about the letter` | `.tell` | this library's |
+| `show the letter to the butler` | `.show` | this library's |
+| `hello`, `hi` | `.greet` | this library's |
+| `talk to the butler`, `speak with the butler` | `.talk` | the engine's stub, promoted here |
 
 SHOW is an ordinary two-object row — a thing is a thing, so it needs no topic
 slot. The dative is not expressible, since two object slots can't sit side by
 side, so `show butler the letter` is not a sentence this game speaks.
+
+TALK is nobody's to mint. `Intent.talk` is one of the engine's stub verbs, so
+`talk to X`, `talk with X`, `talk X`, `speak to X` and `speak with X` all parse
+in a game that has never heard of this library; what the layer adds is an
+answer, in the `action(.talk)` that runs when no topic table claimed the turn.
 
 Greeting is split between the engine and this library on purpose. `greet X`,
 `hello X`, `hi X` and `say hello to X` are core rows present in every game; the

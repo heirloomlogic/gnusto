@@ -229,6 +229,28 @@ struct LighthouseTranscriptTests {
         #expect(turnOutput(of: "score", in: transcript).contains("in 1 turn."))
     }
 
+    /// The other half of the same answer, and the reason the play-test ledger's
+    /// `talk to me` row stays `fixed` rather than reopening: because the stub
+    /// costs a turn, the tide keeps its own arithmetic, so the jetty deadline
+    /// the mechanics contract pins at three turns is spent by `talk to me`
+    /// exactly as it is by `wait`. Three warn, the fourth drowns.
+    @Test func talkingOnTheJettySpendsTheTideDeadlineLikeAnyOtherVerb() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            ["talk to me", "talk to me", "talk to me", "talk to me"],
+            seed: 0)
+
+        expectInOrder(
+            transcript,
+            [
+                "Cold water sluices between the planks of the jetty.",
+                "Cold water sluices between the planks of the jetty.",
+                "The sea is at your ankles",
+                "takes you with it",
+                "*** You have died ***",
+            ])
+    }
+
     /// Save and restore round-trip the whole world: the brass key, dropped after
     /// saving, is back in hand once the save is restored.
     @Test func saveAndRestoreRoundTrip() async throws {

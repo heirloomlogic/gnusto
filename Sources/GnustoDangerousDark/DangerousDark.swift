@@ -48,7 +48,8 @@ public struct DangerousDark: GameContent {
     @Global public var suspended = false
 
     /// The dark's own voice: the two lines the mechanics print. Override
-    /// either to re-skin.
+    /// either at init to re-skin; the bundle stores its table as a `let`, so
+    /// init is the only chance.
     public struct Text: Sendable {
         /// Said on the first turn that ends in darkness — and said *once*, so a
         /// game that also points `text.pitchBlack` at this sentence (Zork does:

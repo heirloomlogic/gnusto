@@ -178,15 +178,7 @@ example that wires the first four:
 | `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)`, timetables to `schedule(_:named:_:)` |
 | `GnustoConversation` | `GameContent` | the facts the player has worked out, and which answers each actor has already given | actors + topic rows to `topics(of:)` (with `again:` lines for the answers that should land once), opening lines to `greeting(of:)`, evidence to `shows(_:to:)` |
 
-Three spellings are shared across the set, so a label learned in one library
-holds in the next. A daemon or alarm a library declares takes its timer name as
-`named:` — `roams(thief, named: "thief.roams", …)`, `at(time, named: "clock.blast")`
-— and the engine's own `daemon(_:)` and `fuse(_:after:)` take theirs unlabeled. A
-`() -> Bool` gate is `when:`, in a library as in a conditional exit or a topic
-row. And every library that prints a line of its own takes a `Text` at init —
-`MeleeCombat.Text`, `Conversation.Text`, `Spellcasting.Text`, `DangerousDark.Text`,
-`Clock.Text` — with the stock wording as the default, so a game re-voices the
-lines it cares about and leaves the rest.
+Three spellings are shared across the set, so a label learned in one library holds in the next. A daemon or alarm a library declares takes its timer name as `named:` — `roams(thief, named: "thief.roams", …)`, `at(time, named: "clock.blast")` — and the engine's own `daemon(_:)` and `fuse(_:after:)` take theirs unlabeled. A `() -> Bool` gate is `when:`, in a library as in a conditional exit or a topic row. And every library that prints a line of its own takes a `Text` at init — `MeleeCombat.Text`, `Conversation.Text`, `Spellcasting.Text`, `DangerousDark.Text`, `Clock.Text` — with the stock wording as the default, so a game re-voices the lines it cares about and leaves the rest.
 
 The split follows one rule: a system that needs its own saved state is a
 `GameContent` bundle (its `@Global`s namespace automatically and travel in
