@@ -10,6 +10,8 @@ Prefer to start from something that already runs? `bin/new-game Zwank ~/dev/Zwan
 
 ## Add Gnusto to your package
 
+These articles describe the engine on `main`, so pin the newest release: `bin/new-game` reads it from the repository's tags, and if a name an article uses fails to compile in your package, the pin is behind the article. Building against a checkout instead (`bin/new-game --dep-path`) cannot fall behind.
+
 Add Gnusto as a dependency, list it in your executable target, and give the test target the `GnustoTestSupport` product (it links the toolchain's Testing library, so it belongs in test targets only):
 
 ```swift
@@ -20,7 +22,7 @@ let package = Package(
     name: "MyGame",
     platforms: [.macOS(.v15)],
     dependencies: [
-        .package(url: "https://github.com/HeirloomLogic/Gnusto", from: "0.1.0")
+        .package(url: "https://github.com/HeirloomLogic/Gnusto", from: "0.6.0")
     ],
     targets: [
         .executableTarget(

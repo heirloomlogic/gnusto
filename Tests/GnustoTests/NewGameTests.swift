@@ -394,7 +394,107 @@ struct NewGameTests {
     @Test func anInvalidGameNameIsRefused() throws {
         let result = try Self.newGame(["my game", Self.scratch().path])
         #expect(result.status == 2)
-        #expect(result.stderr.contains("Swift identifier"))
+        #expect(result.stderr.contains("letters and digits"))
+    }
+
+    /// The name is a Swift identifier, but not every Swift identifier is a game
+    /// name: `bin/playtest-replay` validates its product argument against
+    /// `^[A-Za-z][A-Za-z0-9]*$`, so a package the generator wrote for `My_Game`
+    /// would build and then never get a green `build` row from preflight (#441).
+    /// Refuse here, where the author can still pick another name, rather than
+    /// after the files are on disk.
+    @Test func anUnderscoredGameNameIsRefused() throws {
+        for name in ["My_Game", "_Game"] {
+            let result = try Self.newGame([name, Self.scratch().path])
+            #expect(result.status == 2, "\(name)")
+            #expect(result.stderr.contains("letters and digits"), "\(result.stderr)")
+        }
+    }
+
+    /// The stale-pin warning has to be keyed on every tool the template shims,
+    /// not on one of them.
+    ///
+    /// 0.5.0 shipped `bin/export-game` reading `GNUSTO_PACKAGE_PATH` and
+    /// `bin/playtest-preflight` not, so a guard that only asked export-game let a
+    /// package pin a tag whose preflight listed the engine's own demo games, with
+    /// no warning at all (#441). This mirrors
+    /// ``theDefaultPinForwardsTheTraitOnlyIfTheReleaseDeclaresIt``: read the tag
+    /// out of the line the generator wrote, then ask git the same question the
+    /// generator should be asking -- for every shim in `bin/templates/bin`, and for
+    /// every `bin/lib` module they route through, does the tag's copy make the
+    /// package-aware read the current copy makes? -- and require the warning to
+    /// match the answer. Self-retiring in both directions: green on a tag that has
+    /// everything, red the day a new shim lands ahead of the tag that carries it.
+    @Test func theStalePinWarningTracksEveryShimmedTool() throws {
+        guard let git = Self.which("git") else { return }  // no git, no check
+
+        let destination = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let generated = try Self.newGame(["Zwank", destination.path])
+        #expect(generated.status == 0, "bin/new-game failed: \(generated.stderr)")
+
+        let manifest = try String(
+            contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
+        let dependency = try #require(
+            manifest.split(separator: "\n").first { $0.contains("HeirloomLogic/Gnusto") })
+        let version = try #require(
+            dependency.range(of: #"from: ""#).map { start in
+                String(dependency[start.upperBound...].prefix { $0 != "\"" })
+            })
+
+        let templateBin = Self.packageRoot.appendingPathComponent("bin/templates/bin")
+        let shims = try FileManager.default.contentsOfDirectory(atPath: templateBin.path)
+            .filter { !$0.hasPrefix(".") && $0 != "lib" }
+            .sorted()
+        let libs = try FileManager.default.contentsOfDirectory(
+            atPath: Self.packageRoot.appendingPathComponent("bin/lib").path
+        ).map { "lib/\($0)" }
+        #expect(!shims.isEmpty, "the template ships no shims")
+
+        var stale: [String] = []
+        for tool in shims + libs {
+            let current = try String(
+                contentsOf: Self.packageRoot.appendingPathComponent("bin/\(tool)"), encoding: .utf8)
+            let released = try Self.run(git, ["show", "\(version):bin/\(tool)"])
+            let awareNow = current.contains("GNUSTO_PACKAGE_PATH") || current.contains("GNUSTO_INVOCATION_DIR")
+            let awareThen =
+                released.stdout.contains("GNUSTO_PACKAGE_PATH") || released.stdout.contains("GNUSTO_INVOCATION_DIR")
+            if released.status != 0 || (awareNow && !awareThen) { stale.append(tool) }
+        }
+
+        #expect(
+            generated.stdout.contains("predates shim support") == !stale.isEmpty,
+            stale.isEmpty
+                ? "Gnusto \(version) carries every shimmed tool, so nothing should warn: \(generated.stdout)"
+                : "Gnusto \(version) is stale for \(stale) and the generator said nothing: \(generated.stdout)")
+        for tool in stale where !tool.hasPrefix("lib/") {
+            #expect(generated.stdout.contains(tool), "the warning does not name \(tool): \(generated.stdout)")
+        }
+    }
+
+    /// A `--dep-path` at a maintainer's checkout drags the maintainer's dev tooling
+    /// into the author's build.
+    ///
+    /// `Package.swift` gates Persnicket and the DocC plugin on a `.dev-tooling`
+    /// sentinel it finds via `#filePath` -- the engine's own directory, whichever
+    /// package is root -- so a generated package pointed at a checkout carrying the
+    /// sentinel resolves Persnicket and runs the lint plugin over the engine on every
+    /// build, the exact leak the sentinel exists to prevent (#441). The manifest has
+    /// no way to know it is not the root, so the generator says so at the one moment
+    /// the author is looking.
+    @Test func aDepPathCarryingTheDevSentinelWarns() throws {
+        let sentinel = Self.packageRoot.appendingPathComponent(".dev-tooling")
+        let present = FileManager.default.fileExists(atPath: sentinel.path)
+
+        let destination = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let generated = try Self.newGame(["Zwank", destination.path, "--dep-path", Self.packageRoot.path])
+        #expect(generated.status == 0, "bin/new-game failed: \(generated.stderr)")
+        #expect(
+            generated.stdout.contains(".dev-tooling") == present,
+            present
+                ? "the checkout has .dev-tooling and the generator did not warn: \(generated.stdout)"
+                : "the checkout has no .dev-tooling and the generator warned anyway: \(generated.stdout)")
     }
 
     @Test func missingArgumentsPrintUsage() throws {
