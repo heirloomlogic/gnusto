@@ -231,8 +231,9 @@ struct LighthouseTranscriptTests {
 
     /// The other half of the same answer, and the reason the play-test ledger's
     /// `talk to me` row stays `fixed` rather than reopening: because the stub
-    /// costs a turn, the tide keeps its own arithmetic, so the jetty deadline
-    /// the mechanics contract pins at three turns is spent by `talk to me`
+    /// costs a turn, the tide keeps its own arithmetic, so the jetty's
+    /// three-turn deadline — the story's current shape, in
+    /// `docs/games/lighthouse.md`, "The tide" — is spent by `talk to me`
     /// exactly as it is by `wait`. Three warn, the fourth drowns.
     @Test func talkingOnTheJettySpendsTheTideDeadlineLikeAnyOtherVerb() async throws {
         let transcript = try await play(
