@@ -95,6 +95,9 @@ public struct MeleeCombat: GameContent {
         public var death: String
 
         /// Creates a villain's prose. All lines are required — villains carry no stock defaults.
+        /// `miss` and `wound` must each have at least one line, so every combat
+        /// outcome can speak when it occurs. Registration checks this again in
+        /// case either public array changed after initialization.
         ///
         /// - Parameters:
         ///   - miss: lines rotated when the player's blow misses.
@@ -103,6 +106,8 @@ public struct MeleeCombat: GameContent {
         ///   - death: printed when the villain is killed, and the last thing
         ///     said about him — see ``death``.
         public init(miss: [String], wound: [String], knockout: String, death: String) {
+            MeleeCombat.requireRotatingProse(miss, named: "VillainProse.miss")
+            MeleeCombat.requireRotatingProse(wound, named: "VillainProse.wound")
             self.miss = miss
             self.wound = wound
             self.knockout = knockout
@@ -119,13 +124,18 @@ public struct MeleeCombat: GameContent {
         /// Handed to `die(_:)` when the last hit lands.
         public var playerDeath: String
 
-        /// Creates a villain's counter-attack prose.
+        /// Creates a villain's counter-attack prose. `miss` and `wound` must
+        /// each have at least one line, so every counter-attack outcome can
+        /// speak when it occurs. Registration checks this again in case either
+        /// public array changed after initialization.
         ///
         /// - Parameters:
         ///   - miss: lines rotated when the villain's counter-attack misses.
         ///   - wound: lines rotated when the villain's counter-attack wounds.
         ///   - playerDeath: handed to `die(_:)` when the last hit lands.
         public init(miss: [String], wound: [String], playerDeath: String) {
+            MeleeCombat.requireRotatingProse(miss, named: "AggressionProse.miss")
+            MeleeCombat.requireRotatingProse(wound, named: "AggressionProse.wound")
             self.miss = miss
             self.wound = wound
             self.playerDeath = playerDeath
@@ -178,6 +188,13 @@ public struct MeleeCombat: GameContent {
     @Global var ledger = Ledger()
 
     let text: Text
+
+    /// Keeps the author-facing prose invariant beside the four consumers that
+    /// select a rotating line. The arrays stay mutable for games that re-voice
+    /// a villain after construction, so factories check them again at registration.
+    static func requireRotatingProse(_ lines: [String], named field: String) {
+        precondition(!lines.isEmpty, "GnustoMeleeCombat: \(field) needs at least one line.")
+    }
 
     /// Creates the plugin with the given combat text.
     ///
@@ -296,6 +313,8 @@ public struct MeleeCombat: GameContent {
         prose: VillainProse,
         onDefeat: @escaping @Sendable () -> Void = {}
     ) -> Rules {
+        let _ = Self.requireRotatingProse(prose.miss, named: "VillainProse.miss")
+        let _ = Self.requireRotatingProse(prose.wound, named: "VillainProse.wound")
         actor.before(.attack) {
             // Resolve the weapon: the named one must be real and in hand;
             // otherwise the player's keenest held weapon serves.
@@ -416,7 +435,9 @@ public struct MeleeCombat: GameContent {
         when condition: @escaping @Sendable () -> Bool = { true },
         prose: AggressionProse
     ) -> TimedEvent {
-        daemon(name, autostart: true) {
+        Self.requireRotatingProse(prose.miss, named: "AggressionProse.miss")
+        Self.requireRotatingProse(prose.wound, named: "AggressionProse.wound")
+        return daemon(name, autostart: true) {
             // One snapshot for both guards below: `ledger` is a `@Global`, and
             // every read of one decodes the whole struct.
             let ledgered = ledger

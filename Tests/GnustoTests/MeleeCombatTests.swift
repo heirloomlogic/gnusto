@@ -9,6 +9,37 @@ import Testing
 /// stunning, counter-attacks, and the ledger's save round-trip. Seeds were
 /// discovered by scanning and are pinned with their recorded sequences.
 struct MeleeCombatTests {
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    @Test(
+        "empty rotating prose is rejected at declaration",
+        arguments: InvalidMeleeProse.allCases)
+    func emptyRotatingProseIsRejectedAtDeclaration(_ prose: InvalidMeleeProse) async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            [prose = prose as InvalidMeleeProse] in
+            prose.make()
+        }
+        expectTrap(result, says: prose.diagnostic)
+    }
+
+    @Test(
+        "empty rotating prose is rejected at registration",
+        arguments: InvalidMeleeProse.allCases)
+    func emptyRotatingProseIsRejectedAtRegistration(_ prose: InvalidMeleeProse) async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            [prose = prose as InvalidMeleeProse] in
+            prose.register()
+        }
+        expectTrap(result, says: prose.diagnostic)
+    }
+
+    #endif
+
     /// The per-weapon table: a keener weapon whiffs less and kills more, and
     /// the baseline (strength 2) reproduces the historic 30/70/85 table so an
     /// undeclared weapon fights exactly as before.
@@ -169,5 +200,61 @@ struct MeleeCombatTests {
             seed: 9)
         #expect(!transcript.contains("I don't know the word"))
         #expect(!transcript.contains("I didn't understand"))
+    }
+}
+
+enum InvalidMeleeProse: String, CaseIterable, Codable, Sendable {
+    case villainMiss
+    case villainWound
+    case aggressionMiss
+    case aggressionWound
+
+    var diagnostic: String {
+        switch self {
+        case .villainMiss: "VillainProse.miss needs at least one line"
+        case .villainWound: "VillainProse.wound needs at least one line"
+        case .aggressionMiss: "AggressionProse.miss needs at least one line"
+        case .aggressionWound: "AggressionProse.wound needs at least one line"
+        }
+    }
+
+    func make() {
+        switch self {
+        case .villainMiss:
+            _ = MeleeCombat.VillainProse(miss: [], wound: ["Wound."], knockout: "Out.", death: "Dead.")
+        case .villainWound:
+            _ = MeleeCombat.VillainProse(miss: ["Miss."], wound: [], knockout: "Out.", death: "Dead.")
+        case .aggressionMiss:
+            _ = MeleeCombat.AggressionProse(miss: [], wound: ["Wound."], playerDeath: "Dead.")
+        case .aggressionWound:
+            _ = MeleeCombat.AggressionProse(miss: ["Miss."], wound: [], playerDeath: "Dead.")
+        }
+    }
+
+    func register() {
+        let melee = MeleeCombat()
+        let actor = Actor()
+        switch self {
+        case .villainMiss:
+            var prose = MeleeCombat.VillainProse(
+                miss: ["Miss."], wound: ["Wound."], knockout: "Out.", death: "Dead.")
+            prose.miss = []
+            _ = melee.villain(actor, key: "villain", strength: 1, weapons: [], prose: prose)
+        case .villainWound:
+            var prose = MeleeCombat.VillainProse(
+                miss: ["Miss."], wound: ["Wound."], knockout: "Out.", death: "Dead.")
+            prose.wound = []
+            _ = melee.villain(actor, key: "villain", strength: 1, weapons: [], prose: prose)
+        case .aggressionMiss:
+            var prose = MeleeCombat.AggressionProse(
+                miss: ["Miss."], wound: ["Wound."], playerDeath: "Dead.")
+            prose.miss = []
+            _ = melee.aggression(of: actor, key: "villain", named: "villain", prose: prose)
+        case .aggressionWound:
+            var prose = MeleeCombat.AggressionProse(
+                miss: ["Miss."], wound: ["Wound."], playerDeath: "Dead.")
+            prose.wound = []
+            _ = melee.aggression(of: actor, key: "villain", named: "villain", prose: prose)
+        }
     }
 }
