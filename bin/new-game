@@ -40,6 +40,7 @@ destination=""
 dep_path=""
 stale_pin_warning=""
 traitless_pin_warning=""
+dev_tooling_warning=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dep-path) dep_path="${2:-}"; [ -n "$dep_path" ] || usage; shift 2 ;;
@@ -75,13 +76,15 @@ fi
 # to be something Swift will accept in all five places. Checked here rather than
 # left to the compiler, because the compiler's complaint arrives after the files
 # are already on disk under the bad name.
-case "$game" in
-  [A-Za-z_]*) ;;
-  *) die "'$game' is not a valid Swift identifier: it must start with a letter or underscore" ;;
-esac
-case "$game" in
-  *[!A-Za-z0-9_]*) die "'$game' is not a valid Swift identifier: only letters, digits and underscores" ;;
-esac
+#
+#
+# Narrower than a Swift identifier: no underscore anywhere. The name is also the
+# product bin/playtest-replay is handed, and that script validates it with this
+# same expression -- so a package generated for My_Game built and then never got
+# a green `build` row from preflight (#441). Refusing here is the one place the
+# author can still pick another name cheaply.
+printf '%s' "$game" | grep -qE '^[A-Za-z][A-Za-z0-9]*$' \
+  || die "'$game' is not a valid game name: a letter first, then letters and digits only"
 
 if [ -e "$destination" ]; then
   [ -d "$destination" ] || die "'$destination' exists and is not a directory"
@@ -125,6 +128,17 @@ if [ -n "$dep_path" ]; then
     dependency=".package(name: \"Gnusto\", path: \"$swift_path\")"
     traitless_pin_warning="1"
   fi
+  # Gnusto's Package.swift gates its dev-only tooling (the Persnoop lint plugin,
+  # the DocC plugin) on a gitignored .dev-tooling sentinel it finds through
+  # #filePath -- the engine's own directory, whichever package is root. A manifest
+  # cannot tell it is a dependency, so a path pin at a maintainer's checkout
+  # resolves Persnicket and runs the lint plugin over the engine on every build of
+  # the generated package: the exact leak the sentinel exists to prevent (#441).
+  # Nothing here can fix that; the author is told at the one moment they are
+  # looking.
+  if [ -e "$dep_path/.dev-tooling" ]; then
+    dev_tooling_warning="1"
+  fi
 else
   # Pin to whatever this checkout's newest release is, read now rather than
   # hardcoded, so the generator cannot fall behind the tags.
@@ -148,17 +162,32 @@ else
     traitless_pin_warning="1"
   fi
 
-  # bin/gnusto-mcp and bin/export-game read GNUSTO_PACKAGE_PATH to find out which
-  # package a shim meant, because $0 by then points into Gnusto's own checkout
-  # rather than the game's. A released tag can predate that -- 0.4.0 does -- and a
-  # package pinned to one gets two tools that quietly build and list Gnusto's own
-  # demo games instead of this one (caught in the whole-branch review after #368
-  # shipped shims but not a release containing them). Checked against the tag
-  # actually pinned, not hardcoded against "0.4.0", so this warning retires itself
-  # the day a fixed tag ships and nobody has to remember to come back and delete it.
-  if ! git show "$version:bin/export-game" 2>/dev/null | grep -q GNUSTO_PACKAGE_PATH; then
-    stale_pin_warning="1"
-  fi
+  # Every tool the template shims reads GNUSTO_PACKAGE_PATH or
+  # GNUSTO_INVOCATION_DIR (itself or through a bin/lib module) to find out which
+  # package the shim meant, because $0 by then points into Gnusto's own checkout
+  # rather than the game's. A released tag can predate that for any one of them,
+  # and a package pinned to such a tag gets a tool that quietly builds and lists
+  # Gnusto's own demo games instead of this one. 0.4.0 predated it for
+  # bin/export-game; 0.5.0 had export-game and not bin/playtest-preflight, and a
+  # guard that asked only export-game let that pin through without a word (#441).
+  # So the question is asked of every shim, and of the lib modules they route
+  # through: does the tag's copy make the package-aware read the current copy
+  # makes? Derived from the template and the tag rather than a list kept by hand,
+  # so it retires itself the day a complete tag ships, and comes back on its own
+  # the day a new shim lands ahead of the tag that carries it.
+  stale_tools=""
+  for shim in bin/templates/bin/* bin/lib/*; do
+    [ -f "$shim" ] || continue
+    tool="${shim#bin/templates/bin/}"
+    tool="${tool#bin/}"
+    if ! released="$(git show "$version:bin/$tool" 2>/dev/null)"; then
+      stale_tools="$stale_tools $tool"
+    elif grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' "bin/$tool" \
+        && ! printf '%s' "$released" | grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR'; then
+      stale_tools="$stale_tools $tool"
+    fi
+  done
+  [ -z "$stale_tools" ] || stale_pin_warning="1"
 fi
 
 mkdir -p "$destination"
@@ -230,12 +259,23 @@ fi
 
 if [ -n "$stale_pin_warning" ]; then
   echo
-  echo "warning: pinned to Gnusto $version, which predates shim support in"
-  echo "  bin/gnusto-mcp and bin/export-game. Until a newer Gnusto release ships,"
-  echo "  those two tools will run against the Gnusto engine checkout instead of"
-  echo "  $game -- bin/gnusto-mcp will try to build $game inside the engine repo,"
-  echo "  and bin/export-game will list the engine's own demo games. bin/playtest-replay"
-  echo "  and bin/playtest-measure are unaffected. --dep-path is also unaffected:"
-  echo "  re-run with it against a checkout that has the fix, or re-run without it"
-  echo "  once a newer tag exists."
+  echo "warning: pinned to Gnusto $version, which predates shim support in:"
+  for tool in $stale_tools; do echo "    bin/$tool"; done
+  echo "  Until a newer Gnusto release ships, a tool listed there runs against the"
+  echo "  Gnusto engine checkout instead of $game -- it will build, list or preflight"
+  echo "  the engine's own demo games and report that no product matches $game."
+  echo "  A tool not listed is unaffected. --dep-path is also unaffected: re-run with"
+  echo "  it against a checkout that has the fix, or re-run without it once a newer"
+  echo "  tag exists."
+fi
+
+if [ -n "$dev_tooling_warning" ]; then
+  echo
+  echo "warning: $dep_path carries a .dev-tooling sentinel, so every build of $game"
+  echo "  will also resolve Gnusto's maintainer-only tooling (Persnicket, the DocC"
+  echo "  plugin) and run the lint plugin over the engine. The engine's manifest reads"
+  echo "  the sentinel by its own path and cannot tell it is not the root package."
+  echo "  To keep $game's build clean, remove that file and run"
+  echo "  \`swift package purge-cache\` in the checkout, or point --dep-path at a"
+  echo "  checkout without it."
 fi
