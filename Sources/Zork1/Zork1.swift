@@ -703,7 +703,6 @@ struct Zork1: Game, GameMain {
         aboveGround.egg.before(.open) {
             guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
             house.canary.replace(with: house.brokenCanary)
-            house.canaryRuined = true
             say(Prose.eggForcedRuinsCanary)
             // Falls through to the built-in open, which reports the egg opened.
         }
