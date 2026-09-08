@@ -551,6 +551,13 @@ extension GameText {
         /// phrase the parser matched it to.
         public let word: String
 
+        /// Quotes one word. Public so a library's own line table can be about
+        /// a word — a spell's name, a formatted time — without minting a
+        /// subject of its own for the same shape.
+        ///
+        /// - Parameter word: the fragment.
+        public init(_ word: String) { self.word = word }
+
         /// The word itself, so a template interpolates `\($0)` and not
         /// `\($0.word)`.
         public var description: String { word }
@@ -558,7 +565,7 @@ extension GameText {
         /// One word. There is no second case: the line either quotes what it
         /// was handed or it does not, and a plural noun proves nothing about a
         /// word with no number.
-        public static var samples: [Self] { [.init(word: "frotz")] }
+        public static var samples: [Self] { [.init("frotz")] }
     }
 
     /// A verb the parser understood, and the part of the sentence it still
@@ -669,7 +676,7 @@ extension GameText.Line where Object == GameText.Word {
     /// - Parameter word: what the player typed.
     /// - Returns: the sentence to print.
     public func callAsFunction(_ word: String) -> String {
-        self(.init(word: word))
+        self(.init(word))
     }
 }
 

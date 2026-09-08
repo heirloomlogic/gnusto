@@ -10,7 +10,7 @@ and the player is inconvenienced. They can stand there for a hundred turns.
 This library supplies the consequence, on the schedule the original used.
 
 ``DangerousDark`` is a `GameContent` bundle with no rooms in it — one namespaced
-counter, one daemon, four knobs on `init`. Wiring is a single line: list the
+counter, one daemon, two knobs and a text table on `init`. Wiring is a single line: list the
 instance in the game's `content` block. It reads `player.location.isLit`, which
 already answers the whole question of whether there is light here from anything,
 so a host that has declared its dark rooms and a lamp has declared everything
@@ -47,17 +47,20 @@ struct Deeps: Game {
 }
 ```
 
-A game with its own voice for the dark passes all four:
+A game with its own voice for the dark passes its two lines as a ``DangerousDark/Text``, the way every library that prints takes its table:
 
 ```swift
-let dark = DangerousDark(
-    warning: Prose.grueWarning,
-    death: Prose.grueDeath,
-    graceTurns: 1,
-    lethality: 50)
+let dark = DangerousDark(graceTurns: 1, lethality: 50, text: Prose.grueText)
+
+static let grueText: DangerousDark.Text = {
+    var text = DangerousDark.Text()
+    text.warning = Prose.grueWarning
+    text.death = Prose.grueDeath
+    return text
+}()
 ```
 
-`death` takes a subject where the other three lines do not: the **vehicle the
+`death` takes a subject where `warning` does not: the **vehicle the
 player was aboard**, or nothing when they were on their own feet. Write both
 halves with `.naming(orBare:)`:
 
@@ -116,7 +119,8 @@ Time, and Death* article in the `Gnusto` documentation.
 ### The content bundle
 
 - ``DangerousDark``
-- ``DangerousDark/init(warning:death:graceTurns:lethality:)``
+- ``DangerousDark/init(graceTurns:lethality:text:)``
+- ``DangerousDark/Text``
 
 ### Turning the dark off and on
 

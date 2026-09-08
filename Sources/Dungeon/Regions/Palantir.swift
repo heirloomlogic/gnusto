@@ -671,6 +671,6 @@ extension DungeonPalantir {
     /// a player carrying nothing at all still gets the floor rather than a
     /// division by zero.
     var gripTurns: Int {
-        max(100 / max(player.carriedWeight(), 1), Self.shortestGrip)
+        max(100 / max(player.burden, 1), Self.shortestGrip)
     }
 }

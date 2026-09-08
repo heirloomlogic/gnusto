@@ -41,7 +41,7 @@ The Lighthouse is the one in between: **the shortest complete read in the repo.*
 Four rooms, twelve moves, one winnable ending, and every piece in it exists to
 show an idiom an author reaches for in their first week — a container, a locked
 door, a fuse, a daemon, a roaming actor, a piece of custom global state, a content
-bundle, two plugins, and one custom verb. Nothing here is decorative. If a feature
+bundle, two plugins, and one reclaimed verb. Nothing here is decorative. If a feature
 is in the game, the win path goes through it or the death does.
 
 That is the whole design rule, and it is what keeps the file short enough to read
@@ -71,7 +71,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Daemon | The tide, rising every turn, drowning anyone still on the jetty. | **One** always-running daemon, and its danger confined to one room, so the player learns that a daemon ticks everywhere and only *matters* somewhere. |
 | Darkness | The Lamp Room is dark, and the beacon in it is out. | The goal room stays dark. This is the only thing making the portable light load-bearing. |
 | Actor | The keeper, limping between the base and the lamp room. | **One** roaming actor, drawing from the seeded stream only on turns she could actually be seen. |
-| Custom verb | `TALK TO KEEPER`, and the terser `TALK KEEPER`. | **One** custom verb, both sentence shapes, answered by a rule rather than an action. |
+| Reclaimed verb | `TALK TO KEEPER`, and the terser `TALK KEEPER` — the engine's own `talk` stub, taken over for the keeper. | **One** reclaimed verb, both sentence shapes, answered by a rule rather than an action. |
 | `@Global` state | `tideStage`, read by the jetty's live description; `keeperGreeted`, gating the briefing. | One number that live prose reads, and one flag that fires a line exactly once. Both save and restore. |
 | Content bundle | `Tower` owns the Lamp Room and the beacon; `Fixtures` owns the scenery. | The goal lives in a bundle and the fuel for it lives in the host. The seam is the demonstration. |
 | Cross-bundle rule | Lighting the beacon is the host's rule, because it checks for the oil can found downstairs. | The winning rule stays the host's. A bundle that could win on its own proves nothing about bundles. |
@@ -85,7 +85,7 @@ the tide and the lamp.
 
 **Not free to change without revisiting the implementation plan:** the counts in
 the right column — one daemon, two fuses, one locked door, one roaming actor, one
-custom verb, two scoring awards; the Lamp Room staying dark; the beacon living in
+reclaimed verb, two scoring awards; the Lamp Room staying dark; the beacon living in
 a different bundle from the oil that lights it; and `maxScore` staying the sum of
 what the game actually pays out.
 

@@ -66,7 +66,7 @@ public struct Stop: Sendable {
 ///     ])
 /// }
 ///
-/// var timers: [TimedEvent] { clock.schedule(butler, daemonName: "butler.day", butlerDay) }
+/// var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
 /// var map: WorldMap { butler.starts(in: butlerDay.location(at: clock.start)) }
 /// ```
 ///

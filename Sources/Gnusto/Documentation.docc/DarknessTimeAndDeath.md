@@ -151,13 +151,15 @@ A game can intercept every death by implementing ``Game/onDeath()``. It runs the
 ```swift
 func onDeath() -> DeathOutcome {
     deaths += 1
-    for item in player.inventory { item.move(to: forest) }
+    player.scatterInventory(across: [forest, clearing], except: [lantern: livingRoom])
     player.score -= 10
     player.location = forest
     say("A shadowy figure sets you down at the edge of the forest.")
     return .consumed          // the player lives; play continues
 }
 ```
+
+``Player/scatterInventory(across:except:)`` is the classic scatter written once: one random draw per item, and an item on the `except` list always lands in the room named for it — Zork keeps the lantern in the living room so a death never costs the light.
 
 ``DeathOutcome/consumed`` revives the player: the world stays ``GameStatus/playing``, the turn finishes normally (its fuses and daemons still tick), and no banner or prompt appears. ``DeathOutcome/fallThrough`` — the default — runs the standard death path unchanged, so a game that doesn't implement `onDeath()` dies exactly as before. This is how Zork models canonical resurrection: a toll and a teleport for the first few deaths, then a fall-through once the player has used up their luck.
 

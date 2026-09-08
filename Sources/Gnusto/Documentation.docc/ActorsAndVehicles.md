@@ -183,9 +183,9 @@ factories the host splices:
 
 ```swift
 var timers: [TimedEvent] {
-    actors.roams(thief, daemonName: "thiefRoams",
+    actors.roams(thief, named: "thiefRoams",
                  rooms: [cellar, gallery, studio])
-    actors.steals(thief, daemonName: "thiefSteals",
+    actors.steals(thief, named: "thiefSteals",
                   candidates: [painting],
                   announcement: { "A feather-light touch — and the \($0) is gone." })
 }
@@ -201,10 +201,12 @@ player is aboard something, the move you want is usually ``enter(_:)`` instead:
 
 The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
 keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
-with a `talk` verb of its own that she answers. It keeps that verb on purpose,
-as the worked example of a game reclaiming a word — `GnustoConversation` ships
-a `talk` too, and the two never meet because Lighthouse doesn't splice the
-plugin.
+answering `talk to keeper` with a rule of her own. `talk` is one of the
+engine's stub verbs (see <doc:StubVerbs>), so nothing there mints it; the game
+is the worked example of *reclaiming* a word every game already has, which is
+one rule and no `#verb`. `GnustoConversation` reclaims the same word the same
+way, so a game that splices the plugin and writes its own keeper rule is not
+choosing between two verbs.
 
 ## Saying hello
 

@@ -47,36 +47,42 @@ public struct DangerousDark: GameContent {
     /// ```
     @Global public var suspended = false
 
-    let warning: String
-    let death: GameText.Line<GameText.Noun?>
+    /// The dark's own voice: the two lines the mechanics print. Override
+    /// either at init to re-skin; the bundle stores its table as a `let`, so
+    /// init is the only chance.
+    public struct Text: Sendable {
+        /// Said on the first turn that ends in darkness — and said *once*, so a
+        /// game that also points `text.pitchBlack` at this sentence (Zork does:
+        /// there, the dark-room line is the threat) reads it a single time on
+        /// the turn it walks into the dark. Two different sentences are two
+        /// different sentences, and both print.
+        public var warning = "The darkness is absolute, and something in it is breathing."
+        /// The `die(_:)` message, handed the **vehicle the player was aboard**
+        /// — or nothing, when they were on their own feet. Write it with
+        /// `.naming(orBare:)`; see ``DangerousDark/timers`` for why it takes a
+        /// subject at all.
+        public var death: GameText.Line<GameText.Noun?> =
+            "Something in the dark finds you before you find it."
+
+        /// Creates the table in the library's own voice; a game re-skins the
+        /// lines it cares about and leaves the rest.
+        public init() {}
+    }
+
     let graceTurns: Int
     let lethality: Int
+    let text: Text
 
     /// - Parameters:
-    ///   - warning: said on the first turn that ends in darkness — and said
-    ///     *once*, so a game that also points `text.pitchBlack` at this sentence
-    ///     (Zork does: there, the dark-room line is the threat) reads it a
-    ///     single time on the turn it walks into the dark. Two different
-    ///     sentences are two different sentences, and both print.
-    ///   - death: the `die(_:)` message, handed the **vehicle the player was
-    ///     aboard** — or nothing, when they were on their own feet. Write it
-    ///     with `.naming(orBare:)`; see ``timers`` for why it takes a subject
-    ///     at all.
     ///   - graceTurns: guaranteed-safe dark turns after the warning — warn on
     ///     dark turn 1, safe through dark turn `graceTurns + 1`, then dice.
     ///   - lethality: per-turn percent chance of death once the dice begin (on
     ///     dark turn `graceTurns + 2` and every dark turn after).
-    public init(
-        warning: String = "The darkness is absolute, and something in it is breathing.",
-        death: GameText.Line<GameText.Noun?> =
-            "Something in the dark finds you before you find it.",
-        graceTurns: Int = 1,
-        lethality: Int = 50
-    ) {
-        self.warning = warning
-        self.death = death
+    ///   - text: the warning and the death line, if the game re-voices them.
+    public init(graceTurns: Int = 1, lethality: Int = 50, text: Text = Text()) {
         self.graceTurns = graceTurns
         self.lethality = lethality
+        self.text = text
     }
 
     /// The grue daemon: each dark turn ticks the counter. The warning prints on
@@ -100,7 +106,7 @@ public struct DangerousDark: GameContent {
     /// word "room", "and devoured you!" — and is the one that fits. Both games
     /// here had been handed the first. (#350)
     ///
-    /// That branch is why `death` takes a subject: the vehicle the player was
+    /// That branch is why ``Text/death`` takes a subject: the vehicle the player was
     /// aboard, or nothing. Both halves are the game's own words. A library that
     /// has never seen the game has no business deciding what to call the place
     /// somebody was taken from, so the stock line names none.
@@ -112,10 +118,10 @@ public struct DangerousDark: GameContent {
             }
             darkTurns += 1
             if darkTurns == 1 {
-                sayOnceThisTurn(warning)
+                sayOnceThisTurn(text.warning)
             } else if darkTurns >= graceTurns + 2, chance(lethality) {
                 // `<FSET? <LOC ,WINNER> ,VEHBIT>`.
-                try die(death(player.vehicle?.definiteNoun))
+                try die(text.death(player.vehicle?.definiteNoun))
             }
         }
     }

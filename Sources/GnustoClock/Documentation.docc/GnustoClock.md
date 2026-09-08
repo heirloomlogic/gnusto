@@ -35,16 +35,18 @@ import Gnusto
 import GnustoClock          // .product(name: "GnustoClock", package: "Gnusto")
 
 struct Fulminate: Game {
-    let clock = Clock(
-        startingAt: TimeOfDay(17, 30),
-        minutesPerTurn: 2,
-        timeIs: { "Your watch says \($0)." }
-    )
+    let clock = Clock(startingAt: TimeOfDay(17, 30), minutesPerTurn: 2, text: clockText)
+
+    static let clockText: Clock.Text = {
+        var text = Clock.Text()
+        text.timeIs = .naming { "Your watch says \($0)." }
+        return text
+    }()
 
     var content: GameContents { clock }        // the verb, the action, the saved state
 
     var timers: [TimedEvent] {
-        clock.schedule(teague, daemonName: "teague.day", teagueDay)
+        clock.schedule(teague, named: "teague.day", teagueDay)
 
         clock.at(TimeOfDay(17, 46), named: "clock.blast") {
             blastHappened = true
@@ -67,6 +69,7 @@ transcript that never says which it was.
 ### The clock
 
 - ``Clock``
+- ``Clock/Text``
 
 ### Times of day
 

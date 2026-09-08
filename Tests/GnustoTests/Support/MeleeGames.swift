@@ -67,7 +67,7 @@ struct ArenaGame: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: dummy, key: "dummy", daemonName: "melee.dummy",
+            of: dummy, key: "dummy", named: "melee.dummy",
             prose: MeleeCombat.AggressionProse(
                 miss: ["The dummy swings wide."],
                 wound: ["The dummy clips your ear."],
@@ -86,7 +86,7 @@ struct ArenaGame: Game {
 /// the player survives long enough to watch a fight run; the outright-kill
 /// branch can still end a run early, which is what the pinned seeds buy.
 ///
-/// He also carries a `while:` gate on `truce`, which `parley` shuts and
+/// He also carries a `when:` gate on `truce`, which `parley` shuts and
 /// `resume` reopens. It is open unless a test flips it, and an open gate draws
 /// nothing, so it costs the other tests here nothing. What it buys is the one
 /// claim only a `strikesFirst: 0` villain can make: that a shut gate suspends a
@@ -164,10 +164,10 @@ struct AmbushGame: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: bandit, key: "bandit", daemonName: "melee.bandit",
+            of: bandit, key: "bandit", named: "melee.bandit",
             strikesFirst: 0,
             playerStrength: 20,
-            while: { !truce },
+            when: { !truce },
             prose: MeleeCombat.AggressionProse(
                 miss: ["The bandit lunges and comes up short."],
                 wound: ["The bandit opens a cut along your arm."],
@@ -232,7 +232,7 @@ struct SkulkerGame: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: skulker, key: "skulker", daemonName: "melee.skulker",
+            of: skulker, key: "skulker", named: "melee.skulker",
             strikesFirst: 20,
             playerStrength: 20,
             prose: MeleeCombat.AggressionProse(
@@ -242,7 +242,7 @@ struct SkulkerGame: Game {
     }
 }
 
-/// Fixture for the `while:` aggression gate: a heckler whose counter-attack
+/// Fixture for the `when:` aggression gate: a heckler whose counter-attack
 /// only fires while `enraged` is set. `provoke`/`soothe` flip the gate. The
 /// gate closes over `enraged` and is evaluated before any RNG draw, so quiet
 /// turns leave the seeded stream untouched — a gate test can prove the draw
@@ -313,9 +313,9 @@ struct GatedArenaGame: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: heckler, key: "heckler", daemonName: "melee.heckler",
+            of: heckler, key: "heckler", named: "melee.heckler",
             strikesFirst: 25,
-            while: { enraged },
+            when: { enraged },
             prose: MeleeCombat.AggressionProse(
                 miss: ["The heckler jabs and misses."],
                 wound: ["The heckler cuffs you."],
@@ -417,16 +417,16 @@ struct CutpurseGame: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: cutpurse, key: "cutpurse", daemonName: "melee.cutpurse",
+            of: cutpurse, key: "cutpurse", named: "melee.cutpurse",
             playerStrength: 20,
-            while: { !truce },
+            when: { !truce },
             prose: MeleeCombat.AggressionProse(
                 miss: ["He jabs and misses."],
                 wound: ["He catches you a glancing one."],
                 playerDeath: "He finishes what he started."))
         behaviors.steals(
             cutpurse,
-            daemonName: "melee.cutpurse.steals",
+            named: "melee.cutpurse.steals",
             candidates: [chalice, pearl, comb, seal],
             chancePerTurn: 100,
             announcement: { "He lifts the \($0) clean out of your hand." })

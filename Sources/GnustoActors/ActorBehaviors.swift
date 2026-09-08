@@ -9,9 +9,9 @@ import Gnusto
 /// let actors = ActorBehaviors()
 ///
 /// var timers: [TimedEvent] {
-///     actors.roams(thief, daemonName: "thief.roam",
+///     actors.roams(thief, named: "thief.roam",
 ///                  rooms: [cellar, gallery, studio])
-///     actors.steals(thief, daemonName: "thief.steal",
+///     actors.steals(thief, named: "thief.steal",
 ///                   candidates: [painting],
 ///                   announcement: { "A shadow relieves you of the \($0)." })
 /// }
@@ -43,7 +43,7 @@ public struct ActorBehaviors: GamePlugin {
     /// while the actor is outside `rooms` — including after `vanish()` —
     /// but the host should still `stopDaemon(_:)` on the actor's death.
     ///
-    /// `while:` is an extra gate evaluated *first*, before the position guard
+    /// `when:` is an extra gate evaluated *first*, before the position guard
     /// and before any draw, exactly as `MeleeCombat.aggression(of:…)`'s is — so
     /// a roamer whose wandering is scoped (the thief holds still while you are
     /// standing in his lair) burns no randomness on the turns his gate is shut,
@@ -52,25 +52,25 @@ public struct ActorBehaviors: GamePlugin {
     ///
     /// - Parameters:
     ///   - actor: the NPC to teleport.
-    ///   - daemonName: the daemon's global timer name.
+    ///   - name: the daemon's global timer name.
     ///   - rooms: the set of rooms the actor teleports within.
     ///   - percent: per-turn chance of a move, while in the set.
-    ///   - gate: extra gate checked first — a false gate is a quiet, draw-free turn.
+    ///   - condition: an extra gate, checked first — a false gate is a quiet, draw-free turn.
     ///   - arrival: line printed when the player watches the actor arrive.
     ///   - departure: line printed when the player watches the actor leave.
     /// - Returns: the roaming daemon, for the host's `timers` block.
     public func roams(
         _ actor: Actor,
-        daemonName: String,
+        named name: String,
         rooms: [Location],
         chancePerTurn percent: Int = 50,
-        while gate: @escaping @Sendable () -> Bool = { true },
+        when condition: @escaping @Sendable () -> Bool = { true },
         arrival: String? = nil,
         departure: String? = nil
     ) -> TimedEvent {
-        daemon(daemonName, autostart: true) {
+        daemon(name, autostart: true) {
             // The host's gate first: a false gate is a quiet turn, no draw.
-            guard gate() else { return }
+            guard condition() else { return }
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, rooms.contains(here) else { return }
             guard !actor.isUnconscious else { return }
@@ -112,33 +112,33 @@ public struct ActorBehaviors: GamePlugin {
     /// player (`starts(in:)` the player's start room) to avoid a spurious
     /// arrival on turn one.
     ///
-    /// `rooms:` and `while:` are the two ways to scope a follower, and they
+    /// `rooms:` and `when:` are the two ways to scope a follower, and they
     /// scope different things. `rooms:` is a whitelist of *destinations* — a
     /// gaoler who walks the corridors and will not set foot in a cell follows
     /// you along the one and lets you go into the other, which is what makes
-    /// "somewhere he will not go" a place you can stand. `while:` is an extra
-    /// gate evaluated first, exactly as ``roams(_:daemonName:rooms:chancePerTurn:while:arrival:departure:)``'s
+    /// "somewhere he will not go" a place you can stand. `when:` is an extra
+    /// gate evaluated first, exactly as ``roams(_:named:rooms:chancePerTurn:when:arrival:departure:)``'s
     /// is, for the companion who has been told to wait. Either left out is
     /// always open, so a caller that passes neither behaves exactly as before.
     ///
     /// - Parameters:
     ///   - actor: the companion NPC.
-    ///   - daemonName: the daemon's global timer name.
+    ///   - name: the daemon's global timer name.
     ///   - rooms: the destinations he will walk into; `nil` for anywhere.
-    ///   - gate: extra gate checked first — a false gate is a quiet turn.
+    ///   - condition: an extra gate, checked first — a false gate is a quiet turn.
     ///   - arrivals: lines printed when the companion catches up, if lit —
     ///     cycled by the turn counter; empty for a silent companion.
     /// - Returns: the following daemon, for the host's `timers` block.
     public func follows(
         _ actor: Actor,
-        daemonName: String,
+        named name: String,
         rooms: [Location]? = nil,
-        while gate: @escaping @Sendable () -> Bool = { true },
+        when condition: @escaping @Sendable () -> Bool = { true },
         arrivals: [String] = []
     ) -> TimedEvent {
-        daemon(daemonName, autostart: true) {
+        daemon(name, autostart: true) {
             // The host's gate first: a false gate is a quiet turn.
-            guard gate() else { return }
+            guard condition() else { return }
             guard let here = actor.location else { return }  // idle while offstage
             guard !actor.isUnconscious else { return }
             let dest = player.location
@@ -165,19 +165,19 @@ public struct ActorBehaviors: GamePlugin {
     ///
     /// - Parameters:
     ///   - actor: the thieving NPC.
-    ///   - daemonName: the daemon's global timer name.
+    ///   - name: the daemon's global timer name.
     ///   - candidates: the items eligible to be stolen.
     ///   - percent: per-turn chance of a theft, while sharing the room.
     ///   - announcement: builds the theft line from the stolen item's name.
     /// - Returns: the theft daemon, for the host's `timers` block.
     public func steals(
         _ actor: Actor,
-        daemonName: String,
+        named name: String,
         candidates: [Item],
         chancePerTurn percent: Int = 30,
         announcement: @escaping @Sendable (String) -> String
     ) -> TimedEvent {
-        daemon(daemonName, autostart: true) {
+        daemon(name, autostart: true) {
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, player.location == here else { return }
             guard !actor.isUnconscious else { return }

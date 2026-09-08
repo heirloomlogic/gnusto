@@ -61,11 +61,17 @@ struct FickleDarkGame: Game {
     }
 
     let dangerousDark = DangerousDark(
-        warning: "The darkness is absolute, and something in it is breathing.",
-        death: "Something in the dark finds you before you find it.",
         graceTurns: 0,
-        lethality: 40
+        lethality: 40,
+        text: Self.darkText
     )
+
+    static let darkText: DangerousDark.Text = {
+        var text = DangerousDark.Text()
+        text.warning = "The darkness is absolute, and something in it is breathing."
+        text.death = "Something in the dark finds you before you find it."
+        return text
+    }()
 
     var content: GameContents {
         dangerousDark
@@ -168,11 +174,17 @@ struct GrueVoicedDarkGame: Game {
     }
 
     let dangerousDark = DangerousDark(
-        warning: GrueVoicedDarkGame.grue,
-        death: "Something in the dark finds you before you find it.",
         graceTurns: 1,
-        lethality: 100
+        lethality: 100,
+        text: Self.darkText
     )
+
+    static let darkText: DangerousDark.Text = {
+        var text = DangerousDark.Text()
+        text.warning = GrueVoicedDarkGame.grue
+        text.death = "Something in the dark finds you before you find it."
+        return text
+    }()
 
     /// One voice for the whole dark: the room's line, the line that announces a
     /// doused lamp, and the grue's warning are one sentence. Three emitters,
@@ -236,11 +248,17 @@ struct PatientDarkGame: Game {
     }
 
     let dangerousDark = DangerousDark(
-        warning: "W.",
-        death: "D.",
         graceTurns: 3,
-        lethality: 100
+        lethality: 100,
+        text: Self.darkText
     )
+
+    static let darkText: DangerousDark.Text = {
+        var text = DangerousDark.Text()
+        text.warning = "W."
+        text.death = "D."
+        return text
+    }()
 
     var content: GameContents {
         dangerousDark
@@ -279,13 +297,19 @@ struct PuntableDarkGame: Game {
     }
 
     let dangerousDark = DangerousDark(
-        warning: "W.",
-        death: .naming(orBare: "Something in the dark takes you out of the room.") {
-            "Something in the dark takes you out of \($0)."
-        },
         graceTurns: 0,
-        lethality: 100
+        lethality: 100,
+        text: Self.darkText
     )
+
+    static let darkText: DangerousDark.Text = {
+        var text = DangerousDark.Text()
+        text.warning = "W."
+        text.death = .naming(orBare: "Something in the dark takes you out of the room.") {
+            "Something in the dark takes you out of \($0)."
+        }
+        return text
+    }()
 
     var content: GameContents {
         dangerousDark

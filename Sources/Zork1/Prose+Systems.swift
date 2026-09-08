@@ -1,4 +1,4 @@
-/// Prose for the systems layer (``ZorkSystems``, ``ZorkBurden``, the liquid
+/// Prose for the systems layer (``ZorkSystems``, the engine's `Burden`, the liquid
 /// rules, and the score ranks).
 ///
 /// **Not all of it is the source's, and the file used to say it was.** The

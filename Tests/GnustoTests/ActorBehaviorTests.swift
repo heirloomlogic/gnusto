@@ -31,7 +31,7 @@ struct ActorBehaviorTests {
         #expect(!inTheDark.contains("slips away"))
     }
 
-    /// A shut `while:` gate freezes the roamer where he stands, and — because
+    /// A shut `when:` gate freezes the roamer where he stands, and — because
     /// it is checked before the position guard and before any draw — costs the
     /// seeded stream nothing, so the wandering resumes exactly where an ungated
     /// run would have had it.
@@ -248,7 +248,7 @@ struct ActorBehaviorTests {
     }
 
     @Test func aShutGateHoldsTheFollowerStill() async throws {
-        // The `while:` gate, evaluated ahead of everything else: told to wait,
+        // The `when:` gate, evaluated ahead of everything else: told to wait,
         // he waits, even for a destination squarely on his whitelist.
         let transcript = try await play(
             GaolerGame(), ["halt", "east", "heel", "quit"])

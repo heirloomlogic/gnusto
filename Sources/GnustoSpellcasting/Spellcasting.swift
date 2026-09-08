@@ -1,10 +1,6 @@
 import Gnusto
 
 extension Intent {
-    /// Recover spent magical energy: `rest` (or `meditate`) restores the pool
-    /// to full. Owned by the spellcasting system so any game that adds it gets
-    /// the verb for free.
-    #verb("rest", ["rest"], ["meditate"])
     /// Report the caster's state: `spells` (or `magic`) lists what is held in
     /// memory and how much magical energy remains.
     #verb("spells", ["spells"], ["magic"])
@@ -29,7 +25,7 @@ extension Intent {
 ///     #verb("ignite", ["ignite"], ["cast", "ignite"], ["cast", "ignite", "at", .directObject])
 /// }
 ///
-/// var content: GameContents { magic }              // seeds the pools, adds `rest`
+/// var content: GameContents { magic }              // seeds the pools, claims `rest`
 /// var verbs: [SyntaxRule] { [.spark, .ignite] }    // teach the parser the words
 /// var actions: [IntentAction] {
 ///     magic.spell(.spark, cost: .cantrip) { say("A harmless spark leaps from your hand.") }
@@ -54,10 +50,95 @@ public struct Spellcasting: GameContent {
     /// The magical-energy pool, seeded to `maxMana` and refilled by `rest`.
     @Global var mana: Int
 
+    /// The system's own voice — every line the mechanics print, from the
+    /// refusals at the availability gate to the `spells` report. A spell's
+    /// *effect* is the game's prose and never passes through here. Override
+    /// lines at init to re-skin.
+    ///
+    /// The lines about one spell take its name as a `GameText.Word`, and the
+    /// two report lines take a ``SpellList`` and an ``Energy``, so a line whose
+    /// whole content is what it was handed cannot be written as a sentence that
+    /// leaves it out.
+    public struct Text: Sendable {
+        /// `rest` with the pool already full.
+        public var alreadyRested: GameText.Line<GameText.Nothing> =
+            "Your magical energy is already at its peak."
+        /// `rest` refilling the pool.
+        public var rested: GameText.Line<GameText.Nothing> =
+            "You still your thoughts, and your magical energy wells back up to full."
+        /// The `spells` report when nothing is held in mind.
+        public var noSpellsHeld: GameText.Line<GameText.Nothing> = "You hold no spells in mind."
+        /// The `spells` report's list of what is held in mind.
+        public var spellsHeld: GameText.Line<SpellList> = .naming { "You hold in mind: \($0)." }
+        /// The `spells` report's energy line.
+        public var energy: GameText.Line<Energy> = .naming {
+            "Your magical energy stands at \($0.current) of \($0.maximum)."
+        }
+        /// Casting a prepared spell that is not in memory.
+        public var notPrepared: GameText.Line<GameText.Word> = .naming {
+            "You don't have the \($0.word) spell prepared."
+        }
+        /// Casting an energy spell the pool cannot pay for.
+        public var noEnergy: GameText.Line<GameText.Word> = .naming {
+            "You lack the magical energy to cast \($0)."
+        }
+        /// Casting a scroll spell with no scroll in hand.
+        public var noScroll: GameText.Line<GameText.Word> = .naming {
+            "You have no scroll of \($0) to read from."
+        }
+        /// Memorizing a spell already held in mind.
+        public var alreadyMemorized: GameText.Line<GameText.Word> = .naming {
+            "You already have \($0) firmly in mind."
+        }
+        /// Memorizing with every slot full.
+        public var memoryFull: GameText.Line<GameText.Nothing> =
+            "Your mind can hold no more spells; cast one before learning another."
+        /// Memorizing a book spell without the book.
+        public var spellbookNeeded: GameText.Line<GameText.Word> = .naming {
+            "You need your spellbook in hand to memorize \($0)."
+        }
+        /// Memorizing a spell.
+        public var memorized: GameText.Line<GameText.Word> = .naming {
+            "You fix the \($0.word) spell in your memory."
+        }
+
+        /// Creates the table in the library's own voice; a game re-skins the
+        /// lines it cares about and leaves the rest.
+        public init() {}
+    }
+
+    /// What ``Text/spellsHeld`` is about: the names held in mind, sorted.
+    /// Interpolating one prints them as an English list.
+    public struct SpellList: NamedSubject, CustomStringConvertible {
+        /// The names, sorted.
+        public let names: [String]
+
+        init(_ names: some Sequence<String>) { self.names = names.sorted() }
+
+        /// The names as an English list, so interpolating one prints them.
+        public var description: String { GameText.list(names) }
+
+        /// Two names, enough to render the line with its separator.
+        public static var samples: [Self] { [Self(["glow", "seal"])] }
+    }
+
+    /// What ``Text/energy`` is about: the pool's level against its ceiling.
+    public struct Energy: NamedSubject {
+        /// Energy in the pool now.
+        public let current: Int
+        /// The full pool.
+        public let maximum: Int
+
+        /// One reading, enough to render the line.
+        public static var samples: [Self] { [Self(current: 8, maximum: 12)] }
+    }
+
     /// How many spells can be held in memory at once.
     public let memorySlots: Int
     /// The full magical-energy pool `rest` restores to.
     public let maxMana: Int
+    /// This layer's lines.
+    let text: Text
 
     /// Creates a spellcasting layer.
     ///
@@ -65,16 +146,21 @@ public struct Spellcasting: GameContent {
     ///   - memorySlots: how many spells can be memorized at once (default 3).
     ///   - maxMana: the full magical-energy pool, and the starting amount
     ///     (default 12).
-    public init(memorySlots: Int = 3, maxMana: Int = 12) {
+    ///   - text: the system-voice lines, if the game re-voices any of them.
+    public init(memorySlots: Int = 3, maxMana: Int = 12, text: Text = Text()) {
         self.memorySlots = memorySlots
         self.maxMana = maxMana
+        self.text = text
         self._mana = Global(wrappedValue: maxMana)
     }
 
-    /// The verbs the spellcasting layer contributes: `rest`/`meditate`, which
-    /// refills the magical-energy pool, and `spells`/`magic`, which reports the
-    /// caster's state.
-    public var verbs: [SyntaxRule] { [.rest, .spells] }
+    /// The verbs the spellcasting layer contributes: `spells`/`magic`, which
+    /// reports the caster's state, and `meditate` as a second word for the
+    /// engine's own `rest`, which ``actions`` promotes to refilling the pool.
+    public var verbs: [SyntaxRule] {
+        .spells
+        SyntaxRule("meditate", intent: .rest)
+    }
 
     /// "spell" is filler in a casting game — `cast the glow spell` should
     /// parse as `cast glow` — so the layer adds it to the parser's noise set.
@@ -85,20 +171,15 @@ public struct Spellcasting: GameContent {
     /// report of memorized spells and remaining energy.
     public var actions: [IntentAction] {
         action(.rest) {
-            try require(
-                mana < maxMana,
-                else: "Your magical energy is already at its peak.")
+            try require(mana < maxMana, else: text.alreadyRested())
             mana = maxMana
-            say("You still your thoughts, and your magical energy wells back up to full.")
+            say(text.rested())
         }
 
         action(.spells) {
-            let held = prepared.names.sorted().joined(separator: ", ")
-            say(
-                held.isEmpty
-                    ? "You hold no spells in mind."
-                    : "You hold in mind: \(held).")
-            say("Your magical energy stands at \(mana) of \(maxMana).")
+            let held = prepared.names
+            say(held.isEmpty ? text.noSpellsHeld() : text.spellsHeld(SpellList(held)))
+            say(text.energy(Energy(current: mana, maximum: maxMana)))
         }
     }
 
@@ -141,17 +222,11 @@ public struct Spellcasting: GameContent {
             case .cantrip:
                 break
             case .prepared:
-                try require(
-                    prepared.names.contains(name),
-                    else: "You don't have the \(name) spell prepared.")
+                try require(prepared.names.contains(name), else: text.notPrepared(GameText.Word(name)))
             case .energy(let amount):
-                try require(
-                    mana >= amount,
-                    else: "You lack the magical energy to cast \(name).")
+                try require(mana >= amount, else: text.noEnergy(GameText.Word(name)))
             case .scroll(let scroll):
-                try require(
-                    scroll.isHeld,
-                    else: "You have no scroll of \(name) to read from.")
+                try require(scroll.isHeld, else: text.noScroll(GameText.Word(name)))
             }
 
             try effect()
@@ -174,19 +249,13 @@ public struct Spellcasting: GameContent {
     private func prepareAction(_ prepareIntent: Intent, spell: Intent, book: Item?) -> IntentAction {
         let name = spell.raw
         return action(prepareIntent) {
-            try require(
-                !prepared.names.contains(name),
-                else: "You already have \(name) firmly in mind.")
-            try require(
-                prepared.names.count < memorySlots,
-                else: "Your mind can hold no more spells; cast one before learning another.")
+            try require(!prepared.names.contains(name), else: text.alreadyMemorized(GameText.Word(name)))
+            try require(prepared.names.count < memorySlots, else: text.memoryFull())
             if let book {
-                try require(
-                    book.isHeld,
-                    else: "You need your spellbook in hand to memorize \(name).")
+                try require(book.isHeld, else: text.spellbookNeeded(GameText.Word(name)))
             }
             prepared.names.insert(name)
-            say("You fix the \(name) spell in your memory.")
+            say(text.memorized(GameText.Word(name)))
         }
     }
 }

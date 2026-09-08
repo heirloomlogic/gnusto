@@ -1535,16 +1535,23 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
   item rule — and waking him costs what striking him costs. He is the only
   sleeper in the game. The floor keeps the non-actor branch, which is what a line
   can word.
+- **`talk` renders two of `V-TELL`'s three branches.** `TALK TO` is `V-TELL`
+  (`gsyntax.zil:421`), and the stub line reproduces its non-actor branch ("You can't
+  talk to the X!", `gverbs.zil:1399`) and `V-SAY`'s line for addressing yourself
+  (`:1194`). The actor branch — "The X pauses for a moment, perhaps thinking that you
+  should reread the manual." — is not rendered, because a stub line is handed a name
+  and cannot see whether it belongs to a person; the troll, the thief and the cyclops
+  get the non-actor branch, which is at least true of them.
 
 ### Inventions — Zork I has no such verb at all
 
-Twelve of the engine's stubs appear nowhere in `gsyntax.zil`, so these lines are
+Thirteen of the engine's stubs appear nowhere in `gsyntax.zil`, so these lines are
 **written, not reproduced**, and are recorded separately for that reason. They are
 in the register — terse, dry, exclamatory, rude to the player where the source is
 rude — but no ZIL routine stands behind them and none is cited at its assignment.
 
-`sing`, `buy`, `sell`, `think`, `point`, `kneel`, `lie`, `sit`, `sleep`, `taste`,
-`dive`, `empty` — plus `yourself`, for which no ZIL routine ever had to render the
+`sing`, `buy`, `sell`, `think`, `point`, `kneel`, `lie`, `sit`, `sleep`, `rest`,
+`taste`, `dive`, `empty` — plus `yourself`, for which no ZIL routine ever had to render the
 player's name, and `throwAt`, whose `THROW AT` requires an actor
 (`gsyntax.zil:486`) and drops the object rather than refusing.
 

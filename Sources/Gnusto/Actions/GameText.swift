@@ -299,6 +299,9 @@ public struct GameText: Sendable {
     public var cantPutInItself: Line<Nothing> = "You can't put something in itself."
     /// Putting something into a container that is at capacity.
     public var noRoom: Line<Nothing> = "There's no room."
+    /// Taking something that would tip the player's load over a ``Burden``'s
+    /// cap. Handed the thing they reached for.
+    public var handsFull: Line<Noun> = "You're carrying too much already."
     /// Pushing something the default action won't move.
     public var cantMoveThat: Line<Nothing> = "You can't move that."
 
@@ -871,12 +874,20 @@ extension GameText {
         public var drink: Line<Noun?> = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep: Line<Nothing> = "You're not sleepy."
+        /// Resting.
+        public var rest: Line<Nothing> = "You're not tired."
         /// Waking, or waking somebody who isn't asleep. The bare `wake` and
         /// `wake up` name nothing.
         public var wake: Line<Noun?> = "There's no sleeping to be interrupted."
 
         // MARK: Social
 
+        /// Talking to somebody who has nothing to say — or to something, or to
+        /// yourself, which is the bare half. Offered the name for the reason
+        /// `kiss` is: a person is the verb's whole point.
+        public var talk: Line<Noun?> = .naming(orBare: "You talk for a while. Nobody answers.") {
+            "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say."
+        }
         /// Kissing or hugging somebody. Offered their name, unlike everywhere
         /// else a stub reaches a person, because kissing somebody is what the
         /// verb is for; the engine's own wording declines it.

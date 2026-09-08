@@ -48,7 +48,8 @@ let package = Package(
         .executableTarget(
             name: "MyGame",
             dependencies: [
-                .product(name: "Gnusto", package: "Gnusto")
+                .product(name: "Gnusto", package: "Gnusto"),
+                .product(name: "GnustoScoring", package: "Gnusto"),
             ]
         ),
         .testTarget(

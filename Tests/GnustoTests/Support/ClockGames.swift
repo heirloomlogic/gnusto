@@ -335,7 +335,7 @@ struct ManorLab: Game {
     }
 
     var timers: [TimedEvent] {
-        clock.schedule(butler, daemonName: "butler.day", butlerDay)
+        clock.schedule(butler, named: "butler.day", butlerDay)
     }
 
     var map: WorldMap {

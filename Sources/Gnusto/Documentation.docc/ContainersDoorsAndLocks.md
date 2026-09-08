@@ -39,6 +39,19 @@ let basket = Item {
 }
 ```
 
+A cap on the *player's* hands is ``Burden``: a bundle with no rooms of its own that refuses any `take` tipping the load over its `carryCap`. Every takeable item weighs its ``TraitKey/weight`` (5 unless declared), a container brings its contents along, and ``Item/burden`` and ``Player/burden`` weigh the same way for a game's own load gates:
+
+```swift
+let burden = Burden(carryCap: 100)
+
+var content: GameContents { burden }
+
+let coffin = Item {
+    name("gold coffin")
+    trait(.weight, 55)
+}
+```
+
 Inside a rule, the live relationships are:
 
 - ``Item/holds(_:)`` — is that item on or inside this one?

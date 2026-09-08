@@ -35,7 +35,7 @@ extension TraitKey<Int> {
 ///                   onDefeat: { trollDefeated = true })
 /// }
 /// var timers: [TimedEvent] {
-///     melee.aggression(of: troll, key: "troll", daemonName: "melee.troll",
+///     melee.aggression(of: troll, key: "troll", named: "melee.troll",
 ///                      prose: trollAggression)
 /// }
 /// ```
@@ -47,7 +47,7 @@ extension TraitKey<Int> {
 public struct MeleeCombat: GameContent {
     /// The system's own voice — refusals that belong to the mechanics, not
     /// to any one villain. Override lines at init to re-skin.
-    public struct CombatText: Sendable {
+    public struct Text: Sendable {
         /// Attacking something no villain rule claimed. Handed the target's
         /// **indefinite** name — "a rubber raft", not "the rubber raft" —
         /// because a refusal aimed at a whole category of thing is the joke
@@ -146,7 +146,7 @@ public struct MeleeCombat: GameContent {
     /// are no longer standing in one room. It is the whole of the difference
     /// between a villain who blocks and a villain who kills you for reading the
     /// room; see
-    /// ``aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)``.
+    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:)``.
     struct Ledger: Codable, Sendable, GlobalValue {
         var health: [String: Int] = [:]
         var stunned: [String: Int] = [:]
@@ -177,12 +177,12 @@ public struct MeleeCombat: GameContent {
 
     @Global var ledger = Ledger()
 
-    let text: CombatText
+    let text: Text
 
     /// Creates the plugin with the given combat text.
     ///
     /// - Parameter text: the system-voice combat lines shared across villains.
-    public init(text: CombatText = CombatText()) {
+    public init(text: Text = Text()) {
         self.text = text
     }
 
@@ -275,7 +275,7 @@ public struct MeleeCombat: GameContent {
     ///
     /// A knockout also sets `Actor.isUnconscious` — see `stun(_:key:turnsLeft:)`.
     /// It is cleared again by the villain's own
-    /// ``aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)`` daemon, so
+    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:)`` daemon, so
     /// a villain registered here without one stays down for good once knocked
     /// out, exactly as his stun counter already did.
     ///
@@ -383,7 +383,7 @@ public struct MeleeCombat: GameContent {
     /// walking out ends a fight and walking back in asks the question again.
     /// Neither 0 nor 100 draws; see `startsAFight(chance:)`.
     ///
-    /// `while:` is an extra gate evaluated before the same-room guard and
+    /// `when:` is an extra gate evaluated before the same-room guard and
     /// before any draw — so a villain whose combat is scoped (the thief only
     /// fights in his lair) burns no randomness on the turns his gate is
     /// closed, keeping every seeded draw sequence intact. It does *not* gate
@@ -399,24 +399,24 @@ public struct MeleeCombat: GameContent {
     ///   - actor: the villain who fights back each turn.
     ///   - key: ledger key sharing this villain's health, stun and engagement
     ///     with `villain`.
-    ///   - daemonName: global timer name for the counter-attack daemon.
+    ///   - name: global timer name for the counter-attack daemon.
     ///   - strikesFirst: the odds out of a hundred that he starts a fight on a
     ///     turn the player hasn't. 100 fights on sight; 0 never starts one and
     ///     only ever answers a blow.
     ///   - playerStrength: hits the player survives before a wound turns fatal.
-    ///   - gate: extra gate checked first — a false gate is a quiet, draw-free turn.
+    ///   - condition: an extra gate, checked first — a false gate is a quiet, draw-free turn.
     ///   - prose: per-outcome counter-attack lines (miss, wound, playerDeath).
     /// - Returns: the daemon rolling the villain's counter-attack each turn.
     public func aggression(
         of actor: Actor,
         key: String,
-        daemonName: String,
+        named name: String,
         strikesFirst: Int = 100,
         playerStrength: Int = 2,
-        while gate: @escaping @Sendable () -> Bool = { true },
+        when condition: @escaping @Sendable () -> Bool = { true },
         prose: AggressionProse
     ) -> TimedEvent {
-        daemon(daemonName, autostart: true) {
+        daemon(name, autostart: true) {
             // One snapshot for both guards below: `ledger` is a `@Global`, and
             // every read of one decodes the whole struct.
             let ledgered = ledger
@@ -457,7 +457,7 @@ public struct MeleeCombat: GameContent {
                 stun(actor, key: key, turnsLeft: nil)
             }
             // The host's gate: a false gate is a quiet turn, no draw.
-            guard gate() else { return }
+            guard condition() else { return }
             guard together else { return }
 
             // The source's `<OR <FSET? .O ,FIGHTBIT> <APPLY … ,F-FIRST?>>`, and

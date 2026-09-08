@@ -84,9 +84,10 @@ struct StubVerbTests {
         "smell", "smell rod", "sniff", "sniff rod",
         "listen", "listen to rat", "taste rod", "lick rod",
         // Body.
-        "eat rod", "drink flask", "sleep",
+        "eat rod", "drink flask", "sleep", "rest",
         "wake", "wake up", "wake rat", "wake up rat",
         // Social.
+        "talk to rat", "talk with rat", "talk rat", "speak to rat", "speak with rat",
         "kiss rat", "hug rat", "give rod to rat", "hand rod to rat",
         "yell", "shout", "scream", "wave", "wave rod", "point at rat",
         // Motion.
@@ -185,7 +186,7 @@ struct StubVerbTests {
     /// command per stub that takes an object and doesn't need to touch it.
     static let everyDistantStubCommand = [
         "smell coin", "listen to coin", "point at coin", "count coin",
-        "buy coin", "sell coin", "wake coin",
+        "buy coin", "sell coin", "wake coin", "talk to coin",
     ]
 
     @Test(arguments: StubVerbTests.everyDistantStubCommand)
@@ -716,7 +717,7 @@ struct StubVerbTests {
     @Test func theStubSweepSeesEveryLineAGameHasNotVoiced() {
         let engine = GameText.StubReplies()
         let shipped = Mirror(reflecting: engine).children.compactMap(\.label)
-        #expect(shipped.count == 49)
+        #expect(shipped.count == 51)
         #expect(Set(engineVoicedStubLines(in: engine)) == Set(shipped))
     }
 
