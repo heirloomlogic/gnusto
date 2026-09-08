@@ -435,7 +435,7 @@ public struct Conversation: GameContent {
     /// `say hello to <object>` are built in; bare `hello` is not, so a game can
     /// own that word outright without a launch warning.)
     ///
-    /// `talk` is not here because it is the engine's: ``Gnusto/Intent/talk`` is
+    /// `talk` is not here because it is the engine's: `Intent.talk` is
     /// a stub verb every game has, and ``actions`` promotes it — silently, as
     /// any stub is promoted. GREET is the hello, TALK is settling in for one,
     /// and ``greeting(of:for:learning:again:reply:)`` answers both by default,
