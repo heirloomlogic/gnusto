@@ -114,7 +114,7 @@ struct DungeonAlice: GameContent {
 
     /// The mainframe's `LOW-TIDE`: whether the depression in the Pool Room has
     /// been boiled dry.
-    @Global var poolEvaporated = false
+    @Latch var poolEvaporated
 
     /// The mainframe's `CAGE-TOP`: whether the alarm has already fired. Read
     /// off the cage rather than saved beside it — the cage is offstage until
@@ -698,10 +698,9 @@ struct DungeonAlice: GameContent {
             try require(
                 command.indirectObject == nil || command.indirectObject == poolOfSewage,
                 else: Prose.cakeThrownNowhere)
-            try require(!poolEvaporated, else: Prose.poolAlreadyGone)
+            try require($poolEvaporated.trips(), else: Prose.poolAlreadyGone)
             redCake.vanish()
             poolOfSewage.vanish()
-            poolEvaporated = true
             spices.reveal()
             try reply(Prose.poolEvaporates)
         }

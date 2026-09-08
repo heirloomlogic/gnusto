@@ -65,7 +65,7 @@ struct Gramarye: Game, GameMain {
     /// wards dormant; a draught seals it a few turns in (see `timers`). This
     /// flag is what tells "nothing is wrong yet" apart from "the door is open
     /// again because you unbarred it" — states `wardedDoor.isOpen` cannot.
-    @Global var doorSealed = false
+    @Latch var doorSealed
 
     // MARK: - Rooms
 
@@ -287,7 +287,7 @@ struct Gramarye: Game, GameMain {
     /// amulet sealed away, which is the defect this pairing exists to prevent.
     private func sealTheDoor() {
         wardedDoor.isOpen = false
-        doorSealed = true
+        $doorSealed.trips()
     }
 
     var actions: [IntentAction] {

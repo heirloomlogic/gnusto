@@ -149,7 +149,7 @@ struct ZorkMirror: GameContent {
 
     /// Whether a mirror has been smashed (the original's `MIRROR-MUNG`). Once
     /// broken, the teleport between the two halves of the map is dead for good.
-    @Global var mirrorBroken = false
+    @Latch var mirrorBroken
 
     // MARK: - Map
 
@@ -261,8 +261,7 @@ struct ZorkMirror: GameContent {
     /// Break the mirror if it is whole (disabling the teleport), or shrug off a
     /// blow against glass already shattered.
     private func breakMirror() throws {
-        guard !mirrorBroken else { try reply(Prose.mirrorAlreadyBroken) }
-        mirrorBroken = true
+        guard $mirrorBroken.trips() else { try reply(Prose.mirrorAlreadyBroken) }
         try reply(Prose.mirrorBreaks)
     }
 }

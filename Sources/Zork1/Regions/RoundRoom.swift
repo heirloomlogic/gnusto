@@ -79,7 +79,7 @@ struct ZorkRoundRoom: GameContent {
 
     /// Whether saying `echo` has quieted the Loud Room's acoustics. Once set,
     /// the room stops garbling commands and the platinum bar can be taken.
-    @Global var loudRoomAcousticsFixed = false
+    @Latch var loudRoomAcousticsFixed
 
     // MARK: - Items
 
@@ -225,8 +225,7 @@ struct ZorkRoundRoom: GameContent {
         // platinum bar becomes takeable. Once fixed (or when the water is
         // moving), `echo` falls through to its ordinary reply.
         loudRoom.before(.echo) {
-            guard !loudRoomAcousticsFixed, !waterMoving else { return }
-            loudRoomAcousticsFixed = true
+            guard !waterMoving, $loudRoomAcousticsFixed.trips() else { return }
             try reply(Prose.loudRoomAcousticsFixed)
         }
     }

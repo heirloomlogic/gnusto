@@ -252,7 +252,7 @@ struct DungeonHouse: GameContent {
 
     /// True once the descent has thrown the bar. Unlike Zork I's, this one is
     /// nobody's doing and never comes off in this milestone.
-    @Global var trapDoorBarred = false
+    @Latch var trapDoorBarred
 
     let trophyCase = Item.scenery(
         "trophy case",
@@ -297,7 +297,7 @@ struct DungeonHouse: GameContent {
     }
 
     /// The songbird answers exactly once.
-    @Global var baubleDropped = false
+    @Latch var baubleDropped
 
     /// Mainframe-only: the last edition of the Great Underground Empire's
     /// paper of record, lying in the living room.
@@ -504,7 +504,7 @@ struct DungeonHouse: GameContent {
         cellar.onEnter {
             guard trapDoor.isOpen else { return }
             trapDoor.isOpen = false
-            trapDoorBarred = true
+            $trapDoorBarred.trips()
             say(Prose.trapDoorSlam)
         }
 

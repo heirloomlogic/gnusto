@@ -66,7 +66,7 @@ struct ZorkCellar: GameContent {
         trait(.sharp, true)
     }
 
-    @Global var trollDefeated = false
+    @Latch var trollDefeated
 
     // The thief who once haunted this cellar now roams the whole underground:
     // his actor, weapon, and defeat flag live in ``ZorkThief``, and all his

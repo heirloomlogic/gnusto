@@ -265,13 +265,13 @@ struct Dungeon: Game, GameMain {
     /// Whether the Lower Shaft has paid its ten points yet. `awardOnce` is
     /// idempotent, but it reads its claimed-register set through a JSON box,
     /// and the rule that calls it runs every turn the player stands down
-    /// there — so a plain `Bool` guards it.
-    @Global var lightShaftPaid = false
+    /// there — so a latch guards it.
+    @Latch var lightShaftPaid
 
     /// The same guard for the Top of Well's ten, for the same reason. Two
-    /// `Bool`s rather than one `Set<String>`: a set would need a `GlobalValue`
+    /// latches rather than one `Set<String>`: a set would need a `GlobalValue`
     /// wrapper, and a wrapper is the JSON box these two exist to avoid.
-    @Global var topOfWellPaid = false
+    @Latch var topOfWellPaid
 
     var content: GameContents {
         aboveGround
@@ -514,8 +514,7 @@ struct Dungeon: Game, GameMain {
         // fires. That is the hole the Bank of Zork spike recorded (#132) and
         // this is the first room in the game to fall into it.
         alice.topOfWell.afterEachTurn {
-            guard !topOfWellPaid else { return }
-            topOfWellPaid = true
+            guard $topOfWellPaid.trips() else { return }
             scoring.awardOnce("topOfWell")
         }
 
@@ -525,8 +524,12 @@ struct Dungeon: Game, GameMain {
         // usual way to earn it is to arrive in the dark and then raise the
         // basket you sent down ahead of you with the torch in it.
         mine.lowerShaft.afterEachTurn {
+            // Not one guard: `isLit` walks the containment chain for every lit
+            // item, and the flag read is a dictionary lookup, so the cheap test
+            // has to stay in front. A latch that would trip last collapses; this
+            // one reads first and trips after.
             guard !lightShaftPaid, player.location.isLit else { return }
-            lightShaftPaid = true
+            $lightShaftPaid.trips()
             scoring.awardOnce("lightShaft")
         }
 
@@ -660,8 +663,8 @@ struct Dungeon: Game, GameMain {
         templeQuarter.glacier.before(.throwAt) {
             guard command.directObject == templeQuarter.ivoryTorch else { return }
             try require(!templeQuarter.torchBurnedOut, else: Prose.glacierUnmoved)
-            templeQuarter.glacierMelted = true
-            templeQuarter.torchBurnedOut = true
+            templeQuarter.$glacierMelted.trips()
+            templeQuarter.$torchBurnedOut.trips()
             templeQuarter.ivoryTorch.isLit = false
             templeQuarter.ivoryTorch.move(to: dam.streamView)
             try reply(Prose.glacierMeltsAwayTheTorch)
@@ -738,7 +741,7 @@ struct Dungeon: Game, GameMain {
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
             onDefeat: {
-                cellar.trollDefeated = true
+                cellar.$trollDefeated.trips()
                 cellar.axe.move(to: cellar.trollRoom)
             })
 
@@ -775,11 +778,10 @@ struct Dungeon: Game, GameMain {
         // ambience daemon shares.
         house.canary.before(.wind) {
             let here = player.location
-            guard !house.baubleDropped, aboveGround.theWood.contains(here) else {
+            guard aboveGround.theWood.contains(here), house.$baubleDropped.trips() else {
                 try reply(Prose.canaryChirps)
             }
             house.bauble.move(to: here == aboveGround.upATree ? aboveGround.forestTree : here)
-            house.baubleDropped = true
             try reply(Prose.songbirdDropsBauble)
         }
         // The ruined bird's answer is `DungeonHouse`'s own — it names nothing
@@ -1049,7 +1051,7 @@ struct Dungeon: Game, GameMain {
             case house.lunch:
                 house.lunch.vanish()
                 maze.cyclopsWrath = min(-1, -maze.cyclopsWrath)
-                maze.cyclopsProvoked = true
+                maze.$cyclopsProvoked.trips()
                 try reply(Prose.cyclopsEatsLunch)
             case house.water:
                 try require(maze.cyclopsWrath < 0, else: Prose.cyclopsNotThirsty)

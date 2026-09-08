@@ -125,7 +125,6 @@ struct OperaHouse: Game {
     // MARK: - State
 
     @Global var disturbances = 0
-    @Global var cloakIsHung = false
 
     // MARK: - Plugins
 
@@ -180,10 +179,7 @@ struct OperaHouse: Game {
 
         cloak.after(.drop, .putOn) {
             bar.isLit = true
-            if !cloakIsHung {
-                cloakIsHung = true
-                scoring.awardOnce("cloakHung")
-            }
+            scoring.awardOnce("cloakHung")
         }
 
         cloak.after(.take, .wear) {

@@ -294,13 +294,13 @@ struct ZorkTemple: GameContent {
 
     /// Whether the spirits have been banished — opens the gate south to the
     /// Land of the Dead.
-    @Global var ghostsBanished = false
+    @Latch var ghostsBanished
 
     /// Candle fuel banked while they are unlit: a dim warning, then out for
     /// good. Two fuses where the lantern has three (FIDELITY.md).
     @Global var candlesDimIn = 20
     @Global var candlesDieIn = 25
-    @Global var candlesBurnedOut = false
+    @Latch var candlesBurnedOut
 
     // MARK: - Map
 
@@ -488,7 +488,7 @@ struct ZorkTemple: GameContent {
         // it's just a book (the default action shows its text).
         book.before(.read) {
             guard player.location == entranceToHades, exorcismStage == 2 else { return }
-            ghostsBanished = true
+            $ghostsBanished.trips()
             exorcismStage = 3
             stopFuse("exorcismLapse")
             try reply(Prose.spiritsBanished)
@@ -538,7 +538,7 @@ struct ZorkTemple: GameContent {
             say(Prose.candlesDim, from: candles)
         }
         fuse("candlesDie", after: 25) {
-            candlesBurnedOut = true
+            $candlesBurnedOut.trips()
             say(Prose.candlesDie, from: candles)
             candles.isLit = false
         }

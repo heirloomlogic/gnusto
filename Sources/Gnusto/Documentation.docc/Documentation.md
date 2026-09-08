@@ -164,6 +164,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 
 - <doc:CustomStateAndTraits>
 - ``Global``
+- ``Latch``
 - ``GlobalValue``
 - ``StateValue``
 - ``TraitKey``

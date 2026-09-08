@@ -307,7 +307,7 @@ struct DungeonMaze: GameContent {
 
     /// Whether the north wall has a cyclops-sized hole in it. The source's
     /// `MAGIC-FLAG`, set only by the shout — feeding him never opens it.
-    @Global var northWallOpen = false
+    @Latch var northWallOpen
 
     /// His hunger, which the source keeps as a **signed** count: positive once
     /// you have provoked him, negative once he has eaten the hot peppers and
@@ -319,7 +319,7 @@ struct DungeonMaze: GameContent {
     /// when you attack him or feed him and disables it when you leave the room;
     /// here the rule lives on the room, so leaving pauses it by itself and this
     /// flag carries only the first half.
-    @Global var cyclopsProvoked = false
+    @Latch var cyclopsProvoked
 
     /// How far the wrath ladder may climb before he stops waiting.
     static let cyclopsPatience = 5
@@ -540,9 +540,8 @@ struct DungeonMaze: GameContent {
         // whether he is still standing in the room, and the drugged water
         // leaves him there.
         cyclopsRoom.before(.odysseus) {
-            guard !northWallOpen else { try reply(Prose.odysseusElsewhere) }
+            guard $northWallOpen.trips() else { try reply(Prose.odysseusElsewhere) }
             cyclopsSubdued = true
-            northWallOpen = true
             cyclops.vanish()
             try reply(Prose.cyclopsFlees)
         }
@@ -551,7 +550,7 @@ struct DungeonMaze: GameContent {
         // the sleeper wakes him instead: the stair shuts again and the hunger
         // he had banked picks up where it left off.
         cyclops.before(.attack, .throwAt, .burn, .wake) {
-            cyclopsProvoked = true
+            $cyclopsProvoked.trips()
             guard cyclopsSubdued else { try reply(Prose.cyclopsShrugsOffAttack) }
             cyclopsSubdued = false
             cyclopsWrath = abs(cyclopsWrath)

@@ -562,8 +562,8 @@ struct Zork1: Game, GameMain {
             // Only from below, and only the first time — the leaves fall once.
             // (The room's own daylight is moot: you can't be down here without
             // the lit lantern, which lights it already.)
-            guard player.location == maze.gratingRoom, !maze.gratingOpenedFromBelow else { return }
-            maze.gratingOpenedFromBelow = true
+            guard player.location == maze.gratingRoom else { return }
+            guard maze.$gratingOpenedFromBelow.trips() else { return }
             say(Prose.gratingOpensFromBelow)
         }
 
@@ -578,11 +578,11 @@ struct Zork1: Game, GameMain {
             guard !maze.cyclopsSubdued else { try reply(Prose.cyclopsAlreadyGone) }
             if offered == house.lunch {
                 house.lunch.vanish()
-                maze.cyclopsThirsty = true
+                maze.$cyclopsThirsty.trips()
                 // The peppers leave him desperate for a drink: his hunger is
                 // roused now, so the wrath timer starts counting. Give him the
                 // water soon or become the drink yourself (see ``ZorkMaze``).
-                maze.cyclopsProvoked = true
+                maze.$cyclopsProvoked.trips()
                 try reply(Prose.cyclopsEatsLunch)
             }
             let givingWater =
@@ -631,7 +631,7 @@ struct Zork1: Game, GameMain {
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
             onDefeat: {
-                cellar.trollDefeated = true
+                cellar.$trollDefeated.trips()
                 // His bloody axe was `.nowhere` in his hands; now it drops to
                 // the Troll Room floor, there to be looted (FIDELITY.md).
                 cellar.axe.move(to: cellar.trollRoom)
@@ -714,8 +714,8 @@ struct Zork1: Game, GameMain {
         // ``ZorkHouse`` item and the forest rooms are ``ZorkAboveGround``, so
         // the host owns this cross-bundle trick.
         house.canary.before(.wind) {
-            guard !house.baubleDropped,
-                forestRooms.contains(where: { player.location == $0 })
+            guard forestRooms.contains(where: { player.location == $0 }),
+                house.$baubleDropped.trips()
             else {
                 try reply(Prose.canaryChirps)
             }
@@ -724,7 +724,6 @@ struct Zork1: Game, GameMain {
             } else {
                 house.bauble.move(to: player.location)
             }
-            house.baubleDropped = true
             try reply(Prose.songbirdDropsBauble)
         }
 
@@ -764,7 +763,7 @@ struct Zork1: Game, GameMain {
                 knockout: Prose.thiefKnockout,
                 death: Prose.thiefDeath),
             onDefeat: {
-                thief.thiefDefeated = true
+                thief.$thiefDefeated.trips()
                 house.trapDoorBarred = false
                 stopDaemon("thiefRoams")
                 stopDaemon("thiefSteals")

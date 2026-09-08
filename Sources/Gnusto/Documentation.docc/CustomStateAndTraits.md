@@ -45,6 +45,46 @@ purse = wallet
 
 > Note: A custom global is stored as opaque bytes, so if you change its shape, an old save may no longer decode — and a stored value that fails to decode is a `fatalError`, not a fall back to the declared default. (The default is only reached when the global's ID is *absent* from the save, which is what happens when you add a whole new global.) Save validation cannot catch it first: it checks only that a `.data` case is still a `.data` case, and one payload looks like another. So keep custom state structs additive and optional-tolerant — new fields with defaults, and a hand-written `init(from:)` that keeps the default when a field won't decode. Versioned codecs are a later effort.
 
+## One-way state: `@Latch`
+
+A great deal of a game's state is one flag that goes up once and never comes down — the songbird has answered, the crawl beat has played, the glacier is gone. Written as a `@Global` that is a guard, an assignment, and a promise nobody checks:
+
+```swift
+@Global var crawlBeatDone = false
+
+lowCrawl.onEnter {
+    guard !crawlBeatDone else { return }
+    crawlBeatDone = true
+    say("Biscuit tries to follow, and cannot.")
+}
+```
+
+``Latch`` says the same thing and enforces it:
+
+```swift
+@Latch var crawlBeatDone
+
+lowCrawl.onEnter {
+    guard $crawlBeatDone.trips() else { return }
+    say("Biscuit tries to follow, and cannot.")
+}
+```
+
+It is a `@Global` in every way that matters. The value lives in the world state under an ID taken from the property name, a bundle's latch is namespaced like a bundle's global, and it commits, rolls back, saves and restores on the same path — a latch tripped by a turn that UNDO rewinds, or by a turn nothing answered, goes back down with the rest of that turn.
+
+What it adds is the direction. `crawlBeatDone` reads as a plain `Bool` anywhere a rule, a `describe { }` closure or a conditional exit wants it, but there is no setter at all: `crawlBeatDone = false` does not compile, and neither does `= true`. ``Latch/trips()`` is the only way the value changes, and it returns whether *this* call is the one that raised it — so the guard and the assignment are one expression and cannot come apart. Raise a latch far from where it is read, in a fuse or a clock event, by calling it for the side effect:
+
+```swift
+fuse("candleDies", after: 25) {
+    $candlesBurnedOut.trips()
+    say("The candles are consumed.", from: candles)
+}
+```
+
+> Important: `trips()` raises the latch as it answers, so in a guard with more than one condition it must come **last**. `guard $baubleDropped.trips(), inTheForest else { … }` drops the bauble's one chance on a turn the player was never in the forest; `guard inTheForest, $baubleDropped.trips() else { … }` is the same test in the order that works.
+
+A flag that is genuinely written both ways — a door that opens and shuts, a gate the player can re-close — is not a latch and stays a `@Global`. That is the useful distinction: a `@Latch` in the source is a promise the compiler keeps.
+
 ## Custom traits
 
 Declare a typed key once, then use it to declare a custom property inside an `Item { … }` or `Location { … }` block with `trait(_:_:)`. The value is boxed with the same rule as a `@Global`, so a scalar or a whole struct both work:

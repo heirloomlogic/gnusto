@@ -561,7 +561,7 @@ struct DungeonRiver: GameContent {
     @Global var guanoDigs = 0
 
     /// Whether the buoy has already given itself away.
-    @Global var buoyNoticed = false
+    @Latch var buoyNoticed
 
     /// Whether the inflated boat is out of the way — neither in your hands nor
     /// under you. What the cliff path asks before it lets anybody along it.
@@ -866,8 +866,7 @@ struct DungeonRiver: GameContent {
         // The buoy gives itself away once, and only while it is in your hands
         // on the stretch it floats on — the source's `RIVR4-ROOM`.
         river4.afterEachTurn {
-            guard !buoyNoticed, buoy.isHeld else { return }
-            buoyNoticed = true
+            guard buoy.isHeld, $buoyNoticed.trips() else { return }
             say(Prose.buoyFeelsFunny)
         }
 

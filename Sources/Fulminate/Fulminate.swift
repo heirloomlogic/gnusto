@@ -98,23 +98,23 @@ struct Fulminate: Game, GameMain {
 
     /// Whether the carriage house has gone up. Rooms and props read this to
     /// describe themselves on the right side of the evening.
-    @Global var blastHappened = false
+    @Latch var blastHappened
 
     /// Whether Teague is back from the drugstore. The receipt is in his coat
     /// pocket only after he has been out and bought the thing — searching the
     /// coat before ten past six turns up an empty pocket, which is the honest
     /// answer and also the more interesting one.
-    @Global var teagueIsBack = false
+    @Latch var teagueIsBack
 
     /// Whether the cellar has told the player once where the light lives.
-    @Global var cellarHintGiven = false
+    @Latch var cellarHintGiven
 
     /// Whether the patrolman has the wreckage. Both gates that enforce it — the
     /// way in from the yard, and turning the debris over — read this rather than
     /// asking where he is standing, which is how the rest of the engine's demo
     /// games write a creature blocking a way (Zork's troll and cyclops gate on
     /// `trollDefeated` and `cyclopsSubdued`, not on their own placement).
-    @Global var wreckageSealed = false
+    @Latch var wreckageSealed
 
     /// Whether the player was standing in the yard when it went up. The
     /// aftermath lands a turn later, by which time they may have walked
@@ -131,7 +131,7 @@ struct Fulminate: Game, GameMain {
     /// Whether the player has been out where the wreckage is since it became
     /// wreckage. The coroner's line credits them with having looked at it, and
     /// he says it to a man who spent the evening in the front hall.
-    @Global var sawTheWreckage = false
+    @Latch var sawTheWreckage
 
     /// Whether Delphine has declined a question in front of you yet.
     ///
@@ -140,7 +140,7 @@ struct Fulminate: Game, GameMain {
     /// out loud. Its two siblings — which tracked whether Constance and Delphine
     /// had had their one moment about Julian — retired when topic rows gained
     /// `again:`, which does the same job in the table.
-    @Global var delphineHasDeflected = false
+    @Latch var delphineHasDeflected
 
     /// What is left after `properName` does the articles. The six lines that
     /// used to be here only deleted a "the"; these five say something the stock
@@ -1202,7 +1202,7 @@ struct Fulminate: Game, GameMain {
                 at: TimeOfDay(18, 10), in: frontHall,
                 arrival: "The front door goes. Teague is back, with a paper bag and a great deal to say."
             ) {
-                teagueIsBack = true
+                $teagueIsBack.trips()
             },
             Stop(
                 at: TimeOfDay(18, 30), in: boardersRoom,
@@ -1357,7 +1357,7 @@ struct Fulminate: Game, GameMain {
 
         // 5:46. The inciting event, and the reason there is a case at all.
         clock.at(TimeOfDay(17, 46), named: "clock.blast") {
-            blastHappened = true
+            $blastHappened.trips()
             can.vanish()
             julian.vanish()
 
@@ -1542,7 +1542,7 @@ struct Fulminate: Game, GameMain {
             // out there — the blast put it in the grass six minutes ago — so
             // all he brings is himself and the rule that nobody gets past him.
             patrolman.move(to: backYard)
-            wreckageSealed = true
+            $wreckageSealed.trips()
 
             // A player standing in it when he arrives is the first person he
             // puts out of it. Anything else would have him post himself at a
@@ -1894,8 +1894,7 @@ struct Fulminate: Game, GameMain {
         // `afterEachTurn` rather than `onEnter`, which runs *before* the room
         // is described and would put the hint above "It is pitch black."
         cellar.afterEachTurn {
-            guard !flashlight.isLit, !cellarHintGiven else { return }
-            cellarHintGiven = true
+            guard !flashlight.isLit, $cellarHintGiven.trips() else { return }
             say(
                 flashlight.isHeld
                     ? "There is a flashlight in your hand and it is switched off."
@@ -1909,7 +1908,7 @@ struct Fulminate: Game, GameMain {
         // say the player looked at. Both rooms count: the lab is open for the
         // three turns between the blast and the radio car.
         world.afterEachTurn {
-            if blastHappened, playerIsOutBack { sawTheWreckage = true }
+            if blastHappened, playerIsOutBack { $sawTheWreckage.trips() }
 
             // The aftermath says the dust is on every flat top, which is a claim
             // about the house and not about one room, so the item has to be
@@ -2655,8 +2654,7 @@ struct Fulminate: Game, GameMain {
         // after the table — is what answers.
         delphine.before(.ask, .tell) {
             guard command.topic != nil else { return }
-            if !delphineHasDeflected {
-                delphineHasDeflected = true
+            if $delphineHasDeflected.trips() {
                 try reply(
                     """
                     She hears the question. She lets you watch her decide not to answer it, which is an answer of a

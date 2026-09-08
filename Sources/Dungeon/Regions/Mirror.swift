@@ -115,7 +115,7 @@ struct DungeonMirror: GameContent {
     /// Whether a mirror has been smashed — the mainframe's `MIRROR-MUNG`. One
     /// blow breaks both, because they are two faces of the same passage, and
     /// nothing in the game mends them.
-    @Global var mirrorBroken = false
+    @Latch var mirrorBroken
 
     // MARK: - Items
 
@@ -345,8 +345,7 @@ struct DungeonMirror: GameContent {
     /// Break the mirror if it is whole, or shrug off a blow against glass
     /// already in pieces.
     private func breakMirror() throws {
-        guard !mirrorBroken else { try reply(Prose.mirrorAlreadyBroken) }
-        mirrorBroken = true
+        guard $mirrorBroken.trips() else { try reply(Prose.mirrorAlreadyBroken) }
         try reply(Prose.mirrorBreaks)
     }
 }
