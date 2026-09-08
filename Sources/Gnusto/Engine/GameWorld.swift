@@ -47,7 +47,7 @@ public actor GameWorld {
     var pendingClarification: (prefix: [String], suffix: [String])?
     /// The pristine post-bootstrap state, seed included — what RESTART
     /// rewinds to. Actor state, never part of `WorldState` itself.
-    private let initialState: WorldState
+    let initialState: WorldState
     /// Where bare save names (`save autumn`) resolve to, and the directory the
     /// restore prompt lists. Explicit paths the player types bypass it — unless
     /// ``savePathsRestricted`` forbids them. See `SaveStore`.

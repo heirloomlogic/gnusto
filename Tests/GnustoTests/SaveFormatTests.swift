@@ -70,6 +70,58 @@ struct SaveFormatTests {
         }
     }
 
+    /// The older half of an additive-definition fixture. The shared names let
+    /// the evolved half distinguish timers that persisted, changed kind, or
+    /// disappeared altogether.
+    private struct LegacyLedgerGame: Game {
+        let title = "Evolving Ledger"
+        let intro = "Before the renovation."
+
+        let office = Location { name("Office") }
+        let keepsake = Item { name("keepsake") }
+
+        var map: WorldMap {
+            player.starts(in: office)
+            keepsake.starts(in: office)
+        }
+
+        var timers: [TimedEvent] {
+            fuse("stableFuse", after: 9) {}
+            daemon("stableDaemon") {}
+            daemon("becomesFuse") {}
+            fuse("becomesDaemon", after: 8) {}
+            fuse("retiredFuse", after: 7) {}
+            daemon("retiredDaemon") {}
+        }
+    }
+
+    /// The newer half: one item and two autostarts were added, while two timer
+    /// names were retained under the opposite kind.
+    private struct EvolvedLedgerGame: Game {
+        let title = "Evolving Ledger"
+        let intro = "After the renovation."
+
+        let office = Location { name("Office") }
+        let annex = Location { name("Annex") }
+        let keepsake = Item { name("keepsake") }
+        let newCoin = Item { name("new coin") }
+
+        var map: WorldMap {
+            player.starts(in: office)
+            keepsake.starts(in: office)
+            newCoin.starts(in: annex)
+        }
+
+        var timers: [TimedEvent] {
+            fuse("stableFuse", after: 9) {}
+            daemon("stableDaemon") {}
+            fuse("becomesFuse", after: 6, autostart: true) {}
+            daemon("becomesDaemon", autostart: true) {}
+            fuse("newFuse", after: 5, autostart: true) {}
+            daemon("newDaemon", autostart: true) {}
+        }
+    }
+
     /// `SaveRestoreTests` and `TimerTests` each spell this privately too — the
     /// established shape for a throwaway save path in this suite. Lifting the
     /// three into `GnustoTestSupport` is worth doing and is not this change's
@@ -530,6 +582,63 @@ struct SaveFormatTests {
 
     // MARK: - One policy for names this build no longer declares
 
+    @Test("an older save is reconciled with additive placements and timer declarations")
+    func anOlderSaveIsReconciledWithAdditivePlacementsAndTimerDeclarations() throws {
+        let path = Self.temporarySavePath("additions")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var (_, legacyState) = try Bootstrap.buildCore(LegacyLedgerGame())
+        legacyState.place(EntityID("keepsake"), .nowhere)
+        legacyState.activeFuses = [
+            "stableFuse": 3,
+            "becomesDaemon": 4,
+            "retiredFuse": 2,
+        ]
+        legacyState.activeDaemons = ["stableDaemon", "becomesFuse", "retiredDaemon"]
+        try SaveFile.write(
+            legacyState, title: LegacyLedgerGame().title, to: URL(fileURLWithPath: path))
+
+        let (definition, pristineState) = try Bootstrap.buildCore(EvolvedLedgerGame())
+        let restored = try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+
+        // The save remains authoritative for an item it knew, including an
+        // explicit offstage placement. Only the newly declared item is seeded.
+        #expect(restored.placements[EntityID("keepsake")] == .nowhere)
+        #expect(restored.placements[EntityID("newCoin")] == .room(EntityID("annex")))
+
+        // Same-kind schedules survive with their saved values. Retired and
+        // wrong-kind entries are dropped; genuinely new autostarts use the
+        // pristine schedule established by Bootstrap.
+        #expect(restored.activeFuses == ["stableFuse": 3, "newFuse": 5])
+        #expect(restored.activeDaemons == ["stableDaemon", "newDaemon"])
+    }
+
+    @Test("reconciling a save with the same definition preserves its schedule and placements")
+    func reconcilingASaveWithTheSameDefinitionPreservesItsScheduleAndPlacements() throws {
+        let path = Self.temporarySavePath("same-definition")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let (definition, pristineState) = try Bootstrap.buildCore(EvolvedLedgerGame())
+        var savedState = pristineState
+        savedState.place(EntityID("keepsake"), .nowhere)
+        savedState.activeFuses["stableFuse"] = 3
+        savedState.activeDaemons.insert("stableDaemon")
+        savedState.activeFuses["newFuse"] = nil
+        savedState.activeDaemons.remove("newDaemon")
+        try SaveFile.write(
+            savedState, title: EvolvedLedgerGame().title,
+            declaredTimerNames: definition.timers.keys.sorted(),
+            to: URL(fileURLWithPath: path))
+
+        let restored = try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+
+        #expect(restored.placements == savedState.placements)
+        #expect(restored.activeFuses == savedState.activeFuses)
+        #expect(restored.activeDaemons == savedState.activeDaemons)
+    }
+
     /// Writes a save of `LedgerGame` whose globals are `mutate`d as typed
     /// state, so these tests poke `StateValue`s rather than hand-rolled JSON —
     /// a hand-rolled box that stopped matching `StateValue`'s encoding would
@@ -583,6 +692,7 @@ struct SaveFormatTests {
         let path = Self.temporarySavePath("reshaped")
         defer { try? FileManager.default.removeItem(atPath: path) }
         var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
         // Same type name, bytes for a shape it can no longer decode — an author
         // who renamed a field between builds.
         state.globals[EntityID("purse")] = .data(
@@ -594,7 +704,9 @@ struct SaveFormatTests {
         // fixture also throws, as `.unreadable`, and would let this pass while
         // proving nothing.
         do {
-            _ = try SaveFile.read(from: URL(fileURLWithPath: path), matching: definition)
+            _ = try SaveFile.read(
+                from: URL(fileURLWithPath: path), matching: definition,
+                pristineState: pristineState)
             Issue.record("a global the game can no longer read was accepted")
         } catch {
             #expect(error == .inconsistent, "expected .inconsistent, got \(error)")
@@ -609,13 +721,15 @@ struct SaveFormatTests {
         let path = Self.temporarySavePath("boxedok")
         defer { try? FileManager.default.removeItem(atPath: path) }
         var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
         // A global only enters `globals` once something writes it; until then
         // the `@Global` reads its declared default and the save carries nothing.
         state.globals[EntityID("purse")] = Purse(coins: 9).stateValue
         try SaveFile.write(state, title: ShopGame().title, to: URL(fileURLWithPath: path))
 
         let restored = try SaveFile.read(
-            from: URL(fileURLWithPath: path), matching: definition)
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
 
         let stored = try #require(restored.globals[EntityID("purse")])
         #expect(Purse(stateValue: stored) == Purse(coins: 9))

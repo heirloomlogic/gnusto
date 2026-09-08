@@ -78,6 +78,42 @@ private struct OtherGame: Game {
     }
 }
 
+/// A saved definition from before the annex, its coin, and its timers existed.
+private struct LegacyAdditionGame: Game {
+    let title = "Additive Restore"
+    let intro = "The original room."
+
+    let room = Location { name("Original Room") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+    }
+}
+
+/// The evolved definition used to prove the restore prompt supplies the
+/// pristine state needed by save reconciliation.
+private struct EvolvedAdditionGame: Game {
+    let title = "Additive Restore"
+    let intro = "The annex is open."
+
+    let room = Location { name("Original Room") }
+    let newCoin = Item { name("new coin") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        newCoin.starts(in: room)
+    }
+
+    var timers: [TimedEvent] {
+        fuse("newFuse", after: 2, autostart: true) {
+            say("The new fuse fires.")
+        }
+        daemon("newDaemon", autostart: true) {
+            say("The new daemon runs.")
+        }
+    }
+}
+
 private func temporarySavePath(_ label: String) -> String {
     FileManager.default.temporaryDirectory
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
@@ -137,6 +173,21 @@ struct SaveRestoreTests {
         let looks = transcript.components(separatedBy: "> look")
         #expect(looks[2].contains("The bell rings!"))
         #expect(looks[4].contains("The bell rings!"))
+    }
+
+    @Test func restoreInstallsAdditionsFromTheCurrentDefinition() async throws {
+        let path = temporarySavePath("additions")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(LegacyAdditionGame(), ["save", path])
+
+        let transcript = try await play(
+            EvolvedAdditionGame(), ["restore", path, "take new coin", "wait"])
+
+        #expect(transcript.contains("Restored."))
+        #expect(turnOutput(of: "take new coin", in: transcript).contains("Taken."))
+        #expect(
+            transcript.components(separatedBy: "The new daemon runs.").count == 3)
+        #expect(turnOutput(of: "wait", in: transcript).contains("The new fuse fires."))
     }
 
     @Test func restoreValidatesTheFile() async throws {
