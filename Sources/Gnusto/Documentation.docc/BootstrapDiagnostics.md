@@ -78,6 +78,7 @@ the table renders.
 | `location "hall" has no name(…) trait.` | Also `item "…"` and `actor "…"`. Every entity needs a `name(…)` trait. |
 | `the north exit references a location that is not a stored property of the game or any of its content bundles.` | Also `… references an item …`. The `map` block named something the reflection walk never saw — usually a computed property or one declared in an extension. |
 | `"attic" declares its north exit more than once.` | Two `map` entries claim one direction. |
+| `"coin" declares its placement more than once: first in "hall", then inside "box".` | An item can have one initial position. This applies to every placement spelling: `starts(in:)`, `starts(on:)`, `starts(inside:)`, `startsWorn`, `startsHeld`, and `starts(heldBy:)`, including declarations split between the host map and a content bundle's map. Remove one entry. |
 | `"attic"'s north exit uses "door" as a door, which is not declared openable.` | A door exit needs an ``openable`` item; `go` has no open state to gate on otherwise. |
 | `"coin" is placed on "table", which is not declared as a surface.` | Declare ``surface``, or place it `inside`. |
 | `"coin" is placed inside "box", which is not declared as a container.` | Declare ``container``. |

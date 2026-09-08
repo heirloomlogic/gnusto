@@ -218,6 +218,7 @@ enum Bootstrap {
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
         var placements: [EntityID: Placement] = [:]
+        var placementClaims: [EntityID: String] = [:]
         var wornItems: Set<EntityID> = []
         var playerStart: EntityID?
 
@@ -250,6 +251,22 @@ enum Bootstrap {
                     "\"\(fromID)\" declares its \(direction) exit more than once.")
             }
             exits[fromID, default: [:]][direction] = target
+        }
+
+        /// Files an item's initial position once. The rendered claim keeps the
+        /// author-facing spelling (`worn` versus `held`, for example), which a
+        /// `Placement` alone cannot reconstruct after both lower to `.heldBy`.
+        /// Every map form ends here so a new form cannot accidentally restore
+        /// the old, silent last-wins behavior.
+        func claimPlacement(_ placement: Placement, for itemID: EntityID, as claim: String) {
+            if let firstClaim = placementClaims[itemID] {
+                diagnostics.append(
+                    "\"\(itemID)\" declares its placement more than once: first \(firstClaim), "
+                        + "then \(claim).")
+            } else {
+                placementClaims[itemID] = claim
+            }
+            placements[itemID] = placement
         }
 
         let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
@@ -321,7 +338,7 @@ enum Bootstrap {
                         let locationID = resolveLocation(
                             token, role: "the placement of \"\(itemID)\"")
                     else { continue }
-                    placements[itemID] = .room(locationID)
+                    claimPlacement(.room(locationID), for: itemID, as: "in \"\(locationID)\"")
                 case .on(let token):
                     guard
                         let surfaceID = resolveItem(
@@ -332,7 +349,7 @@ enum Bootstrap {
                             "\"\(itemID)\" is placed on \"\(surfaceID)\", which is "
                                 + "not declared as a surface.")
                     }
-                    placements[itemID] = .on(surfaceID)
+                    claimPlacement(.on(surfaceID), for: itemID, as: "on \"\(surfaceID)\"")
                 case .inside(let token):
                     guard
                         let containerID = resolveItem(
@@ -343,12 +360,12 @@ enum Bootstrap {
                             "\"\(itemID)\" is placed inside \"\(containerID)\", which is "
                                 + "not declared as a container.")
                     }
-                    placements[itemID] = .inside(containerID)
+                    claimPlacement(.inside(containerID), for: itemID, as: "inside \"\(containerID)\"")
                 case .worn:
-                    placements[itemID] = .heldBy(.player)
+                    claimPlacement(.heldBy(.player), for: itemID, as: "worn by the player")
                     wornItems.insert(itemID)
                 case .held:
-                    placements[itemID] = .heldBy(.player)
+                    claimPlacement(.heldBy(.player), for: itemID, as: "held by the player")
                 case .heldBy(let token):
                     guard
                         let holderID = resolveItem(
@@ -362,7 +379,7 @@ enum Bootstrap {
                             "\"\(itemID)\" starts heldBy \"\(holderID)\", which is "
                                 + "not an Actor.")
                     }
-                    placements[itemID] = .heldBy(holderID)
+                    claimPlacement(.heldBy(holderID), for: itemID, as: "held by \"\(holderID)\"")
                 }
 
             case .playerStart(let token):

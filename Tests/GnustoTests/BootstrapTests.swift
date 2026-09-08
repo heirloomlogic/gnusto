@@ -252,6 +252,60 @@ struct BootstrapTests {
         }
     }
 
+    /// Every spelling that seeds an item's initial position reaches the same
+    /// claimant. The report preserves the author-facing holders, including the
+    /// distinction between wearing something and merely holding it.
+    @Test func everyInitialPlacementFormRejectsASecondClaim() {
+        #expect {
+            try Bootstrap.build(DuplicatePlacementFormsGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return bootstrapError.diagnostics.count == 6
+                && text.contains(
+                    "\"roomItem\" declares its placement more than once: first in \"hall\", then in \"annex\".")
+                && text.contains(
+                    "\"surfaceItem\" declares its placement more than once: first in \"hall\", then on \"table\".")
+                && text.contains(
+                    "\"containedItem\" declares its placement more than once: first in \"hall\", then inside \"box\".")
+                && text.contains(
+                    "\"wornItem\" declares its placement more than once: first in \"hall\", then worn by the player.")
+                && text.contains(
+                    "\"heldItem\" declares its placement more than once: first in \"hall\", then held by the player.")
+                && text.contains(
+                    "\"actorHeldItem\" declares its placement more than once: first in \"hall\", then held by \"porter\"."
+                )
+        }
+    }
+
+    /// The host map is read before a content map, which used to make this
+    /// collision silently last-wins. A common claimant must cover both sources.
+    @Test func aContentMapCannotReplaceAHostPlacement() {
+        #expect {
+            try Bootstrap.build(HostContentPlacementConflictGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                "\"HostPlacementContent.coin\" declares its placement more than once: "
+                    + "first in \"hall\", then in \"HostPlacementContent.vault\"."
+            ]
+        }
+    }
+
+    /// The duplicate check is only a claim check: one legal declaration in each
+    /// of the six forms remains a normal, bootable world.
+    @Test func oneOfEachInitialPlacementFormRemainsValid() throws {
+        let (definition, state) = try Bootstrap.build(AllInitialPlacementFormsGame())
+        #expect(state.placements[EntityID("roomItem")] == .room(EntityID("hall")))
+        #expect(state.placements[EntityID("surfaceItem")] == .on(EntityID("table")))
+        #expect(state.placements[EntityID("containedItem")] == .inside(EntityID("box")))
+        #expect(state.placements[EntityID("wornItem")] == .heldBy(.player))
+        #expect(state.wornItems.contains(EntityID("wornItem")))
+        #expect(state.placements[EntityID("heldItem")] == .heldBy(.player))
+        #expect(state.placements[EntityID("actorHeldItem")] == .heldBy(EntityID("porter")))
+        #expect(definition.playerStart == EntityID("hall"))
+    }
+
     @Test func danglingRuleAttachmentNamesItsPhase() {
         #expect {
             try Bootstrap.build(DanglingRuleGame())
