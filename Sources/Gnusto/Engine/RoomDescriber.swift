@@ -154,7 +154,7 @@ enum RoomDescriber {
             // an open one, or a closed transparent one. A closed opaque
             // container stays silent, so its contents never leak into the room
             // description.
-            if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
+            if Visibility.contentsVisible(itemID, definition: definition, state: state) {
                 listContents(
                     index.inContainer[itemID], of: itemID, as: definition.text.itemInContainer)
             }
@@ -172,16 +172,5 @@ enum RoomDescriber {
                 frame.say(frame.definition.text.actorHere(frame.indefiniteNoun(of: actorID)))
             }
         }
-    }
-
-    /// Whether a container's direct contents are perceivable in a room
-    /// description: an open container, or a closed transparent one.
-    private static func contentsVisible(
-        _ id: EntityID,
-        definition: GameDefinition,
-        state: WorldState
-    ) -> Bool {
-        if Visibility.isOpen(id, definition: definition, state: state) { return true }
-        return definition.items[id]?.isTransparent == true
     }
 }

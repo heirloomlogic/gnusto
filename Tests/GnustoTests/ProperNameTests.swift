@@ -52,6 +52,37 @@ struct ProperNameTests {
         #expect(!inventory.contains("an Excalibur"))
     }
 
+    @Test func inventoryContentsKeepProperNamesBare() async throws {
+        let transcript = try await play(NamedCastGame(), ["open chest", "take chest", "i"])
+        let inventory = turnOutput(of: "i", in: transcript)
+
+        #expect(inventory.contains("a chest (containing Excalibur)"))
+        #expect(!inventory.contains("an Excalibur"))
+    }
+
+    @Test func aCustomInventorySentenceCanReadAnEntrysContents() {
+        var text = GameText()
+        text.inventorySentence = .naming {
+            "Contents: " + GameText.list($0.entries.flatMap(\.contents).map(\.phrase))
+        }
+
+        let entry = GameText.Carried.Entry(
+            noun: .init("a velvet pouch"),
+            contents: [.init("a silver key")],
+            isWorn: true)
+        #expect(text.inventorySentence(.init(entries: [entry])) == "Contents: a silver key")
+    }
+
+    @Test func stockInventoryKeepsTheWornAnnotationWithContents() {
+        let entry = GameText.Carried.Entry(
+            noun: .init("a velvet pouch"),
+            contents: [.init("a silver key")],
+            isWorn: true)
+        #expect(
+            GameText().inventorySentence(.init(entries: [entry]))
+                == "You are carrying a velvet pouch (being worn) (containing a silver key).")
+    }
+
     // MARK: - The lines that name a person
 
     /// The issue's headline acceptance, one command each.

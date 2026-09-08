@@ -312,6 +312,27 @@ struct ContainerTests {
         #expect(look.contains("pickle"))
     }
 
+    // MARK: - Inventory
+
+    @Test func inventoryListsDirectContentsOfVisibleCarriedContainers() async throws {
+        let transcript = try await play(PantryGame(), ["take basket", "i"])
+        let inventory = turnOutput(of: "i", in: transcript)
+
+        #expect(inventory.contains("a wicker basket (containing a red apple and a burlap sack)"))
+        #expect(!inventory.contains("clay bottle"))
+    }
+
+    @Test func inventoryHidesClosedOpaqueContentsButShowsTransparentOnes() async throws {
+        let opaque = turnOutput(
+            of: "i", in: try await play(PantryGame(), ["take crate", "i"]))
+        #expect(opaque.contains("a wooden crate"))
+        #expect(!opaque.contains("tin can"))
+
+        let transparent = turnOutput(
+            of: "i", in: try await play(PantryGame(), ["take jar", "i"]))
+        #expect(transparent.contains("a glass jar (containing a green pickle)"))
+    }
+
     // MARK: - open / close
 
     /// `scenery` means "don't list me" wherever the thing is standing. A

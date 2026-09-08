@@ -433,6 +433,17 @@ enum Visibility {
         return item.isContainer
     }
 
+    /// Whether a container's direct contents can be seen: an open container,
+    /// or a closed transparent one.
+    static func contentsVisible(
+        _ id: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Bool {
+        guard let item = definition.items[id], item.isContainer else { return false }
+        return isOpen(id, definition: definition, state: state) || item.isTransparent
+    }
+
     /// The one darkness predicate, shared by the room describer, the parser
     /// scope, and the perception defaults. A room has light when it is lit
     /// itself (`litRooms`: inherent light or author code) or when a lit

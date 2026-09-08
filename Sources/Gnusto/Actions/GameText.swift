@@ -523,7 +523,11 @@ public struct GameText: Sendable {
     /// ``Noun/list(_:)``: it has something to say about each of them, so
     /// ``Carried`` keeps them apart until the game has had its say.
     public var inventorySentence: Line<Carried> = .naming {
-        let phrases = $0.entries.map { $0.noun.phrase + ($0.isWorn ? " (being worn)" : "") }
+        let phrases = $0.entries.map {
+            $0.noun.phrase
+                + ($0.isWorn ? " (being worn)" : "")
+                + ($0.contents.isEmpty ? "" : " (containing \(GameText.list($0.contents.map(\.phrase))))")
+        }
         return "You are carrying \(GameText.list(phrases))."
     }
 
