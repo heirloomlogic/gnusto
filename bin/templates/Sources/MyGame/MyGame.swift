@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 
 extension Intent {
     /// The game's one custom verb; `#verb` declares the intent and the
@@ -14,7 +15,8 @@ struct MyGame: Game {
     let title = "The Bell Tower"
     /// The game's one-line tagline.
     let tagline = "A starter game."
-    /// The maximum achievable score.
+    /// The maximum achievable score. The bootstrap checks it against the
+    /// `scoring` award table below and warns if the two disagree.
     let maxScore = 1
     /// The opening text shown when play begins.
     let intro = "Mist hangs over the village. Somewhere above, a bell waits."
@@ -45,6 +47,18 @@ struct MyGame: Game {
         scenery
         // Look-text comes from the live `describe` rule below, not a static
         // `description(…)` trait.
+    }
+
+    // MARK: - Scoring
+
+    /// The one award, paid once: ringing the bell. `GnustoScoring` owns the
+    /// register, so a second ring cannot score twice, and the total is what
+    /// `maxScore` is checked against.
+    let scoring = Scoring(awards: ["bell": 1])
+
+    /// The optional libraries this game uses.
+    var content: GameContents {
+        scoring
     }
 
     // MARK: - Map
@@ -83,7 +97,7 @@ struct MyGame: Game {
 
         bell.before(.ring) {
             try require(rope.isHeld, else: "You need something to swing the clapper with.")
-            player.score += 1
+            scoring.awardOnce("bell")
             say("You haul on the rope. The great bronze bell peals out over the village!")
             try end(won: true)
         }

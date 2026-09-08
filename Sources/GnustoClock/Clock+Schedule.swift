@@ -49,23 +49,23 @@ extension Clock {
     ///
     /// - Parameters:
     ///   - actor: whose day this is.
-    ///   - daemonName: the daemon's name, unique across the whole game.
+    ///   - name: the daemon's name, unique across the whole game.
     ///   - timetable: the day to keep.
     /// - Returns: the timed event, for the game's `timers` block.
     public func schedule(
         _ actor: Actor,
-        daemonName: String,
+        named name: String,
         _ timetable: Timetable
     ) -> TimedEvent {
-        daemon(daemonName, autostart: true) {
+        daemon(name, autostart: true) {
             // Offstage entirely: idle without touching the place-keeper, so a
             // returning actor resumes his day rather than restarting it.
             guard let here = actor.location else { return }
 
             let due = timetable.index(at: now)
             let stop = timetable.stops[due]
-            let isNewStop = stopIndices.byDaemon[daemonName] != due
-            stopIndices.byDaemon[daemonName] = due
+            let isNewStop = stopIndices.byDaemon[name] != due
+            stopIndices.byDaemon[name] = due
 
             if here != stop.destination {
                 // Read the player's vantage point once, before the move, so

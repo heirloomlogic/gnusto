@@ -2,30 +2,14 @@ import Gnusto
 import GnustoActors
 import GnustoScoring
 
+/// The game's own verbs. Six of the nine intents it answers are the engine's —
+/// `drink`, `rest`, `give`, `talk`, `pull` and `sit` are stub verbs every game
+/// has — so those are not minted here; ``KindlyDeep/verbs`` adds the phrasings
+/// a driver reaches for and ``KindlyDeep/actions`` gives them their mechanic.
+/// What is declared here is the vocabulary that is actually this game's.
 extension Intent {
-    /// **drink** — take a swallow from the canteen, resetting the thirst clock.
-    #verb(
-        "drink",
-        ["drink", .directObject],
-        ["drink", "from", .directObject],
-        ["sip", .directObject],
-        ["sip", "from", .directObject])
-    /// **rest** — lie down on the shelter-hole straw, resetting the fatigue clock.
-    #verb("rest", ["rest"], ["sleep"], ["lie", "down"], ["nap"])
-    /// **give** — share the canteen with Biscuit (a real cost; thirst does not reset).
-    #verb(
-        "give",
-        ["give", .directObject, "to", .indirectObject],
-        ["feed", .directObject, "to", .indirectObject],
-        ["offer", .directObject, "to", .indirectObject])
-    /// **talk** — speak to the mule.
-    #verb("talk", ["talk", "to", .directObject], ["talk", .directObject], ["speak", "to", .directObject])
     /// **ring** — pull the signal bell.
     #verb("ring", ["ring", .directObject])
-    /// **pull** — the bell rope answers to this; so does anything else worth a try.
-    #verb("pull", ["pull", .directObject], ["tug", .directObject], ["yank", .directObject])
-    /// **sit** — the shelter hole has a bench, and benches invite it.
-    #verb("sit", ["sit"], ["sit", "down"], ["sit", "on", .directObject])
     /// **pet** — scratch the mule under the forelock.
     #verb("pet", ["pet", .directObject], ["pat", .directObject], ["stroke", .directObject])
     /// **harness** — back Biscuit up to the beam and hitch on the haul tack.
@@ -122,7 +106,8 @@ struct KindlyDeep: Game, GameMain {
         text.stubs.sing =
             "You get four bars in before the workings hand them back to you, flattened, and you stop."
         text.stubs.pray = "You have nothing against it. You would rather walk, first."
-        text.stubs.sleep = "Not here. Sleep is a thing you do on straw, in the shelter hole, on purpose."
+        // Biscuit answers `talk` himself, in `rules`; this is everybody else.
+        text.stubs.talk = "You say a few words into the dark. The dark, professionally, keeps its own counsel."
         text.stubs.think = "You have done the arithmetic twice. It comes out the same both times."
         text.stubs.yell =
             "You call out. Four hundred feet of rock takes it, considers it, and returns nothing."
@@ -509,8 +494,22 @@ struct KindlyDeep: Game, GameMain {
 
     // MARK: - Verbs
 
+    /// The game's three verbs, and the extra words a driver reaches for on six
+    /// of the engine's. `sleep`, `lie down` and `nap` all *rest*, because in
+    /// this mine they are one act — lying down on the shelter-hole straw — and
+    /// the game's row wins over the engine's `sleep` and `lie down` stubs.
     var verbs: [SyntaxRule] {
-        [.drink, .rest, .give, .talk, .ring, .pull, .sit, .pet, .harness]
+        [.ring, .pet, .harness]
+        SyntaxRule("drink", "from", .directObject, intent: .drink)
+        SyntaxRule("sip", .directObject, intent: .drink)
+        SyntaxRule("sip", "from", .directObject, intent: .drink)
+        SyntaxRule("sleep", intent: .rest)
+        SyntaxRule("lie", "down", intent: .rest)
+        SyntaxRule("nap", intent: .rest)
+        SyntaxRule("feed", .directObject, "to", .indirectObject, intent: .give)
+        SyntaxRule("offer", .directObject, "to", .indirectObject, intent: .give)
+        SyntaxRule("tug", .directObject, intent: .pull)
+        SyntaxRule("yank", .directObject, intent: .pull)
     }
 
     // MARK: - Timers
@@ -521,7 +520,7 @@ struct KindlyDeep: Game, GameMain {
         // arrival.
         actors.follows(
             biscuit,
-            daemonName: "biscuit.follow",
+            named: "biscuit.follow",
             arrivals: [
                 "Hooves on stone, unhurried: Biscuit arrives and stations himself at your shoulder.",
                 "A clatter of hooves behind you, and Biscuit is there, close enough to lean on.",
@@ -759,8 +758,6 @@ struct KindlyDeep: Game, GameMain {
             }
             try offerToBiscuit()
         }
-        action(
-            .talk, say: "You say a few words into the dark. The dark, professionally, keeps its own counsel.")
         // This used to claim the room was empty of anything to ring, from a row
         // that never read a room — and the room it is most often typed in is
         // the Shaft Bottom, which has the signal bell on its wall. The bell

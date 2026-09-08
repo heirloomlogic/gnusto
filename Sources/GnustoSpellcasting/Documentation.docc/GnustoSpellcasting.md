@@ -23,11 +23,12 @@ It is a `GameContent` bundle rather than a `GamePlugin`, because it has state to
 save. The finite spell memory and the energy pool are `@Global`s it owns, so
 both travel in a save and come back correctly under UNDO; the defaults are 3
 slots and 12 mana. Everything else is the host's: the spellbook, the scroll, the
-targets, and every word of prose an effect prints. The bundle contributes two
-verbs of its own — `rest` (or `meditate`), which refills the pool, and `spells`
-(or `magic`), which reports what is held in mind and how much energy is left —
-and adds `spell` to the parser's noise words, so `cast the glow spell` reaches
-`glow`.
+targets, and every word of prose an effect prints. The bundle contributes one
+verb of its own — `spells` (or `magic`), which reports what is held in mind and
+how much energy is left — promotes the engine's `rest` stub to refilling the
+pool (and teaches it `meditate`), and adds `spell` to the parser's noise words,
+so `cast the glow spell` reaches `glow`. Its own lines are a
+``Spellcasting/Text``, passed at init.
 
 Casting runs gate, effect, pay. Availability is checked first; the effect runs
 second and may refuse on its own account with `require` or `reply`; only an
@@ -97,9 +98,15 @@ document is `docs/games/gramarye.md`.
 ### The bundle
 
 - ``Spellcasting``
-- ``Spellcasting/init(memorySlots:maxMana:)``
+- ``Spellcasting/init(memorySlots:maxMana:text:)``
 - ``Spellcasting/memorySlots``
 - ``Spellcasting/maxMana``
+
+### The system's voice
+
+- ``Spellcasting/Text``
+- ``Spellcasting/SpellList``
+- ``Spellcasting/Energy``
 
 ### Registering a spell
 

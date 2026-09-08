@@ -143,6 +143,8 @@ struct Dungeon: Game, GameMain {
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
+        // The carrying cap's refusal, for ``burden``.
+        text.handsFull = .init(Prose.handsFull)
         // The stock line — "You find nothing of interest in the X." — asserts
         // that a search happened and turned up nothing, which is a claim about
         // the inside of a thing that has no inside. The round found it on the
@@ -207,10 +209,7 @@ struct Dungeon: Game, GameMain {
     let endgame = DungeonEndgame()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
-    let dangerousDark = DangerousDark(
-        warning: Prose.grueWarning,
-        death: Prose.grueDeath
-    )
+    let dangerousDark = DangerousDark(text: Prose.grueText)
 
     /// The award-once registers this milestone can pay: the mainframe's room
     /// values (`RVAL`) for getting into the house and for getting below it.
@@ -257,7 +256,13 @@ struct Dungeon: Game, GameMain {
     let systems = DungeonSystems()
 
     /// The weight system: the mainframe's `OSIZE` values against a cap of 100.
-    let burden = DungeonBurden()
+    /// The mainframe's cap. Item sizes are the source's `OSIZE` values, used
+    /// as-is wherever the source declares one, so this number means what it
+    /// means there: the sword alone is 30, the coil of rope 10, the welcome mat
+    /// 12. (The Studio chimney is *not* a weight gate: it counts things in hand
+    /// rather than weighing them, which is the mainframe's own rule and is
+    /// recorded in `FIDELITY.md`.)
+    let burden = Burden(carryCap: 100)
 
     /// How many times the player has died.
     @Global var deaths = 0
@@ -323,18 +328,13 @@ struct Dungeon: Game, GameMain {
         // Belongings strew across the grounds above, one draw per item. The
         // lamp is the kept exception — it always turns up in the living room,
         // so light is never lost to a death.
-        let scatter = [
-            aboveGround.westOfHouse, aboveGround.northOfHouse,
-            aboveGround.southOfHouse, aboveGround.behindHouse,
-            aboveGround.forestTree, aboveGround.clearing,
-        ]
-        for item in player.inventory {
-            if item == house.lantern {
-                item.move(to: house.livingRoom)
-            } else {
-                item.move(to: scatter[random(0...(scatter.count - 1))])
-            }
-        }
+        player.scatterInventory(
+            across: [
+                aboveGround.westOfHouse, aboveGround.northOfHouse,
+                aboveGround.southOfHouse, aboveGround.behindHouse,
+                aboveGround.forestTree, aboveGround.clearing,
+            ],
+            except: [house.lantern: house.livingRoom])
 
         // A resurrection restores the body, and the Alice wing is the one part
         // of the map that keeps state about the body. The water half is the
@@ -1000,7 +1000,7 @@ struct Dungeon: Game, GameMain {
     /// The mainframe lets you up with the lamp and at most one other thing, and
     /// refuses the climb empty-handed outright. This gate **counts** rather
     /// than weighing, deliberately: it is the one load rule in the game that
-    /// ignores `burdenWeight(of:)`, because the mainframe's is a count
+    /// ignores `Item.burden`, because the mainframe's is a count
     /// (`FIDELITY.md`). Climbing into the dark without the lamp is the softlock
     /// the mainframe declines to allow.
     private func chimneyLoadGate() throws {
@@ -1288,7 +1288,7 @@ struct Dungeon: Game, GameMain {
         // still the only thing in this milestone that will kill you other than
         // the dark.
         melee.aggression(
-            of: cellar.troll, key: "troll", daemonName: "melee.troll",
+            of: cellar.troll, key: "troll", named: "melee.troll",
             strikesFirst: 33,
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],

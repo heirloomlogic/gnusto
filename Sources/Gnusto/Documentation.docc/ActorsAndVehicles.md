@@ -183,9 +183,9 @@ factories the host splices:
 
 ```swift
 var timers: [TimedEvent] {
-    actors.roams(thief, daemonName: "thiefRoams",
+    actors.roams(thief, named: "thiefRoams",
                  rooms: [cellar, gallery, studio])
-    actors.steals(thief, daemonName: "thiefSteals",
+    actors.steals(thief, named: "thiefSteals",
                   candidates: [painting],
                   announcement: { "A feather-light touch — and the \($0) is gone." })
 }

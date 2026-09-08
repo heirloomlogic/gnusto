@@ -46,7 +46,7 @@ struct DemoGameStubVerbTests {
     /// `actions` at all. Objectless forms only, so the assertion doesn't depend
     /// on what happens to be lying in the opening room.
     static let objectlessStubCommands = [
-        "dig", "smell", "sniff", "listen", "sleep", "wake", "wake up",
+        "dig", "smell", "sniff", "listen", "sleep", "rest", "wake", "wake up",
         "yell", "shout", "scream", "wave", "climb", "jump", "swim", "dive",
         "stand", "stand up", "sit", "sit down", "lie", "lie down", "kneel",
         "pray", "sing", "curse", "swear", "xyzzy", "plugh", "think", "wish",

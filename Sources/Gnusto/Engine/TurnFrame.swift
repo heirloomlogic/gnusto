@@ -139,7 +139,7 @@ enum Reentry: Sendable {
     ///
     /// | Seam | Real content | Overflows at | Cap |
     /// |---|---|---|---|
-    /// | ``liveText`` | 1–2 | 10 | 8 |
+    /// | ``liveText`` | 1–2 | 9 | 7 |
     /// | ``walk`` | 1 | 216 | 32 |
     /// | ``reach`` | 1–2 | 318 | 32 |
     ///
@@ -162,7 +162,9 @@ enum Reentry: Sendable {
     /// more than the describer's own locals plausibly account for, so the cost
     /// is somewhere in the cycle rather than in any line this comment could
     /// name. Both figures are measurements, not derivations. Raising
-    /// ``liveText`` past 9 restores the original crash under `swift test`;
+    /// ``liveText`` past 8 restores the original crash under `swift test` —
+    /// the ceiling was 10 when first measured and moved to 9 when #405 added
+    /// three stock lines to `GameText`, which is how thin the margin is;
     /// whoever wants more headroom should find and cut that per-level cost
     /// first, then re-measure and move this.
     ///
@@ -173,7 +175,7 @@ enum Reentry: Sendable {
     /// you whether the margin survived.
     var cap: Int {
         switch self {
-        case .liveText: 8
+        case .liveText: 7
         case .walk: 32
         case .reach: 32
         }

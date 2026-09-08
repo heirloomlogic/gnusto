@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoDangerousDark
 
 /// Every description string in the game, gathered as named constants.
 ///
@@ -14,6 +15,18 @@ import Gnusto
 /// the melee mechanism prints over every villain it removes.
 enum Prose {
     // MARK: - The grue
+
+    /// The grue's two lines, as the plugin takes them.
+
+    static let grueText: DangerousDark.Text = {
+        var text = DangerousDark.Text()
+
+        text.warning = grueWarning
+
+        text.death = grueDeath
+
+        return text
+    }()
 
     static let grueWarning = """
         It is pitch black. You are likely to be eaten by a grue.

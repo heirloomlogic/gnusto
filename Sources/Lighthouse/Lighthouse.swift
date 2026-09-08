@@ -2,15 +2,6 @@ import Gnusto
 import GnustoActors
 import GnustoScoring
 
-extension Intent {
-    /// A custom verb so the player can speak to the keeper. The engine has no
-    /// built-in `talk`; `#verb` declares the intent and both sentence shapes the
-    /// parser accepts ("talk to keeper" and the terser "talk keeper"). The
-    /// `verbs` block below lists it and a rule answers it — the three beats of a
-    /// custom verb.
-    #verb("talk", ["talk", "to", .directObject], ["talk", .directObject])
-}
-
 /// *The Lighthouse* — the engine's feature-tour example. Where
 /// ``/CloakOfDarkness`` is the minimal acceptance benchmark and `Zork1` is the
 /// full reconstruction, this sits between them: one small, winnable game whose
@@ -267,12 +258,6 @@ struct Lighthouse: Game {
         fixtures.stores.starts(in: storeroom)
     }
 
-    // MARK: - Vocabulary
-
-    var verbs: [SyntaxRule] {
-        .talk
-    }
-
     // MARK: - Timers
 
     var timers: [TimedEvent] {
@@ -339,7 +324,7 @@ struct Lighthouse: Game {
         // said "up the stairs" would be a lie every time she came down.
         actors.roams(
             keeper,
-            daemonName: "keeperRoams",
+            named: "keeperRoams",
             rooms: [base, tower.lampRoom],
             chancePerTurn: 40,
             arrival: "A slow tread on the stairs, and the keeper arrives at her own pace, the bad leg last.",
@@ -366,6 +351,10 @@ struct Lighthouse: Game {
         }
 
         // Talking to the keeper: a one-time briefing, then a shorter reminder.
+        // `talk` is the engine's own stub verb — the parser already knows "talk
+        // to keeper" and the terser "talk keeper", and answers both with a stock
+        // line — so a game with one person to talk to reclaims the word with
+        // one rule, and `reply` is what lifts the rule above the stock line.
         // Reads and writes the `keeperGreeted` `@Global`. Neither line says where
         // she is standing or what the player is already carrying, so both stay
         // true wherever she has wandered to and however far along the player is.

@@ -70,11 +70,15 @@ struct Fulminate: Game, GameMain {
     /// Two minutes a turn, from half past five. Every alibi in this house is
     /// stated as a time, so the clock is not scenery — it is the instrument
     /// the case is measured with.
-    let clock = Clock(
-        startingAt: TimeOfDay(17, 30),
-        minutesPerTurn: 2,
-        timeIs: { "Your watch says \($0)." }
-    )
+    let clock = Clock(startingAt: TimeOfDay(17, 30), minutesPerTurn: 2, text: clockText)
+
+    /// The one clock line this house re-voices: the watch is the player's,
+    /// so the time is read off it. A `static`, for the reason ``talkText`` is.
+    static let clockText: Clock.Text = {
+        var text = Clock.Text()
+        text.timeIs = .naming { "Your watch says \($0)." }
+        return text
+    }()
 
     /// The interrogation layer. `properName` handles the articles; this one
     /// line is here because a woman who looks at a thing and looks away says
@@ -1349,11 +1353,11 @@ struct Fulminate: Game, GameMain {
     /// the house moves except the three alarms, and those are what the player
     /// is racing.
     var timers: [TimedEvent] {
-        clock.schedule(teague, daemonName: "teague.day", teagueDay)
-        clock.schedule(constance, daemonName: "constance.day", constanceDay)
-        clock.schedule(kettle, daemonName: "kettle.day", kettleDay)
-        clock.schedule(delphine, daemonName: "delphine.day", delphineDay)
-        clock.schedule(pike, daemonName: "pike.day", pikeDay)
+        clock.schedule(teague, named: "teague.day", teagueDay)
+        clock.schedule(constance, named: "constance.day", constanceDay)
+        clock.schedule(kettle, named: "kettle.day", kettleDay)
+        clock.schedule(delphine, named: "delphine.day", delphineDay)
+        clock.schedule(pike, named: "pike.day", pikeDay)
 
         // 5:46. The inciting event, and the reason there is a case at all.
         clock.at(TimeOfDay(17, 46), named: "clock.blast") {

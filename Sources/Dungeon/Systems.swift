@@ -76,7 +76,7 @@ extension Player {
     /// `FLAMEBIT` object in hand, and this game has three: the matchbook, the
     /// pair of candles and the ivory torch.
     ///
-    /// Declared beside the trait it reads, the way ``burdenWeight(of:)`` is
+    /// Declared beside the trait it reads, the way ``Item/burden`` is
     /// declared beside ``TraitKey/weight``: three region bundles were asking
     /// this question in their own words before there was one place to ask it.
     ///

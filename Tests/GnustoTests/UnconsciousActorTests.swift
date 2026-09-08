@@ -43,7 +43,7 @@ struct UnconsciousActorTests {
     }
 
     /// Coming round is not an aggressive act, so it happens ahead of the host's
-    /// `while:` gate. Under a truce the cutpurse never once swings — and still
+    /// `when:` gate. Under a truce the cutpurse never once swings — and still
     /// wakes on schedule and goes back to work. Before the countdown moved
     /// ahead of the gate, a villain knocked out where his gate was shut stayed
     /// unconscious for the rest of the game.

@@ -49,6 +49,8 @@ struct Zork1: Game, GameMain {
         text.didntUnderstand = "That sentence isn't one I recognize."
         // "take all" with nothing to take (gmain.zil).
         text.nothingToTakeHere = "There's nothing here you can take."
+        // The carrying cap's refusal, for ``burden``.
+        text.handsFull = .init(Prose.handsFull)
         // ENTER / GO THROUGH something that is neither doorway nor vehicle
         // (gverbs.zil V-THROUGH's last clause).
         text.cantEnterThat = .naming {
@@ -97,10 +99,7 @@ struct Zork1: Game, GameMain {
     let thief = ZorkThief()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
-    let dangerousDark = DangerousDark(
-        warning: Prose.grueWarning,
-        death: Prose.grueDeath
-    )
+    let dangerousDark = DangerousDark(text: Prose.grueText)
 
     /// The five event awards, declared where the bootstrap can total them. With
     /// the nineteen treasures' `.takeValue` (143) and `.depositValue` (129) this
@@ -127,7 +126,11 @@ struct Zork1: Game, GameMain {
 
     /// The weight/burden system: takeable items have weight and the player
     /// can only carry so much.
-    let burden = ZorkBurden()
+    /// The carrying cap. The original's is 100; at the default item weight of
+    /// 5 that's twenty small things — ample, and tight enough that the
+    /// loaded-down cases (and the chimney's stricter count gate) can be
+    /// exercised. The heavy items declare their own `.weight`.
+    let burden = Burden(carryCap: 100)
 
     /// How many times the player has died. Deaths one and two are survivable
     /// (see ``onDeath()``); the third is final.
@@ -198,20 +201,14 @@ struct Zork1: Game, GameMain {
         // Belongings strew unpredictably across the grounds — the original's
         // random scatter, one draw per item. The lamp is the kept exception: it
         // always turns up in the living room, so light is never lost to a death
-        // (a deliberate anti-softlock). Iterate a stable id-sorted snapshot so
-        // only the destination draws vary, not the order they are drawn in.
-        let scatter = [
-            aboveGround.westOfHouse, aboveGround.northOfHouse,
-            aboveGround.southOfHouse, aboveGround.behindHouse,
-            aboveGround.forestPath, aboveGround.clearingEast,
-        ]
-        for item in player.inventory {
-            if item == house.lantern {
-                item.move(to: house.livingRoom)
-            } else {
-                item.move(to: scatter[random(0...(scatter.count - 1))])
-            }
-        }
+        // (a deliberate anti-softlock).
+        player.scatterInventory(
+            across: [
+                aboveGround.westOfHouse, aboveGround.northOfHouse,
+                aboveGround.southOfHouse, aboveGround.behindHouse,
+                aboveGround.forestPath, aboveGround.clearingEast,
+            ],
+            except: [house.lantern: house.livingRoom])
 
         player.location = aboveGround.forestWest
         say(Prose.resurrection)
@@ -835,7 +832,7 @@ struct Zork1: Game, GameMain {
         // is `<PROB 33>`. The rest of the time he blocks, which is what his
         // listing line has always said he does.
         melee.aggression(
-            of: cellar.troll, key: "troll", daemonName: "melee.troll",
+            of: cellar.troll, key: "troll", named: "melee.troll",
             strikesFirst: 33,
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],
@@ -848,13 +845,13 @@ struct Zork1: Game, GameMain {
         // steal daemons guard before they draw, so quiet turns — the actor out
         // of the set, or your hands empty of treasure — burn no randomness.
         actors.roams(
-            thief.thief, daemonName: "thiefRoams",
+            thief.thief, named: "thiefRoams",
             rooms: undergroundRooms,
             chancePerTurn: 50,
             arrival: Prose.thiefArrives,
             departure: Prose.thiefLeaves)
         actors.steals(
-            thief.thief, daemonName: "thiefSteals",
+            thief.thief, named: "thiefSteals",
             candidates: treasureRoster,
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
@@ -870,15 +867,15 @@ struct Zork1: Game, GameMain {
             }
         }
 
-        // He fights back only in his lair — the `while:` gate closes everywhere
+        // He fights back only in his lair — the `when:` gate closes everywhere
         // else, keeping him evasive on the prowl and burning no randomness on
         // the turns he isn't defending the hoard. Even there he waits to be
         // swung at four times in five: `F-FIRST?` (`1actions.zil:2064`) is
         // `<PROB 20>`.
         melee.aggression(
-            of: thief.thief, key: "thief", daemonName: "thiefFights",
+            of: thief.thief, key: "thief", named: "thiefFights",
             strikesFirst: 20,
-            while: { thief.thief.isIn(maze.treasureRoom) },
+            when: { thief.thief.isIn(maze.treasureRoom) },
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.thiefSwipeMiss],
                 wound: [Prose.thiefSwipeWound],

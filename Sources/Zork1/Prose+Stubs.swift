@@ -1,7 +1,7 @@
 import Gnusto
 import GnustoMeleeCombat
 
-/// The stub floor: what this game answers for the 47 verbs the parser knows and
+/// The stub floor: what this game answers for the 49 verbs the parser knows and
 /// no mechanic here is behind.
 ///
 /// **This game reproduces; it does not adapt.** `FIDELITY.md`'s preamble splits
@@ -20,8 +20,9 @@ import GnustoMeleeCombat
 ///   second person because an adaptation may; this game may not, and
 ///   ``Prose/drinkWater`` has kept the source's "I" since Task 8.
 /// - **Where the source has no such verb, the line is an invention and says
-///   so.** Twelve of the engine's stubs — `sing`, `buy`, `sell`, `think`,
-///   `point`, `kneel`, `lie`, `sit`, `sleep`, `taste`, `dive`, `empty` — appear
+///   so.** Thirteen of the engine's stubs — `sing`, `buy`, `sell`, `think`,
+///   `point`, `kneel`, `lie`, `sit`, `sleep`, `rest`, `taste`, `dive`, `empty`
+///   — appear
 ///   nowhere in `gsyntax.zil`, so there is nothing to reproduce. Those lines are
 ///   written to the register and are recorded in `FIDELITY.md` as inventions, in
 ///   their own bullet group, so the ledger never implies the source said
@@ -64,8 +65,8 @@ extension Prose {
     /// game, what anyone who swings at the scenery reads — was a narrator this
     /// game has never used. All four are `V-ATTACK`'s own branches
     /// (`gverbs.zil:176-193`). (#242)
-    static let combatText: MeleeCombat.CombatText = {
-        var text = MeleeCombat.CombatText()
+    static let combatText: MeleeCombat.Text = {
+        var text = MeleeCombat.Text()
         text.attackFutile = attackFutile
         // `V-ATTACK:182`, which names its target; #242 widened `noWeapon` so it
         // could.
@@ -174,6 +175,8 @@ extension Prose {
         stubs.drink = .init(Prose.nothingToDrink)
         // Invented: no `SLEEP` in `gsyntax.zil`.
         stubs.sleep = "This is no place for a nap!"
+        // Invented: no `REST` in `gsyntax.zil`.
+        stubs.rest = "There's no rest for the adventurous."
         // `V-ALARM`'s non-actor branch (`gverbs.zil:168`), which `wake` routes to
         // (`gsyntax.zil:527`). Bare `wake` and `wake up` parse too, so the line
         // has to be true with and without something named.
@@ -182,6 +185,16 @@ extension Prose {
         }
 
         // MARK: Social
+
+        // `TALK TO` routes to `V-TELL` (`gsyntax.zil:421`). The bare half is
+        // `V-SAY`'s answer to addressing yourself (`gverbs.zil:1194`); the
+        // named half is `V-TELL`'s non-actor branch (`:1399`). Its actor branch
+        // — "pauses for a moment, perhaps thinking that you should reread the
+        // manual" — is not rendered: a stub line cannot see whether it was
+        // handed a person, and the departure is recorded in `FIDELITY.md`.
+        stubs.talk = .naming(orBare: "Talking to yourself is a sign of impending mental collapse.") {
+            "You can't talk to \($0)!"
+        }
 
         // `V-KISS` (`gverbs.zil:763`).
         stubs.kiss = "I'd sooner kiss a pig."

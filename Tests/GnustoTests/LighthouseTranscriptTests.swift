@@ -215,23 +215,18 @@ struct LighthouseTranscriptTests {
             ])
     }
 
-    /// The jetty is a three-turn room, and `.talk` is answered by a rule on the
-    /// keeper and by nothing else. Talking to yourself there used to spend all
-    /// three turns while insisting the parser had failed — the first play-test
-    /// round's drowning. Nothing answers the command, so nothing happens: the
-    /// tide does not move.
-    @Test func talkingToNobodyOnTheJettyCostsNoTurn() async throws {
-        let transcript = try await play(
-            Lighthouse(),
-            ["talk to me", "talk to me", "talk to me", "score"],
-            seed: 0)
+    /// `talk` is the engine's stub verb: a rule on the keeper answers it, and
+    /// the stock line answers everybody else, in voice. Talking to yourself on
+    /// the jetty used to insist the parser had failed while the tide spent the
+    /// turns anyway — the first play-test round's drowning. A stub still costs
+    /// the turn, as any verb does; what it never does is pretend not to have
+    /// understood.
+    @Test func talkingToNobodyOnTheJettyAnswersInVoiceAndCostsATurn() async throws {
+        let transcript = try await play(Lighthouse(), ["talk to me", "score"], seed: 0)
 
-        #expect(transcript.contains("You can't do that."))
+        #expect(turnOutput(of: "talk to me", in: transcript).contains("You talk for a while. Nobody answers."))
         #expect(!transcript.contains("I didn't understand that sentence."))
-        // The tide never gets a turn to rise in, so it never gets to drown you.
-        #expect(!transcript.contains("Cold water sluices between the planks of the jetty."))
-        #expect(!transcript.contains("takes you with it"))
-        #expect(turnOutput(of: "score", in: transcript).contains("in 0 turns."))
+        #expect(turnOutput(of: "score", in: transcript).contains("in 1 turn."))
     }
 
     /// Save and restore round-trip the whole world: the brass key, dropped after

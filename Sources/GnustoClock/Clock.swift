@@ -70,8 +70,20 @@ public struct Clock: GameContent {
     /// How the time is spelled for the player.
     public let format: TimeFormat
 
-    /// The `time` verb's reply, given the formatted time.
-    private let timeIsLine: @Sendable (String) -> String
+    /// The clock's own voice: the one line the mechanics print. Override it
+    /// after construction to re-skin.
+    public struct Text: Sendable {
+        /// The `time` verb's reply, handed the time spelled the way ``format``
+        /// spells it, as a ``GameText/Word``. Written with `.naming`, because a
+        /// reply that left the time out would answer the question with nothing.
+        public var timeIs: GameText.Line<GameText.Word> = .naming { "It is \($0)." }
+
+        /// Creates the table in the library's own voice.
+        public init() {}
+    }
+
+    /// This clock's lines.
+    private let text: Text
 
     /// Creates a clock.
     ///
@@ -79,18 +91,18 @@ public struct Clock: GameContent {
     ///   - start: the time the game opens at (default nine in the morning).
     ///   - minutesPerTurn: wall-clock minutes one turn costs (default 1).
     ///   - format: how times are spelled for the player (default twelve-hour).
-    ///   - timeIs: the `time` verb's reply, given the formatted time.
+    ///   - text: the `time` verb's reply, if the game re-voices it.
     public init(
         startingAt start: TimeOfDay = TimeOfDay(9, 0),
         minutesPerTurn: Int = 1,
         format: TimeFormat = .twelveHour,
-        timeIs: @escaping @Sendable (String) -> String = { "It is \($0)." }
+        text: Text = Text()
     ) {
         precondition(minutesPerTurn >= 1, "Gnusto: a clock needs at least a minute per turn.")
         self.start = start
         self.minutesPerTurn = minutesPerTurn
         self.format = format
-        self.timeIsLine = timeIs
+        self.text = text
     }
 
     // MARK: - Reading the clock
@@ -216,7 +228,7 @@ public struct Clock: GameContent {
     /// same minute it costs anyone.
     public var actions: [IntentAction] {
         action(.time) {
-            say(timeIsLine(now.formatted(format)))
+            say(text.timeIs(GameText.Word(now.formatted(format))))
         }
     }
 

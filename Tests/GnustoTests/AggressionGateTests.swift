@@ -3,7 +3,7 @@ import Testing
 
 @testable import Gnusto
 
-/// The `while:` aggression gate on `MeleeCombat.aggression`: a closed gate is
+/// The `when:` aggression gate on `MeleeCombat.aggression`: a closed gate is
 /// a quiet turn — the villain doesn't counter-attack and, crucially, draws no
 /// randomness, so a scoped fight (the thief only swings in his lair) leaves
 /// every other seeded draw sequence intact.

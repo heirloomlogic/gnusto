@@ -11,22 +11,6 @@ extension Intent {
     /// topic slot. Note the dative (`show butler the letter`) is not
     /// expressible: two object slots can't sit side by side.
     #verb("show", ["show", .directObject, "to", .indirectObject])
-    /// Open a conversation: `talk to the butler`. Distinct from the engine's
-    /// ``Intent/greet`` — GREET is the hello, TALK is settling in for one —
-    /// though ``Conversation/greeting(of:for:learning:again:reply:)`` answers both
-    /// by default, so the player never has to guess which word the game wanted.
-    ///
-    /// Note `Sources/Lighthouse` mints an `Intent("talk")` of its own for the
-    /// same word, on purpose: it is the worked example of a game reclaiming a
-    /// verb. The two are the same intent by identity but live in modules that
-    /// never meet in one game — don't import both into one file.
-    #verb(
-        "talk",
-        ["talk", "to", .directObject],
-        ["talk", "with", .directObject],
-        ["talk", .directObject],
-        ["speak", "to", .directObject],
-        ["speak", "with", .directObject])
 }
 
 /// A topic-driven conversation layer: per-actor tables of subjects the player
@@ -91,7 +75,7 @@ public struct Conversation: GameContent {
     @Global var heard = Heard()
 
     /// This layer's stock lines, gathered into one value the way
-    /// `MeleeCombat.CombatText` gathers combat's — a plugin that claims a verb
+    /// `MeleeCombat.Text` gathers combat's — a plugin that claims a verb
     /// owns that verb's voice, so the lines live with the plugin rather than on
     /// `GameText`.
     ///
@@ -445,13 +429,19 @@ public struct Conversation: GameContent {
 
     // MARK: - GameContent
 
-    /// The verbs the layer contributes: `ask`, `tell`, `show`, `talk`, and the
-    /// one greeting row the engine deliberately leaves to a conversation system
-    /// — a bare hello. (`greet <object>`, `hello <object>`, `hi <object>` and
+    /// The verbs the layer contributes: `ask`, `tell`, `show`, and the one
+    /// greeting row the engine deliberately leaves to a conversation system —
+    /// a bare hello. (`greet <object>`, `hello <object>`, `hi <object>` and
     /// `say hello to <object>` are built in; bare `hello` is not, so a game can
     /// own that word outright without a launch warning.)
+    ///
+    /// `talk` is not here because it is the engine's: ``Gnusto/Intent/talk`` is
+    /// a stub verb every game has, and ``actions`` promotes it — silently, as
+    /// any stub is promoted. GREET is the hello, TALK is settling in for one,
+    /// and ``greeting(of:for:learning:again:reply:)`` answers both by default,
+    /// so the player never has to guess which word the game wanted.
     public var verbs: [SyntaxRule] {
-        [.ask, .tell, .show, .talk]
+        [.ask, .tell, .show]
         SyntaxRule("hello", intent: .greet)
         SyntaxRule("hi", intent: .greet)
     }

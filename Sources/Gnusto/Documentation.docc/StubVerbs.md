@@ -51,10 +51,10 @@ Violence and force: `attack`/`kill`/`hit`/`fight` (bare or `with` a weapon),
 
 Senses: `touch`/`feel`/`rub`, `smell`/`sniff`, `listen (to)`, `taste`/`lick`.
 
-Body: `eat`, `drink`, `sleep`, `wake (up)`.
+Body: `eat`, `drink`, `sleep`, `rest`, `wake (up)`.
 
-Social: `kiss`/`hug`, `give`/`hand … to …`, `yell`/`shout`/`scream`, `wave`,
-`point at`.
+Social: `talk (to/with)`/`speak (to/with)`, `kiss`/`hug`, `give`/`hand … to …`,
+`yell`/`shout`/`scream`, `wave`, `point at`.
 
 Motion: `climb (up/down/on)`, `jump (over)`, `swim`, `dive`, `stand (up)`,
 `sit (down/on)`, `lie (down)`, `kneel`.

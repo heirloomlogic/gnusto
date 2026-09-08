@@ -72,7 +72,7 @@ extension DungeonEndgame {
         // which is the whole of why the solve is possible, since you can be
         // somewhere he will not go and still be heard.
         //
-        // `ActorBehaviors.follows` with both of its gates: `while:` is TELL HIM
+        // `ActorBehaviors.follows` with both of its gates: `when:` is TELL HIM
         // TO STAY, and `rooms:` is the corridors and the parapet — every room
         // in the prison except a cell, which is what he will not walk into.
         // This was the same daemon written out longhand, minus the plugin's
@@ -81,9 +81,9 @@ extension DungeonEndgame {
         // prison room is lit), and both of which are right.
         actors.follows(
             dungeonMaster,
-            daemonName: "endgame.master",
+            named: "endgame.master",
             rooms: masterRoams,
-            while: { !masterStaying },
+            when: { !masterStaying },
             arrivals: [Prose.masterFollowsYouIn])
     }
 

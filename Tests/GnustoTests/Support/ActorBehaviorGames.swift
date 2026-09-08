@@ -3,7 +3,7 @@ import GnustoActors
 
 /// Fixtures for `GnustoActors`. `WanderGame` exercises roaming (100% so
 /// every turn moves, announcements asserted under a pinned seed) and its
-/// `while:` gate, which is shut for as long as the player stands in the chapel;
+/// `when:` gate, which is shut for as long as the player stands in the chapel;
 /// `PickpocketGame` exercises theft, reactions, theft in the dark (`douse`),
 /// and daemon stopping; `FollowGame` exercises the companion daemon
 /// (deterministic, no seeds).
@@ -71,11 +71,11 @@ struct WanderGame: Game {
     var timers: [TimedEvent] {
         behaviors.roams(
             wanderer,
-            daemonName: "wander",
+            named: "wander",
             rooms: [yard, armory, chapel, crypt],
             chancePerTurn: 100,
             // The gate: stand in the chapel and he holds still, wherever he is.
-            while: { player.location != chapel },
+            when: { player.location != chapel },
             arrival: "The wanderer saunters in.",
             departure: "The wanderer slips away.")
     }
@@ -205,7 +205,7 @@ struct PickpocketGame: Game {
     var timers: [TimedEvent] {
         behaviors.steals(
             thief,
-            daemonName: "pick",
+            named: "pick",
             candidates: [locket, coin, pebble, gem, ruby, medal, satchel, token],
             chancePerTurn: 100,
             announcement: { "Featherlight fingers make off with the \($0)." })
@@ -300,7 +300,7 @@ struct FollowGame: Game {
     var timers: [TimedEvent] {
         behaviors.follows(
             hound,
-            daemonName: "follow",
+            named: "follow",
             arrivals: ["The hound pads in after you."])
     }
 
@@ -349,7 +349,7 @@ struct GaolerGame: Game {
         description("He has done this a long time.")
     }
 
-    /// Whether he has been told to wait — the `while:` gate.
+    /// Whether he has been told to wait — the `when:` gate.
     @Global var gaolerStaying = false
 
     let behaviors = ActorBehaviors()
@@ -372,9 +372,9 @@ struct GaolerGame: Game {
     var timers: [TimedEvent] {
         behaviors.follows(
             gaoler,
-            daemonName: "gaoler.follow",
+            named: "gaoler.follow",
             rooms: [guardroom, corridor],
-            while: { !gaolerStaying },
+            when: { !gaolerStaying },
             arrivals: ["The gaoler comes in behind you."])
     }
 

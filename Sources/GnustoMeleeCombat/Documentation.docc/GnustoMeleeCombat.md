@@ -20,7 +20,7 @@ voice lives. `text.stubs.attack` is the line a game without combat
 prints, and a game with this library never prints it. The four refusals the
 mechanics own — swinging at something no villain rule claimed, swinging
 bare-handed, naming a feather as a weapon, naming a sword you aren't holding —
-are ``MeleeCombat/CombatText``, passed at init.
+are ``MeleeCombat/Text``, passed at init.
 
 It is a `GameContent` bundle rather than a `GamePlugin` because it saves a
 ledger: each villain's health, his stun countdown, whether he is currently in a
@@ -33,7 +33,7 @@ cannot guess a villain's death sentence.
 
 Every roll draws from the game's seeded stream, so a pinned seed replays a fight
 blow for blow. The guards are ordered so quiet turns draw nothing: a villain in
-another room, or behind a closed `while:` gate, or already engaged, burns no
+another room, or behind a closed `when:` gate, or already engaged, burns no
 randomness, which is what keeps one villain's presence from shifting another
 villain's draws. Two simplifications are deliberate and want ledgering per game:
 the player's wounds never heal, and a defeated villain stays defeated.
@@ -80,7 +80,7 @@ struct Cavern: Game {
 
     var timers: [TimedEvent] {
         melee.aggression(
-            of: troll, key: "troll", daemonName: "melee.troll",
+            of: troll, key: "troll", named: "melee.troll",
             strikesFirst: 33,
             prose: MeleeCombat.AggressionProse(
                 miss: ["The axe passes within an inch of your ear."],
@@ -107,7 +107,7 @@ The counter-attack rolls a flat table: miss ≤ 50, wound ≤ 85, an outright ki
 above. `playerStrength` is how many wounds the player survives, default 2.
 `strikesFirst` is the odds out of 100 that a villain starts a fight on a turn
 the player hasn't — 100 fights on sight, 0 only ever answers a blow, and neither
-of those two values draws from the stream. `while:` is an extra gate checked
+of those two values draws from the stream. `when:` is an extra gate checked
 before the same-room guard, for a villain whose combat is scoped to one room; it
 does not gate coming round from a knockout, so a man knocked out where his gate
 is shut still wakes up.
@@ -117,7 +117,7 @@ is shut still wakes up.
 `Sources/Zork1/` wires two villains against this library. The troll is the
 straightforward one: he blocks a passage, starts a fight one turn in three, and
 his axe is lootable once he falls. The thief is the awkward one, and is why
-`while:` exists — he prowls the whole underground picking pockets and fights
+`when:` exists — he prowls the whole underground picking pockets and fights
 only in his own lair, so his gate is closed on almost every turn he is alive.
 
 ## Topics
@@ -132,7 +132,7 @@ only in his own lair, so his gate is closed on almost every turn he is alive.
 ### Registering a villain
 
 - ``MeleeCombat/villain(_:key:strength:weapons:prose:onDefeat:)``
-- ``MeleeCombat/aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)``
+- ``MeleeCombat/aggression(of:key:named:strikesFirst:playerStrength:when:prose:)``
 
 ### Traits the host declares on its items
 
@@ -141,12 +141,12 @@ only in his own lair, so his gate is closed on almost every turn he is alive.
 
 ### The system's own voice
 
-- ``MeleeCombat/CombatText``
-- ``MeleeCombat/CombatText/init()``
-- ``MeleeCombat/CombatText/attackFutile``
-- ``MeleeCombat/CombatText/noWeapon``
-- ``MeleeCombat/CombatText/notAWeapon``
-- ``MeleeCombat/CombatText/weaponNotHeld``
+- ``MeleeCombat/Text``
+- ``MeleeCombat/Text/init()``
+- ``MeleeCombat/Text/attackFutile``
+- ``MeleeCombat/Text/noWeapon``
+- ``MeleeCombat/Text/notAWeapon``
+- ``MeleeCombat/Text/weaponNotHeld``
 
 ### A villain's lines
 

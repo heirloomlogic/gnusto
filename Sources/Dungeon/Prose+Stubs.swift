@@ -1,7 +1,7 @@
 import Gnusto
 import GnustoMeleeCombat
 
-/// The stub floor: what the game answers for the ~47 verbs the parser knows and
+/// The stub floor: what the game answers for the ~49 verbs the parser knows and
 /// no mechanic in this dungeon is behind.
 ///
 /// The play-test round (#233, box 12) found the game answering seventeen of them
@@ -67,8 +67,8 @@ extension Prose {
     /// answered by a narrator the rest of the game had stopped using — box 12
     /// at the one verb the box did not look at. All four are `V-ATTACK`'s own
     /// branches (`gverbs.zil:176-190`). (#233)
-    static let combatText: MeleeCombat.CombatText = {
-        var text = MeleeCombat.CombatText()
+    static let combatText: MeleeCombat.Text = {
+        var text = MeleeCombat.Text()
         text.attackFutile = attackFutile
         text.noWeapon = "Trying that with your bare hands would be suicidal."
         text.notAWeapon = .naming { "Attacking anything with \($0) would be suicidal." }
@@ -168,11 +168,18 @@ extension Prose {
         stubs.eat = .naming { "You have no appetite for \($0)." }
         stubs.drink = .init(Prose.cantDrinkThat)
         stubs.sleep = "You have not come all this way to sleep."
+        stubs.rest = "Rest is for people who have finished."
         // Bare `wake` and `wake up` parse too, so the line has to be true with
         // and without something named.
         stubs.wake = "There is no one asleep to be woken."
 
         // MARK: Social
+
+        // About the thing named, never the room: whoever it is has nothing to
+        // say, wherever they are standing. The bare half is `talk to me`.
+        stubs.talk = .naming(orBare: "You say a few words to yourself. They change nothing.") {
+            "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say to you."
+        }
 
         // `V-KISS` (`gverbs.zil:762`), second person.
         stubs.kiss = "You would sooner kiss a pig."

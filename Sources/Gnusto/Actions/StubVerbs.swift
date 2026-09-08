@@ -274,11 +274,19 @@ extension Intent {
     public static let drink = Intent("drink")
     /// Go to sleep.
     public static let sleep = Intent("sleep")
+    /// Rest a while. `GnustoSpellcasting` promotes this one to refilling the
+    /// energy pool; `Sources/KindlyDeep/` to the shelter-hole rest scene.
+    public static let rest = Intent("rest")
     /// Wake up, or wake somebody else.
     public static let wake = Intent("wake")
 
     // Social.
 
+    /// Talk to somebody: `talk to the keeper`, `speak with the butler`.
+    /// Distinct from ``greet`` — GREET is the hello, TALK is settling in for
+    /// one. `GnustoConversation` promotes this one to a topic table; a game
+    /// with one person to talk to answers it with a rule.
+    public static let talk = Intent("talk")
     /// Kiss or hug somebody.
     public static let kiss = Intent("kiss")
     /// Hand something to somebody.
@@ -564,6 +572,8 @@ extension DefaultActions {
 
         .plain(.sleep, [["sleep"]], reach: .notNeeded) { $0.stubs.sleep() },
 
+        .plain(.rest, [["rest"]], reach: .notNeeded) { $0.stubs.rest() },
+
         // `wake up <object>` earns its row: without it, "wake up the troll"
         // falls to `wake <object>`, which swallows "up troll", fails the
         // lexicon, and answers "You can't see any such thing" about a troll
@@ -581,6 +591,22 @@ extension DefaultActions {
         ) { $0.stubs.wake($1) },
 
         // MARK: Social
+
+        // No actor guard, for the reason `kiss` has none: talking to somebody
+        // is what the verb is for. No reach either — a word carries through
+        // glass, and across a room. Every row names somebody, so the line's
+        // bare half is what the player gets for `talk to me`.
+        .optionallyNamed(
+            .talk,
+            [
+                ["talk", "to", .directObject],
+                ["talk", "with", .directObject],
+                ["talk", .directObject],
+                ["speak", "to", .directObject],
+                ["speak", "with", .directObject],
+            ],
+            reach: .notNeeded
+        ) { $0.stubs.talk($1) },
 
         // **No actor guard, and this is the verb that proves the guard must stay
         // per verb.** Every other stub that reaches its object defers about a

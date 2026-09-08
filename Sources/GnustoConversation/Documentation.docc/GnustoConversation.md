@@ -11,7 +11,7 @@ first five minutes comes back as *I don't know the word*. `ask`, `tell` and
 prose and no mechanic behind it, and there is no line that answers `ask the
 butler about the murder` — the verb wants a topic slot, somebody to ask, and a
 table to look the subject up in. So the three words live here instead, with the
-table behind them, and `talk to` and a bare `hello` come along with them.
+table behind them, and a bare `hello` comes along with them. `talk to` is the engine's own stub verb, promoted here to open a conversation.
 
 What the table is for is the shape a mystery needs and nothing in the engine
 offered: an actor who says one thing until the player can prove otherwise, and

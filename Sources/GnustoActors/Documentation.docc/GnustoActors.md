@@ -21,9 +21,9 @@ the prose — is handed in by the host.
 Randomness is drawn only after a factory's guards pass. A roaming daemon whose
 actor is out of position, or a thief whose player has nothing worth taking,
 consumes no randomness at all, so a seeded transcript that never meets the actor
-stays stable no matter what he gets up to elsewhere. `while:` on
-``ActorBehaviors/roams(_:daemonName:rooms:chancePerTurn:while:arrival:departure:)``
-and ``ActorBehaviors/follows(_:daemonName:rooms:while:arrivals:)`` is evaluated
+stays stable no matter what he gets up to elsewhere. `when:` on
+``ActorBehaviors/roams(_:named:rooms:chancePerTurn:when:arrival:departure:)``
+and ``ActorBehaviors/follows(_:named:rooms:when:arrivals:)`` is evaluated
 before the position guard for the same reason: a shut gate is a quiet, draw-free
 turn.
 
@@ -52,14 +52,14 @@ struct Gallery: Game {
     var timers: [TimedEvent] {
         actors.roams(
             thief,
-            daemonName: "thief.roam",
+            named: "thief.roam",
             rooms: [cellar, studio],
             chancePerTurn: 50,
             arrival: "A shadow detaches itself from the doorway.",
             departure: "The shadow is somewhere else, and you did not see it go.")
         actors.steals(
             thief,
-            daemonName: "thief.steal",
+            named: "thief.steal",
             candidates: [painting],
             chancePerTurn: 30,
             announcement: { "A hand you never see relieves you of the \($0)." })
@@ -75,12 +75,12 @@ struct Gallery: Game {
 
 ## Roaming and following are different daemons
 
-``ActorBehaviors/roams(_:daemonName:rooms:chancePerTurn:while:arrival:departure:)``
+``ActorBehaviors/roams(_:named:rooms:chancePerTurn:when:arrival:departure:)``
 teleports the actor within a room set, with no exit-graph awareness — a wall
 between two rooms in the set will not stop him. It has both an `arrival` and a
 `departure` line, because the player can be standing in either room.
 
-``ActorBehaviors/follows(_:daemonName:rooms:while:arrivals:)`` moves the actor to
+``ActorBehaviors/follows(_:named:rooms:when:arrivals:)`` moves the actor to
 wherever the player now stands. Daemons tick at the end of the turn, after `go`
 has resolved and the new room has been described, so the companion catches up on
 the same turn and his arrival line trails the room description. There is no
@@ -96,7 +96,7 @@ is silent.
 Two ways to scope a follower, and they scope different things. `rooms:` is a
 whitelist of *destinations* — a gaoler who walks the corridors and will not set
 foot in a cell follows you along the one and lets you go into the other, which is
-what makes "somewhere he will not go" a place you can stand. `while:` is the
+what makes "somewhere he will not go" a place you can stand. `when:` is the
 gate, for the companion who has been told to wait. `stopDaemon(_:)` parks him
 where he stands and `startDaemon(_:)` picks him up again; `Sources/KindlyDeep/`
 turns its whole endgame on which room the mule was standing in when he was
@@ -107,7 +107,7 @@ turn one.
 
 ## The thief takes from anywhere in the room
 
-``ActorBehaviors/steals(_:daemonName:candidates:chancePerTurn:announcement:)``
+``ActorBehaviors/steals(_:named:candidates:chancePerTurn:announcement:)``
 lifts a candidate from wherever it lies in the shared room: out of the player's
 hands, off the floor, or from inside anything open, to any depth. Only another
 actor's hands are out of reach. The theft is announced only when the room is lit;
@@ -130,12 +130,12 @@ treasure roster, and fighting back only in his own lair.
 
 ### Moving an actor
 
-- ``ActorBehaviors/roams(_:daemonName:rooms:chancePerTurn:while:arrival:departure:)``
-- ``ActorBehaviors/follows(_:daemonName:rooms:while:arrivals:)``
+- ``ActorBehaviors/roams(_:named:rooms:chancePerTurn:when:arrival:departure:)``
+- ``ActorBehaviors/follows(_:named:rooms:when:arrivals:)``
 
 ### Taking things
 
-- ``ActorBehaviors/steals(_:daemonName:candidates:chancePerTurn:announcement:)``
+- ``ActorBehaviors/steals(_:named:candidates:chancePerTurn:announcement:)``
 
 ### Answering the player
 

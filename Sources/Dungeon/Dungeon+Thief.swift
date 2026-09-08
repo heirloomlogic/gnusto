@@ -264,7 +264,7 @@ extension Dungeon {
     /// Every one of them guards before it draws, so the turns he is not on
     /// screen cost the seeded stream nothing: the roam daemon idles while he is
     /// offstage, the theft daemon while he is not in your room, the stash
-    /// daemon draws no randomness at all, and the aggression daemon's `while:`
+    /// daemon draws no randomness at all, and the aggression daemon's `when:`
     /// gate is shut everywhere but the lair.
     @TimerBuilder
     var thiefTimers: [TimedEvent] {
@@ -274,15 +274,15 @@ extension Dungeon {
         // stash daemon never fires — so the gate does the job instead, and the
         // shut gate draws no randomness, exactly as `melee.aggression`'s does.
         actors.roams(
-            thief.thief, daemonName: "thief.roams",
+            thief.thief, named: "thief.roams",
             rooms: thiefProwl,
             chancePerTurn: 50,
-            while: { player.location != maze.treasureRoom },
+            when: { player.location != maze.treasureRoom },
             arrival: Prose.thiefArrives,
             departure: Prose.thiefLeaves)
 
         actors.steals(
-            thief.thief, daemonName: "thief.steals",
+            thief.thief, named: "thief.steals",
             candidates: treasureRoster,
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
@@ -312,9 +312,9 @@ extension Dungeon {
         // his own accord — `F-FIRST?` (`1actions.zil:2064`) is `<PROB 20>` — and
         // waits to be swung at the rest of the time.
         melee.aggression(
-            of: thief.thief, key: "thief", daemonName: "thief.fights",
+            of: thief.thief, key: "thief", named: "thief.fights",
             strikesFirst: 20,
-            while: { thief.thief.isIn(maze.treasureRoom) && !thief.thiefAdmiring },
+            when: { thief.thief.isIn(maze.treasureRoom) && !thief.thiefAdmiring },
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.thiefSwipeMiss],
                 wound: [Prose.thiefSwipeWound],
