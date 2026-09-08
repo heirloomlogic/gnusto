@@ -74,7 +74,7 @@ public struct Clock: GameContent {
     /// after construction to re-skin.
     public struct Text: Sendable {
         /// The `time` verb's reply, handed the time spelled the way ``format``
-        /// spells it, as a ``GameText/Word``. Written with `.naming`, because a
+        /// spells it, as a ``Gnusto/GameText/Word``. Written with `.naming`, because a
         /// reply that left the time out would answer the question with nothing.
         public var timeIs: GameText.Line<GameText.Word> = .naming { "It is \($0)." }
 

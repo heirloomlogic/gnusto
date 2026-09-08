@@ -55,7 +55,7 @@ public struct Spellcasting: GameContent {
     /// *effect* is the game's prose and never passes through here. Override
     /// lines at init to re-skin.
     ///
-    /// The lines about one spell take its name as a ``GameText/Word``, and the
+    /// The lines about one spell take its name as a ``Gnusto/GameText/Word``, and the
     /// two report lines take a ``SpellList`` and an ``Energy``, so a line whose
     /// whole content is what it was handed cannot be written as a sentence that
     /// leaves it out.
