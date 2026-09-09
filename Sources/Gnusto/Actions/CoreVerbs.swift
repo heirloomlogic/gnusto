@@ -431,7 +431,7 @@ extension DefaultActions {
 
         .handled(.version, [["version"]], reach: .notNeeded) { _, frame in version(frame) },
 
-        // The engine-level four. They own rows so the parser knows the words and
+        // The engine-level six. They own rows so the parser knows the words and
         // the vocabulary reports them, but `GameWorld.run` acts on the actor's
         // snapshots and returns before any stage runs.
         .engineLevel(.undo, [["undo"]]),
@@ -440,6 +440,17 @@ extension DefaultActions {
         // "load" is the word a player who has just typed SAVE reaches for next,
         // and it is plumbing rather than fiction, so no game has to opt in.
         .engineLevel(.restore, [["restore"], ["load"]]),
+        // AGAIN and OOPS are engine-level for the reason the other four are:
+        // both act on a line the pipeline has already finished with, so there
+        // is no stage that could answer them. Neither is a *meta* intent —
+        // each hands a line back to the parser, and what that line costs is
+        // what it costs.
+        .engineLevel(.again, [["again"], ["g"]]),
+        // A topic slot rather than an object one, because the word being
+        // corrected is by definition a word the game does not know, and a
+        // topic is the one slot that never looks its tokens up. The bare row
+        // is what answers `oops` on its own.
+        .engineLevel(.oops, [["oops"], ["oops", .topic]]),
     ]
 
     /// Keyed for the stage-4 lookup — the same dispatch table the stub path

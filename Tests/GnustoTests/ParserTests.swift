@@ -204,10 +204,18 @@ struct ParserTests {
                         prefix: ["hang", "cloak", "on"])))
     }
 
-    @Test func adjectiveAloneDoesNotResolve() throws {
+    /// A phrase with no noun in it describes rather than names, and the parser
+    /// answers a description that picks out exactly one thing in view. It used
+    /// to answer none of them: `x velvet` in the Cloak of Darkness cloakroom
+    /// came back "You can\'t see any such thing." with the velvet cloak on the
+    /// player\'s shoulders. Issue #445.
+    @Test func adjectiveAloneResolvesWhenItNamesOneThing() throws {
         let parser = try Self.makeParser()
-        let result = parser.parse("take velvet", scope: Self.fullScope)
-        #expect(result == .failure(.notInScope))
+        let parsed = try parser.parse("take velvet", scope: Self.fullScope).get()
+        #expect(parsed.directObject == EntityID("cloak"))
+        // Still a second pass: the noun a phrase really names beats it.
+        let named = try parser.parse("take cloak", scope: Self.fullScope).get()
+        #expect(named.directObject == EntityID("cloak"))
     }
 
     @Test func parseErrorMessagesReadClassically() {
@@ -228,7 +236,7 @@ struct ParserTests {
     /// letters/digits, drop a trailing possessive, treat every other character
     /// as a separator, collapse runs of separators, and drop noise words. A
     /// plain `Vocabulary` fixes the noise set to the default
-    /// (`the a an my that this some`) so the cases are deterministic.
+    /// (`the a an my that this some please`) so the cases are deterministic.
     ///
     /// The one exception is the comma, which survives as a token of its own so
     /// `parse` can read `butler, hello` as addressed at somebody. It is
@@ -240,6 +248,10 @@ struct ParserTests {
             ("put the lamp on the table", ["put", "lamp", "on", "table"]),  // noise dropped
             ("don't panic", ["don", "t", "panic"]),  // apostrophe splits
             ("x master's spellbook", ["x", "master", "spellbook"]),  // but 's is dropped
+            // The typographic apostrophe is the same mark; only the keyboard
+            // disagrees, and macOS substitutes it as you type. (#445)
+            ("x master\u{2019}s spellbook", ["x", "master", "spellbook"]),
+            ("take cloak please", ["take", "cloak"]),  // courtesy is filler
             ("the boys' own annual", ["boys", "own", "annual"]),  // as is a bare one
             ("north-west", ["north", "west"]),  // hyphen splits
             ("take 3 coins", ["take", "3", "coins"]),  // digits kept
@@ -247,7 +259,7 @@ struct ParserTests {
             ("go   west", ["go", "west"]),  // whitespace runs collapse
             ("foo...bar", ["foo", "bar"]),  // punctuation runs collapse
             (".hello.", ["hello"]),  // leading/trailing punctuation
-            ("the a an my that this some", []),  // all noise
+            ("the a an my that this some please", []),  // all noise
             ("!!!", []),  // no alphanumerics
             ("", []),  // empty line
             ("delphine, hello", ["delphine", ",", "hello"]),  // the comma survives

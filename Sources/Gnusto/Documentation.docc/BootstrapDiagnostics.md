@@ -105,7 +105,7 @@ to be silently so.
 |---|---|
 | `"coin" declares the name "…", which has no letters or digits in it; there is no word there for the parser to match.` | Also `the adjective "…"` and `the synonym "…"`. |
 | `the verb pattern "…" declares the word "…", which the parser splits differently from what the player types; no input can reach it.` | A literal in a custom pattern that is not a single bare word. |
-| `noise word "some" is also an item word; stripping it would make that word untypeable.` | The clause names what it collided with: `a verb word`, `a structural word in a verb pattern`, `a direction`, or `an item word`. Filler is dropped at tokenize time, before any matching, so a word that is both filler and a real word is a word nobody can type. The built-in articles (`the`, `a`, `an`, `my`, `that`, `this`, `some`) are checked against your declarations too, which is how an item that answers to `some` gets caught. |
+| `noise word "some" is also an item word; stripping it would make that word untypeable.` | The clause names what it collided with: `a verb word`, `a structural word in a verb pattern`, `a direction`, or `an item word`. Filler is dropped at tokenize time, before any matching, so a word that is both filler and a real word is a word nobody can type. The built-in filler (`the`, `a`, `an`, `my`, `that`, `this`, `some`, `please`) is checked against your declarations too, which is how an item that answers to `some` gets caught. |
 
 ### Gate 3 — rules and timers
 
@@ -138,7 +138,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `item "robot" declares takesOrders but is not an actor; only a person can be given an order, and the flag has no effect.` | Declare it as an `Actor`. |
 | `item "Vane" is named "Mrs. Vane", which reads as a proper name but is not declared properName; stock lines will say "the Mrs. Vane".` | Add ``properName``. Not inferred, because "Elvish sword" is a common noun and so is "Orange Grove Avenue". Locations are exempt — the engine never articles a room name. |
 | `actor "troll" declares the item trait "container"; actors hold things via their inventory, and the trait will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `lockable`, `startsUnlocked` and `capacity`. Legal, almost never meant; the trait is left in place rather than stripped. |
-| `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO, RESTART, SAVE and RESTORE are answered before any stage runs. Nothing can override them. |
+| `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS are answered before any stage runs. Nothing can override them. |
 | `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb is silent: a stub has no behavior to shadow, so the warning would be noise. See <doc:StubVerbs>. |
 | `custom action for intent "brawl" overrides an earlier custom action of the same intent.` | Two `actions` rows for one intent; the later wins. Bundle rows come before the host game's. |
 | `a rule watches intent "accuse", but no verb row produces it; if it was declared with #verb, list .accuse in a verbs block.` | Usually the forgotten `verbs` entry. The rule is fine; nothing typed can reach it. |

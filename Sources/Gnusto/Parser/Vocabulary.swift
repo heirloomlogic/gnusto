@@ -7,6 +7,20 @@ struct ItemLexicon: Sendable {
     /// is one of its words, and the final token is a noun.
     func matches(_ tokens: [String]) -> Bool {
         guard let last = tokens.last, nouns.contains(last) else { return false }
+        return describes(tokens)
+    }
+
+    /// True when every token is one of this item's words, whether or not the
+    /// phrase ends in a noun: `velvet` for the velvet cloak.
+    ///
+    /// The weaker question, and it is asked only once ``matches(_:)`` has
+    /// found nothing anywhere in scope — a description is never allowed to
+    /// beat a name. It is also why the two are separate rather than one
+    /// relaxed test: `x velvet` should mean the velvet cloak in a cloakroom
+    /// holding one velvet thing, and should ask which in a cloakroom holding
+    /// two. Issue #445.
+    func describes(_ tokens: [String]) -> Bool {
+        guard !tokens.isEmpty else { return false }
         return tokens.allSatisfy { nouns.contains($0) || adjectives.contains($0) }
     }
 }
@@ -35,7 +49,17 @@ struct Vocabulary: Sendable {
     /// that anything normalizing author-written text the same way the parser
     /// normalizes player input — ``Topic/normalize(_:)`` — reads the one list
     /// rather than keeping a copy of it that can drift.
-    static let defaultNoiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
+    ///
+    /// `please` is here and `of` deliberately is not. Filler is stripped from
+    /// the whole line before anything is matched, so a word the tables spell
+    /// would become untypeable — and two core rows spell `of` (`get out of the
+    /// car`, `take the coin out of the box`), while an item may own it outright
+    /// (`cup of tea`, `Book of Spells`). The one place the word gets in the
+    /// way is `take all of them`, and that is read where the multi-object
+    /// keyword is read; see ``ParsedCommand/MultiObject/keyword(phrase:excluding:)``.
+    static let defaultNoiseWords: Set<String> = [
+        "the", "a", "an", "my", "that", "this", "some", "please",
+    ]
 
     /// Words the parser claims for itself — pronouns and the multi-object
     /// keywords. They resolve before any item lexicon is consulted, so an
@@ -164,6 +188,13 @@ struct Vocabulary: Sendable {
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
 
+    /// Every word some item answers to as a *noun*, flattened in the same
+    /// bootstrap pass. Separate from ``allKnownWords``, which also holds the
+    /// adjectives — and the difference between the two is the whole question
+    /// "does this phrase name something, or only describe it?", which the
+    /// parser asks when it decides where a clarifying answer belongs.
+    var itemNouns: Set<String> = []
+
     /// The verb words, sorted once at bootstrap — Tab-completion offers them
     /// every turn and the order never changes, so the sort is cached here
     /// rather than repeated per turn.
@@ -214,6 +245,14 @@ struct Vocabulary: Sendable {
     /// separating two, so it is dropped rather than split on. Only a `'s`
     /// ending a word: `don't` is still `["don", "t"]`.
     ///
+    /// **The typographic apostrophe is folded to the ASCII one first**, because
+    /// it is the same mark and only the keyboard disagrees: macOS substitutes
+    /// `’` as you type, so `master’s` reached here as a word ending in a
+    /// character this splitter treated as punctuation — `["master", "s"]`, with
+    /// `s` then read as *south*. Folding here rather than at the tokenizer is
+    /// what keeps both sides of the splitter in step: a declared `master’s` and
+    /// a typed `master's` are the same word, and so are the other way round.
+    ///
     /// Filler is *not* stripped here — the tokenizer drops noise words from
     /// what the player types, and a declaration made of nothing but filler is a
     /// bootstrap error rather than a silent nothing.
@@ -221,7 +260,7 @@ struct Vocabulary: Sendable {
     /// - Parameter phrase: any text, author-written or player-typed.
     /// - Returns: its words, in order, possibly none.
     static func words(in phrase: String) -> [String] {
-        phrase.lowercased()
+        String(phrase.lowercased().map { $0 == "\u{2019}" ? "'" : $0 })
             .split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "'") })
             .flatMap { chunk in
                 (chunk.hasSuffix("'s") ? chunk.dropLast(2) : chunk[...])
@@ -231,7 +270,12 @@ struct Vocabulary: Sendable {
     }
 
     /// Called once at bootstrap, after all words are registered.
+    ///
+    /// Every set it fills is *reassigned* rather than added to, so calling it a
+    /// second time answers for the lexicons as they stand rather than for their
+    /// union with whatever they used to hold.
     mutating func finalize() {
+        itemNouns = []
         allKnownWords =
             verbWords
             .union(directions.keys)
@@ -244,6 +288,7 @@ struct Vocabulary: Sendable {
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)
             allKnownWords.formUnion(lexicon.adjectives)
+            itemNouns.formUnion(lexicon.nouns)
         }
         sortedVerbWords = verbWords.sorted()
         sortedDirectionWords = directions.keys.sorted()

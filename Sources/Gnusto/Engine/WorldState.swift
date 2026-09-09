@@ -84,6 +84,22 @@ struct WorldState: Sendable, Codable {
     var pronounHim: EntityID?
     /// What "her" currently refers to, on the same terms as ``pronounHim``.
     var pronounHer: EntityID?
+    /// The last command the player ran, as the parser saw it: tokenized, with
+    /// filler already dropped and a clarifying answer already spliced in.
+    /// AGAIN re-parses it.
+    ///
+    /// Tokens rather than the raw line, because the line is not always what
+    /// ran: `take lantern` answered with `brass` runs `take brass lantern`,
+    /// and that is the command AGAIN owes the player. Re-parsed rather than
+    /// re-performed, so the words are read against the room as it stands now
+    /// — `take it` repeated is about whatever "it" means this turn.
+    ///
+    /// World memory, and stored here for that reason: it rides in the save
+    /// file, and UNDO rolls it back with the turn that set it, so AGAIN after
+    /// an UNDO repeats the command before the one that was undone. Nothing
+    /// engine-level is ever recorded (see `GameWorld.run`), which is what
+    /// makes AGAIN unable to reach itself.
+    var lastCommand: [String] = []
     /// The `enterable` the player has boarded, or nil on foot. The player
     /// still never appears in `placements`; `playerLocation` stays the room.
     ///
@@ -154,6 +170,7 @@ struct WorldState: Sendable, Codable {
         case pronounThem
         case pronounHim
         case pronounHer
+        case lastCommand
         case playerVehicle
         case score
         case moves
@@ -228,6 +245,7 @@ struct WorldState: Sendable, Codable {
         pronounThem = try value(.pronounThem, fresh.pronounThem)
         pronounHim = try container.decodeIfPresent(EntityID.self, forKey: .pronounHim)
         pronounHer = try container.decodeIfPresent(EntityID.self, forKey: .pronounHer)
+        lastCommand = try value(.lastCommand, fresh.lastCommand)
         playerVehicle = try container.decodeIfPresent(EntityID.self, forKey: .playerVehicle)
         score = try value(.score, fresh.score)
         moves = try value(.moves, fresh.moves)
@@ -265,6 +283,7 @@ struct WorldState: Sendable, Codable {
         try container.encode(pronounThem, forKey: .pronounThem)
         try container.encode(pronounHim, forKey: .pronounHim)
         try container.encode(pronounHer, forKey: .pronounHer)
+        try container.encode(lastCommand, forKey: .lastCommand)
         try container.encode(playerVehicle, forKey: .playerVehicle)
         try container.encode(score, forKey: .score)
         try container.encode(moves, forKey: .moves)

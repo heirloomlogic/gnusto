@@ -70,9 +70,11 @@ Ritual and flavor: `pray`, `sing`, `curse`/`swear`, `xyzzy`/`plugh`, `count`,
 
 Commerce: `buy`, `sell`. Fixtures: `blow`.
 
-Deliberately **not** stubs: `again`/`oops`/`verbose`/`brief`/`notify`/`script`
-are missing *features*, and a canned refusal would be a worse answer than the
-error. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slot
+Deliberately **not** stubs: `verbose`/`brief`/`notify`/`script` are missing
+*features*, and a canned refusal would be a worse answer than the error.
+`again`/`g` and `oops` were on that list until they stopped being missing —
+both act on a line the pipeline has already finished with, so they are
+engine-level rows beside UNDO rather than stubs. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slot
 and somebody to ask. `ring` and `wind` are left free for games that want to own
 them outright; bare `hello`/`hi` were too, until leaving them out meant a
 greeting to a room came back as *"What do you want to hello?"* — they are core
@@ -242,8 +244,8 @@ var verbs: [SyntaxRule] {
 - Stub intents are deliberately **not** in `DefaultActions.builtInIntents`, which
   is what keeps `action(.dig)` from warning. `handledIntents` is the union, used
   for the dead-intent check. `engineIntents` is the third set — UNDO, RESTART,
-  SAVE and RESTORE, which `GameWorld.run` answers before the pipeline — and an
-  `actions` row for one of those warns that it can never run.
+  SAVE, RESTORE, AGAIN and OOPS, which the engine answers before the pipeline —
+  and an `actions` row for one of those warns that it can never run.
 - No stub row uses a `.topic` slot, and none should. A topic never fails to
   match, so a low-specificity topic row silently absorbs the scope failures of
   every more specific row sharing its verb word — `say hello to butler` with no

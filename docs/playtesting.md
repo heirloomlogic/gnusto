@@ -120,7 +120,9 @@ command, not a defect.)
 ## Never count commands as turns
 
 Meta commands (`score`, `quit`, `version`, `undo`, `restart`, `save`, `restore`) and
-**every command that fails to parse** cost no turn. This is the most common timing
+**every command that fails to parse** cost no turn. `again`/`g` and `oops` are the two
+that cost whatever the line they hand back to the parser costs — a repeated LOOK is
+free and a repeated TAKE is a move. This is the most common timing
 mistake in the repo, and the harness prints it back at you every run:
 
 ```

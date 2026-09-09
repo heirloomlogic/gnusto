@@ -31,6 +31,12 @@ struct VocabularyTests {
             ("Mrs. Vane", ["mrs", "vane"]),  // the period goes
             ("master's", ["master"]),  // trailing possessive dropped
             ("Master's Spellbook", ["master", "spellbook"]),
+            // The typographic apostrophe is the same mark, folded before the
+            // split — so a declaration a word processor smartened and a line
+            // macOS smartened as it was typed are the same words. (#445)
+            ("master\u{2019}s", ["master"]),
+            ("Master\u{2019}s Spellbook", ["master", "spellbook"]),
+            ("o\u{2019}clock", ["o", "clock"]),
             ("boys'", ["boys"]),  // plural possessive: the bare apostrophe splits
             ("don't", ["don", "t"]),  // only 's is a possessive
             ("it's", ["it"]),
@@ -96,6 +102,27 @@ struct VocabularyTests {
         let spellbook = definition.vocabulary.itemLexicons[EntityID("spellbook")]
         #expect(spellbook?.adjectives.contains("master") == true)
         #expect(spellbook?.adjectives.contains("master's") == false)
+    }
+
+    /// The one-splitter invariant, put to the mark that used to break it. A
+    /// `’` in a declaration and a `’` in the player's line both fold to `'`
+    /// before anything is split, so the four ways of writing the phrase are
+    /// one word list. Before this, a declared `master’s` was a word no token
+    /// could equal — and a typed one split into `master` and `s`, with the `s`
+    /// then read as *south*. Issue #445.
+    @Test(
+        arguments: [
+            ("master's spellbook", "master's spellbook"),
+            ("master\u{2019}s spellbook", "master's spellbook"),
+            ("master's spellbook", "master\u{2019}s spellbook"),
+            ("master\u{2019}s spellbook", "master\u{2019}s spellbook"),
+        ] as [(String, String)])
+    func bothSidesOfTheSplitterAgreeAboutTheTypographicApostrophe(
+        declared: String, typed: String
+    ) {
+        let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
+        #expect(Vocabulary.words(in: declared) == parser.tokenize(typed))
+        #expect(Vocabulary.words(in: declared) == ["master", "spellbook"])
     }
 
     @Test func aHyphenatedAdjectiveRegistersBothHalves() throws {
