@@ -432,18 +432,29 @@ function shorterRoute(gameKey, seed, landing, length) {
 // Main
 // ---------------------------------------------------------------------------
 
+const USAGE_LINES = [
+  'usage: bin/playtest-routes <Game> cut <name> --from-commands FILE'
+    + ' [--seed N] [--derived-from LABEL] [--force] [--type-name NAME]',
+  '       bin/playtest-routes <Game> distill <name> --from-session DIR'
+    + ' [--upto N] [--budget N] [--seed N] [--derived-from LABEL] [--force]',
+  '       bin/playtest-routes <Game> verify [name…] [--type-name NAME]',
+  '       bin/playtest-routes <Game> list [--type-name NAME]',
+]
+
 function usage() {
-  console.error('usage: bin/playtest-routes <Game> cut <name> --from-commands FILE'
-    + ' [--seed N] [--derived-from LABEL] [--force] [--type-name NAME]')
-  console.error('       bin/playtest-routes <Game> distill <name> --from-session DIR'
-    + ' [--upto N] [--budget N] [--seed N] [--derived-from LABEL] [--force]')
-  console.error('       bin/playtest-routes <Game> verify [name…] [--type-name NAME]')
-  console.error('       bin/playtest-routes <Game> list [--type-name NAME]')
+  USAGE_LINES.forEach((line) => console.error(line))
   process.exit(2)
 }
 
 function main() {
   const argv = process.argv.slice(2)
+  // Checked before flag parsing, same as bin/playtest-preflight: -h/--help is a
+  // request for text, answered the same way regardless of what else is on the
+  // line, and it exits 0 rather than falling into the ordinary usage-error path.
+  if (argv.includes('--help') || argv.includes('-h')) {
+    USAGE_LINES.forEach((line) => console.log(line))
+    process.exit(0)
+  }
   // Both spellings, because a usage line that says `--from-commands FILE` while the
   // parser reads only `--from-commands=FILE` is a coin flip the first user loses.
   // Value flags consume the next argument; unknown `--x y` pairs are left to be
