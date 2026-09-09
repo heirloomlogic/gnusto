@@ -79,6 +79,43 @@ struct TimetableTests {
         #expect(occurrences(of: "The butler winds the clock.", in: transcript) == 1)
     }
 
+    /// The stop in force when the game opens has not come round: a game that
+    /// opens at eight in the evening does not ring a nine-in-the-morning bell
+    /// on turn one. The first tick only takes the actor's place in the day;
+    /// the next stop still fires on its minute.
+    @Test func theOpeningStopDoesNotRunItsActionOnTurnOne() async throws {
+        let transcript = try await play(LateOpeningLab(), ["z", "z", "z"])
+        #expect(!transcript.contains("The bell rings for nine."))
+        #expect(occurrences(of: "The bell rings for two past.", in: transcript) == 1)
+        expectInOrder(transcript, ["The butler goes up.", "The bell rings for two past."])
+    }
+
+    /// A clock that samples every fifteen minutes steps over stops five
+    /// minutes apart. Each one's action runs on the tick that passes it, in
+    /// order, and only the stop actually landed on narrates a move.
+    @Test func everyStopACoarseTickStepsOverRunsItsAction() async throws {
+        let transcript = try await play(CoarseClockLab(), ["z", "z"])
+        // Turn 1 is 9:00, the seed; turn 2 is 9:15, three stops on.
+        expectInOrder(
+            turnOutput(ofLast: "z", in: transcript),
+            ["The butler goes down.", "Five past.", "Ten past.", "Quarter past."])
+        #expect(occurrences(of: "Five past.", in: transcript) == 1)
+    }
+
+    /// The place-keeper travels in the save file: restoring to after a stop
+    /// came round does not run its action again.
+    @Test func aRestoredStopDoesNotRunItsActionAgain() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-timetable-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            ManorLab(),
+            Array(repeating: "z", count: 16) + ["save", "slot", "z", "z", "restore", "slot", "z", "z"],
+            saveDirectory: dir)
+        #expect(occurrences(of: "The butler winds the clock.", in: transcript) == 1)
+    }
+
     // MARK: - Coming off the rounds, and going back on
 
     /// Offstage he idles without losing his place, so putting him back down

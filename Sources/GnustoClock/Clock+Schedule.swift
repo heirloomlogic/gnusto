@@ -21,9 +21,11 @@ extension Clock {
     ///
     /// - **Make the room he passes through a stop of its own.** He is really
     ///   there, so `location(of:at:)` will say so and any testimony read off
-    ///   the timetable inherits it. Costs a tick: the stop has to land on a
-    ///   time the clock actually samples, which on a multi-minute turn means
-    ///   taking one off a neighbouring leg.
+    ///   the timetable inherits it. Costs a tick: for him to be *seen* there
+    ///   the stop has to land on a time the clock actually samples, which on
+    ///   a multi-minute turn means taking one off a neighbouring leg. A stop
+    ///   that falls between two samples is jumped — its `perform:` still runs,
+    ///   on the tick that passes it, but nobody watched him arrive or leave.
     /// - **Say it from the stop that already moves him**, with a `perform:`
     ///   closure and `say(_:from:)` naming the room passed through. The line
     ///   prints on the same turn as that stop's own departure and arrival, and
@@ -37,12 +39,20 @@ extension Clock {
     /// of it are quoted by a witness.
     ///
     /// An actor with no room — `vanish()`ed, shut in a chest, carried off —
-    /// idles: the daemon does nothing and leaves the timetable's place
-    /// untouched, so he picks his day back up where he left it if he is put
-    /// down again. An actor merely *moved* somewhere off his route, by
-    /// contrast, walks back on the next tick, because a timetable means he goes
-    /// where he is supposed to be. **To take him off his rounds for good —
-    /// arrested, murdered, sent away — call `stopDaemon(_:)`.**
+    /// idles: the daemon keeps his place in the day but moves him nowhere and
+    /// runs no stop's `perform:`, so when he is put down again he goes where
+    /// the day says he is *now*, and the stops that came round while he was
+    /// gone stay unperformed rather than all firing at once. An actor merely
+    /// *moved* somewhere off his route, by contrast, walks back on the next
+    /// tick, because a timetable means he goes where he is supposed to be.
+    /// **To take him off his rounds for good — arrested, murdered, sent away —
+    /// call `stopDaemon(_:)`.**
+    ///
+    /// The daemon's first tick seeds his place from the opening time and runs
+    /// nothing: the stop in force when the game opens has not *come round*, so
+    /// a 9:00 stop's `perform:` does not fire on turn one of a game that opens
+    /// at half past five. The place is written only when it changes, so a
+    /// quiet turn re-encodes nothing.
     ///
     /// Timer names are global across a game; the convention here is
     /// `"<actor>.day"`.
@@ -58,15 +68,16 @@ extension Clock {
         _ timetable: Timetable
     ) -> TimedEvent {
         daemon(name, autostart: true) {
-            // Offstage entirely: idle without touching the place-keeper, so a
-            // returning actor resumes his day rather than restarting it.
-            guard let here = actor.location else { return }
-
             let due = timetable.index(at: now)
-            let stop = timetable.stops[due]
-            let isNewStop = stopIndices.byDaemon[name] != due
-            stopIndices.byDaemon[name] = due
+            let last = stopIndices.byDaemon[name]
 
+            // Offstage entirely: keep his place in the day, and nothing else.
+            guard let here = actor.location else {
+                if last != due { stopIndices.byDaemon[name] = due }
+                return
+            }
+
+            let stop = timetable.stops[due]
             if here != stop.destination {
                 // Read the player's vantage point once, before the move, so
                 // both lines are judged against where the player was standing
@@ -83,11 +94,21 @@ extension Clock {
                 }
             }
 
-            // Once per stop, on the turn it comes round — not once per turn it
-            // stays current, and not skipped when two stops share a room.
-            if isNewStop {
-                try stop.perform?()
+            // Once per stop, on the tick it comes round — not once per turn it
+            // stays current, not skipped when two stops share a room, and not
+            // skipped when a coarse clock steps over it: every stop passed
+            // since the last tick runs, in order, wrapping at midnight. The
+            // first tick only takes his place.
+            guard let last, last != due else {
+                if last == nil { stopIndices.byDaemon[name] = due }
+                return
             }
+            stopIndices.byDaemon[name] = due
+            var index = last
+            repeat {
+                index = (index + 1) % timetable.stops.count
+                try timetable.stops[index].perform?()
+            } while index != due
         }
     }
 

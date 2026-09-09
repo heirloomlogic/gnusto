@@ -352,3 +352,94 @@ struct ManorLab: Game {
         butler.starts(in: butlerDay.location(at: TimeOfDay(20, 0)))
     }
 }
+
+/// A manor that opens at eight in the evening on a timetable whose first
+/// stop is nine in the *morning* — the stop in force at the opening time,
+/// which has therefore not come round and must not run its action on turn one.
+struct LateOpeningLab: Game {
+    let title = "Late Opening"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(20, 0), minutesPerTurn: 1)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let study = Location {
+        name("Study")
+        description("A study.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall) { say("The bell rings for nine.") },
+            Stop(at: TimeOfDay(20, 2), in: study, departure: "The butler goes up.") {
+                say("The bell rings for two past.")
+            },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        hall.up(study)
+        player.starts(in: hall)
+        butler.starts(in: hall)
+    }
+}
+
+/// A quarter of an hour to the turn over stops five minutes apart, so one
+/// tick steps over two stops on its way to the third. Each one's action still
+/// runs, in order; only the arrival is narrated, because only the arrival
+/// happened where anybody could see it.
+struct CoarseClockLab: Game {
+    let title = "Coarse Clock"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(9, 0), minutesPerTurn: 15)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let cellar = Location {
+        name("Cellar")
+        description("A cellar.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall),
+            Stop(at: TimeOfDay(9, 5), in: hall) { say("Five past.") },
+            Stop(at: TimeOfDay(9, 10), in: hall) { say("Ten past.") },
+            Stop(at: TimeOfDay(9, 15), in: cellar, departure: "The butler goes down.") {
+                say("Quarter past.")
+            },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        hall.down(cellar)
+        player.starts(in: hall)
+        butler.starts(in: hall)
+    }
+}

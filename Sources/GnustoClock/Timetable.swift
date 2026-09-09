@@ -20,8 +20,11 @@ public struct Stop: Sendable {
     /// Printed here on arrival, if the player is standing here and can see.
     public let arrival: String?
 
-    /// What else happens when this stop comes round — once, on the turn it
-    /// becomes current, whether or not the player is there to watch.
+    /// What else happens when this stop comes round — once, on the first tick
+    /// at or after its time, whether or not the player is there to watch. A
+    /// coarse clock that steps over several stops in one tick runs each of
+    /// them, in order; the stop in force when the game opens never "comes
+    /// round" and does not run.
     public let perform: (@Sendable () throws -> Void)?
 
     /// Declares one stop on a timetable.
