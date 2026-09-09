@@ -56,3 +56,5 @@ jobs:
         run: node --test bin/tests/playtest-measure.test.mjs
       - name: Engine settings allowlist grants the measure/export scripts
         run: node --test bin/tests/settings-permissions.test.mjs
+      - name: --help/-h exits 0 with usage on stdout, everywhere #448 promises it
+        run: node --test bin/tests/help-flags.test.mjs

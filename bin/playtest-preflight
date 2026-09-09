@@ -736,12 +736,17 @@ function enabledMcpServers() {
 // list is ever consulted (see `main`), so it deliberately isn't a member —
 // adding it here would be dead, since a match short-circuits first.
 const KNOWN_FLAGS = ['--headless', '--all']
-const USAGE = 'usage: bin/playtest-preflight <Game> | --all   [--headless]'
+const USAGE = 'usage: bin/playtest-preflight <Game> | --all   [--headless] [-h|--help]'
 
 // The three example lines straight out of this file's own header comment
 // (lines 5-7 above), rather than a second hand-typed copy that could drift
 // from it the next time either is edited — the mistake `playtest-replay`'s
-// `usage()` (a `sed` over its own header) avoids the same way.
+// `usage()` (a `sed` over its own header) avoids the same way. The match is a
+// literal prefix, not a line range, so it stays correct if lines are inserted
+// above the examples — but it means no other comment anywhere in this file may
+// open with three spaces and "bin/playtest-preflight ", or it prints alongside
+// these three. There is exactly one such block today (the header), and it is
+// the whole reason this function exists.
 function usageExamples() {
   return fs.readFileSync(__filename, 'utf8').split('\n')
     .filter((line) => line.startsWith('//   bin/playtest-preflight'))

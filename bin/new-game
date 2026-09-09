@@ -30,8 +30,10 @@ cd "$(dirname "$0")/.."
 
 die() { echo "new-game: $*" >&2; exit 2; }
 
+usage_line="usage: bin/new-game <GameName> <destination-dir> [--dep-path <path>]"
+
 usage() {
-  echo "usage: bin/new-game <GameName> <destination-dir> [--dep-path <path>]" >&2
+  echo "$usage_line" >&2
   exit 2
 }
 
@@ -44,7 +46,7 @@ dev_tooling_warning=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dep-path) dep_path="${2:-}"; [ -n "$dep_path" ] || usage; shift 2 ;;
-    -h|--help) usage ;;
+    -h|--help) echo "$usage_line"; exit 0 ;;
     -*) die "unknown option '$1'" ;;
     *)
       if [ -z "$game" ]; then game="$1"

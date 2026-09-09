@@ -165,6 +165,10 @@ test('--help prints usage to stdout and exits 0', (t) => {
   })
   assert.equal(result.status, 0, result.stdout + result.stderr)
   assert.match(result.stdout, /usage: bin\/playtest-preflight/)
+  // usageExamples() reads these straight out of this file's own header comment
+  // rather than a hand-typed second copy; assert at least one survives the
+  // round trip so the two can't silently drift apart.
+  assert.match(result.stdout, /bin\/playtest-preflight --all\s+every game \.mcp\.json registers/)
   assert.equal(result.stderr, '')
 })
 
