@@ -652,3 +652,118 @@ struct TangledPlacementGame: Game {
         // The ghost declares no placement at all.
     }
 }
+
+/// A matrix for the duplicate-placement claimant: every map spelling starts in
+/// a room, then names a different destination. Each second row must stay fatal
+/// and must identify both declarations rather than a raw `Placement` value.
+struct DuplicatePlacementFormsGame: Game {
+    let title = "Duplicate Placement Forms"
+    let intro = ""
+
+    let hall = Location { name("Hall") }
+    let annex = Location { name("Annex") }
+    let table = Item {
+        name("table")
+        surface
+    }
+    let box = Item {
+        name("box")
+        container
+    }
+    let porter = Actor { name("porter") }
+    let roomItem = Item { name("room item") }
+    let surfaceItem = Item { name("surface item") }
+    let containedItem = Item { name("contained item") }
+    let wornItem = Item {
+        name("worn item")
+        wearable
+    }
+    let heldItem = Item { name("held item") }
+    let actorHeldItem = Item { name("actor-held item") }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        table.starts(in: hall)
+        box.starts(in: hall)
+        porter.starts(in: hall)
+
+        roomItem.starts(in: hall)
+        roomItem.starts(in: annex)
+        surfaceItem.starts(in: hall)
+        surfaceItem.starts(on: table)
+        containedItem.starts(in: hall)
+        containedItem.starts(inside: box)
+        wornItem.starts(in: hall)
+        wornItem.startsWorn
+        heldItem.starts(in: hall)
+        heldItem.startsHeld
+        actorHeldItem.starts(in: hall)
+        actorHeldItem.starts(heldBy: porter)
+    }
+}
+
+/// The no-collision control for the same matrix. It proves the claimant does
+/// not change legal initial world state while it rejects a second declaration.
+struct AllInitialPlacementFormsGame: Game {
+    let title = "All Placement Forms"
+    let intro = ""
+
+    let hall = Location { name("Hall") }
+    let table = Item {
+        name("table")
+        surface
+    }
+    let box = Item {
+        name("box")
+        container
+    }
+    let porter = Actor { name("porter") }
+    let roomItem = Item { name("room item") }
+    let surfaceItem = Item { name("surface item") }
+    let containedItem = Item { name("contained item") }
+    let wornItem = Item {
+        name("worn item")
+        wearable
+    }
+    let heldItem = Item { name("held item") }
+    let actorHeldItem = Item { name("actor-held item") }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        table.starts(in: hall)
+        box.starts(in: hall)
+        porter.starts(in: hall)
+        roomItem.starts(in: hall)
+        surfaceItem.starts(on: table)
+        containedItem.starts(inside: box)
+        wornItem.startsWorn
+        heldItem.startsHeld
+        actorHeldItem.starts(heldBy: porter)
+    }
+}
+
+/// A content-owned item named in both map sources. Host rows are evaluated
+/// first, so this locks down the source order as well as the shared claimant.
+struct HostPlacementContent: GameContent {
+    let vault = Location { name("Vault") }
+    let coin = Item { name("coin") }
+
+    var map: WorldMap {
+        coin.starts(in: vault)
+    }
+}
+
+struct HostContentPlacementConflictGame: Game {
+    let title = "Host Content Placement Conflict"
+    let intro = ""
+
+    let hall = Location { name("Hall") }
+    let placementContent = HostPlacementContent()
+
+    var content: GameContents { placementContent }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        placementContent.coin.starts(in: hall)
+    }
+}
