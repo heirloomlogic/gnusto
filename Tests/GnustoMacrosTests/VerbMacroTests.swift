@@ -73,6 +73,30 @@ final class VerbMacroTests: XCTestCase {
             macros: macros)
     }
 
+    /// `display:` is what a prompt calls the verb, and it goes on every row:
+    /// `w the clock` asks what you want to wind, not what you want to w.
+    func testDisplayVerbStampsEveryRow() {
+        assertMacroExpansion(
+            inIntentExtension(
+                #"""
+                #verb("wind",
+                      ["wind", .directObject],
+                      ["w", .directObject],
+                      displayVerb: "wind")
+                """#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let wind = Intent(
+                    "wind",
+                    syntax: [
+                        SyntaxRule("wind", .directObject, intent: Intent("wind"), displayVerb: "wind"),
+                        SyntaxRule("w", .directObject, intent: Intent("wind"), displayVerb: "wind")
+                    ]
+                )
+                """#),
+            macros: macros)
+    }
+
     func testEscapesQuotesAndBackslashesInPatternWords() {
         // A word with escape sequences decodes to its value ("\hi") and
         // re-emits as a literal representing exactly that value — never as
@@ -136,6 +160,12 @@ final class VerbMacroTests: XCTestCase {
         expectDiagnostic(
             source: inIntentExtension(#"#verb(someName, ["ring", .directObject])"#),
             message: "the intent name must be a plain string literal.")
+    }
+
+    func testRejectsANonLiteralDisplayVerb() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("wind", ["w", .directObject], displayVerb: name)"#),
+            message: "the display verb must be a non-empty plain string literal.")
     }
 
     func testRejectsAnInterpolatedIntentName() {

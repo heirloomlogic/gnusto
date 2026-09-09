@@ -218,16 +218,17 @@ choosing between two verbs.
 
 ## Saying hello
 
-`greet <somebody>` is built in, along with `hello <somebody>` and
-`hi <somebody>`, and so is the addressed form `keeper, hello`. All of them
-produce ``Intent/greet``, so an actor answers every spelling with one rule:
+`greet <somebody>` is built in, along with `hello <somebody>`,
+`hi <somebody>`, the bare `hello` and `hi`, and the addressed form
+`keeper, hello`. All of them produce ``Intent/greet``, so an actor answers every
+spelling with one rule:
 
 ```swift
 keeper.before(.greet) { try reply("\"Evening,\" she says, and means it.") }
 ```
 
-Bare `hello`, `talk to <somebody>` and `say hello to <somebody>` come from
-`GnustoConversation`, which also gives you `greeting(of:for:learning:again:reply:)` — one
+`talk to <somebody>` and `say hello to <somebody>` reach it too, and
+`GnustoConversation` gives you `greeting(of:for:learning:again:reply:)` — one
 declaration answering GREET and TALK together, with a second line for the
 second time, because nobody introduces themselves twice.
 

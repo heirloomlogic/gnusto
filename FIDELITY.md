@@ -266,7 +266,7 @@ score ranks, and a longer lantern burn. No new rooms this task.
   magic words `xyzzy`/`plugh` are engine *stub verbs* now, so every Gnusto game
   gets them. What stays in `Systems.swift` is the vocabulary that is actually
   Zork's: `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `turn … with …`,
-  `ring`, `echo`, `odysseus`/`ulysses`, `hello`/`hi`, `fix`, `diagnose`.
+  `ring`, `echo`, `odysseus`/`ulysses`, `fix`, `diagnose`.
   **No player-visible text changed for the verbs Zork already had**: it keeps an
   `action(…)` override for each of those thirteen, so the reply is still the
   original's line, not the engine's. That is also deliberate on licensing
@@ -1519,8 +1519,8 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
 - **`V-HELLO` keeps its three branches and loses its draw.** `hello` was a verb
   of this game's own until #325, answering "Nobody here returns your greeting."
   from a row that could not see the room the troll was standing in. It is the
-  engine's ``Intent/greet`` now — `ZorkSystems` contributes only the two bare
-  words the engine deliberately leaves to games — so the actor branch (`:727`)
+  engine's ``Intent/greet`` now — every spelling of it, the bare words included
+  since #445 — so the actor branch (`:727`)
   and the non-actor branch (`:731`) both reproduce, and the objectless branch's
   `PICK-ONE HELLOS` (`:2199`) takes two of its four entries rather than drawing.
   The non-actor branch's article departs exactly as `knock`'s does: the source

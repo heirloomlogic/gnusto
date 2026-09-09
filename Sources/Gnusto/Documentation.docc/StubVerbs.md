@@ -73,8 +73,10 @@ Commerce: `buy`, `sell`. Fixtures: `blow`.
 Deliberately **not** stubs: `again`/`oops`/`verbose`/`brief`/`notify`/`script`
 are missing *features*, and a canned refusal would be a worse answer than the
 error. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slot
-and somebody to ask. Bare `hello`/`hi`, `ring` and `wind` are left free for games
-that want to own them outright.
+and somebody to ask. `ring` and `wind` are left free for games that want to own
+them outright; bare `hello`/`hi` were too, until leaving them out meant a
+greeting to a room came back as *"What do you want to hello?"* — they are core
+rows on ``Intent/greet`` now.
 
 ## Aimed at yourself
 
@@ -253,6 +255,12 @@ var verbs: [SyntaxRule] {
   near-miss when nothing matched. That is why `give` and `throw` ship
   second-object-only: `give lamp` asking *"What do you want to give the lamp
   to?"* beats a canned line.
+- A stub verb's prompts speak its rows' own leading words, and every stub in the
+  table leads with a word — so `StubVerb` has no `displayVerb:` column, where
+  `CoreVerb` does. That column is what ``Intent/examine`` uses so `x` asks
+  *"What do you want to examine?"* rather than *"What do you want to x?"*, and
+  `everyPromptSpeaksAWord` walks the whole shipped table and is what would say
+  the day a stub needed one.
 
 ## See also
 

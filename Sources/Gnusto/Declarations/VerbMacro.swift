@@ -45,6 +45,19 @@
 /// valid Swift identifier. It doesn't have to match the typed verb word:
 /// `#verb("steal", ["take", .directObject])` reclaims the built-in `take`
 /// row under a new intent.
+///
+/// `displayVerb:` is what a prompt calls the verb — "What do you want to
+/// **wind**?" — and is needed by one shape only: a row that leads with an
+/// abbreviation, where the row's own words are not a word.
+///
+/// ```swift
+/// #verb("wind", ["wind", .directObject], ["w", .directObject], displayVerb: "wind")
+/// ```
+///
+/// Left off, each row asks in its own leading words, which is right wherever
+/// they are words: `["haggle", "over", .directObject]` asks what you want to
+/// haggle over. See `SyntaxRule.displayVerb`.
 @freestanding(declaration, names: arbitrary)
-public macro verb(_ intentName: String, _ patterns: [SyntaxElement]...) =
-    #externalMacro(module: "GnustoMacros", type: "VerbMacro")
+public macro verb(
+    _ intentName: String, _ patterns: [SyntaxElement]..., displayVerb: String? = nil
+) = #externalMacro(module: "GnustoMacros", type: "VerbMacro")

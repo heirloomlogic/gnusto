@@ -68,7 +68,7 @@ struct CoreVerbTests {
         // follow
         "follow rat", "chase rat", "go after rat", "run after rat", "walk after rat",
         // greet
-        "greet rat", "hello rat", "hi rat", "greet",
+        "greet rat", "hello rat", "hi rat", "greet", "hello", "hi",
         "say hello to rat", "say hi to rat",
         // board
         "enter boat", "board boat", "get in boat",

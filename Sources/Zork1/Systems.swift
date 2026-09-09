@@ -81,20 +81,18 @@ extension Intent {
 /// verbs are not that, and re-skinning one with a row costs the whole default
 /// it was standing on; their words live in ``Prose/stubFloor`` instead. (#242)
 struct ZorkSystems: GameContent {
-    /// This game's own verbs, plus the two bare greeting rows the engine leaves
-    /// to games. `hello` used to be an intent of Zork's, answering "Nobody here
-    /// returns your greeting." from a row that could not see who was in the
-    /// room. The engine's ``Intent/greet`` already owns `hello <object>` and
-    /// reads the frame both ways; it leaves the bare words out only so a game
-    /// may keep the *word* without a launch warning, not so it must keep a flat
-    /// line. Zork keeps the words and takes the branching. (#325, FIDELITY.md)
+    /// This game's own verbs. `hello` used to be an intent of Zork's, answering
+    /// "Nobody here returns your greeting." from a row that could not see who
+    /// was in the room, and then two rows here spelling the bare words the
+    /// engine left to games. The engine ships them now (#445), so
+    /// ``Intent/greet`` owns every spelling of a greeting and reads the frame
+    /// both ways; Zork's part is the branching, which lives in ``Prose`` and in
+    /// `text.greets`. (#325, FIDELITY.md)
     var verbs: [SyntaxRule] {
         [
             .wind, .inflate, .deflate, .launch, .raise, .lower, .turnWith,
             .ring, .echo, .odysseus, .fix, .diagnose,
         ]
-        SyntaxRule("hello", intent: .greet)
-        SyntaxRule("hi", intent: .greet)
     }
 
     /// `V-LOWER`'s `HACK-HACK` stem (`gverbs.zil:902`), which `V-RAISE` calls

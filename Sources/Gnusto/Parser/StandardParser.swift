@@ -292,10 +292,16 @@ struct StandardParser {
             return .failure(.notAVerb(first))
         }
 
-        // Try each candidate rule; remember the most specific near-miss, and
-        // the most specific row whose only unfilled slot was a direction.
+        // Try each candidate rule; remember the most specific near-miss, the
+        // most specific row whose only unfilled slot was a direction, and the
+        // rows that would fit if the player had typed their trailing particle.
         var bestFailure: ParseError?
         var emptyDirection: ParsedCommand?
+        /// Rows whose trailing particle is missing, with the words to write in.
+        /// Recorded rather than re-fitted here: that reading loses to any near
+        /// miss, so on a line something near-misses the work would be thrown
+        /// away — and `put the cloak` is exactly such a line.
+        var implied: [(rule: SyntaxRule, particles: [String])] = []
         for rule in candidates {
             switch fit(rule, tokens: tokens, rawInput: rawInput, scope: scope) {
             case .command(let parsed):
@@ -308,13 +314,56 @@ struct StandardParser {
             case .nearMiss(let error):
                 bestFailure = bestFailure ?? error
                 continue
+            case .impliedSuffix(let particles):
+                implied.append((rule, particles))
+                continue
             }
         }
 
         // Ahead of the near-miss, behind every real match — see
         // ``FitOutcome/emptyDirection``.
         if let emptyDirection { return .success(emptyDirection) }
-        return .failure(bestFailure ?? .unmatchedSyntax)
+        // Behind the near-miss as well, and that is the ordering the shape
+        // needs: `put the cloak` is owed "What do you want to put the velvet
+        // cloak on?" from the row that has somewhere to put it, not a silent
+        // WEAR from the row that reads the particle as understood.
+        if let bestFailure { return .failure(bestFailure) }
+        return impliedReading(implied, tokens: tokens, rawInput: rawInput, scope: scope)
+    }
+
+    /// The last reading tried: a row with the words the player left off written
+    /// in — `pick the lamp` as `pick the lamp up`.
+    ///
+    /// Re-fitting is the whole of it, so every phrase is placed, resolved and
+    /// positioned by the ordinary path: `pick the lantern` in a room with two
+    /// of them still asks which, and the answer splices ahead of a particle
+    /// that is by then on the line.
+    ///
+    /// - Parameters:
+    ///   - implied: the rows that came up short of their particle, most
+    ///     specific first, each with the words to write in.
+    ///   - tokens: the line as typed.
+    ///   - rawInput: the line as the player typed it.
+    ///   - scope: what the player can see.
+    /// - Returns: the first row that fits with its particle written in, or the
+    ///   first reason one had for declining — which beats `unmatchedSyntax`,
+    ///   because `pick the gramophone` is about the gramophone.
+    private func impliedReading(
+        _ implied: [(rule: SyntaxRule, particles: [String])],
+        tokens: [String], rawInput: String, scope: Scope
+    ) -> Result<ParsedCommand, ParseError> {
+        var failure: ParseError?
+        for (rule, particles) in implied {
+            switch fit(rule, tokens: tokens + particles, rawInput: rawInput, scope: scope) {
+            case .command(let parsed):
+                return .success(parsed)
+            case .nearMiss(let error):
+                failure = failure ?? error
+            case .emptyDirection, .impliedSuffix, .mismatch:
+                continue
+            }
+        }
+        return .failure(failure ?? .unmatchedSyntax)
     }
 
     /// The words after the comma, read as a command in the addressee's own
@@ -388,6 +437,22 @@ struct StandardParser {
         /// without. CLIMB is the word that needs that — `climb up` is a walk
         /// and bare `climb` is the stub verb a game has voiced for itself.
         case emptyDirection(ParsedCommand)
+        /// A row whose object phrase is on the line but whose **trailing
+        /// particle** is not: `pick the lamp` against `pick <object> up`. The
+        /// payload is the words the player left off, and ``parse`` re-fits the
+        /// row with them written in.
+        ///
+        /// Only ever a run of literal words. The branch that raises it is the
+        /// one where everything behind the object slot has a fixed width, and
+        /// a second object slot has no width — so a row that reaches here can
+        /// never have one, and the question the shape used to ask ("What do you
+        /// want to pick the oil lamp up?") named a slot that was not in the
+        /// pattern and could not be filled by any answer.
+        ///
+        /// Weaker than every other outcome, near misses included: the row is
+        /// reading a word the player did not type, so anything that read what
+        /// they *did* type wins.
+        case impliedSuffix([String])
         case mismatch
         case nearMiss(ParseError)
     }
@@ -399,7 +464,12 @@ struct StandardParser {
         _ rule: SyntaxRule, tokens: [String], rawInput: String, scope: Scope
     ) -> FitOutcome {
         let leadingWords = rule.leadingWords
-        let verbPhrase = leadingWords.joined(separator: " ")
+        let verbPhrase = rule.leadingPhrase
+        // What a *question* about this row calls the verb. Separate from
+        // `verbPhrase`, which is the row as the player typed it and rides on
+        // the command for rules to read — `DefaultActions` tells FIND from
+        // SEARCH by it, and two games word a refusal off it.
+        let displayVerb = rule.displayVerb
         var cursor = leadingWords.count
 
         // The one shape the loop below cannot place, handled whole ahead of it
@@ -451,18 +521,35 @@ struct StandardParser {
         ) -> FitOutcome {
             guard let next = suffix.first else {
                 return missingSlotOutcome(
-                    slot, verbPhrase: verbPhrase, tokens: tokens, directPhrase: directPhrase,
+                    slot, displayVerb: displayVerb, tokens: tokens, directPhrase: directPhrase,
                     preposition: preposition, lastLiteral: lastLiteral, scope: scope,
                     distant: distant)
             }
             if next == .direction, suffix.count == 1 {
                 return missingHalfOfANounAndADirection(
-                    verbPhrase: verbPhrase, tokens: tokens, cursor: cursor, scope: scope,
+                    displayVerb: displayVerb, tokens: tokens, cursor: cursor, scope: scope,
                     distant: distant)
             }
             if case .word(let word) = next {
+                // A suffix measured by width is literal words and directions
+                // and nothing else, so where the player has typed the noun and
+                // left off the rest, one of two things is missing. A direction
+                // still behind the word is a slot they can fill, and the row
+                // asks for it in the words it always did — `turn the dial to`
+                // wants a bearing. Words alone are a **particle**, and there is
+                // nothing to ask: the sentence is complete except for a word
+                // the pattern was always going to supply, so the row reads it
+                // as understood rather than asking a question whose answer has
+                // nowhere to go. Issue #445.
+                guard suffix.contains(.direction) else {
+                    guard cursor < tokens.count else { return .mismatch }
+                    return .impliedSuffix(
+                        suffix.compactMap {
+                            if case .word(let particle) = $0 { particle } else { nil }
+                        })
+                }
                 return missingTheWordThatClosesTheSlot(
-                    slot, word: word, verbPhrase: verbPhrase, tokens: tokens, cursor: cursor,
+                    slot, word: word, displayVerb: displayVerb, tokens: tokens, cursor: cursor,
                     scope: scope, distant: distant)
             }
             return .mismatch
@@ -479,7 +566,7 @@ struct StandardParser {
                         split > cursor
                     else {
                         return missingTheWordThatClosesTheSlot(
-                            slot, word: word, verbPhrase: verbPhrase, tokens: tokens,
+                            slot, word: word, displayVerb: displayVerb, tokens: tokens,
                             cursor: cursor, scope: scope, distant: distant)
                     }
                     record(Array(tokens[cursor..<split]), for: slot, from: cursor)
@@ -553,7 +640,7 @@ struct StandardParser {
                 // make every conversation a guessing game about vocabulary.
                 guard cursor < tokens.count else {
                     return missingSlotOutcome(
-                        element, verbPhrase: verbPhrase, tokens: tokens,
+                        element, displayVerb: displayVerb, tokens: tokens,
                         directPhrase: directPhrase, preposition: preposition,
                         lastLiteral: lastLiteral, scope: scope, distant: distant)
                 }
@@ -673,7 +760,7 @@ struct StandardParser {
     ///   - rule: the recipient-first row.
     ///   - tokens: the line as typed.
     ///   - cursor: the first token after the row's leading words.
-    ///   - verbPhrase: those leading words, for messages.
+    ///   - verbPhrase: those leading words, for the command it builds.
     ///   - rawInput: the line as the player typed it.
     ///   - scope: what the player can see.
     /// - Returns: the command, the first split's reason for declining, or
@@ -796,7 +883,7 @@ struct StandardParser {
     /// rest; the answer belongs after the word the player never typed.
     /// Anything else declines and lets the next rule talk.
     private func missingTheWordThatClosesTheSlot(
-        _ slot: SyntaxElement, word: String, verbPhrase: String, tokens: [String],
+        _ slot: SyntaxElement, word: String, displayVerb: String, tokens: [String],
         cursor: Int, scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
         guard slot == .directObject, cursor < tokens.count,
@@ -807,7 +894,7 @@ struct StandardParser {
         }
         return .nearMiss(
             .missingIndirect(
-                verb: verbPhrase,
+                verb: displayVerb,
                 objectName: definiteName(of: id),
                 preposition: word,
                 prefix: tokens + [word]))
@@ -831,13 +918,13 @@ struct StandardParser {
     /// puts something behind it has more missing than one question can name, so
     /// `fit`'s `shortOfTheSlot` declines that shape instead.
     private func missingHalfOfANounAndADirection(
-        verbPhrase: String, tokens: [String], cursor: Int,
+        displayVerb: String, tokens: [String], cursor: Int,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
         guard cursor < tokens.count else {
             // The answer `missingSlotOutcome` gives a final object slot; the
             // direction half cannot be asked for until there is a noun to name.
-            return .nearMiss(.missingObject(verb: verbPhrase, prefix: tokens))
+            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
         }
         if tokens.count - cursor == 1, vocabulary.directions[tokens[cursor]] != nil {
             return .mismatch
@@ -850,19 +937,19 @@ struct StandardParser {
         }
         return .nearMiss(
             .missingDirection(
-                verb: verbPhrase, objectName: definiteName(of: id), prefix: tokens))
+                verb: displayVerb, objectName: definiteName(of: id), prefix: tokens))
     }
 
     /// The near-miss for a pattern whose final object slot got no tokens:
     /// "take" asks for an object; "put cloak on" asks what to put it on.
     /// Either way the answer belongs after everything already typed.
     private func missingSlotOutcome(
-        _ slot: SyntaxElement, verbPhrase: String, tokens: [String],
+        _ slot: SyntaxElement, displayVerb: String, tokens: [String],
         directPhrase: [String]?, preposition: String?, lastLiteral: String?,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
         if slot == .directObject {
-            return .nearMiss(.missingObject(verb: verbPhrase, prefix: tokens))
+            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
         }
         if slot == .topic {
             // A topic row need not have an object at all ("think about"). One
@@ -880,7 +967,7 @@ struct StandardParser {
             }
             return .nearMiss(
                 .missingTopic(
-                    verb: verbPhrase,
+                    verb: displayVerb,
                     objectName: objectName,
                     preposition: lastLiteral ?? "",
                     prefix: tokens))
@@ -890,7 +977,7 @@ struct StandardParser {
         {
             return .nearMiss(
                 .missingIndirect(
-                    verb: verbPhrase,
+                    verb: displayVerb,
                     objectName: definiteName(of: id),
                     preposition: preposition ?? "",
                     prefix: tokens))
