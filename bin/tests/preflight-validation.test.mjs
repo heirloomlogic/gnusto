@@ -34,8 +34,11 @@ exit 1
   // Answers nothing; a live handshake is not what any of these three checks need.
   writeFileSync(path.join(root, 'bin/gnusto-mcp'), '#!/bin/sh\nexit 1\n', { mode: 0o755 })
 
+  // `mcpCommand: null` means the entry has `args` but no `command` at all — the
+  // shape that used to crash `resolveCommand` before any row was ever printed.
+  const probeEntry = mcpCommand === null ? { args: ['Probe'] } : { command: mcpCommand, args: ['Probe'] }
   writeFileSync(path.join(root, '.mcp.json'), JSON.stringify({
-    mcpServers: { probe: { command: mcpCommand, args: ['Probe'] } },
+    mcpServers: { probe: probeEntry },
   }))
   writeFileSync(path.join(root, '.claude/settings.json'), JSON.stringify({
     enabledMcpjsonServers: projectEnabled,
@@ -90,6 +93,22 @@ test('a healthy .mcp.json command still passes the mcp key row', (t) => {
   assert.match(out, /ok\s+Probe mcp key\s+probe\s*$/m)
 })
 
+test('a .mcp.json entry with args but no command reds the row instead of crashing', (t) => {
+  const f = fixture(t, { mcpCommand: null })
+  const result = f.run(['Probe'])
+  const out = stripAnsi(result.stdout)
+  assert.notEqual(result.status, 0, out + result.stderr)
+  assert.doesNotMatch(result.stderr, /ERR_INVALID_ARG_TYPE/, result.stderr)
+  assert.match(out, /FAIL\s+Probe mcp key\s+probe — missing "command"/)
+})
+
+test('the server row remedy names the command the .mcp.json entry actually spawned', (t) => {
+  const f = fixture(t, { mcpCommand: 'bin/does-not-exist' })
+  const result = f.run(['Probe'])
+  const out = stripAnsi(result.stdout)
+  assert.match(out, /FAIL\s+Probe server\s+.*\n\s*->\s+bin\/does-not-exist Probe\s/)
+})
+
 test('enabledMcpjsonServers merges .claude/settings.json and settings.local.json', (t) => {
   // Enabled only in the gitignored local file — the project file lists nothing.
   const f = fixture(t, { projectEnabled: [], localEnabled: ['probe'] })
@@ -113,7 +132,7 @@ test('an unknown flag is rejected rather than silently dropped', (t) => {
   assert.match(result.stderr, /unknown flag.*--headles/)
 })
 
-test('--headless and --all keep working after the flag check', (t) => {
+test('--headless keeps working after the flag check', (t) => {
   const okHeadless = spawnSync(path.join(repo, 'bin/playtest-preflight'), ['--headless'], {
     cwd: repo, encoding: 'utf8', timeout: 20_000,
   })
@@ -122,4 +141,16 @@ test('--headless and --all keep working after the flag check', (t) => {
   assert.equal(okHeadless.status, 2, okHeadless.stdout + okHeadless.stderr)
   assert.match(okHeadless.stderr, /usage: bin\/playtest-preflight/)
   assert.doesNotMatch(okHeadless.stderr, /unknown flag/)
+})
+
+test('--all keeps working after the flag check', (t) => {
+  // Pairing --all with a bogus flag fails at the flag check itself, before any
+  // game is resolved or built — cheap, and it still proves --all is on
+  // KNOWN_FLAGS: the rejection names only --bogus, never --all.
+  const okAll = spawnSync(path.join(repo, 'bin/playtest-preflight'), ['--all', '--bogus'], {
+    cwd: repo, encoding: 'utf8', timeout: 20_000,
+  })
+  assert.equal(okAll.status, 2, okAll.stdout + okAll.stderr)
+  assert.match(okAll.stderr, /unknown flag.*--bogus/)
+  assert.doesNotMatch(okAll.stderr, /unknown flag.*--all/)
 })

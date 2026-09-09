@@ -214,14 +214,22 @@ async function checkGame(game, mcpEntry, enabled) {
       : problem ? `fix .mcp.json's "command" for "${mcpKey}"`
       : null)
 
+  // A missing "command" leaves nothing to resolve or spawn — `resolveCommand`
+  // needs a string, and falling back to `bin/gnusto-mcp` here would silently test
+  // a binary the entry never named. The row above already says what is wrong.
+  if (mcpEntry && !mcpEntry.command) return rows
+
   // What a client actually spawns: the matched entry's own `command`/`args` when
   // there is one, so a misspelled or foreign binary fails right here instead of
   // passing every row and dying at `ToolSearch`. An unregistered game has no entry
   // to spawn — the row above already says so — and falls back to the binary this
   // package builds, so an author can still preflight a game before wiring it into
-  // `.mcp.json`.
+  // `.mcp.json`. `spawnDisplay` is the unresolved form, for remedies: the resolved
+  // absolute path is right for `spawn()` but wrong to print back at an author, who
+  // wrote (or read) the relative or bare form.
   const spawnCommand = mcpEntry ? resolveCommand(mcpEntry.command) : resolveCommand('bin/gnusto-mcp')
   const spawnArgs = mcpEntry ? mcpEntry.args : [game]
+  const spawnDisplay = mcpEntry ? mcpEntry.command : 'bin/gnusto-mcp'
 
   const label = `preflight-${game}`
   const server = new Server(spawnCommand, spawnArgs)
@@ -236,7 +244,7 @@ async function checkGame(game, mcpEntry, enabled) {
       // only "server exited (1)" throws away the one line that says what to fix.
       const said = server.stderr.trim().split('\n').filter(Boolean).slice(-1)[0] || ''
       add('server', false, said ? `${init.error.message}: ${said.slice(0, 80)}` : init.error.message,
-        `bin/gnusto-mcp ${game}  # run it and read its stderr in full`)
+        `${spawnDisplay} ${spawnArgs.join(' ')}  # run it and read its stderr in full`)
       return rows
     }
     const listed = await server.send('tools/list', {})
@@ -682,8 +690,12 @@ const resolveCommand = (cmd) => (path.isAbsolute(cmd) ? cmd : path.resolve(ROOT,
 // says so) or the file it names exists and is runnable.
 function commandProblem(entry) {
   if (!entry) return null
+  if (!entry.command) return 'missing "command"'
   const resolved = resolveCommand(entry.command)
-  if (!exists(resolved)) return `${entry.command} does not exist`
+  // A bare PATH command (`node`, `npx`) reds here too — this checks the repo root,
+  // never PATH, so the message says which lookup failed rather than reading as a
+  // flat claim that the program does not exist anywhere.
+  if (!exists(resolved)) return `${entry.command} does not exist relative to the repo root`
   try {
     fs.accessSync(resolved, fs.constants.X_OK)
   } catch {
