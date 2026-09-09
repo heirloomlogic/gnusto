@@ -42,13 +42,13 @@ struct CoreVerbTests {
         // read
         "read note",
         // wear
-        "wear cloak", "don cloak", "put on cloak",
+        "wear cloak", "don cloak", "put on cloak", "put cloak on",
         // doff
         "remove hat", "doff hat", "take off hat", "take hat off",
         // putOn
         "put cloak on bench", "drop cloak on bench", "hang cloak on bench", "place cloak on bench",
         // putIn
-        "put cloak in sack", "drop cloak in sack",
+        "put cloak in sack", "drop cloak in sack", "insert cloak in sack",
         // open / close
         "open box", "open box with key", "close box", "shut box",
         // lock / unlock
@@ -64,7 +64,7 @@ struct CoreVerbTests {
         // push
         "push bench", "move bench", "press bench",
         // go
-        "go north", "walk north", "run north",
+        "go north", "walk north", "run north", "climb up",
         // follow
         "follow rat", "chase rat", "go after rat", "run after rat", "walk after rat",
         // greet
@@ -75,7 +75,8 @@ struct CoreVerbTests {
         "go through boat", "walk through boat", "step through boat",
         "climb through boat", "walk in boat",
         // disembark
-        "exit", "exit boat", "disembark", "get out", "get out of boat",
+        "exit", "exit boat", "leave", "leave boat", "disembark",
+        "get out", "get out of boat",
         // wait / look / inventory
         "wait", "z", "look", "l", "inventory", "inv", "i",
         // meta
@@ -88,6 +89,18 @@ struct CoreVerbTests {
     /// ship untested while this file still reads as exhaustive.
     @Test func everyCoreRowHasACommandInTheList() {
         #expect(Self.everyCoreCommand.count == SyntaxRule.coreTable.count)
+    }
+
+    /// FIND and SEARCH are one intent, and ``DefaultActions/lookIn(_:frame:)``
+    /// tells them apart by the spelling that matched — a set of phrases it has
+    /// to restate, because which of an intent's rows mean *find* is a fact no
+    /// row carries. This is what keeps the restatement honest: a row respelled
+    /// in `cores` and not there would silently stop finding anybody.
+    @Test func everyFindingPhraseIsARealLookInRow() {
+        let spellings = Set(
+            SyntaxRule.standardRows(producing: .lookIn)
+                .map { $0.leadingWords.joined(separator: " ") })
+        #expect(DefaultActions.findingPhrases.isSubset(of: spellings))
     }
 
     /// What "the row reached its handler" looks like from the transcript: the

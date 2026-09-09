@@ -31,9 +31,10 @@ which means it:
    opening the bottle lets all three through.
 
    Which verbs check is a call made per verb, because a blanket guard would be
-   wrong: `smell`, `listen to`, `point at`, `count`, `buy`, `sell` and `wake`
-   are fine at a distance — you can smell a fire across a room, count coins
-   behind glass, and shout somebody awake. `throw … at …` checks the projectile
+   wrong: `smell`, `listen to`, `point at`, `count`, `buy`, `sell`, `wake` and
+   `look through` are fine at a distance — you can smell a fire across a room,
+   count coins behind glass, shout somebody awake, and look through a window
+   from the other side of the room. `throw … at …` checks the projectile
    and deliberately not the target, and `give … to …` is the one stub that
    checks both slots, since handing something over is contact with the gift and
    with whoever takes it.
@@ -47,17 +48,20 @@ which means it:
 
 Violence and force: `attack`/`kill`/`hit`/`fight` (bare or `with` a weapon),
 `break`/`smash`/`destroy`, `burn`, `cut`/`slice`, `dig`, `pull`/`drag`,
-`turn`/`rotate`, `squeeze`, `shake`, `knock (on)`, `throw … at …`.
+`turn`/`rotate`, `squeeze`, `shake`, `knock (on)`, `throw … at …`, `kick`.
 
-Senses: `touch`/`feel`/`rub`, `smell`/`sniff`, `listen (to)`, `taste`/`lick`.
+Senses: `touch`/`feel`/`rub`, `smell`/`sniff`, `listen (to)`, `taste`/`lick`,
+`look under`/`underneath`, `look behind`, `look`/`peer through`.
 
 Body: `eat`, `drink`, `sleep`, `rest`, `wake (up)`.
 
-Social: `talk (to/with)`/`speak (to/with)`, `kiss`/`hug`, `give`/`hand … to …`,
+Social: `talk (to/with)`/`speak (to/with)`, `kiss`/`hug`, `give`/`hand` (either
+`… to …` or the recipient first, `give the troll the sword`),
 `yell`/`shout`/`scream`, `wave`, `point at`.
 
-Motion: `climb (up/down/on)`, `jump (over)`, `swim`, `dive`, `stand (up)`,
-`sit (down/on)`, `lie (down)`, `kneel`.
+Motion: `climb (up/down/on)`, `jump (over)`, `swim`, `dive`, `stand (up/on)`,
+`sit (down/on/in)`, `lie (down) (on)`, `kneel`. Bare `climb up` and `climb down`
+are not here: they are a walk, and core's `["climb", .direction]` row takes them.
 
 Liquids and containers: `fill`, `pour`, `empty`, `tie`, `untie`.
 

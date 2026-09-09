@@ -203,6 +203,31 @@ struct KindlyDeepTests {
         #expect(transcript.contains("Not on bare stone, not in this cold"))
     }
 
+    /// **The sentence the intro asks for by name.** "Find the straw and lie
+    /// down" is the opening paragraph's instruction, and the engine's `lie on
+    /// <object>` rows carry a literal this game's bare `lie down` row has not
+    /// got — so they outscored it and the straw answered "You can't lie down on
+    /// the straw." The straw claims the verb itself now, in every spelling a
+    /// player who has just read that paragraph would type.
+    @Test func lyingDownOnTheStrawIsTheRest() async throws {
+        for command in [
+            "lie down on straw", "lie down in straw", "lie on straw", "lie in straw", "lie down",
+            "lie",
+        ] {
+            let transcript = try await play(KindlyDeep(), ["light lamp", "down", command])
+            #expect(
+                turnOutput(of: command, in: transcript).contains("and lie down in the straw"),
+                "`\(command)` did not rest")
+            #expect(!transcript.contains("You can't lie down on"))
+        }
+    }
+
+    /// And the bench is not a bed, so the floor still answers for it.
+    @Test func lyingOnTheBenchIsStillRefused() async throws {
+        let transcript = try await play(KindlyDeep(), ["light lamp", "down", "lie on bench"])
+        #expect(transcript.contains("You can't lie down on the bench."))
+    }
+
     // MARK: - The lamp
 
     @Test func restingSnuffsTheLampAndYouWakeNeedingTheStriker() async throws {

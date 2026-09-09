@@ -187,7 +187,7 @@ struct CustomVerbTests {
         #expect(Intent.ring.verbRows.count == Intent.ring.syntax.count)
         #expect(Intent.attack.syntax.isEmpty)
         let attackWords = Set(Intent.attack.verbRows.flatMap(\.leadingWords))
-        #expect(attackWords == ["attack", "kill", "hit", "fight"])
+        #expect(attackWords == ["attack", "kill", "hit", "fight", "kick"])
         #expect(Intent.take.verbRows.allSatisfy { $0.intent == .take })
         #expect(Intent("nonesuch").verbRows.isEmpty)
     }
@@ -198,7 +198,7 @@ struct CustomVerbTests {
         // That is why `.attack` splicing zero went unnoticed for so long.
         let verbs = EngineIntentVerbGame().verbs
         let words = Set(verbs.flatMap(\.leadingWords))
-        #expect(words == ["attack", "kill", "hit", "fight", "stab", "strike"])
+        #expect(words == ["attack", "kill", "hit", "fight", "kick", "stab", "strike"])
         #expect(verbs.allSatisfy { $0.intent == .attack })
     }
 

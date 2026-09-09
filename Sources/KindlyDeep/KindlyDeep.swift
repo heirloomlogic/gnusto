@@ -495,15 +495,19 @@ struct KindlyDeep: Game, GameMain {
     // MARK: - Verbs
 
     /// The game's three verbs, and the extra words a driver reaches for on six
-    /// of the engine's. `sleep`, `lie down` and `nap` all *rest*, because in
-    /// this mine they are one act — lying down on the shelter-hole straw — and
-    /// the game's row wins over the engine's `sleep` and `lie down` stubs.
+    /// of the engine's. `sleep`, `lie`, `lie down` and `nap` all *rest*,
+    /// because in this mine they are one act — lying down on the shelter-hole
+    /// straw — and the game's row wins over the engine's `sleep` and `lie`
+    /// stubs. The rows that name the straw are not here: `lie on the straw` is
+    /// the engine's row and the straw claims it in `rules`, which is the only
+    /// way an object can be part of the answer.
     var verbs: [SyntaxRule] {
         [.ring, .pet, .harness]
         SyntaxRule("drink", "from", .directObject, intent: .drink)
         SyntaxRule("sip", .directObject, intent: .drink)
         SyntaxRule("sip", "from", .directObject, intent: .drink)
         SyntaxRule("sleep", intent: .rest)
+        SyntaxRule("lie", intent: .rest)
         SyntaxRule("lie", "down", intent: .rest)
         SyntaxRule("nap", intent: .rest)
         SyntaxRule("feed", .directObject, "to", .indirectObject, intent: .give)
@@ -707,48 +711,7 @@ struct KindlyDeep: Game, GameMain {
     // MARK: - Default actions for the custom verbs
 
     var actions: [IntentAction] {
-        action(.rest) {
-            try require(
-                player.location == shelterHole,
-                else: """
-                    Not on bare stone, not in this cold. The shelter hole has straw and a dry floor; your legs will
-                    thank you for the walk.
-                    """)
-            fatigue = 0
-            stopFuse("collapse")
-            // Two clauses, two questions. The lamp only gets pinched out if it
-            // is burning — a second rest used to re-pinch a lamp the first rest
-            // had already put out and nothing had relit. And the watch is his,
-            // so it only happens where he is.
-            let lyingDown =
-                capLamp.isLit
-                ? """
-                You pinch the lamp out first — nobody sleeps next to an open flame, and the oil will be wanted
-                later — and lie down in the straw
-                """
-                : """
-                The lamp is already out, which saves you the argument with yourself, and you lie down in the straw
-                """
-            let watch =
-                biscuitIsHere
-                ? """
-                Biscuit stands over you in the dark, head low, doing the watching, turnabout being fair, since you
-                have done his for two years.
-                """
-                : """
-                Nobody stands over you; there is nobody down here to do it, and you sleep the shallow way a man
-                sleeps when the watching is his own job too.
-                """
-            // A man does not sleep beside an open flame, and oil is a thing
-            // there is a finite amount of. You wake needing the striker again.
-            capLamp.isLit = false
-            try reply(
-                """
-                \(lyingDown) and let the weight of the shift come off your shoulders. \(watch) You wake with your
-                legs answering questions again, in a dark so complete it takes a moment to remember it is not the
-                lamp that failed. The striker is on your belt, where it always is.
-                """)
-        }
+        action(.rest) { try sleepInTheStraw() }
         // `give lamp to me` lands here — the player is the indirect object, so
         // no rule of his matches — and it used to answer as though the room were
         // empty, in a game whose entire cast is standing at your elbow.
@@ -853,6 +816,58 @@ struct KindlyDeep: Game, GameMain {
             without ceremony. His shoulders set, his hooves bite, and the beam grinds off the gate an inch at a
             time until it lies clear. He shakes the dust off and looks around for something else to be better at
             than you.
+            """)
+    }
+
+    /// The one rest this game has, wherever the player spelled it.
+    ///
+    /// Named rather than written into `action(.rest)` because it has two
+    /// callers: the game's own `sleep`/`nap`/`lie down` rows, and the straw,
+    /// which claims `lie on the straw` and `lie down on the straw` by name. The
+    /// engine's `lie <object>` rows carry a literal the game's bare `lie down`
+    /// row has not got and so outscore it, and the intro tells the player to
+    /// find the straw and lie down — so the straw answers for itself rather
+    /// than letting the stub floor say it can't be lain on.
+    private func sleepInTheStraw() throws -> Never {
+        try require(
+            player.location == shelterHole,
+            else: """
+                Not on bare stone, not in this cold. The shelter hole has straw and a dry floor; your legs will
+                thank you for the walk.
+                """)
+        fatigue = 0
+        stopFuse("collapse")
+        // Two clauses, two questions. The lamp only gets pinched out if it is
+        // burning — a second rest used to re-pinch a lamp the first rest had
+        // already put out and nothing had relit. And the watch is his, so it
+        // only happens where he is.
+        let lyingDown =
+            capLamp.isLit
+            ? """
+            You pinch the lamp out first — nobody sleeps next to an open flame, and the oil will be wanted
+            later — and lie down in the straw
+            """
+            : """
+            The lamp is already out, which saves you the argument with yourself, and you lie down in the straw
+            """
+        let watch =
+            biscuitIsHere
+            ? """
+            Biscuit stands over you in the dark, head low, doing the watching, turnabout being fair, since you
+            have done his for two years.
+            """
+            : """
+            Nobody stands over you; there is nobody down here to do it, and you sleep the shallow way a man
+            sleeps when the watching is his own job too.
+            """
+        // A man does not sleep beside an open flame, and oil is a thing there
+        // is a finite amount of. You wake needing the striker again.
+        capLamp.isLit = false
+        try reply(
+            """
+            \(lyingDown) and let the weight of the shift come off your shoulders. \(watch) You wake with your
+            legs answering questions again, in a dark so complete it takes a moment to remember it is not the
+            lamp that failed. The striker is on your belt, where it always is.
             """)
     }
 
@@ -1267,6 +1282,14 @@ struct KindlyDeep: Game, GameMain {
         }
         straw.before(.sit) {
             try reply("Sitting in it wastes it. The straw is a bed; lie down in it and rest, and mean it.")
+        }
+        // …and lying on it is the thing the intro sends the player here to do.
+        // The engine's `lie on <object>` row carries a literal the game's bare
+        // `lie down` row has not got, so it outscores it and the straw was
+        // answering "You can't lie down on the straw." to the one sentence the
+        // opening paragraph asks for by name.
+        straw.before(.lie) {
+            try sleepInTheStraw()
         }
 
         // MARK: The stock lines the mine was getting wrong about itself

@@ -49,3 +49,31 @@ struct LanternShopGame: Game {
         hook.starts(in: shop)
     }
 }
+
+/// Two doors sharing the noun "door" and one giveable item — the
+/// recipient-first GIVE row (#445 round 2): `give door lamp` cannot tell
+/// which door is meant, and the answer to "Which do you mean" must splice
+/// back into the sentence exactly as it does for every other slot.
+struct DoorGiftGame: Game {
+    let title = "Door Gift"
+    let intro = "Two doors, one lamp."
+
+    let room = Location {
+        name("Room")
+        description("A plain room.")
+    }
+
+    let trapDoor = Item.scenery("trap door", adjectives: "trap")
+    let woodenDoor = Item.scenery("wooden door", adjectives: "wooden")
+
+    let lamp = Item {
+        name("lamp")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        trapDoor.starts(in: room)
+        woodenDoor.starts(in: room)
+        lamp.startsHeld
+    }
+}

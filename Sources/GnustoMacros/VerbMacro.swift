@@ -204,8 +204,9 @@ public struct VerbMacro: DeclarationMacro {
         if count(of: .indirectObject) > 1 {
             problems.append("\(pattern) has more than one <second object> slot.")
         }
-        if elements.first(where: { $0 == .directObject || $0 == .indirectObject })
-            == .indirectObject
+        if !isRecipientFirst(elements),
+            elements.first(where: { $0 == .directObject || $0 == .indirectObject })
+                == .indirectObject
         {
             problems.append("\(pattern) puts the <second object> slot before <object>.")
         }
@@ -241,21 +242,35 @@ public struct VerbMacro: DeclarationMacro {
         // arithmetic when everything behind it has a fixed width — the phrase
         // stops that many tokens from the end — and a search when it does not,
         // and then a literal word has to be the thing searched for.
-        let unclosedSlot = elements.enumerated().contains { index, element in
-            guard element == .directObject || element == .indirectObject,
-                fixedSuffixWidth(of: elements, after: index) == nil
-            else {
-                return false
+        let unclosedSlot =
+            !isRecipientFirst(elements)
+            && elements.enumerated().contains { index, element in
+                guard element == .directObject || element == .indirectObject,
+                    fixedSuffixWidth(of: elements, after: index) == nil
+                else {
+                    return false
+                }
+                if case .word = elements[index + 1] { return false }
+                return true
             }
-            if case .word = elements[index + 1] { return false }
-            return true
-        }
         if unclosedSlot {
             problems.append(
                 "\(pattern) needs a literal word between an object slot "
                     + "and whatever follows it.")
         }
         return problems
+    }
+
+    /// `SyntaxRule.isRecipientFirst`, ported for the reason
+    /// ``patternProblems(of:)`` is: `give <second object> <object>` is the one
+    /// pattern whose two object slots may touch, and the two checks above have
+    /// to step aside for it here as well.
+    private static func isRecipientFirst(_ elements: [Element]) -> Bool {
+        guard elements.count >= 3, elements.suffix(2) == [.indirectObject, .directObject]
+        else { return false }
+        return elements.dropLast(2).allSatisfy { element in
+            if case .word = element { true } else { false }
+        }
     }
 
     private static func error(_ message: String) -> MacroError {

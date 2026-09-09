@@ -71,7 +71,7 @@ struct StubVerbTests {
     static let everyStubCommand = [
         // Violence and force.
         "attack rat", "attack rat with rod", "kill rat", "kill rat with rod",
-        "hit rat", "hit rat with rod", "fight rat",
+        "hit rat", "hit rat with rod", "fight rat", "kick bench",
         "break rod", "smash rod", "destroy rod",
         "burn rod", "burn rod with flask", "light rod with flask",
         "cut rod", "slice rod",
@@ -83,17 +83,22 @@ struct StubVerbTests {
         "touch rod", "feel rod", "rub rod",
         "smell", "smell rod", "sniff", "sniff rod",
         "listen", "listen to rat", "taste rod", "lick rod",
+        "look under bench", "look behind bench", "look through bench", "peer through bench",
         // Body.
         "eat rod", "drink flask", "sleep", "rest",
         "wake", "wake up", "wake rat", "wake up rat",
         // Social.
         "talk to rat", "talk with rat", "talk rat", "speak to rat", "speak with rat",
         "kiss rat", "hug rat", "give rod to rat", "hand rod to rat",
+        "give rat rod", "hand rat rod",
         "yell", "shout", "scream", "wave", "wave rod", "point at rat",
         // Motion.
         "climb", "climb bench", "climb up bench", "climb down bench", "climb on bench",
         "jump", "jump over bench", "swim", "dive",
-        "stand", "stand up", "sit", "sit down", "sit on bench", "lie", "lie down", "kneel",
+        "stand", "stand up", "stand on bench",
+        "sit", "sit down", "sit on bench", "sit in bench",
+        "lie", "lie down", "lie on bench", "lie in bench",
+        "lie down on bench", "lie down in bench", "kneel",
         // Liquids and containers.
         "fill flask", "fill flask with rod",
         "pour flask", "pour flask in flask", "pour flask on bench",
@@ -126,7 +131,7 @@ struct StubVerbTests {
     /// of these used to say `I don't know the word`.
     @Test func theOpeningComplaintIsAnswered() async throws {
         let commands = [
-            "attack the bench", "sing", "smell", "listen", "kiss the rat",
+            "attack the bench", "kick the bench", "sing", "smell", "listen", "kiss the rat",
             "climb the bench", "jump", "dig", "buy rod",
         ]
         let transcript = try await play(StubLab(), commands)
@@ -170,7 +175,8 @@ struct StubVerbTests {
         "pull coin", "turn coin", "squeeze coin", "shake coin", "knock on coin",
         "throw coin at rod", "touch coin", "taste coin", "eat coin", "drink coin",
         "kiss coin", "give coin to rod", "wave coin", "climb coin",
-        "jump over coin", "sit on coin",
+        "jump over coin", "sit on coin", "stand on coin", "lie on coin",
+        "look under coin", "look behind coin",
         "fill coin", "pour coin", "empty coin", "tie coin", "untie coin",
         "blow coin",
     ]
@@ -186,7 +192,7 @@ struct StubVerbTests {
     /// command per stub that takes an object and doesn't need to touch it.
     static let everyDistantStubCommand = [
         "smell coin", "listen to coin", "point at coin", "count coin",
-        "buy coin", "sell coin", "wake coin", "talk to coin",
+        "buy coin", "sell coin", "wake coin", "talk to coin", "look through coin",
     ]
 
     @Test(arguments: StubVerbTests.everyDistantStubCommand)
@@ -717,7 +723,7 @@ struct StubVerbTests {
     @Test func theStubSweepSeesEveryLineAGameHasNotVoiced() {
         let engine = GameText.StubReplies()
         let shipped = Mirror(reflecting: engine).children.compactMap(\.label)
-        #expect(shipped.count == 51)
+        #expect(shipped.count == 55)
         #expect(Set(engineVoicedStubLines(in: engine)) == Set(shipped))
     }
 

@@ -154,13 +154,6 @@ extension Prose {
 
     static let doorIsLocked = "The door is locked."
 
-    /// The game-wide answer for `look through <anything>`. Written to be true
-    /// of everything the game already has a window or a mirror for, since the
-    /// verb is in the vocabulary everywhere the moment this region declares it.
-    static let nothingToLookThrough = """
-        You see nothing through it that you could not see without it.
-        """
-
     /// The other room entire, which is the whole trick of the window: the table
     /// and the sphere on it are visible a long time before they are reachable.
     ///

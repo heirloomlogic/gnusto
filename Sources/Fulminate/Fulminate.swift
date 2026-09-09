@@ -230,7 +230,13 @@ struct Fulminate: Game, GameMain {
         text.stubs.climb = .naming(orBare: "You would have to say what you meant to climb.") {
             "You put a hand on \($0) and think better of it."
         }
-        text.stubs.stand = "You are on your feet, and have been since the streetcar."
+        // The bare half is a claim about the whole evening and is answered by
+        // `world.before(.stand)` on the evenings it is untrue of. The naming
+        // half is a different sentence entirely: `stand on the armchair` is not
+        // a man asking whether he is upright.
+        text.stubs.stand = .naming(orBare: "You are on your feet, and have been since the streetcar.") {
+            "You are not going to be found standing on \($0)."
+        }
         text.stubs.sit = "You did not come out on a Tuesday to sit down."
         // A house of witnesses, so the sister lines to the two already
         // re-skinned above want the same voice.
@@ -1929,18 +1935,27 @@ struct Fulminate: Game, GameMain {
         // the evening. The stub says "and have been since the streetcar", which
         // is a claim about the whole evening, so the second arm outlives the
         // first — and reads the flag that outlives it.
+        // The bare verb's second arm is about being upright, so it only
+        // answers `stand` and `stand up` — `stand on the armchair` names
+        // something to stand on and is the stub's question, not this one.
+        // The knocked-flat arm answers first and regardless of an object,
+        // though: a man face down in the grass can't comply with "stand on
+        // the wall" either, and that's the more urgent fact about the turn.
         world.before(.stand) {
             guard wasInTheYardForTheBlast else { return }
-            try reply(
-                knockedFlat
-                    ? """
+            if knockedFlat {
+                try reply(
+                    """
                     You get an elbow under you and stop there. Whatever went off has not finished with the evening yet,
                     and the grass is as good a place as any to find that out from.
-                    """
-                    : """
-                    You are upright. That was not true earlier this evening, when the carriage house put you on your
-                    back, and there is still grass in your cuff.
                     """)
+            }
+            guard command.directObject == nil else { return }
+            try reply(
+                """
+                You are upright. That was not true earlier this evening, when the carriage house put you on your
+                back, and there is still grass in your cuff.
+                """)
         }
 
         // The three flights the house has got. A staircase that answers CLIMB

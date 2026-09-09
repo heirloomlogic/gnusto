@@ -157,6 +157,18 @@ extension Prose {
         // there; this is what is left over, and it reports on the listener.
         stubs.listen = "You listen, and learn nothing you did not already know."
         stubs.taste = "You would regret it."
+        // `V-LOOK-UNDER`'s dust (`gverbs.zil:899`), adapted: this game has a
+        // welcome mat with a key coming out from under it and a rug over a trap
+        // door, and both answer for themselves before the floor is reached.
+        stubs.lookUnder = .naming { "There is nothing under \($0) but dust." }
+        // `V-LOOK-BEHIND` (`gverbs.zil:862`), adapted to the second person the
+        // rest of this floor speaks in.
+        stubs.lookBehind = .naming { "Nothing is hiding behind \($0)." }
+        // The palantir wing wrote this one and owned the verb with it; the
+        // engine ships the row now, so `look through` is in the vocabulary in
+        // all 196 rooms and the line belongs on the floor. The spheres, the
+        // keyholes and the barred window all answer for themselves above it.
+        stubs.lookThrough = "You see nothing through it that you could not see without it."
 
         // MARK: Body
 
@@ -190,6 +202,10 @@ extension Prose {
             let who = $0.recipient
             return "\(who.sentenceCased) \(who.verb("has", "have")) no use for \($0.gift)."
         }
+        // `V-GIVE`'s first branch (`gverbs.zil:715`), adapted: the source's
+        // exclamation reads as the parser's, and this floor speaks as the
+        // narrator.
+        stubs.giveToNobody = .naming { "\($0.recipient.sentenceCased) cannot take \($0.gift)." }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"
         stubs.wave = .init(Prose.verbWave)
@@ -216,10 +232,21 @@ extension Prose {
         stubs.jump = "Wheeeeeeeeee!!!!!"
         stubs.swim = .init(Prose.noSwimming)
         stubs.dive = .init(Prose.noDiving)
-        // `V-STAND` (`gverbs.zil:1305`). Trilogy verbatim.
-        stubs.stand = "You are already standing, I think."
-        stubs.sit = "That is not something you could sit on."
-        stubs.lie = "Lying down would gain you nothing."
+        // `V-STAND` (`gverbs.zil:1305`). Trilogy verbatim, and the bare half
+        // keeps it. All three name their object on the naming half, the way
+        // ``stubs/climb`` above does: "You are already standing, I think."
+        // answers `stand on the pedestal` by claiming you are doing it, and
+        // "That is not something you could sit on." answers a bare `sit` with a
+        // "that" the player never named.
+        stubs.stand = .naming(orBare: "You are already standing, I think.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could stand on."
+        }
+        stubs.sit = .naming(orBare: "Sitting down would gain you nothing.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could sit on."
+        }
+        stubs.lie = .naming(orBare: "Lying down would gain you nothing.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could lie on."
+        }
         stubs.kneel = "You kneel briefly, and get up again."
 
         // MARK: Liquids and containers

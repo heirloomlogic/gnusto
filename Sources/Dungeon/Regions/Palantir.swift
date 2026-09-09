@@ -9,15 +9,6 @@ extension Intent {
         ["put", .directObject, "under", .indirectObject],
         ["slide", .directObject, "under", .indirectObject],
         ["push", .directObject, "under", .indirectObject])
-
-    /// Look through a hole rather than into a container. `look in` is already
-    /// the engine's `.lookIn` and means *search*, which is the wrong question
-    /// to ask a keyhole; this is the right one, and the barred window answers
-    /// it too.
-    #verb(
-        "lookThrough",
-        ["look", "through", .directObject],
-        ["peer", "through", .directObject])
 }
 
 /// The palantir wing — seven rooms, two crystal spheres, and the last thirty
@@ -344,11 +335,14 @@ struct DungeonPalantir: GameContent {
 
     // MARK: - Verbs
 
-    var verbs: [SyntaxRule] { [.putUnder, .lookThrough] }
+    // `.lookThrough` is the engine's now, rows and all — this wing minted it
+    // before the engine had the word, and `Prose.nothingToLookThrough` is the
+    // stub floor's line rather than an `action(…)` row, which is what keeps the
+    // verb's reach guard and its rendered name.
+    var verbs: [SyntaxRule] { [.putUnder] }
 
     var actions: [IntentAction] {
         action(.putUnder, say: Prose.matNowhereToPutIt)
-        action(.lookThrough, say: Prose.nothingToLookThrough)
     }
 
     // MARK: - Map

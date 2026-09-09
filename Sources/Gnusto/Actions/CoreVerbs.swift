@@ -144,6 +144,13 @@ extension DefaultActions {
                 ["wear", .directObject],
                 ["don", .directObject],
                 ["put", "on", .directObject],
+                // The trailing-particle spelling, and the reason `putOn` above
+                // has to stay more specific than this: `put the cloak on` is
+                // WEAR, `put the cloak on the hook` is not. `putOn`'s row
+                // carries a second object slot and so outscores this one, which
+                // is what keeps the surface reading first — this row only ever
+                // sees the line that has nothing after the particle.
+                ["put", .directObject, "on"],
             ],
             reach: .notNeeded
         ) { try wear($0, frame: $1) },
@@ -175,6 +182,9 @@ extension DefaultActions {
             [
                 ["put", .directObject, "in", .indirectObject],
                 ["drop", .directObject, "in", .indirectObject],
+                // INTO folds to IN, so this one row buys `insert the coin into
+                // the slot` as well as `insert the coin in the slot`.
+                ["insert", .directObject, "in", .indirectObject],
             ],
             reach: .bothObjects
         ) { try putIn($0, frame: $1) },
@@ -274,6 +284,11 @@ extension DefaultActions {
                 ["go", .direction],
                 ["walk", .direction],
                 ["run", .direction],
+                // CLIMB UP and CLIMB DOWN are a walk, which is what a player
+                // standing at the foot of a staircase means by them. Bare CLIMB
+                // still reaches the stub verb three games have voiced for
+                // themselves — see `StandardParser.FitOutcome.emptyDirection`.
+                ["climb", .direction],
             ],
             reach: .notNeeded
         ) { try go($0, frame: $1) },
@@ -340,6 +355,8 @@ extension DefaultActions {
             [
                 ["exit"],
                 ["exit", .directObject],
+                ["leave"],
+                ["leave", .directObject],
                 ["disembark"],
                 ["get", "out"],
                 ["get", "out", "of", .directObject],
