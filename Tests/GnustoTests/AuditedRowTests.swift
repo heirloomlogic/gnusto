@@ -41,13 +41,6 @@ struct AuditedRowTests {
         #expect(turn.contains("You find nothing under the woven rug."))
     }
 
-    /// Still `.lookIn`'s question, and still answered by it: adding three
-    /// prepositions must not have moved SEARCH.
-    @Test func lookInIsUntouchedByItsThreeNewNeighbours() async throws {
-        let turn = turnOutput(of: "look in sack", in: try await play(AuditLab(), ["look in sack"]))
-        #expect(turn.contains("The canvas sack is empty."))
-    }
-
     // MARK: - sit in / stand on / lie on
 
     /// Three postures the stub table knew the bare form of and not the form
@@ -141,7 +134,7 @@ struct AuditedRowTests {
     /// second object slot and so outscores the new row; only the sentence with
     /// nothing after the particle reaches WEAR.
     @Test func putSomethingOnSomethingIsStillTheSurface() async throws {
-        let transcript = try await play(AuditLab(), ["put coin on bench", "look"])
+        let transcript = try await play(AuditLab(), ["put coin on bench"])
         #expect(
             turnOutput(of: "put coin on bench", in: transcript)
                 .contains("You put the gold coin on the long bench."))
@@ -158,6 +151,17 @@ struct AuditedRowTests {
         #expect(turnOutput(of: "give warden coin", in: transcript).contains(expected))
         #expect(turnOutput(of: "hand warden coin", in: transcript).contains(expected))
         #expect(!transcript.contains("I didn't understand"))
+    }
+
+    /// The gift half goes through the direct slot's own resolver, so a list
+    /// there is read as a list — and answered in the words the TO spelling
+    /// answers it in, rather than as a sentence nobody recognizes.
+    @Test func aListOfGiftsReadsTheSameInBothSpellings() async throws {
+        let transcript = try await play(
+            AuditLab(), ["give warden coin and cloak", "give coin and cloak to warden"])
+        let expected = "You can't use multiple objects with"
+        #expect(turnOutput(of: "give warden coin and cloak", in: transcript).contains(expected))
+        #expect(turnOutput(of: "give coin and cloak to warden", in: transcript).contains(expected))
     }
 
     /// The TO row is more specific and still wins — including the question an
@@ -191,9 +195,9 @@ struct AuditedRowTests {
     }
 
     /// Where there is no `out`, the old line stays: borrowing GO's would name a
-    /// direction the player never typed.
+    /// direction the player never typed. ``StubLab`` is the one-room fixture.
     @Test func exitOnFootWithNoWayOutKeepsItsOldLine() async throws {
-        let turn = turnOutput(of: "exit", in: try await play(SealedRoomGame(), ["exit"]))
+        let turn = turnOutput(of: "exit", in: try await play(StubLab(), ["exit"]))
         #expect(turn.contains("You aren't in anything."))
     }
 

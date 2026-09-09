@@ -575,10 +575,10 @@ extension DefaultActions {
         ) { $0.stubs.taste($1) },
 
         // LOOK UNDER, LOOK BEHIND and LOOK THROUGH: the three things a player
-        // does with a room's furniture that LOOK IN cannot express. They are
-        // `named` — the answer is about the thing looked past, and a line that
-        // only says "nothing" reads as a house rule — and they reach their
-        // object, because tipping a rug up is contact.
+        // does with a room's furniture that LOOK IN cannot express. All three
+        // are `named` — the answer is about the thing looked past, and a line
+        // that only says "nothing" reads as a house rule. The first two reach
+        // their object, because tipping a rug up is contact.
         .named(
             .lookUnder,
             [["look", "under", .directObject]],
@@ -716,11 +716,8 @@ extension DefaultActions {
 
         // MARK: Motion
 
-        // The bare row still fires, even though core's `["climb",
-        // .direction]` outscores it: a direction slot with nothing to fill it
-        // is the weakest kind of match, and yields to any row that really
-        // matched. That is what lets `climb up` be a walk and bare `climb` be
-        // this verb, which is the voice three shipped games have written.
+        // The bare row still fires, even though core's `["climb", .direction]`
+        // outscores it — see `StandardParser.FitOutcome.emptyDirection`.
         .optionallyNamed(
             .climb,
             [

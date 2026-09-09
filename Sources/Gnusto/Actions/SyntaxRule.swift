@@ -79,6 +79,26 @@ public struct SyntaxRule: Sendable {
     /// keep their table order (the parser's sort is stable by construction).
     let specificity: Int
 
+    /// Whether the pattern is the recipient-first shape — literal words, then a
+    /// `<second object>` slot and an `<object>` slot with nothing between them,
+    /// and nothing after: `give <second object> <object>`.
+    ///
+    /// The one place two object slots may touch, and the one place the second
+    /// slot may come first, because it is the one sentence English writes that
+    /// way: `give the troll the sword` has no preposition to split on and no
+    /// other reading. ``StandardParser`` places the two by trying the leftmost
+    /// cut that resolves both halves, where every other row places a slot by
+    /// arithmetic or by a literal — so the shape is named here rather than
+    /// discovered twice, and the two validations in ``patternProblems`` step
+    /// aside for it.
+    ///
+    /// Stored for the reason ``leadingWords`` is: `fit` asks it of every
+    /// candidate row on every command, and computing it there would put an
+    /// array literal and a scan on the parser's hottest line — where deriving
+    /// it once in the initializer costs a `Bool` per row for the life of the
+    /// game.
+    let isRecipientFirst: Bool
+
     /// Builds a verb row from its pattern. The pattern must start with a
     /// literal word; the bootstrap validates custom rows and reports
     /// malformed patterns as fatal diagnostics.
@@ -115,6 +135,12 @@ public struct SyntaxRule: Sendable {
         self.canonicalLeadingWords = leading.map(Vocabulary.canonical)
         self.literalWords = literals
         self.specificity = literals.count * 10 + (elements.count - literals.count)
+        // Every element but the last two is a literal exactly when the leading
+        // run reaches them, which the loop above has already measured.
+        self.isRecipientFirst =
+            elements.count >= 3
+            && elements.suffix(2) == [.indirectObject, .directObject]
+            && leading.count == elements.count - 2
     }
 
     /// Identifies a row by what the player types — the full pattern — so the
@@ -174,25 +200,6 @@ public struct SyntaxRule: Sendable {
             total += width
         }
         return total
-    }
-
-    /// Whether the pattern is the recipient-first shape — literal words, then a
-    /// `<second object>` slot and an `<object>` slot with nothing between them,
-    /// and nothing after: `give <second object> <object>`.
-    ///
-    /// The one place two object slots may touch, and the one place the second
-    /// slot may come first, because it is the one sentence English writes that
-    /// way: `give the troll the sword` has no preposition to split on and no
-    /// other reading. ``StandardParser`` places the two by trying the leftmost
-    /// cut that resolves both halves, where every other row places a slot by
-    /// arithmetic or by a literal — so the shape is named here rather than
-    /// discovered twice, and the two validations below step aside for it.
-    var isRecipientFirst: Bool {
-        guard elements.count >= 3, elements.suffix(2) == [.indirectObject, .directObject]
-        else { return false }
-        return elements.dropLast(2).allSatisfy { element in
-            if case .word = element { true } else { false }
-        }
     }
 
     /// The ways a pattern can be malformed, reported all at once by the

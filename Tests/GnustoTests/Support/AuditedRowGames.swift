@@ -76,19 +76,3 @@ struct AuditLab: Game {
         cloak.startsHeld
     }
 }
-
-/// The same room with no way out of it, so `exit` on foot has nothing to walk
-/// through and keeps the line it always had.
-struct SealedRoomGame: Game {
-    let title = "Sealed Room"
-    let intro = "One room, and no doorway."
-
-    let cell = Location {
-        name("Cell")
-        description("Four walls, and nothing in them.")
-    }
-
-    var map: WorldMap {
-        player.starts(in: cell)
-    }
-}

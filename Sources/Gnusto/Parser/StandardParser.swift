@@ -272,9 +272,8 @@ struct StandardParser {
             }
         }
 
-        // Ahead of the near-miss, behind every real match: bare `go` still asks
-        // "Which way?", and bare `climb` reaches the stub verb the `climb
-        // <direction>` row would otherwise have swallowed.
+        // Ahead of the near-miss, behind every real match — see
+        // ``FitOutcome/emptyDirection``.
         if let emptyDirection { return .success(emptyDirection) }
         return .failure(bestFailure ?? .unmatchedSyntax)
     }
@@ -365,18 +364,17 @@ struct StandardParser {
         let leadingWords = rule.leadingWords
         let verbPhrase = leadingWords.joined(separator: " ")
         var cursor = leadingWords.count
-        /// The far-sighted fallback set, empty for every ordinary intent.
-        let distant = rule.intent.isFarSighted ? scope.distantActors : []
 
-        // `give the troll the sword`: two noun phrases with nothing between
-        // them, which the loop below cannot place — it splits a slot by
-        // arithmetic or by a literal, and here there is neither. Handled whole,
-        // ahead of it, so the ordinary path stays exactly as it was.
+        // The one shape the loop below cannot place, handled whole ahead of it
+        // — and ahead of `distant`, which it has no use for.
         if rule.isRecipientFirst {
             return fitRecipientFirst(
                 rule, tokens: tokens, from: cursor, verbPhrase: verbPhrase, rawInput: rawInput,
                 scope: scope)
         }
+
+        /// The far-sighted fallback set, empty for every ordinary intent.
+        let distant = rule.intent.isFarSighted ? scope.distantActors : []
 
         var directPhrase: [String]?
         var indirectPhrase: [String]?
@@ -499,8 +497,6 @@ struct StandardParser {
 
             case .direction:
                 guard cursor < tokens.count else {
-                    // "go" alone: the default action asks "Which way?" — but
-                    // only if nothing else on the table can answer the word.
                     return .emptyDirection(
                         ParsedCommand(
                             intent: rule.intent, verbPhrase: verbPhrase,
@@ -617,6 +613,13 @@ struct StandardParser {
     /// miss: the `give <object> to <second object>` row is more specific, has
     /// already been tried, and owns the question an incomplete GIVE asks.
     ///
+    /// The gift half goes through ``resolveDirect(_:at:in:scope:distant:)``,
+    /// the same resolver the ordinary direct slot uses, so `give the troll the
+    /// sword and the coin` answers in the words `give the sword and the coin to
+    /// the troll` does rather than falling out as a sentence nobody recognizes.
+    /// The recipient half does not: one person is being handed one armful, and
+    /// a list there names two places for it.
+    ///
     /// - Parameters:
     ///   - rule: the recipient-first row.
     ///   - tokens: the line as typed.
@@ -632,13 +635,15 @@ struct StandardParser {
         guard tokens.count - cursor >= 2 else { return .mismatch }
         for split in (cursor + 1)..<tokens.count {
             guard case .success(let recipient) = resolve(Array(tokens[cursor..<split]), in: scope),
-                case .success(let gift) = resolve(Array(tokens[split...]), in: scope)
+                case .success(let gifts) = resolveDirect(
+                    Array(tokens[split...]), at: split, in: tokens, scope: scope, distant: [])
             else { continue }
             return .command(
                 ParsedCommand(
                     intent: rule.intent,
-                    directObject: gift,
+                    directObject: gifts.count == 1 ? gifts[0] : nil,
                     indirectObject: recipient,
+                    multiple: gifts.count == 1 ? nil : .list(gifts),
                     verbPhrase: verbPhrase,
                     rawInput: rawInput))
         }

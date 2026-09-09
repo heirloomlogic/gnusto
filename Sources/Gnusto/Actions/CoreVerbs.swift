@@ -285,11 +285,9 @@ extension DefaultActions {
                 ["walk", .direction],
                 ["run", .direction],
                 // CLIMB UP and CLIMB DOWN are a walk, which is what a player
-                // standing at the foot of a staircase means by them. The row
-                // outscores the `climb` stub's bare row, but an unfilled
-                // direction slot is the weakest kind of match and yields to it —
-                // so bare CLIMB still reaches the stub verb three games have
-                // voiced for themselves.
+                // standing at the foot of a staircase means by them. Bare CLIMB
+                // still reaches the stub verb three games have voiced for
+                // themselves — see `StandardParser.FitOutcome.emptyDirection`.
                 ["climb", .direction],
             ],
             reach: .notNeeded

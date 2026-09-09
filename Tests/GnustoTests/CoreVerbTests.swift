@@ -91,6 +91,18 @@ struct CoreVerbTests {
         #expect(Self.everyCoreCommand.count == SyntaxRule.coreTable.count)
     }
 
+    /// FIND and SEARCH are one intent, and ``DefaultActions/lookIn(_:frame:)``
+    /// tells them apart by the spelling that matched — a set of phrases it has
+    /// to restate, because which of an intent's rows mean *find* is a fact no
+    /// row carries. This is what keeps the restatement honest: a row respelled
+    /// in `cores` and not there would silently stop finding anybody.
+    @Test func everyFindingPhraseIsARealLookInRow() {
+        let spellings = Set(
+            SyntaxRule.standardRows(producing: .lookIn)
+                .map { $0.leadingWords.joined(separator: " ") })
+        #expect(DefaultActions.findingPhrases.isSubset(of: spellings))
+    }
+
     /// What "the row reached its handler" looks like from the transcript: the
     /// parser didn't decline the sentence, no slot went unfilled, and something
     /// was said. Shared with the synonym list below, which asks the same

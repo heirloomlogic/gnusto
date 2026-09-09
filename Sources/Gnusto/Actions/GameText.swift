@@ -953,8 +953,12 @@ extension GameText {
         public var stand: Line<Noun?> = .naming(orBare: "You're already standing.") {
             "You can't stand on \($0)."
         }
-        /// Sitting with nowhere to sit. The bare `sit` and `sit down` name
-        /// nothing.
+        /// Sitting with nowhere to sit. The one posture of the three whose
+        /// sentence answers both halves, which is why it stays a single line
+        /// where ``stand`` and ``lie`` are written with ``Line/naming(orBare:_:)``:
+        /// "There's nothing comfortable to sit on." is as true of `sit on the
+        /// bench` as of bare `sit`, where "You're already standing." answers
+        /// `stand on the bench` by claiming you are doing it.
         public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
         /// Lying down, on the floor or on something. The bare `lie` and `lie
         /// down` name nothing.

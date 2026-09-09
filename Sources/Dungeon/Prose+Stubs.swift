@@ -164,10 +164,11 @@ extension Prose {
         // `V-LOOK-BEHIND` (`gverbs.zil:862`), adapted to the second person the
         // rest of this floor speaks in.
         stubs.lookBehind = .naming { "Nothing is hiding behind \($0)." }
-        // The palantir wing's line, hoisted: `look through` is in the
-        // vocabulary everywhere the moment the engine ships the row, and the
-        // spheres, the keyholes and the barred window all answer it themselves.
-        stubs.lookThrough = .init(Prose.nothingToLookThrough)
+        // The palantir wing wrote this one and owned the verb with it; the
+        // engine ships the row now, so `look through` is in the vocabulary in
+        // all 196 rooms and the line belongs on the floor. The spheres, the
+        // keyholes and the barred window all answer for themselves above it.
+        stubs.lookThrough = "You see nothing through it that you could not see without it."
 
         // MARK: Body
 

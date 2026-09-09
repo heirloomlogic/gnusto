@@ -348,10 +348,14 @@ enum DefaultActions {
     }
 
     /// The ``Intent/lookIn`` spellings that ask *where a thing is* rather than
-    /// *what is inside it*. Taken from the rows in `cores`, which is where they
-    /// are declared — a row respelled here and not there would silently stop
-    /// finding anybody.
-    private static let findingPhrases: Set<String> = ["find", "look for", "search for"]
+    /// *what is inside it*.
+    ///
+    /// Restated from the rows in `cores` rather than derived from them, because
+    /// which of one intent's spellings mean *find* is a fact about English that
+    /// no row carries. `CoreVerbTests.everyFindingPhraseIsARealLookInRow` ties
+    /// the two together instead, so a row respelled there and not here fails
+    /// rather than silently stopping finding anybody.
+    static let findingPhrases: Set<String> = ["find", "look for", "search for"]
 
     static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
@@ -483,13 +487,21 @@ enum DefaultActions {
     ///
     /// `aside` is printed by `enter` only once the exit has actually passed,
     /// so a refused FOLLOW never announces a pursuit it didn't make.
+    /// `whereThereIsNoExit` is what a caller says in place of
+    /// ``GameText/cantGoThatWay`` when the direction is the verb's own rather
+    /// than the player's: EXIT on foot is a walk OUT, and reporting a compass
+    /// direction nobody typed reads as a bug. Passing it here rather than
+    /// testing the exit table at the call site keeps this the one place an exit
+    /// is *known to exist* — a hidden door is no exit to `travel`, and would be
+    /// one to anybody reading `definition.exits`.
     private static func travel(
         _ direction: Direction, from here: EntityID, frame: TurnFrame,
-        announcing aside: String? = nil
+        announcing aside: String? = nil,
+        whereThereIsNoExit noExit: String? = nil
     ) throws {
         switch frame.definition.exits[here]?[direction] {
         case nil:
-            try refuse(frame.definition.text.cantGoThatWay())
+            try refuse(noExit ?? frame.definition.text.cantGoThatWay())
         case .blocked(let message):
             try refuse(message)
         case .to(let destination):
@@ -504,7 +516,7 @@ enum DefaultActions {
                     Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state)
                 )
             }
-            guard revealed else { try refuse(frame.definition.text.cantGoThatWay()) }
+            guard revealed else { try refuse(noExit ?? frame.definition.text.cantGoThatWay()) }
             // Rendered here rather than hoisted into the scratch block above:
             // walking through an open door is the commonest move in the game
             // and has no use for the name. `frame.definiteNoun(of:)` reads only
@@ -719,27 +731,25 @@ enum DefaultActions {
 
     static func disembark(_ command: Command, frame: TurnFrame) throws {
         let vehicle = frame.with { $0.state.playerVehicle }
+        // One check for both roads: naming something you are not in reads the
+        // same on foot as it does aboard something else, and `vehicle` being
+        // nil makes the comparison true without a second arm.
+        if let named = command.directObject, named.id != vehicle {
+            try refuse(frame.definition.text.notInThat(named.definiteNoun))
+        }
         guard let vehicle else {
             // On foot, EXIT and LEAVE are `V-EXIT`'s own second half: a walk
             // OUT of the room. "You aren't in anything." answered a question
             // the player standing in a doorway was not asking.
             //
-            // Only where the room *has* an `out`, though. A room with none
-            // keeps the old line rather than borrowing GO's, because "You can't
-            // go that way." about a direction the player never named reads as a
-            // bug — and a blocked or conditional `out` is a real exit and says
-            // its own piece.
-            if let named = command.directObject {
-                try refuse(frame.definition.text.notInThat(named.definiteNoun))
-            }
+            // Where the room has no `out` at all — and a hidden door counts as
+            // none, which is why `travel` is asked rather than the exit table —
+            // the old line stands. Borrowing GO's "You can't go that way."
+            // would name a direction the player never typed.
             let here = frame.with { $0.state.playerLocation }
-            guard frame.definition.exits[here]?[.out] != nil else {
-                try refuse(frame.definition.text.notInVehicle())
-            }
-            return try travel(.out, from: here, frame: frame)
-        }
-        if let named = command.directObject, named.id != vehicle {
-            try refuse(frame.definition.text.notInThat(named.definiteNoun))
+            return try travel(
+                .out, from: here, frame: frame,
+                whereThereIsNoExit: frame.definition.text.notInVehicle())
         }
         frame.with { $0.state.disembark() }
         frame.say(frame.definition.text.disembarked(frame.definiteNoun(of: vehicle)))
