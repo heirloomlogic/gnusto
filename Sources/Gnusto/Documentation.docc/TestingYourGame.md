@@ -58,9 +58,10 @@ let looking = turnOutput(of: "examine hook", in: transcript)
 
 ### Slicing a transcript
 
-`turnOutput(of:in:)` matches the **first** occurrence of a command, so a test that types `look` four times and asks about the third gets the first. Vary the commands rather than repeating them. Four more helpers cut the transcript other ways:
+`turnOutput(of:in:)` matches the **first** occurrence of a command, so a test that types `look` four times and asks about the third gets the first. `turnOutput(ofLast:in:)` is the last; for anything in between, vary the commands rather than repeating them. Five more helpers cut the transcript other ways:
 
 ```swift
+turnOutput(ofLast: "look", in: transcript)       // the last time the route looked
 output(after: "open the door", in: transcript)   // everything from that turn on
 output(before: "open the door", in: transcript)  // everything up to it
 occurrences(of: "The bell tolls.", in: transcript)
@@ -98,6 +99,14 @@ let world = try cachedWorld(MyGame())
 ```
 
 `play` does not need this — it takes the game value and boots its own — but a test that inspects ``GameWorld`` state directly does.
+
+The cache keys on the game's **type**, not its value. A fixture whose declarations vary per instance — `Game(compact: true)` against `Game(compact: false)`, each building different rules in its `init` — gets one cached world for both, and the second `play` silently replays the first. `play(fresh:)` is the door out: it boots the value it is handed every time, takes the same `seed:` and `saveDirectory:`, and is the form to use whenever a fixture takes an argument.
+
+```swift
+let compact = try await play(fresh: TwoStateGame(compact: true), commands, seed: 0)
+let explicit = try await play(fresh: TwoStateGame(compact: false), commands, seed: 0)
+#expect(compact == explicit)
+```
 
 ## Pin the random stream
 

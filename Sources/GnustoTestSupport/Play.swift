@@ -43,24 +43,34 @@ public func play(
 ///   - commands: the commands to feed it, in order.
 ///   - seed: pins the random stream when set; `GNUSTO_SEED` or a fresh stream
 ///     when nil.
+///   - saveDirectory: where bare `save`/`restore` names resolve; pass an
+///     isolated temp directory when a test exercises named saves, so it
+///     never touches the real per-user saves directory. Nil uses the engine
+///     default.
 /// - Throws: rethrows any error from booting or running the game.
 /// - Returns: the full transcript, with input interleaved as `> command`.
 public func play(
     fresh game: some Game,
     _ commands: [String],
-    seed: UInt64? = nil
+    seed: UInt64? = nil,
+    saveDirectory: URL? = nil
 ) async throws -> String {
     let world = try GameWorld(
         game: game,
-        seed: seed ?? environmentSeedRequest.value ?? UInt64.random(in: .min ... .max))
+        seed: seed ?? environmentSeedRequest.value ?? UInt64.random(in: .min ... .max),
+        saveDirectory: saveDirectory)
     let io = ScriptedIOHandler(lines: commands)
     await REPL(world: world, io: io).run()
     return io.transcript
 }
 
 /// The output of a single command within a transcript: everything between
-/// the first `> command` line and the next prompt (or the end). Returns ""
-/// when the command never appears.
+/// the **first** `> command` line and the next prompt (or the end). Returns
+/// "" when the command never appears.
+///
+/// A route that types the same command more than once and asks about a later
+/// turn gets the first one here; ``turnOutput(ofLast:in:)`` is the slice for
+/// the last.
 ///
 /// - Parameters:
 ///   - command: the command whose turn to extract.
@@ -68,7 +78,28 @@ public func play(
 /// - Returns: that turn's output, or "" when the command never appears.
 public func turnOutput(of command: String, in transcript: String) -> String {
     guard let start = transcript.range(of: "> \(command)\n") else { return "" }
-    let rest = transcript[start.upperBound...]
+    return turnOutput(from: start.upperBound, in: transcript)
+}
+
+/// The output of the **last** time a transcript ran `command` — the slice for
+/// "and the second time I looked", where ``turnOutput(of:in:)`` would hand
+/// back the first look.
+///
+/// - Parameters:
+///   - command: the command whose last turn to extract.
+///   - transcript: the transcript to search.
+/// - Returns: that turn's output, or "" when the command never appears.
+public func turnOutput(ofLast command: String, in transcript: String) -> String {
+    guard let start = transcript.range(of: "> \(command)\n", options: .backwards) else {
+        return ""
+    }
+    return turnOutput(from: start.upperBound, in: transcript)
+}
+
+/// Everything from just after a `> command` line to the next prompt or the
+/// end — the tail both `turnOutput` forms share.
+private func turnOutput(from start: String.Index, in transcript: String) -> String {
+    let rest = transcript[start...]
     if let nextPrompt = rest.range(of: "\n> ") {
         return String(rest[..<nextPrompt.lowerBound])
     }

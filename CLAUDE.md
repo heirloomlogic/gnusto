@@ -514,8 +514,10 @@ computed `static var`, which rebuilds it on every read.
 Transcript tests, almost exclusively: `play(Game(), ["cmd", …], seed:)` returns the
 whole transcript as a string, then `#expect(...contains(...))`. Helpers in
 `GnustoTestSupport`: `play`, `turnOutput(of:in:)` (one turn's output — matches the
-*first* occurrence, so vary commands rather than repeating them), `expectInOrder`,
-`cachedWorld`. For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
+*first* occurrence; `turnOutput(ofLast:in:)` is the last, and for anything between
+vary the commands rather than repeating them), `expectInOrder`, `cachedWorld`
+(keyed on the game's *type*, so a fixture that takes an argument goes through
+`play(fresh:)`). For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
 and inspect `BootstrapError.diagnostics`.
 
 A `fatalError` trap is asserted with `expectTrap`, over a Swift Testing exit test —
