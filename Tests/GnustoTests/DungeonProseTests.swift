@@ -1364,6 +1364,30 @@ struct DungeonProseTests {
         expectNoEngineStubLineSurvives(in: Dungeon().text.stubs, game: "Dungeon")
     }
 
+    /// **The postures, once they had something to do it on.** The floor's three
+    /// one-string answers were each written for one half of their verb and got
+    /// handed the other: `stand on the mailbox` replied "You are already
+    /// standing, I think.", claiming the player was doing the thing he had just
+    /// asked to do, while a bare `sit` replied "That is not something you could
+    /// sit on." about a "that" he had never named. Both halves now, and
+    /// `V-STAND`'s verbatim line is still the bare one.
+    @Test func thePosturesAnswerBothHalvesOfTheirVerb() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["stand on mailbox", "sit on mailbox", "lie on mailbox", "stand", "sit", "lie"])
+        expectInOrder(
+            transcript,
+            [
+                "The small mailbox is not something you could stand on.",
+                "The small mailbox is not something you could sit on.",
+                "The small mailbox is not something you could lie on.",
+                // `V-STAND` (gverbs.zil:1305), trilogy verbatim.
+                "You are already standing, I think.",
+                "Sitting down would gain you nothing.",
+                "Lying down would gain you nothing.",
+            ])
+    }
+
     @Test func theLoudRoomStopsRoaringOnceTheEchoSettlesIt() async throws {
         let transcript = try await play(
             Dungeon(), Self.toTheLoudRoom + ["echo", "look", "listen"], seed: 18)

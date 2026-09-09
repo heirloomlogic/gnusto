@@ -733,8 +733,11 @@ enum DefaultActions {
         let vehicle = frame.with { $0.state.playerVehicle }
         // One check for both roads: naming something you are not in reads the
         // same on foot as it does aboard something else, and `vehicle` being
-        // nil makes the comparison true without a second arm.
-        if let named = command.directObject, named.id != vehicle {
+        // nil makes the comparison true without a second arm. The player is the
+        // exception, because `exit me` is not a claim about anything he is
+        // sitting in — it is the bare verb with the subject said out loud, and
+        // "You aren't in yourself." answers a question nobody asked.
+        if let named = command.directObject, !named.isPlayer, named.id != vehicle {
             try refuse(frame.definition.text.notInThat(named.definiteNoun))
         }
         guard let vehicle else {

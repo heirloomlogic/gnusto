@@ -97,7 +97,8 @@ struct StubVerbTests {
         "jump", "jump over bench", "swim", "dive",
         "stand", "stand up", "stand on bench",
         "sit", "sit down", "sit on bench", "sit in bench",
-        "lie", "lie down", "lie on bench", "lie down on bench", "kneel",
+        "lie", "lie down", "lie on bench", "lie in bench",
+        "lie down on bench", "lie down in bench", "kneel",
         // Liquids and containers.
         "fill flask", "fill flask with rod",
         "pour flask", "pour flask in flask", "pour flask on bench",

@@ -609,16 +609,27 @@ struct StandardParser {
     /// because a resolver that has to succeed twice is a far tighter filter
     /// than any rule about phrase length.
     ///
-    /// A split nothing satisfies is a ``FitOutcome/mismatch`` and not a near
-    /// miss: the `give <object> to <second object>` row is more specific, has
-    /// already been tried, and owns the question an incomplete GIVE asks.
+    /// A split nothing satisfies reports the *first* reason a split had for
+    /// declining, as a near miss. It used to be a ``FitOutcome/mismatch``, on
+    /// the grounds that the `give <object> to <second object>` row is more
+    /// specific and owns the question an incomplete GIVE asks — which it still
+    /// does, because `parse` keeps the first near miss and that row is tried
+    /// first. What the mismatch cost was the case where the TO row never fires
+    /// at all: `give troll leaflet` with no troll in the room has no `to` on
+    /// the line, so nothing else was left to talk, and a plain scope failure
+    /// came out as "That sentence isn't one I recognize." It says what `give
+    /// leaflet to troll` says.
     ///
     /// The gift half goes through ``resolveDirect(_:at:in:scope:distant:)``,
     /// the same resolver the ordinary direct slot uses, so `give the troll the
     /// sword and the coin` answers in the words `give the sword and the coin to
     /// the troll` does rather than falling out as a sentence nobody recognizes.
-    /// The recipient half does not: one person is being handed one armful, and
-    /// a list there names two places for it.
+    /// It reads a multi-object keyword there too, and for the same reason:
+    /// `give the troll all` is the direct slot's `all`, and a row that only
+    /// asked the resolver would have made it the one spelling of GIVE the
+    /// keyword did not reach. The recipient half does neither: one person is
+    /// being handed one armful, and a list — or an `all` — there names two
+    /// places for it.
     ///
     /// - Parameters:
     ///   - rule: the recipient-first row.
@@ -627,27 +638,63 @@ struct StandardParser {
     ///   - verbPhrase: those leading words, for messages.
     ///   - rawInput: the line as the player typed it.
     ///   - scope: what the player can see.
-    /// - Returns: the command, or `.mismatch`.
+    /// - Returns: the command, the first split's reason for declining, or
+    ///   `.mismatch` where there was no split to try.
     private func fitRecipientFirst(
         _ rule: SyntaxRule, tokens: [String], from cursor: Int, verbPhrase: String,
         rawInput: String, scope: Scope
     ) -> FitOutcome {
         guard tokens.count - cursor >= 2 else { return .mismatch }
-        for split in (cursor + 1)..<tokens.count {
-            guard case .success(let recipient) = resolve(Array(tokens[cursor..<split]), in: scope),
-                case .success(let gifts) = resolveDirect(
-                    Array(tokens[split...]), at: split, in: tokens, scope: scope, distant: [])
-            else { continue }
-            return .command(
+
+        /// One gift half placed, whichever door it came through.
+        func placed(
+            _ recipient: EntityID, _ multiple: ParsedCommand.MultiObject?, _ gift: EntityID?
+        )
+            -> FitOutcome
+        {
+            .command(
                 ParsedCommand(
                     intent: rule.intent,
-                    directObject: gifts.count == 1 ? gifts[0] : nil,
+                    directObject: gift,
                     indirectObject: recipient,
-                    multiple: gifts.count == 1 ? nil : .list(gifts),
+                    multiple: multiple,
                     verbPhrase: verbPhrase,
                     rawInput: rawInput))
         }
-        return .mismatch
+
+        var firstFailure: ParseError?
+        for split in (cursor + 1)..<tokens.count {
+            let recipient: EntityID
+            switch resolve(Array(tokens[cursor..<split]), in: scope) {
+            case .success(let id): recipient = id
+            case .failure(let error):
+                firstFailure = firstFailure ?? error
+                continue
+            }
+            let phrase = Array(tokens[split...])
+            if let keyword = keywordSplit(of: phrase, in: scope) {
+                switch excludedObjects(
+                    keyword.exclusion, at: split, in: tokens, scope: scope, distant: [])
+                {
+                case .success(let excluded):
+                    return placed(recipient, .keyword(phrase: keyword.group, excluding: excluded), nil)
+                case .failure(let error):
+                    firstFailure = firstFailure ?? error
+                    continue
+                }
+            }
+            switch resolveDirect(phrase, at: split, in: tokens, scope: scope, distant: []) {
+            case .success(let gifts) where gifts.count == 1:
+                return placed(recipient, nil, gifts[0])
+            case .success(let gifts):
+                return placed(recipient, .list(gifts), nil)
+            case .failure(let error):
+                firstFailure = firstFailure ?? error
+                continue
+            }
+        }
+        guard let firstFailure else { return .mismatch }
+        return .nearMiss(firstFailure)
     }
 
     /// Where the literal `word` stands on the line at or after `cursor` — the

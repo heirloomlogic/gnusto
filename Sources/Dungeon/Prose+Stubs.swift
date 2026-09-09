@@ -232,10 +232,21 @@ extension Prose {
         stubs.jump = "Wheeeeeeeeee!!!!!"
         stubs.swim = .init(Prose.noSwimming)
         stubs.dive = .init(Prose.noDiving)
-        // `V-STAND` (`gverbs.zil:1305`). Trilogy verbatim.
-        stubs.stand = "You are already standing, I think."
-        stubs.sit = "That is not something you could sit on."
-        stubs.lie = "Lying down would gain you nothing."
+        // `V-STAND` (`gverbs.zil:1305`). Trilogy verbatim, and the bare half
+        // keeps it. All three name their object on the naming half, the way
+        // ``stubs/climb`` above does: "You are already standing, I think."
+        // answers `stand on the pedestal` by claiming you are doing it, and
+        // "That is not something you could sit on." answers a bare `sit` with a
+        // "that" the player never named.
+        stubs.stand = .naming(orBare: "You are already standing, I think.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could stand on."
+        }
+        stubs.sit = .naming(orBare: "Sitting down would gain you nothing.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could sit on."
+        }
+        stubs.lie = .naming(orBare: "Lying down would gain you nothing.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could lie on."
+        }
         stubs.kneel = "You kneel briefly, and get up again."
 
         // MARK: Liquids and containers

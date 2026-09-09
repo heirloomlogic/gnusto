@@ -766,14 +766,20 @@ extension DefaultActions {
 
         // Bare `lie` earns its row for the same reason `sit down` does: `lie
         // down` puts "lie" in the vocabulary, so without it the word the engine
-        // just claimed would answer `didntUnderstand`.
+        // just claimed would answer `didntUnderstand`. IN is spelled alongside
+        // ON for the reason `sit in` is: what a bed of straw or a heap of
+        // leaves is lain *in* is not a thing English writes with ON, and a game
+        // whose own prose says "lie down in it" would otherwise be inviting a
+        // sentence the parser had no row for.
         .optionallyNamed(
             .lie,
             [
                 ["lie"],
                 ["lie", "down"],
                 ["lie", "on", .directObject],
+                ["lie", "in", .directObject],
                 ["lie", "down", "on", .directObject],
+                ["lie", "down", "in", .directObject],
             ],
             reach: .directObject
         ) { $0.stubs.lie($1) },

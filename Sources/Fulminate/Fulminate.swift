@@ -230,7 +230,13 @@ struct Fulminate: Game, GameMain {
         text.stubs.climb = .naming(orBare: "You would have to say what you meant to climb.") {
             "You put a hand on \($0) and think better of it."
         }
-        text.stubs.stand = "You are on your feet, and have been since the streetcar."
+        // The bare half is a claim about the whole evening and is answered by
+        // `world.before(.stand)` on the evenings it is untrue of. The naming
+        // half is a different sentence entirely: `stand on the armchair` is not
+        // a man asking whether he is upright.
+        text.stubs.stand = .naming(orBare: "You are on your feet, and have been since the streetcar.") {
+            "You are not going to be found standing on \($0)."
+        }
         text.stubs.sit = "You did not come out on a Tuesday to sit down."
         // A house of witnesses, so the sister lines to the two already
         // re-skinned above want the same voice.
@@ -1929,8 +1935,11 @@ struct Fulminate: Game, GameMain {
         // the evening. The stub says "and have been since the streetcar", which
         // is a claim about the whole evening, so the second arm outlives the
         // first — and reads the flag that outlives it.
+        // Both arms are about being upright, so both are answers to the bare
+        // verb. `stand on the armchair` names something to stand on and is the
+        // stub's question, not this one.
         world.before(.stand) {
-            guard wasInTheYardForTheBlast else { return }
+            guard command.directObject == nil, wasInTheYardForTheBlast else { return }
             try reply(
                 knockedFlat
                     ? """

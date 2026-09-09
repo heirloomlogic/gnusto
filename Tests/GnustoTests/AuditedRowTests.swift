@@ -164,6 +164,45 @@ struct AuditedRowTests {
         #expect(turnOutput(of: "give coin and cloak to warden", in: transcript).contains(expected))
     }
 
+    /// A keyword gift reads the same in both spellings too — GIVE refuses a
+    /// group, and says so either way. The recipient-first row went straight to
+    /// the noun resolver, which knows nothing about `all`, so the one shape a
+    /// player types at somebody standing in front of them was also the one
+    /// shape the keyword did not reach: `give the warden all` was a sentence
+    /// nobody recognized where `give all to the warden` was a refusal.
+    @Test func aKeywordGiftReadsTheSameInBothSpellings() async throws {
+        let transcript = try await play(
+            AuditLab(), ["give warden all", "give all to warden"])
+        let expected = #"You can't use multiple objects with "give"."#
+        #expect(turnOutput(of: "give warden all", in: transcript).contains(expected))
+        #expect(turnOutput(of: "give all to warden", in: transcript).contains(expected))
+        #expect(!transcript.contains("I didn't understand"))
+    }
+
+    /// **The scope error has to survive the shape.** `give troll leaflet` with
+    /// no troll in the room has no `to` on the line, so the TO row never fires
+    /// and the recipient-first row was the only one left to talk — and it
+    /// declined, which came out as "I didn't understand that sentence." about a
+    /// sentence the parser understood perfectly.
+    @Test func theRecipientFirstSpellingReportsScopeTheSameWay() async throws {
+        let transcript = try await play(
+            AuditLab(), ["out", "give warden coin", "give coin to warden"])
+        let expected = "You can't see any such thing."
+        #expect(turnOutput(of: "give warden coin", in: transcript).contains(expected))
+        #expect(turnOutput(of: "give coin to warden", in: transcript).contains(expected))
+        #expect(!transcript.contains("I didn't understand"))
+    }
+
+    /// The gift half reports its own failure the same way — an unbound `them`
+    /// here, which is the one thing that can go wrong in that slot in a room
+    /// where everything else is standing in front of you.
+    @Test func aGiftTheParserCannotPlaceIsReportedAndNotDeclined() async throws {
+        let transcript = try await play(AuditLab(), ["give warden them", "give them to warden"])
+        let expected = #"I don't know what "them" refers to."#
+        #expect(turnOutput(of: "give warden them", in: transcript).contains(expected))
+        #expect(turnOutput(of: "give them to warden", in: transcript).contains(expected))
+    }
+
     /// The TO row is more specific and still wins — including the question an
     /// incomplete GIVE asks, which the recipient-first row must not answer.
     @Test func theToSpellingAndItsQuestionAreUnchanged() async throws {
@@ -206,6 +245,17 @@ struct AuditedRowTests {
         let turn = turnOutput(
             of: "exit sack", in: try await play(AuditLab(), ["exit sack"]))
         #expect(turn.contains("You aren't in the canvas sack."))
+    }
+
+    /// …but naming *yourself* is the bare verb with its subject said out loud,
+    /// not a claim about something you might be sitting in. It walks OUT, and
+    /// says "You aren't in anything." where there is no way out — never "You
+    /// aren't in yourself."
+    @Test func exitingYourselfIsTheBareVerb() async throws {
+        #expect(try await play(AuditLab(), ["exit me"]).contains("Yard"))
+        let nowhere = turnOutput(of: "exit myself", in: try await play(StubLab(), ["exit myself"]))
+        #expect(nowhere.contains("You aren't in anything."))
+        #expect(!nowhere.contains("yourself"))
     }
 
     // MARK: - find / look for a person

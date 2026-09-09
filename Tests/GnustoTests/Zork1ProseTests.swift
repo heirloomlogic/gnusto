@@ -65,6 +65,29 @@ struct Zork1ProseTests {
             ])
     }
 
+    /// **The postures, once they had something to do it on.** `stand on X` and
+    /// `lie on X` are rows the table gained after this floor was written, and
+    /// the floor's one-string answers went straight to them: `stand on the
+    /// mailbox` replied "You are already standing, I think." — a line that
+    /// claims the player is doing the thing he just asked to do — and `lie on
+    /// the mailbox` replied with a sentence about the ground. Both halves now,
+    /// and the verbatim ones are still the bare ones.
+    @Test func thePosturesAnswerTheirObjectAndNotTheGround() async throws {
+        let transcript = try await play(
+            Zork1(), ["stand on mailbox", "lie on mailbox", "sit on mailbox", "stand", "lie"])
+        expectInOrder(
+            transcript,
+            [
+                "Standing on the small mailbox would accomplish nothing.",
+                "Lying down on the small mailbox would only get you filthier.",
+                // One sentence answers both halves of SIT, so it is unchanged.
+                "You didn't come all this way to sit down!",
+                // `V-STAND` (gverbs.zil:1309), still verbatim.
+                "You are already standing, I think.",
+                "You'd only get up again filthy.",
+            ])
+    }
+
     /// And the other half of the same widening: the bare rows, which the source
     /// has no verb for at all, keep a sentence of this game's own.
     @Test func theNamelessRowsStillAnswer() async throws {

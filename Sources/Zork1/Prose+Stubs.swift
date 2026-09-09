@@ -260,12 +260,23 @@ extension Prose {
         // "You did not come down here to get wet.", which is the same defect
         // above ground. (#325)
         stubs.dive = "You'd rather stay dry."
-        // `V-STAND`'s standing branch (`gverbs.zil:1309`).
-        stubs.stand = "You are already standing, I think."
-        // Invented: no `SIT` in `gsyntax.zil`.
+        // `V-STAND`'s standing branch (`gverbs.zil:1309`), which is the bare
+        // half and stays verbatim. The naming half is invented, because
+        // `gsyntax.zil` has no `STAND ON` and the verbatim line answers `stand
+        // on the mailbox` by claiming you are already doing it.
+        stubs.stand = .naming(orBare: "You are already standing, I think.") {
+            "Standing on \($0) would accomplish nothing."
+        }
+        // Invented: no `SIT` in `gsyntax.zil`. One sentence answers both
+        // halves — a man who didn't come all this way to sit down didn't come
+        // all this way to sit down on the mailbox either.
         stubs.sit = "You didn't come all this way to sit down!"
-        // Invented: no `LIE` in `gsyntax.zil`.
-        stubs.lie = "You'd only get up again filthy."
+        // Invented: no `LIE` in `gsyntax.zil`. The bare half is about the
+        // ground; `lie on the mailbox` is about the mailbox, and the ground's
+        // sentence is not true of it.
+        stubs.lie = .naming(orBare: "You'd only get up again filthy.") {
+            "Lying down on \($0) would only get you filthier."
+        }
         // Invented: no `KNEEL` in `gsyntax.zil`. "Nobody is impressed." counted
         // the room's occupants from a line that cannot see one, same as
         // ``point``. (#325)

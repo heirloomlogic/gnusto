@@ -877,6 +877,27 @@ struct FulminateTests {
         #expect(turnOutput(of: "sit", in: parlour).contains("every person this house used to hold"))
     }
 
+    /// **And `stand on X` is a different question from `stand`.** The row that
+    /// gave STAND an object arrived after both this game's line and the rule
+    /// above it were written, so `stand on the armchair` got "You are on your
+    /// feet, and have been since the streetcar." — an answer to whether the man
+    /// is upright, which is not what he asked.
+    @Test func standingOnSomethingIsNotAnswersAboutBeingUpright() async throws {
+        let parlour = try await play(Fulminate(), ["west", "stand on armchair"])
+        let turn = turnOutput(of: "stand on armchair", in: parlour)
+        #expect(turn.contains("You are not going to be found standing on the furniture."))
+        #expect(!turn.contains("since the streetcar"))
+
+        // And the yard rule keeps the bare verb, where both its arms are true.
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["stand on wall", "stand"])
+        #expect(
+            turnOutput(of: "stand on wall", in: yard)
+                .contains("You are not going to be found standing on"))
+        #expect(turnOutput(of: "stand", in: yard).contains("put you on your back"))
+    }
+
     /// **C10, as corrected.** The issue said `text.stubs.stand` was one string
     /// with no read of the state the game set; there was a read, and its window
     /// was one turn wide. `knockedFlat` is set by the 5:46 alarm and cleared by

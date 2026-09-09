@@ -1493,9 +1493,8 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
   small mailbox?". Widening the engine for one game's article would put `knock`
   out of step with the other thirty-four named stub lines, which is a worse
   trade than one word.
-- **`give` answers with the actor branch throughout.** `V-GIVE` (`:714`) has a
-  non-actor branch and the engine's line cannot tell the two apart, so a mailbox
-  refuses politely where the source would say "You can't give a X to a Y!"
+- **`give` keeps both branches, and loses two articles.** `V-GIVE` (`:714`) has a non-actor branch, which the engine's line could not tell apart from the actor one until it gained a second slot for it; `stubs.giveToNobody` reproduces it now, so a mailbox is refused where it used to decline politely. What departs is the article, the same way `knock`'s does: the source writes indefinite phrases ("a sword to a shelf") and the engine hands every named stub line the definite one.
+- **`stand` and `lie` name what they are asked to be done on, and the source has no such sentence.** `gsyntax.zil` has no `STAND ON` and no `LIE` at all, so the rows the engine added for them have nothing to reproduce. The bare halves are untouched — `V-STAND`'s "You are already standing, I think." (`:1309`) still answers bare `stand`, and `lie` keeps the sentence this game gave it. The naming halves are written, and are in the *Inventions* group's register: a line that claims the player is already standing is not an answer to `stand on the mailbox`, which is the same defect `smell` and `climb` were split to fix.
 - **`MeleeCombat.notAWeapon` names one of two.** `V-ATTACK:188` names both target
   and weapon; the plugin hands the line only the weapon, so the target is "it".
   `noWeapon` was widened by this change and does name its target.
