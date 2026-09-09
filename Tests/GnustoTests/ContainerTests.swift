@@ -312,6 +312,97 @@ struct ContainerTests {
         #expect(look.contains("pickle"))
     }
 
+    // MARK: - Inventory
+
+    @Test func inventoryListsDirectContentsOfVisibleCarriedContainers() async throws {
+        let transcript = try await play(PantryGame(), ["take basket", "i"])
+        let inventory = turnOutput(of: "i", in: transcript)
+
+        #expect(inventory.contains("a wicker basket (containing a red apple and a burlap sack)"))
+        #expect(!inventory.contains("clay bottle"))
+    }
+
+    @Test func inventoryHidesClosedOpaqueContentsButShowsTransparentOnes() async throws {
+        let opaque = turnOutput(
+            of: "i", in: try await play(PantryGame(), ["take crate", "i"]))
+        #expect(opaque.contains("a wooden crate"))
+        #expect(!opaque.contains("tin can"))
+
+        let transparent = turnOutput(
+            of: "i", in: try await play(PantryGame(), ["take jar", "i"]))
+        #expect(transparent.contains("a glass jar (containing a green pickle)"))
+    }
+
+    @Test func inventoryOmitsUnrevealedHiddenContentsUntilTheyAreRevealed() async throws {
+        struct HiddenContentsGame: Game {
+            let title = "Hidden Contents"
+            let intro = ""
+
+            init() {}
+
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let openBox = Item {
+                name("open box")
+                container
+                openable
+                startsOpen
+            }
+            let alwaysOpenBox = Item {
+                name("always-open box")
+                container
+            }
+            let glassBox = Item {
+                name("glass box")
+                container
+                openable
+                transparent
+            }
+            let openToken = Item {
+                name("open token")
+                hidden
+            }
+            let alwaysOpenToken = Item {
+                name("always-open token")
+                hidden
+            }
+            let glassToken = Item {
+                name("glass token")
+                hidden
+            }
+
+            var map: WorldMap {
+                player.starts(in: room)
+                openBox.startsHeld
+                alwaysOpenBox.startsHeld
+                glassBox.startsHeld
+                openToken.starts(inside: openBox)
+                alwaysOpenToken.starts(inside: alwaysOpenBox)
+                glassToken.starts(inside: glassBox)
+            }
+
+            var rules: Rules {
+                world.before(.wait) {
+                    openToken.reveal()
+                    alwaysOpenToken.reveal()
+                    glassToken.reveal()
+                }
+            }
+        }
+
+        let unrevealedInventory = turnOutput(
+            of: "i", in: try await play(HiddenContentsGame(), ["i"]))
+        #expect(!unrevealedInventory.contains("token"))
+
+        let revealed = turnOutput(
+            of: "i", in: try await play(HiddenContentsGame(), ["wait", "i"]))
+        #expect(revealed.contains("open box (containing an open token)"))
+        #expect(revealed.contains("always-open box (containing an always-open token)"))
+        #expect(revealed.contains("glass box (containing a glass token)"))
+    }
+
     // MARK: - open / close
 
     /// `scenery` means "don't list me" wherever the thing is standing. A

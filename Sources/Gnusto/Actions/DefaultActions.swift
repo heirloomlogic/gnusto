@@ -776,10 +776,20 @@ enum DefaultActions {
 
     static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
-            (scratch.state.containment().held[.player] ?? [])
+            let containment = scratch.state.containment()
+            return (containment.held[.player] ?? [])
                 .map { id in
                     GameText.Carried.Entry(
                         noun: frame.indefiniteNoun(of: id),
+                        contents: Visibility.contentsVisible(
+                            id, definition: frame.definition, state: scratch.state)
+                            ? (containment.inContainer[id] ?? [])
+                                .filter {
+                                    Visibility.isPerceivable(
+                                        $0, definition: frame.definition, state: scratch.state)
+                                }
+                                .map(frame.indefiniteNoun(of:))
+                            : [],
                         isWorn: scratch.state.wornItems.contains(id)
                     )
                 }

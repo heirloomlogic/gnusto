@@ -406,6 +406,11 @@ extension GameText {
         public struct Entry: Sendable {
             /// What it is.
             public let noun: Noun
+            /// Its direct visible contents, if it is a carried container.
+            ///
+            /// A game can use this to give its inventory its own layout while
+            /// keeping articles and proper names rendered by the engine.
+            public let contents: [Noun]
             /// Whether the player is wearing it rather than holding it.
             public let isWorn: Bool
         }
@@ -419,8 +424,11 @@ extension GameText {
         public static var samples: [Self] {
             [
                 .init(entries: [
-                    .init(noun: Noun.sampleSingular, isWorn: false),
-                    .init(noun: Noun.samplePlural, isWorn: true),
+                    .init(
+                        noun: Noun.sampleSingular,
+                        contents: [Noun.samplePlural],
+                        isWorn: false),
+                    .init(noun: Noun.samplePlural, contents: [], isWorn: true),
                 ])
             ]
         }
