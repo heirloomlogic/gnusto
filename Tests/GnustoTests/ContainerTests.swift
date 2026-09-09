@@ -245,6 +245,60 @@ struct ContainerTests {
             ])
     }
 
+    /// Locking something that stands open used to succeed, and left a door
+    /// that was locked and open at once: `lock door with key` said "Locked.",
+    /// `close door` said "Closed.", and `open door` then said the door was
+    /// locked. LOCK refuses it now; UNLOCK is untouched, because an open door
+    /// is a perfectly good thing to unlock. Issue #445.
+    @Test func lockingSomethingOpenIsRefusedAndUnlockingIsNot() async throws {
+        struct LidGame: Game {
+            let title = "Lid"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let chest = Item {
+                name("banded chest")
+                container
+                openable
+                startsOpen
+                startsUnlocked
+            }
+            let key = Item { name("iron key") }
+            var map: WorldMap {
+                player.starts(in: room)
+                chest.starts(in: room)
+                chest.lockedBy(key)
+                key.startsHeld
+            }
+        }
+        let transcript = try await play(
+            LidGame(),
+            [
+                "lock chest with key",
+                "close chest",
+                "lock chest with key",
+                "open chest",
+                "unlock chest with key",
+                "open chest",
+                "unlock chest with key",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "You'll have to close the banded chest first.",
+                "Closed.",
+                "Locked.",
+                "The banded chest is locked.",
+                "Unlocked.",
+                "Opened.",
+                // UNLOCK reaches its own guards with the chest standing open,
+                // rather than the one LOCK just grew.
+                "That's already unlocked.",
+            ])
+    }
+
     @Test func moveInsideValidatesContainer() async throws {
         struct MoveGame: Game {
             let title = "Move"

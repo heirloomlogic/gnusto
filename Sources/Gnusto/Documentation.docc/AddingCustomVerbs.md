@@ -22,9 +22,13 @@ Going: `go`/`walk`/`run`, `enter`/`board`/`get in`/`go through`/`climb`/`step`, 
 
 People: `greet`/`hello`/`hi`/`say to`.
 
-Meta: `score`, `version`, `quit`/`q`, and the four the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`.
+Meta: `score`, `version`, `quit`/`q`, and the six the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`, `again`/`g`, `oops`.
 
-Every intent constant lives on ``Intent``, which is the browsable list. The four engine-level verbs cannot be overridden at all: ``GameWorld`` answers them before any rule runs, so `action(.save)` never fires — and the bootstrap warns rather than letting you find out from a transcript. Overriding any of the other core verbs warns too; overriding a stub verb is silent, because reclaiming a stub is the expected end state. See <doc:BootstrapDiagnostics>.
+`again` (or `g`) re-parses the last command the player ran — read against the room as it stands now, so `take it` repeated is about whatever "it" means this turn — and costs whatever that command costs. Nothing engine-level and nothing meta is ever recorded, so it cannot repeat itself, an UNDO, a SAVE or a score check, and neither can a parse error or a turn nothing answered. It is world state, so UNDO rolls it back with the turn that set it and a restored save still knows what to repeat.
+
+`oops <word>` puts a word in the place of the one the parser last refused, in the line it refused, and reads that line again — free if it still doesn't parse, a full turn if it does. It mends the line just typed and nothing older: any line in between spends it.
+
+Every intent constant lives on ``Intent``, which is the browsable list. The six engine-level verbs cannot be overridden at all: ``GameWorld`` answers them before any rule runs, so `action(.save)` never fires — and the bootstrap warns rather than letting you find out from a transcript. Overriding any of the other core verbs warns too; overriding a stub verb is silent, because reclaiming a stub is the expected end state. See <doc:BootstrapDiagnostics>.
 
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 

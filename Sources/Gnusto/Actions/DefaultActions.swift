@@ -328,6 +328,16 @@ enum DefaultActions {
         guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
+        // Locking something that stands open. Asked of the `openable` trait as
+        // well as the state, because `isOpen` answers true for a plain
+        // container that has no lid to shut — and a lockable one of those is
+        // locked shut in the fiction, not propped open. Ahead of the key
+        // guards, since a door standing open is something the player can see
+        // before they go through their pockets. Unlocking is unaffected: an
+        // open door is a fine thing to unlock. Issue #445.
+        if locked, frame.definition.items[id]?.isOpenable == true, item.isOpen {
+            try refuse(frame.definition.text.cantLockOpen(item.definiteNoun))
+        }
         guard item.isLocked != locked else {
             try refuse(locked ? frame.definition.text.alreadyLocked() : frame.definition.text.alreadyUnlocked())
         }

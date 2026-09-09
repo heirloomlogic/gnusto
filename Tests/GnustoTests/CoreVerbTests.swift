@@ -83,6 +83,7 @@ struct CoreVerbTests {
         "score", "quit", "q", "version",
         // engine-level
         "undo", "restart", "save", "restore", "load",
+        "again", "g", "oops", "oops lantern",
     ]
 
     /// Ties the hand-written list to the table, so a core row added later can't
@@ -202,9 +203,10 @@ struct CoreVerbTests {
     /// `engineIntents` first and `builtInIntents` second, so an intent in both
     /// would take the wrong branch and an intent in neither would take none.
     ///
-    /// The membership check is the other half — `engineIntents` has to agree with
-    /// the `switch` in `GameWorld.run`, which is the one place that still names
-    /// these four by hand, because each of them does something different there.
+    /// The membership check is the other half — `engineIntents` has to agree
+    /// with the two hand-written switches that answer these intents ahead of
+    /// the pipeline, `GameWorld.run` and `GameWorld.performParsed`, because
+    /// each of them does something different there.
     /// That boundary is the one this type can't close by construction; what
     /// covers it is `everyCoreVerbAnswers`, since an engine-level row with no arm
     /// in that switch falls all the way through stage 4 to `didntUnderstand`.
@@ -212,11 +214,12 @@ struct CoreVerbTests {
         let all = Set(DefaultActions.cores.map(\.intent))
         #expect(DefaultActions.builtInIntents.isDisjoint(with: DefaultActions.engineIntents))
         #expect(DefaultActions.builtInIntents.union(DefaultActions.engineIntents) == all)
-        #expect(DefaultActions.engineIntents == [.undo, .restart, .save, .restore])
+        #expect(
+            DefaultActions.engineIntents == [.undo, .restart, .save, .restore, .again, .oops])
     }
 
     /// Stub intents share the table but never `builtInIntents` — reclaiming one
-    /// shadows nothing and must not warn. The engine-level four are equally not
+    /// shadows nothing and must not warn. The engine-level six are equally not
     /// stubs, which is why they get a warning of their own rather than silence.
     @Test func noCoreIntentIsAlsoAStub() {
         let all = Set(DefaultActions.cores.map(\.intent))

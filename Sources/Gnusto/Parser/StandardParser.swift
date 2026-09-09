@@ -30,7 +30,16 @@ struct ParsedCommand: Equatable {
         /// ``StandardParser/spellsKeyword(_:in:)``, which has the scope to
         /// tell the two apart. (#403)
         static func keyword(phrase: [String], excluding: [EntityID] = []) -> MultiObject? {
-            switch phrase {
+            // `take all of them` is `take all`: the tail restates the group the
+            // keyword already stands for. This is the one place `of` is
+            // dropped, and it is dropped here rather than as line noise
+            // because the word is a word the tables and the games own —
+            // `get out of the car`, an item called `cup of tea`. Stripping it
+            // from the line would leave `all them` behind, which spells no
+            // keyword either. Issue #445.
+            let phrase =
+                Array(phrase.suffix(2)) == ["of", "them"] ? Array(phrase.dropLast(2)) : phrase
+            return switch phrase {
             case ["all"], ["everything"]: .all(excluding: excluding)
             case ["them"]: .them(excluding: excluding)
             default: nil
@@ -1004,11 +1013,28 @@ struct StandardParser {
         _ error: ParseError, tokens: [String], phrase: [String], at phraseStart: Int
     ) -> ParseError {
         guard case .ambiguous(let names, _, _) = error else { return error }
-        let nounStart = phraseStart + possessivePrefix(of: phrase)
+        // A phrase with no noun in it — `x velvet` over two velvet things — is
+        // answered with the noun, and a noun belongs *behind* the adjectives
+        // that qualify it. Spliced in front, the way an adjective answer is,
+        // it would re-parse as `x cloak velvet`. Asked of the whole lexicon
+        // rather than of the candidates, because that is the same question the
+        // second pass in `matches(_:among:)` asked to raise this: no item
+        // anywhere is called by this word. Issue #445.
+        let insertion =
+            namesNothing(phrase)
+            ? phraseStart + phrase.count
+            : phraseStart + possessivePrefix(of: phrase)
         return .ambiguous(
             names: names,
-            prefix: Array(tokens[..<nounStart]),
-            suffix: Array(tokens[nounStart...]))
+            prefix: Array(tokens[..<insertion]),
+            suffix: Array(tokens[insertion...]))
+    }
+
+    /// Whether the phrase ends in a word no item in the game answers to as a
+    /// noun — the mark of a phrase that describes rather than names.
+    private func namesNothing(_ phrase: [String]) -> Bool {
+        guard let last = phrase.last else { return false }
+        return !vocabulary.itemLexicons.values.contains { $0.nouns.contains(last) }
     }
 
     // MARK: - Pieces
@@ -1472,12 +1498,24 @@ struct StandardParser {
     }
 
     /// The lexicon match itself, over one candidate set.
+    ///
+    /// **Two passes, and the second one only when the first found nothing.**
+    /// A phrase that ends in a noun is a name and is matched as one. A phrase
+    /// that doesn't — `x velvet`, `take brass` — is a *description*, and the
+    /// player is owed the thing it picks out when it picks out one thing and
+    /// the question when it picks out several. Second pass rather than one
+    /// relaxed test, so that no phrase which already named something can
+    /// change meaning: a description never beats a name. Issue #445.
     private func matches(
         _ tokens: [String], among candidates: Set<EntityID>
     ) -> Result<EntityID, ParseError> {
-        let matches = candidates.filter { id in
+        let named = candidates.filter { id in
             vocabulary.itemLexicons[id]?.matches(tokens) == true
         }
+        let matches =
+            named.isEmpty
+            ? candidates.filter { id in vocabulary.itemLexicons[id]?.describes(tokens) == true }
+            : named
 
         if matches.count > 1 {
             // Sorted by the bare name and articled after: an order the player

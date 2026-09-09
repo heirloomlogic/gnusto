@@ -433,10 +433,14 @@ computed `static var`, which rebuilds it on every read.
   **floor**, said with `say` and not `reply`, so `after` rules still run and a
   `before` rule still promotes itself above it. On an *engine stub* intent it
   works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.
-- **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
-  answers them before the pipeline, so no rule sees them and `action(.save)` never
-  runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather
-  than failing silently.
+- **UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS can't be overridden at all.** The
+  engine answers them before the pipeline, so no rule sees them and `action(.save)`
+  never runs. That's `DefaultActions.engineIntents`, and declaring one now warns
+  rather than failing silently. The last two hand a *different line* back to the
+  parser rather than acting themselves: `again`/`g` re-parses `WorldState.lastCommand`
+  and costs whatever that costs, and `oops <word>` rewrites the word the parser last
+  refused. Neither is recorded as a last command, which is what makes AGAIN
+  non-recursive by construction rather than by a depth counter.
 - **`search X` / `find X` / `look for X` all mean `.lookIn`**, which refuses in a
   fixed order: `cantReach` for something out of reach, `cantSearchActor` for a
   person, then `nothingToSearch` ("You find nothing of interest in the X") for

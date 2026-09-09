@@ -21,6 +21,22 @@ struct MultiObjectTests {
         #expect(!transcript.contains("statue:"))
     }
 
+    /// `take all of them` is `take all`: the tail restates the group the
+    /// keyword already stands for. It used to come back "You can\'t see any
+    /// such thing." Read where the keyword is read rather than by dropping
+    /// `of` from the line — the word is one two core rows spell and one an
+    /// item may own. Issue #445.
+    @Test func allOfThemIsAll() async throws {
+        let transcript = try await play(VaultGame(), ["take all of them"])
+        expectInOrder(
+            transcript,
+            [
+                "brass coin: Taken.",
+                "cursed idol: The idol refuses to budge.",
+                "gray feather: Taken.",
+            ])
+    }
+
     @Test func eachTurnRulesFireOncePerTypedCommand() async throws {
         let transcript = try await play(VaultGame(), ["take all"])
         let ticks = transcript.components(separatedBy: "Tick.").count - 1

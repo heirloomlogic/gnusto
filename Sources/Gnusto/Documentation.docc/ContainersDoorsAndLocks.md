@@ -205,7 +205,7 @@ var map: WorldMap {
 }
 ```
 
-The player then types `unlock chest with brass key` before `open chest`, and `lock chest with brass key` to secure it again. Because the key is an ordinary property reference, renaming it is a compile error, not a broken game. Two guard-rails are enforced at startup as fatal ``BootstrapError``s: naming a key that isn't a stored property, and giving one item two `lockedBy` entries.
+The player then types `unlock chest with brass key` before `open chest`, and `close chest` and `lock chest with brass key` to secure it again. **Locking something that stands open is refused** — ``GameText/cantLockOpen``, *"You'll have to close the banded chest first."* — because a lock that shot home around an open lid left the chest locked and open at once, and then refused to open on the grounds that it was locked. Unlocking is unaffected: an open door is a fine thing to unlock. Because the key is an ordinary property reference, renaming it is a compile error, not a broken game. Two guard-rails are enforced at startup as fatal ``BootstrapError``s: naming a key that isn't a stored property, and giving one item two `lockedBy` entries.
 
 Read and set the lock from a rule with ``Item/isLocked`` (a no-op on a non-lockable item):
 

@@ -289,6 +289,12 @@ public struct GameText: Sendable {
     public var cantUnlockThat: Line<Nothing> = "You can't unlock that."
     /// Locking something already locked.
     public var alreadyLocked: Line<Nothing> = "That's already locked."
+    /// Locking something that is standing open. A lock that shot home around an
+    /// open door left the player holding a door that was locked and open at
+    /// once — and then refused to open, having already been opened.
+    public var cantLockOpen: Line<Noun> = .naming {
+        "You'll have to close \($0) first."
+    }
     /// Unlocking something already unlocked.
     public var alreadyUnlocked: Line<Nothing> = "That's already unlocked."
     /// Locking or unlocking with an item that isn't this lock's key.
@@ -332,6 +338,15 @@ public struct GameText: Sendable {
     public var undone: Line<Nothing> = "Previous turn undone."
     /// An `undo` with no snapshot to rewind to.
     public var cantUndo: Line<Nothing> = "There's nothing to undo."
+
+    // MARK: - Again & oops
+
+    /// An `again` before any command has run.
+    public var nothingToRepeat: Line<Nothing> = "There's nothing to repeat."
+    /// An `oops` where the last line held no word the parser had to refuse.
+    public var nothingToCorrect: Line<Nothing> = "There's nothing to correct."
+    /// A bare `oops`, with a word waiting to be mended and none offered.
+    public var oopsNeedsAWord: Line<Nothing> = "You'll have to say which word you meant."
 
     // MARK: - Save & restore
 

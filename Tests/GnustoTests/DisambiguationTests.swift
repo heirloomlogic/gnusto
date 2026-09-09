@@ -20,6 +20,41 @@ struct DisambiguationTests {
             ])
     }
 
+    /// A phrase with no noun in it describes rather than names. One that
+    /// describes exactly one thing in view is answered outright — `take
+    /// velvet` is the velvet cloak, where it used to be "You can\'t see any
+    /// such thing." with the cloak on the player\'s shoulders. Issue #445.
+    @Test func aBareAdjectiveThatPicksOutOneThingIsAnswered() async throws {
+        let transcript = try await play(LanternShopGame(), ["drop cloak", "take velvet", "i"])
+        expectInOrder(transcript, ["Dropped.", "Taken.", "velvet cloak"])
+    }
+
+    /// One that describes two things asks which — and the question is
+    /// answerable, because a phrase missing its *noun* is answered behind the
+    /// adjectives rather than in front of them. Spliced the other way, the
+    /// line would come back as `take lantern brass`.
+    @Test func aBareAdjectiveOverTwoThingsAsksAnAnswerableQuestion() async throws {
+        let transcript = try await play(
+            LanternShopGame(), ["take brass", "lantern", "small", "i"])
+        expectInOrder(
+            transcript,
+            [
+                "Which do you mean: the brass lantern or the small brass lantern?",
+                // The noun answered, and left the same two things standing.
+                "Which do you mean: the brass lantern or the small brass lantern?",
+                "Taken.",
+                "small brass lantern",
+            ])
+    }
+
+    /// Courtesy is filler: `please` is dropped from the line the way `the` is,
+    /// so the sentence in front of it runs as it always did. Issue #445.
+    @Test func aPoliteCommandIsTheCommand() async throws {
+        let transcript = try await play(LanternShopGame(), ["drop cloak please", "i"])
+        #expect(turnOutput(of: "drop cloak please", in: transcript).contains("Dropped."))
+        #expect(!transcript.contains("I don\'t know the word"))
+    }
+
     @Test func aFullPhraseAnswersTheQuestion() async throws {
         let transcript = try await play(
             LanternShopGame(), ["take lantern", "the rusty lantern", "i"])

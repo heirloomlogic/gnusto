@@ -104,7 +104,7 @@ public struct Intent: Hashable, Sendable {
     public static let quit = Intent("quit")
     /// Report the engine version.
     public static let version = Intent("version")
-    // The engine-level four. `GameWorld.run` answers these before the turn
+    // The engine-level six. `GameWorld.run` answers these before the turn
     // pipeline starts, so no rule sees them and no `actions` row can reclaim
     // them — `DefaultActions.engineIntents` is where that is declared, and the
     // bootstrap warns about a row that tries.
@@ -117,6 +117,13 @@ public struct Intent: Hashable, Sendable {
     public static let save = Intent("save")
     /// Read the world state back from a file (engine-level; not overridable).
     public static let restore = Intent("restore")
+    /// Run the last command again ("again", "g") — engine-level, and not a
+    /// meta intent: it costs whatever the command it repeats costs.
+    public static let again = Intent("again")
+    /// Correct the word the parser last refused ("oops lantern") and try that
+    /// line again — engine-level, and free when the corrected line still
+    /// doesn't parse.
+    public static let oops = Intent("oops")
 
     /// Meta intents talk to the game program, not the world: they skip all
     /// rules and don't consume a turn.

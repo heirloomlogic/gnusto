@@ -56,6 +56,8 @@ This creates an ordinary ``Item`` with a name, vocabulary, examine text, and the
 
 `adjectives:` and `synonyms:` are variadic, so they read the way ``adjectives(_:)`` and ``synonyms(_:)`` read inside an `Item { }` block — one phrase per argument, no brackets. A synonym is a noun phrase, not a single word, which is why `old brickwork` above counts as one argument.
 
+A phrase that ends in one of the item's **nouns** is a name, and names are matched first. A phrase that doesn't — `x rough`, `take velvet` — is a *description*, and the parser answers one when it picks out exactly one thing in view and asks *"Which do you mean…?"* when it picks out several. Second pass, always: a description can never take a phrase away from something that already answered to it as a name.
+
 Store it on your game or content bundle and place it in `map`, just like any other item:
 
 ```swift
