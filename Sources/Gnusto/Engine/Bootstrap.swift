@@ -506,6 +506,7 @@ enum Bootstrap {
                 "custom verb \"\(verb.patternDescription)\" overrides a "
                     + "built-in verb of the same shape.")
         }
+        verbWarnings.append(contentsOf: Self.abbreviatedPromptWarnings(customVerbs))
         let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
         verbWarnings.append(contentsOf: Self.respellingWarnings(syntaxRules))
         var vocabulary = Vocabulary()
@@ -1334,6 +1335,38 @@ enum Bootstrap {
                     + "pattern's preposition already answers to its synonyms.")
         }
         return warnings
+    }
+
+    /// A custom row that would ask its question in an abbreviation.
+    ///
+    /// A row's prompt speaks its own leading words unless the verb gave it a
+    /// ``SyntaxRule/displayVerb``, which is right wherever those words are
+    /// words — and nonsense where they are not: `["x", .directObject]` asks
+    /// "What do you want to x?" The engine's own `.examine` answers that with
+    /// the column, and a game has the same column on `#verb` and on
+    /// `SyntaxRule` alike, so the warning names it.
+    ///
+    /// A one-letter word is the test, because no verb this engine prints is
+    /// spelled with one and no longer abbreviation is safe to guess at. Only a
+    /// row with a slot can prompt at all — bare `["x"]` never asks anything —
+    /// and the engine's own rows are exempt because they are answered already;
+    /// a game reclaiming `["x", .directObject]` is not, which is the point: the
+    /// merge is last-wins, so that row would take the prompt back down with it.
+    ///
+    /// - Parameter verbs: the game's, bundles' and plugins' own rows.
+    /// - Returns: one warning per row that would prompt with an abbreviation.
+    private static func abbreviatedPromptWarnings(_ verbs: [SyntaxRule]) -> [String] {
+        verbs.compactMap { rule in
+            guard rule.literalWords.count < rule.elements.count,
+                let abbreviation = rule.displayVerb.split(separator: " ").first(
+                    where: { $0.count == 1 })
+            else {
+                return nil
+            }
+            return "custom verb \"\(rule.patternDescription)\" would ask \"What do you want to "
+                + "\(rule.displayVerb)?\" — give the verb a displayVerb, so the question says a "
+                + "word rather than \"\(abbreviation)\"."
+        }
     }
 
     /// Keeps the last row for each `(verb, shape)` key, preserving relative

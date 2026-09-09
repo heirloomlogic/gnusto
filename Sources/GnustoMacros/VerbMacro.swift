@@ -27,6 +27,15 @@ public struct VerbMacro: DeclarationMacro {
         }
 
         let name = try intentName(from: arguments.removeFirst().expression)
+        // The one labeled argument, lifted out before the rest are read as
+        // patterns: what a prompt calls this verb where its rows lead with an
+        // abbreviation. See `SyntaxRule.displayVerb`.
+        var displayVerb: String?
+        if let index = arguments.firstIndex(where: { $0.label?.text == "displayVerb" }) {
+            displayVerb = try stringLiteral(
+                from: arguments.remove(at: index).expression,
+                orThrow: "the display verb must be a non-empty plain string literal.")
+        }
         let patterns = try arguments.map { try pattern(from: $0.expression) }
         // A bare `#verb("sing")` is a one-word verb: the pattern is the name.
         let rows = patterns.isEmpty ? [[Element.word(name)]] : patterns
@@ -37,9 +46,13 @@ public struct VerbMacro: DeclarationMacro {
             }
         }
 
+        // Through `Element.word`, so the display verb re-emits escaped by the
+        // one rule that owns literal escaping here.
+        let displayArgument =
+            displayVerb.map { ", displayVerb: \(Element.word($0).source)" } ?? ""
         let ruleLines = rows.map { row in
             let elements = row.map(\.source).joined(separator: ", ")
-            return "SyntaxRule(\(elements), intent: Intent(\"\(name)\"))"
+            return "SyntaxRule(\(elements), intent: Intent(\"\(name)\")\(displayArgument))"
         }
         return [
             """
@@ -129,13 +142,32 @@ public struct VerbMacro: DeclarationMacro {
         }
     }
 
-    private static func intentName(from expression: ExprSyntax) throws -> String {
+    /// A plain string literal's value, or the given complaint. The three
+    /// literals `#verb` reads — the intent name, the display verb and a
+    /// pattern's words — all decode through here, so an interpolated or
+    /// computed one is refused in the same terms wherever it appears.
+    ///
+    /// - Parameters:
+    ///   - expression: the argument as written.
+    ///   - message: what to say when it isn't a literal, or is empty.
+    /// - Throws: a `MacroError` carrying `message`.
+    /// - Returns: the literal's value.
+    private static func stringLiteral(
+        from expression: ExprSyntax, orThrow message: String
+    ) throws -> String {
         guard
             let literal = expression.as(StringLiteralExprSyntax.self),
-            let name = literal.representedLiteralValue
+            let value = literal.representedLiteralValue,
+            !value.isEmpty
         else {
-            throw error("the intent name must be a plain string literal.")
+            throw error(message)
         }
+        return value
+    }
+
+    private static func intentName(from expression: ExprSyntax) throws -> String {
+        let name = try stringLiteral(
+            from: expression, orThrow: "the intent name must be a plain string literal.")
         guard isValidIdentifier(name) else {
             throw error(
                 "the intent name \"\(name)\" must be a valid Swift identifier — "
@@ -154,11 +186,10 @@ public struct VerbMacro: DeclarationMacro {
     }
 
     private static func element(from expression: ExprSyntax) throws -> Element {
-        if let literal = expression.as(StringLiteralExprSyntax.self) {
-            guard let word = literal.representedLiteralValue else {
-                throw error("pattern words must be plain string literals.")
-            }
-            return .word(word)
+        if expression.is(StringLiteralExprSyntax.self) {
+            return .word(
+                try stringLiteral(
+                    from: expression, orThrow: "pattern words must be plain string literals."))
         }
         if let member = expression.as(MemberAccessExprSyntax.self), member.base == nil {
             switch member.declName.baseName.text {

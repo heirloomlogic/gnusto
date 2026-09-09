@@ -356,3 +356,27 @@ struct RespeltBuiltInVerbGame: Game {
         SyntaxRule("put", .directObject, "into", .indirectObject, intent: .putIn)
     }
 }
+
+/// A game whose custom row leads with an abbreviation and takes an object, so
+/// its prompt would read "What do you want to k?" Nothing here is played — the
+/// `verbs` block is the fixture, and the room exists so the game can start.
+struct AbbreviatedVerbGame: Game {
+    let title = "Abbreviated"
+    let intro = "A forge, and a word too short to say."
+
+    let forge = Location {
+        name("Forge")
+        description("A low forge, banked for the night.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: forge)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("k", .directObject, intent: Intent("knap"))
+        // The same word with a display verb: no warning, and the prompt is a
+        // sentence.
+        SyntaxRule("q", .directObject, intent: Intent("quench"), displayVerb: "quench")
+    }
+}

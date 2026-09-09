@@ -60,6 +60,36 @@ public struct SyntaxRule: Sendable {
     /// per game. Both were allocating a fresh array per access.
     let leadingWords: [String]
 
+    /// ``leadingWords`` as one string — the row as the player types it, which
+    /// is what rides on ``Command/verbPhrase``.
+    ///
+    /// Stored for the reason ``leadingWords`` is: `fit` puts it on every
+    /// command it builds and every question it asks, so joining it there was a
+    /// fresh `String` per candidate row per turn.
+    let leadingPhrase: String
+
+    /// The words a *prompt* about this row puts after "What do you want to" —
+    /// ``leadingWords`` by default, and the verb's own spelling where the
+    /// declaration table gives one.
+    ///
+    /// The default is right for almost every row, because almost every row
+    /// leads with the word the player typed and the question reads back in it:
+    /// `hang cloak` asks what to hang the cloak on, `find` asks what to find.
+    /// It is wrong for exactly one shape — a row that leads with an
+    /// **abbreviation** — and there the leading words are not a word at all:
+    /// `x` asked "What do you want to x?" and `l at` asked "What do you want to
+    /// l at?"
+    ///
+    /// So the display verb is stated once per *verb*, beside its rows
+    /// (``CoreVerb/handled(_:_:reach:displayVerb:_:)``, `#verb`'s
+    /// `displayVerb:`), and stamped on every row the verb builds. Stating it
+    /// per verb rather than deriving it from the verb's first row is
+    /// deliberate: ``Intent/lookIn`` spells itself `search`, `find` and `look
+    /// for`, and ``Intent/putOn`` spells itself `hang` and `place`, so a rule
+    /// that made one row speak for all of them would answer a question the
+    /// player never asked.
+    let displayVerb: String
+
     /// ``leadingWords`` with every preposition folded to the one spelling
     /// ``Vocabulary/literalSynonyms`` writes it in, so that candidate selection
     /// is a plain prefix test against a line canonicalized the same way.
@@ -106,8 +136,10 @@ public struct SyntaxRule: Sendable {
     /// - Parameters:
     ///   - elements: the pattern of literal words and slots.
     ///   - intent: the intent a match produces.
-    public init(_ elements: SyntaxElement..., intent: Intent) {
-        self.init(elements, intent: intent)
+    ///   - displayVerb: what a prompt about this row calls the verb, where the
+    ///     row's own leading words are an abbreviation — see ``displayVerb``.
+    public init(_ elements: SyntaxElement..., intent: Intent, displayVerb: String? = nil) {
+        self.init(elements, intent: intent, displayVerb: displayVerb)
     }
 
     /// The array-taking form, for callers that already hold a pattern — the
@@ -116,7 +148,8 @@ public struct SyntaxRule: Sendable {
     /// - Parameters:
     ///   - elements: the pattern of literal words and slots.
     ///   - intent: the intent a match produces.
-    init(_ elements: [SyntaxElement], intent: Intent) {
+    ///   - displayVerb: what a prompt about this row calls the verb.
+    init(_ elements: [SyntaxElement], intent: Intent, displayVerb: String? = nil) {
         self.elements = elements
         self.intent = intent
 
@@ -132,6 +165,9 @@ public struct SyntaxRule: Sendable {
             if stillLeading { leading.append(word) }
         }
         self.leadingWords = leading
+        let phrase = leading.count == 1 ? leading[0] : leading.joined(separator: " ")
+        self.leadingPhrase = phrase
+        self.displayVerb = displayVerb ?? phrase
         self.canonicalLeadingWords = leading.map(Vocabulary.canonical)
         self.literalWords = literals
         self.specificity = literals.count * 10 + (elements.count - literals.count)

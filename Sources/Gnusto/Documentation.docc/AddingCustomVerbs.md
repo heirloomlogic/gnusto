@@ -159,7 +159,20 @@ extension Intent {
 
 And a direction slot with nothing left to fill it still *succeeds*, with a nil direction — that is the branch that lets bare `go` ask "Which way?". So a row like `["push", .direction]` means bare `push` reaches your intent instead of the built-in's "What do you want to push?", and your rule has to answer it. It is the **weakest** kind of match, though: any row that really matched wins over it, whatever their specificities. That is what lets one verb word be a walk with a direction on it and something else without — `climb up` is core's `["climb", .direction]` and bare `climb` is the stub verb, and the same door is open to a game whose `["push", .direction]` row shares its word with a `["push"]` row somewhere else. The `<object> <direction>` shape never does any of this: it asks for whichever half is missing, and where the line is a bare direction it stands aside so a `["push", .direction]` row for the same verb can take it.
 
+A **trailing particle** is read as understood when the player leaves it off. `wind the clock` against `["wind", .directObject, "up"]` winds the clock, because the row has one object slot and the line has already filled it — there is nothing left to ask for, and the question the shape used to ask ("What do you want to wind the clock up?") named a second object the pattern does not have, so no answer to it could parse. Like the empty direction, it is a **weak** match: any row that really matched wins, and so does any near miss, which is what keeps `put the cloak` asking what to put it on rather than quietly wearing it.
+
 A **topic** is the odd one out, and deliberately so. The object slots resolve against what the player can see, and refuse anything else — which is right for things and wrong for subjects. A topic instead takes the rest of the line as typed, normalized but never looked up, so `ask the monk about zeppelins` reaches the monk's rules and lets him shrug rather than dying in the parser as "You can't see any such thing." It arrives as a ``Topic`` on ``Command/topic``, with the words already lowercased, stripped of punctuation and filler; ``Topic/normalize(_:)`` puts an author's own keyword through the same mill so the two can be compared. The line exactly as typed is still on ``Command/rawInput``.
+
+When a slot goes unfilled, the question names the verb in the row's own leading words — `["haggle", "over", .directObject]` asks what you want to haggle over. Give `displayVerb:` where those words are an **abbreviation**, which is the one case they are not a word:
+
+```swift
+extension Intent {
+    #verb("wind",
+          ["wind", .directObject],
+          ["w", .directObject],
+          displayVerb: "wind")                  // not "What do you want to w?"
+}
+```
 
 Several patterns on one `#verb` share the intent — that is how synonyms and alternate word orders work:
 
@@ -196,7 +209,7 @@ extension Intent {
 
 Reclaiming a **stub** row is silent, because a stub has no behavior to shadow and overriding it is the expected end state. That is the whole point of the two tiers: the warning catches you accidentally hiding something real, and stays quiet when you're filling in a blank. See <doc:StubVerbs>.
 
-A few words a game is *likely* to want are deliberately absent from both tiers. Bare `hello` and bare `hi` are the clearest case: they are the kind of one-word verb a game likes to own outright — Zork 1 does — and even a silent reclaim is worse than leaving them free, because the engine would have to pick a greeting line for everybody. The engine ships `greet <object>`, `hello <object>` and `hi <object>`, and leaves the bare forms to `GnustoConversation` or to you. `ring` and `wind` are out for the same reason: a game that has a bell wants to say what ringing it does.
+A few words a game is *likely* to want are deliberately absent from both tiers — `ring` and `wind`, say, because a game that has a bell wants to say what ringing it does. Bare `hello` and `hi` used to be on that list and no longer are: the engine ships every spelling of a greeting now, because leaving the bare forms out meant `hello` matched only `hello <object>` and a player greeting a room was asked what they wanted to hello. A game that wants the word for itself still takes it — reclaiming a row for the intent that already held it is silent, and reclaiming it for an intent of your own is the ordinary warning.
 
 ## The substrate: raw `SyntaxRule`
 

@@ -52,10 +52,11 @@ struct CoreVerb: Sendable {
     /// Patterns in, rows out — spelled the way `#verb` spells them, and the
     /// reason no row below has to repeat `intent:`.
     private init(
-        _ intent: Intent, _ patterns: [[SyntaxElement]], _ reach: Reach, _ behavior: Behavior
+        _ intent: Intent, _ patterns: [[SyntaxElement]], _ reach: Reach,
+        displayVerb: String? = nil, _ behavior: Behavior
     ) {
         self.intent = intent
-        self.rows = patterns.map { SyntaxRule($0, intent: intent) }
+        self.rows = patterns.map { SyntaxRule($0, intent: intent, displayVerb: displayVerb) }
         self.reach = reach
         self.behavior = behavior
     }
@@ -73,13 +74,23 @@ struct CoreVerb: Sendable {
 extension CoreVerb {
     /// A verb stage 4 answers itself. The handler takes the whole command
     /// because most of them need its objects; the few that don't ignore it.
+    /// - Parameters:
+    ///   - intent: the intent every row produces.
+    ///   - patterns: the rows, spelled as the player types them.
+    ///   - reach: which slots the player has to be able to touch.
+    ///   - displayVerb: what a prompt calls this verb, for a verb whose rows
+    ///     lead with an abbreviation — see ``SyntaxRule/displayVerb``. Left off,
+    ///     each row speaks in its own words.
+    ///   - handler: what answers the intent at stage 4.
+    /// - Returns: the verb, with one row per pattern.
     static func handled(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
+        displayVerb: String? = nil,
         _ handler: @escaping @Sendable (Command, TurnFrame) throws -> Void
     ) -> CoreVerb {
-        .init(intent, patterns, reach, .handler(handler))
+        .init(intent, patterns, reach, displayVerb: displayVerb, .handler(handler))
     }
 
     /// A verb the engine intercepts ahead of the pipeline — see
@@ -133,7 +144,13 @@ extension DefaultActions {
                 ["look", "at", .directObject],
                 ["l", "at", .directObject],
             ],
-            reach: .notNeeded
+            reach: .notNeeded,
+            // The one core verb whose rows lead with an abbreviation, and so
+            // the one that has to say what to call itself: bare `x` asked "What
+            // do you want to x?" and `l at` asked "What do you want to l at?"
+            // — questions in a language nobody speaks. Every other verb's rows
+            // are words, and each of them asks in its own.
+            displayVerb: "examine"
         ) { try examine($0, frame: $1) },
 
         .handled(.read, [["read", .directObject]], reach: .notNeeded) { try read($0, frame: $1) },
@@ -307,10 +324,17 @@ extension DefaultActions {
             reach: .notNeeded
         ) { try follow($0, frame: $1) },
 
-        // Bare "hello"/"hi" are deliberately *not* here: they are the kind of
-        // one-word verb a game likes to own outright (Zork 1 does), and claiming
-        // them as built-ins would make every such game warn at launch.
-        // `GnustoConversation` adds them.
+        // Bare "hello" and "hi" are here, and used not to be. The argument for
+        // leaving them out was that a game likes to own a one-word verb
+        // outright and a built-in row would make it warn at launch — but the
+        // bootstrap's warning compares the *intent* as well as the shape, so a
+        // game that spells `SyntaxRule("hello", intent: .greet)` reclaims a row
+        // for the intent that already held it and says nothing. What the
+        // absence cost was the answer: bare `hello` matched only
+        // `hello <object>`, so a player who said hello to a room was asked
+        // "What do you want to hello?" `greet` has read the room since it was
+        // written — `greetsTheRoom` when somebody is in it, `nobodyToGreet`
+        // when nobody is — and these two rows are what reach that branch.
         .handled(
             .greet,
             [
@@ -318,6 +342,8 @@ extension DefaultActions {
                 ["hello", .directObject],
                 ["hi", .directObject],
                 ["greet"],
+                ["hello"],
+                ["hi"],
                 // The two rows `GnustoConversation` also mints. They are here
                 // because "say hello to the troll" is what a player types at a
                 // person, and a game without the conversation plugin answered

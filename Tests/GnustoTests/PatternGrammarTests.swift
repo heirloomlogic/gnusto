@@ -18,6 +18,10 @@ struct PatternGrammarTests {
         EntityID("ironCrate"), EntityID("onSwitch"), EntityID("insidePocket"),
     ])
 
+    /// The same room with nothing in it, for the answers that are about a thing
+    /// the game knows and the player cannot see.
+    static let emptyScope = Scope(visibleItems: [])
+
     @Test func twoObjectsAroundAPreposition() throws {
         let parser = try Self.makeParser()
         let parsed = try parser.parse("give lamp to gnome", scope: Self.scope).get()
@@ -305,20 +309,33 @@ struct PatternGrammarTests {
     }
 
     /// What a trailing-literal row does with a line that stops short of the
-    /// particle, unchanged by the move to counting back: the phrase resolves,
-    /// so the row asks for the rest and the answer belongs after the word the
-    /// player never typed. Both lengths, because they take different routes —
-    /// `wind lamp` leaves the slot nothing at all, while `wind brass lamp`
-    /// leaves it a phrase and a suffix that isn't there.
+    /// particle: it reads the particle as understood and runs. It used to ask
+    /// for it — "What do you want to wind the brass lamp up?" — which is a
+    /// question with no answer, because the row has one object slot and it is
+    /// already full, so whatever the player typed next made a sentence nothing
+    /// could parse. Issue #445.
+    ///
+    /// Both lengths, because they take different routes — `wind lamp` leaves
+    /// the slot nothing at all, while `wind brass lamp` leaves it a phrase and
+    /// a suffix that isn't there.
     @Test(arguments: [["wind", "lamp"], ["wind", "brass", "lamp"]])
-    func aTrailingLiteralRowStillAsksForTheParticle(_ tokens: [String]) throws {
+    func aTrailingLiteralRowReadsTheParticleAsUnderstood(_ tokens: [String]) throws {
         let parser = try Self.makeParser()
-        #expect(
-            parser.parse(tokens.joined(separator: " "), scope: Self.scope)
-                == .failure(
-                    .missingIndirect(
-                        verb: "wind", objectName: "the brass lamp", preposition: "up",
-                        prefix: tokens + ["up"])))
+        let parsed = try parser.parse(tokens.joined(separator: " "), scope: Self.scope).get()
+        #expect(parsed.intent == Intent("wind"))
+        #expect(parsed.directObject == EntityID("lamp"))
+    }
+
+    /// A phrase that names nothing invents no reading — and says why. The row
+    /// used to decline outright, so `wind the crate` in a room with no crate
+    /// came out as "That sentence isn't one I recognize" when what was wrong
+    /// with it was the crate. The re-fit's own answer is the last thing tried,
+    /// behind every row read in the words the player actually used. What that
+    /// reads like to a player is `PromptWordingTests`'
+    /// `anObjectThatIsNotThereReportsItselfRatherThanTheGrammar`.
+    @Test func anUnresolvableObjectReportsScopeRatherThanTheGrammar() throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse("wind the crate", scope: Self.emptyScope) == .failure(.notInScope))
     }
 
     /// A direction slot no longer has to end its pattern: what places the noun

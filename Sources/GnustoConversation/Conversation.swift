@@ -429,11 +429,13 @@ public struct Conversation: GameContent {
 
     // MARK: - GameContent
 
-    /// The verbs the layer contributes: `ask`, `tell`, `show`, and the one
-    /// greeting row the engine deliberately leaves to a conversation system —
-    /// a bare hello. (`greet <object>`, `hello <object>`, `hi <object>` and
-    /// `say hello to <object>` are built in; bare `hello` is not, so a game can
-    /// own that word outright without a launch warning.)
+    /// The verbs the layer contributes: `ask`, `tell` and `show`.
+    ///
+    /// No greeting row any more. This block used to carry bare `hello` and
+    /// `hi`, on the grounds that the engine left them to a conversation system;
+    /// the engine ships them now (#445), and every spelling of a greeting —
+    /// bare, with an object, and `say hello to <object>` — is a built-in row
+    /// reaching ``Intent/greet``.
     ///
     /// `talk` is not here because it is the engine's: `Intent.talk` is
     /// a stub verb every game has, and ``actions`` promotes it — silently, as
@@ -442,8 +444,6 @@ public struct Conversation: GameContent {
     /// so the player never has to guess which word the game wanted.
     public var verbs: [SyntaxRule] {
         [.ask, .tell, .show]
-        SyntaxRule("hello", intent: .greet)
-        SyntaxRule("hi", intent: .greet)
     }
 
     /// The layer's default actions — what happens when no table answered.
