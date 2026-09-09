@@ -50,3 +50,5 @@ jobs:
         run: node --test bin/tests/generated-paths.test.mjs
       - name: Headless dispatch permissions and diagnostics
         run: node --test bin/tests/playtest-headless.test.mjs
+      - name: Preflight validation regressions
+        run: node --test bin/tests/preflight-validation.test.mjs

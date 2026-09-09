@@ -105,8 +105,8 @@ const rmrf = (p) => fs.rmSync(p, { recursive: true, force: true })
 // draft of this script batched them, and asked a second server to finish a session
 // it had never opened.
 class Server {
-  constructor(game) {
-    this.proc = spawn('bin/gnusto-mcp', [game], { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'] })
+  constructor(command, args) {
+    this.proc = spawn(command, args, { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'] })
     this.pending = new Map()
     this.stderr = ''
     this.buf = ''
@@ -116,6 +116,15 @@ class Server {
     this.proc.stderr.on('data', (d) => { this.stderr += d })
     this.proc.on('error', (e) => this.die(e.message))
     this.proc.on('exit', (code) => this.die(`server exited (${code})`))
+    // A server that dies before it reads the request leaves `send` writing into a
+    // pipe with no reader. Node reports that on the stream rather than at the call,
+    // and an unhandled `error` event is fatal — so preflight died with a stack and
+    // not one row, which is the shape a broken `.mcp.json` command has. The platform
+    // decides which spelling arrives: macOS destroys the stream when the child exits
+    // and the write fails quietly, Linux lets the write reach the pipe and raises
+    // EPIPE, which is why this only ever failed in CI. `die` is first-wins, so an
+    // `exit` that has already been observed keeps its more useful message.
+    this.proc.stdin.on('error', (e) => this.die(`server closed its input (${e.code || e.message})`))
     this.proc.stdout.on('data', (d) => {
       this.buf += d
       let i
@@ -147,7 +156,12 @@ class Server {
         timeoutMs
       )
       this.pending.set(id, { resolve: (m) => { clearTimeout(timer); resolve(m) } })
-      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n')
+      // The callback is what keeps a failed write from becoming an `error` event on
+      // the stream, and `die` resolves the waiter this call is already holding — so
+      // a dead server answers here in the same shape a live one does, rather than
+      // sitting out the 240s timeout.
+      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n',
+        (e) => { if (e) this.die(`server closed its input (${e.code || e.message})`) })
     })
   }
 
@@ -177,10 +191,11 @@ const payloadOf = (msg) => { try { return JSON.parse(textOf(msg)) } catch { retu
 // The checks
 // ---------------------------------------------------------------------------
 
-async function checkGame(game, mcpKey) {
+async function checkGame(game, mcpEntry, enabled) {
   const rows = []
   const add = (name, ok, detail, remedy) => rows.push({ game, name, ok, detail, remedy })
   let roster = []
+  const mcpKey = mcpEntry?.key ?? null
 
   // 1. Build once, serially, holding the package lock alone. This is the step that
   //    keeps `bin/gnusto-mcp` from having to build at connect — which is what used
@@ -197,8 +212,41 @@ async function checkGame(game, mcpKey) {
   }
   add('build', true, path.basename(String(build.stdout).trim()))
 
+  // 1a. The convention `playtest.js` falls back on when nothing hands it a key,
+  //    checked before anything tries to talk to a server — an unusable `command`
+  //    means nothing below can mean anything either, and this row has to survive
+  //    that path rather than be skipped by it. Reads a real client's own
+  //    `command`/`args` for this key, not a hardcoded guess: see `commandProblem`.
+  //    `enabled` is computed once in `main` rather than reread here per game —
+  //    neither settings file's content depends on which game this call is for.
+  const problem = commandProblem(mcpEntry)
+  const notEnabled = mcpKey && !enabled.includes(mcpKey)
+  add('mcp key', !!mcpKey && !notEnabled && !problem,
+    !mcpKey ? 'no .mcp.json entry' : `${mcpKey}${notEnabled ? ' — registered but not enabled' : problem ? ` — ${problem}` : ''}`,
+    !mcpKey ? `add a .mcp.json server whose args are ["${game}"]`
+      : notEnabled ? `add "${mcpKey}" to enabledMcpjsonServers`
+      : problem ? `fix .mcp.json's "command" for "${mcpKey}"`
+      : null)
+
+  // A missing "command" leaves nothing to resolve or spawn — `resolveCommand`
+  // needs a string, and falling back to `bin/gnusto-mcp` here would silently test
+  // a binary the entry never named. The row above already says what is wrong.
+  if (mcpEntry && !mcpEntry.command) return rows
+
+  // What a client actually spawns: the matched entry's own `command`/`args` when
+  // there is one, so a misspelled or foreign binary fails right here instead of
+  // passing every row and dying at `ToolSearch`. An unregistered game has no entry
+  // to spawn — the row above already says so — and falls back to the binary this
+  // package builds, so an author can still preflight a game before wiring it into
+  // `.mcp.json`. `spawnDisplay` is the unresolved form, for remedies: the resolved
+  // absolute path is right for `spawn()` but wrong to print back at an author, who
+  // wrote (or read) the relative or bare form.
+  const spawnCommand = mcpEntry ? resolveCommand(mcpEntry.command) : resolveCommand('bin/gnusto-mcp')
+  const spawnArgs = mcpEntry ? mcpEntry.args : [game]
+  const spawnDisplay = mcpEntry ? mcpEntry.command : 'bin/gnusto-mcp'
+
   const label = `preflight-${game}`
-  const server = new Server(game)
+  const server = new Server(spawnCommand, spawnArgs)
   let replayProbe = null
   try {
     // 2. The server answers, and declares every tool the round will call.
@@ -210,7 +258,7 @@ async function checkGame(game, mcpKey) {
       // only "server exited (1)" throws away the one line that says what to fix.
       const said = server.stderr.trim().split('\n').filter(Boolean).slice(-1)[0] || ''
       add('server', false, said ? `${init.error.message}: ${said.slice(0, 80)}` : init.error.message,
-        `bin/gnusto-mcp ${game}  # run it and read its stderr in full`)
+        `${spawnDisplay} ${spawnArgs.join(' ')}  # run it and read its stderr in full`)
       return rows
     }
     const listed = await server.send('tools/list', {})
@@ -289,16 +337,6 @@ async function checkGame(game, mcpKey) {
     // Only this call's own probe. Never the tree.
     if (replayProbe) rmrf(replayProbe)
   }
-
-  // 5. The convention `playtest.js` falls back on when nothing hands it a key,
-  //    checked rather than trusted. Get this wrong and every tester fails
-  //    identically, with no diagnostic anywhere.
-  const enabled = (readJSON('.claude/settings.json', {}) || {}).enabledMcpjsonServers || []
-  add('mcp key', !!mcpKey && enabled.includes(mcpKey),
-    mcpKey ? `${mcpKey}${enabled.includes(mcpKey) ? '' : ' — registered but not enabled'}` : 'no .mcp.json entry',
-    !mcpKey
-      ? `add a .mcp.json server whose args are ["${game}"]`
-      : (enabled.includes(mcpKey) ? null : `add "${mcpKey}" to enabledMcpjsonServers`))
 
   // 6. Where the game's own source is, which four prompts and the clusterer's grep
   //    all take from the round's arguments. Red rather than defaulted: with no
@@ -643,16 +681,68 @@ function capabilitiesOf(game) {
 // Main
 // ---------------------------------------------------------------------------
 
-function mcpKeyFor(game) {
+// The matched `.mcp.json` entry, whole — not just its key. What a client actually
+// spawns is `command`/`args`, and a preflight that only matched the key while
+// spawning a hardcoded path could pass every row for an entry a client can't run
+// at all: misspelled, absolute to another checkout, or a shim from a different
+// package. See `commandProblem` and its use in `checkGame`.
+function mcpServerFor(game) {
   const cfg = readJSON('.mcp.json', { mcpServers: {} })
   for (const [key, server] of Object.entries(cfg.mcpServers || {})) {
-    if ((server.args || []).includes(game)) return key
+    if ((server.args || []).includes(game)) return { key, command: server.command, args: server.args || [] }
   }
   return null
 }
 
+// A relative `command` is resolved the same way the child process would run it:
+// against the package root, because every server this repository declares runs
+// from there.
+const resolveCommand = (cmd) => (path.isAbsolute(cmd) ? cmd : path.resolve(ROOT, cmd))
+
+// Whether the entry's `command` is even a program a client could start. `null`
+// means no problem — either there's no entry to check (a different row already
+// says so) or the file it names exists and is runnable.
+function commandProblem(entry) {
+  if (!entry) return null
+  if (!entry.command) return 'missing "command"'
+  const resolved = resolveCommand(entry.command)
+  // A bare PATH command (`node`, `npx`) reds here too — this checks the repo root,
+  // never PATH, so the message says which lookup failed rather than reading as a
+  // flat claim that the program does not exist anywhere.
+  if (!exists(resolved)) return `${entry.command} does not exist relative to the repo root`
+  try {
+    fs.accessSync(resolved, fs.constants.X_OK)
+  } catch {
+    return `${entry.command} is not executable`
+  }
+  return null
+}
+
+// Claude Code layers `.claude/settings.local.json` over `.claude/settings.json`;
+// a server enabled only in the gitignored local file is enabled all the same, and
+// a row that reads the project file alone reports "registered but not enabled"
+// for a setup that works.
+function enabledMcpServers() {
+  const project = (readJSON('.claude/settings.json', {}) || {}).enabledMcpjsonServers || []
+  const local = (readJSON('.claude/settings.local.json', {}) || {}).enabledMcpjsonServers || []
+  return [...new Set([...project, ...local])]
+}
+
+// The only two flags this script reads. An argument that starts with `--` and
+// isn't one of these used to vanish silently — `argv.filter` dropped it along
+// with every recognized flag before the game name was ever assembled, so a typo
+// like `--headles` ran an ordinary interactive preflight and exited 0, looking
+// exactly like the flag it misspelled.
+const KNOWN_FLAGS = ['--headless', '--all']
+
 async function main() {
   const argv = process.argv.slice(2)
+  const unknownFlags = argv.filter((a) => a.startsWith('--') && !KNOWN_FLAGS.includes(a))
+  if (unknownFlags.length) {
+    console.error(`playtest-preflight: unknown flag ${unknownFlags.join(', ')}`)
+    console.error('usage: bin/playtest-preflight <Game> | --all   [--headless]')
+    process.exit(2)
+  }
   const headless = argv.includes('--headless')
   const all = argv.includes('--all')
   const words = argv.filter((a) => !a.startsWith('--')).join(' ')
@@ -675,7 +765,7 @@ async function main() {
     games = [product]
   }
 
-  const keys = new Map(games.map((g) => [g, mcpKeyFor(g)]))
+  const servers = new Map(games.map((g) => [g, mcpServerFor(g)]))
   const headlessOptions = {
     cwd: ROOT,
     env: { ...process.env, ...(readJSON('.claude/settings.json', {}) || {}).env },
@@ -696,7 +786,8 @@ async function main() {
   console.log(`  ${DIM}harness ${ENGINE}${ENGINE === ROOT ? ' (same checkout)' : ''}${OFF}`)
 
   const rows = [...packageRows()]
-  for (const game of games) rows.push(...await checkGame(game, keys.get(game)))
+  const enabled = enabledMcpServers()
+  for (const game of games) rows.push(...await checkGame(game, servers.get(game), enabled))
 
   // A package-level row carries no game, so the label is joined rather than
   // interpolated — `${r.game} ${r.name}` would indent it by one space against the rest.
@@ -729,7 +820,7 @@ async function main() {
   const game = games[0]
   // Issue creation intentionally requires approval. No operator can give it in
   // print mode, so persist the same report-only arguments that we dispatch.
-  const args = roundArgs(game, keys.get(game), headless)
+  const args = roundArgs(game, servers.get(game)?.key ?? null, headless)
   // A package that has never run a play-test tool has no `.context/`, and a
   // generated one is exactly that. It has always existed here by the time this runs
   // — `bin/playtest-replay --build` above writes under it — which is why the write
