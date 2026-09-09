@@ -728,19 +728,37 @@ function enabledMcpServers() {
   return [...new Set([...project, ...local])]
 }
 
-// The only two flags this script reads. An argument that starts with `--` and
-// isn't one of these used to vanish silently — `argv.filter` dropped it along
-// with every recognized flag before the game name was ever assembled, so a typo
+// The flags this script reads. An argument that starts with `--` and isn't
+// one of these used to vanish silently — `argv.filter` dropped it along with
+// every recognized flag before the game name was ever assembled, so a typo
 // like `--headles` ran an ordinary interactive preflight and exited 0, looking
-// exactly like the flag it misspelled.
+// exactly like the flag it misspelled. `-h`/`--help` is checked before this
+// list is ever consulted (see `main`), so it deliberately isn't a member —
+// adding it here would be dead, since a match short-circuits first.
 const KNOWN_FLAGS = ['--headless', '--all']
+const USAGE = 'usage: bin/playtest-preflight <Game> | --all   [--headless]'
+
+// The three example lines straight out of this file's own header comment
+// (lines 5-7 above), rather than a second hand-typed copy that could drift
+// from it the next time either is edited — the mistake `playtest-replay`'s
+// `usage()` (a `sed` over its own header) avoids the same way.
+function usageExamples() {
+  return fs.readFileSync(__filename, 'utf8').split('\n')
+    .filter((line) => line.startsWith('//   bin/playtest-preflight'))
+    .map((line) => line.replace(/^\/\/ /, ''))
+}
 
 async function main() {
   const argv = process.argv.slice(2)
+  if (argv.includes('--help') || argv.includes('-h')) {
+    console.log(USAGE)
+    usageExamples().forEach((line) => console.log(line))
+    process.exit(0)
+  }
   const unknownFlags = argv.filter((a) => a.startsWith('--') && !KNOWN_FLAGS.includes(a))
   if (unknownFlags.length) {
     console.error(`playtest-preflight: unknown flag ${unknownFlags.join(', ')}`)
-    console.error('usage: bin/playtest-preflight <Game> | --all   [--headless]')
+    console.error(USAGE)
     process.exit(2)
   }
   const headless = argv.includes('--headless')
@@ -753,7 +771,7 @@ async function main() {
     games = Object.values(cfg.mcpServers || {}).flatMap((s) => s.args || [])
   } else {
     if (!words) {
-      console.error('usage: bin/playtest-preflight <Game> | --all   [--headless]')
+      console.error(USAGE)
       process.exit(2)
     }
     const { game: product, products } = resolveGame(words)

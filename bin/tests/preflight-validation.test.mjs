@@ -158,3 +158,32 @@ test('--all keeps working after the flag check', (t) => {
   assert.match(okAll.stderr, /unknown flag.*--bogus/)
   assert.doesNotMatch(okAll.stderr, /unknown flag.*--all/)
 })
+
+test('--help prints usage to stdout and exits 0', (t) => {
+  const result = spawnSync(path.join(repo, 'bin/playtest-preflight'), ['--help'], {
+    cwd: repo, encoding: 'utf8', timeout: 20_000,
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /usage: bin\/playtest-preflight/)
+  assert.equal(result.stderr, '')
+})
+
+test('-h prints usage to stdout and exits 0, same as --help', (t) => {
+  const result = spawnSync(path.join(repo, 'bin/playtest-preflight'), ['-h'], {
+    cwd: repo, encoding: 'utf8', timeout: 20_000,
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /usage: bin\/playtest-preflight/)
+})
+
+test('--help wins even alongside another flag', (t) => {
+  const result = spawnSync(path.join(repo, 'bin/playtest-preflight'), ['--all', '--help'], {
+    cwd: repo, encoding: 'utf8', timeout: 20_000,
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /usage: bin\/playtest-preflight/)
+})
+
+// Coverage for "every other unknown flag still exits 2 naming it" already lives
+// in 'an unknown flag is rejected rather than silently dropped' above — same
+// shape, same assertions — so --help's arrival doesn't need a second copy of it.
