@@ -730,11 +730,10 @@ struct Dungeon: Game, GameMain {
             try handled()
         }
 
-        // The troll, fought with the house's blades. Strength 2 is the
+        // The troll, fought with anything marked as a weapon. Strength 2 is the
         // mainframe's `OSTRENGTH`.
         melee.villain(
             cellar.troll, key: "troll", strength: 2,
-            weapons: [house.sword, house.knife],
             prose: MeleeCombat.VillainProse(
                 miss: [Prose.trollMiss1, Prose.trollMiss2],
                 wound: [Prose.trollWound1, Prose.trollWound2],

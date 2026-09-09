@@ -30,7 +30,6 @@ extension TraitKey<Int> {
 /// var content: GameContents { melee }
 /// var rules: Rules {
 ///     melee.villain(troll, key: "troll", strength: 2,
-///                   weapons: [sword],
 ///                   prose: trollProse,
 ///                   onDefeat: { trollDefeated = true })
 /// }
@@ -260,6 +259,17 @@ public struct MeleeCombat: GameContent {
         }
     }
 
+    /// Picks the keenest weapon from an already stable candidate list. Equal
+    /// strengths retain the first item, so the player's ID-sorted inventory
+    /// supplies a deterministic tie break.
+    static func strongestWeapon(in candidates: [Item]) -> Item? {
+        candidates.reduce(nil) { best, item in
+            guard let best else { return item }
+            return item[default: .weaponStrength] > best[default: .weaponStrength]
+                ? item : best
+        }
+    }
+
     /// Whether an unengaged villain picks this turn to start something — the
     /// source's `F-FIRST?` branch, as a probability out of a hundred.
     ///
@@ -300,7 +310,8 @@ public struct MeleeCombat: GameContent {
     ///   - actor: the villain being attacked and tracked.
     ///   - key: ledger key storing this villain's health and stun.
     ///   - strength: starting health — clean hits needed to kill.
-    ///   - weapons: items that count as weapons against this villain.
+    ///   - weapons: an optional restriction on the `.weapon` items that count
+    ///     against this villain. Omit it to accept every trait-marked weapon.
     ///   - prose: per-outcome combat lines (miss, wound, knockout, death).
     ///   - onDefeat: host hook run at death, before the actor vanishes.
     /// - Returns: the `before(.attack)` rules driving the villain's combat.
@@ -309,27 +320,31 @@ public struct MeleeCombat: GameContent {
         _ actor: Actor,
         key: String,
         strength: Int,
-        weapons: [Item],
+        weapons: [Item]? = nil,
         prose: VillainProse,
         onDefeat: @escaping @Sendable () -> Void = {}
     ) -> Rules {
         let _ = Self.requireRotatingProse(prose.miss, named: "VillainProse.miss")
         let _ = Self.requireRotatingProse(prose.wound, named: "VillainProse.wound")
         actor.before(.attack) {
-            // Resolve the weapon: the named one must be real and in hand;
-            // otherwise the player's keenest held weapon serves.
+            // Resolve the weapon: `.weapon` is the source of truth, and the
+            // optional list only narrows it for a villain with a special
+            // vulnerability. Otherwise the player's keenest held weapon
+            // serves; inventory is ID-sorted, and retaining the first equal
+            // candidate makes ties deterministic too.
+            let eligible: @Sendable (Item) -> Bool = { item in
+                item[default: .weapon] && (weapons?.contains(item) ?? true)
+            }
             let weaponUsed: Item
             if let named = command.indirectObject {
-                guard weapons.contains(named) else {
+                guard eligible(named) else {
                     try refuse(text.notAWeapon(named.definiteNoun))
                 }
                 guard named.isHeld else {
                     try refuse(text.weaponNotHeld(named.definiteNoun))
                 }
                 weaponUsed = named
-            } else if let best = weapons.filter(\.isHeld)
-                .max(by: { $0[default: .weaponStrength] < $1[default: .weaponStrength] })
-            {
+            } else if let best = Self.strongestWeapon(in: player.inventory.filter(eligible)) {
                 weaponUsed = best
             } else {
                 try refuse(text.noWeapon(actor.definiteNoun))

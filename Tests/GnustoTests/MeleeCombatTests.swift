@@ -88,6 +88,40 @@ struct MeleeCombatTests {
         expectInOrder(transcript, ["You aren't holding the dull sword."])
     }
 
+    @Test func aTraitMarkedWeaponNeedsNoVillainList() async throws {
+        let transcript = try await play(
+            ArenaGame(),
+            ["take sword", "attack dummy with sword", "quit"],
+            seed: 9)
+        #expect(!transcript.contains("is no weapon"))
+        #expect(transcript.contains("Burlap tears."))
+    }
+
+    @Test func anExplicitListRestrictsTraitMarkedWeapons() async throws {
+        let transcript = try await play(
+            AmbushGame(),
+            ["take sabre", "attack bandit with sabre", "attack bandit", "quit"],
+            seed: 9)
+        expectInOrder(
+            transcript,
+            [
+                "The cavalry sabre is no weapon.",
+                "Bare hands won't do it. You need a weapon.",
+            ])
+    }
+
+    @Test func aBareAttackChoosesTheStrongestHeldWeapon() async throws {
+        let automatic = try await play(WeaponChoiceGame(), ["attack target", "quit"], seed: 0)
+        let keen = try await play(
+            WeaponChoiceGame(), ["attack target with keen blade", "quit"], seed: 0)
+        let clumsy = try await play(
+            WeaponChoiceGame(), ["attack target with clumsy blade", "quit"], seed: 0)
+
+        #expect(automatic.contains("The blade slices the straw."))
+        #expect(keen.contains("The blade slices the straw."))
+        #expect(clumsy.contains("The blade misses the straw."))
+    }
+
     @Test func threeWoundsBringTheDummyDown() async throws {
         // Seed 15: d-miss | wound d-wound | wound d-miss | DEATH.
         let transcript = try await play(

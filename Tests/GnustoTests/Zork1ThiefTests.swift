@@ -13,6 +13,24 @@ import Testing
 /// the seeds are final (the Phase 10.14 walkthrough closed the roadmap's planned
 /// one-time re-pin).
 struct Zork1ThiefTests {
+    @Test func theTrollsAxeIsAWeaponAgainstTheThief() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down", "north",
+                "west", "attack troll", "attack troll", "attack troll", "take axe",
+                "west", "west", "west", "up", "southwest", "east", "south", "southeast",
+                "odysseus", "up", "attack thief with axe",
+            ],
+            seed: 39)
+
+        let attack = turnOutput(of: "attack thief with axe", in: transcript)
+        #expect(!attack.contains("is no weapon"))
+        #expect(attack.contains("thief"))
+    }
+
     @Test func forcingTheEggOpenRuinsTheCanary() async throws {
         // Opening the jewel-encrusted egg by hand is fatal to the delicate
         // clockwork bird inside: the intact canary is swapped for a mangled
