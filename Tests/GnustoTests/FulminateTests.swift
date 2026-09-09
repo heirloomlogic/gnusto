@@ -888,14 +888,32 @@ struct FulminateTests {
         #expect(turn.contains("You are not going to be found standing on the furniture."))
         #expect(!turn.contains("since the streetcar"))
 
-        // And the yard rule keeps the bare verb, where both its arms are true.
+        // And the yard rule keeps the bare verb, once the knocked-flat window
+        // has passed — one turn further out than the blast itself, so both
+        // commands land after the fuse has cleared `knockedFlat`.
         let yard = try await play(
             Fulminate(),
-            ["south", "west"] + Array(repeating: "z", count: 7) + ["stand on wall", "stand"])
+            ["south", "west"] + Array(repeating: "z", count: 8) + ["stand on wall", "stand"])
         #expect(
             turnOutput(of: "stand on wall", in: yard)
                 .contains("You are not going to be found standing on"))
         #expect(turnOutput(of: "stand", in: yard).contains("put you on your back"))
+    }
+
+    /// #445 round 2, A6: the `directObject == nil` guard used to send `stand
+    /// on wall` straight to the stub during the one-turn `knockedFlat`
+    /// window, so a man face down on the grass right after the blast was
+    /// told "You are not going to be found standing on the garden wall." —
+    /// answering the furniture question and ignoring the more urgent fact
+    /// that he can't comply with any `stand` at all this turn. The
+    /// knocked-flat arm now answers first, regardless of the object.
+    @Test func knockedFlatAnswersStandOnXTooDuringItsOneTurnWindow() async throws {
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["stand on wall"])
+        let turn = turnOutput(of: "stand on wall", in: yard)
+        #expect(turn.contains("You get an elbow under you and stop there."))
+        #expect(!turn.contains("You are not going to be found standing on"))
     }
 
     /// **C10, as corrected.** The issue said `text.stubs.stand` was one string

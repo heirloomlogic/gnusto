@@ -1935,21 +1935,27 @@ struct Fulminate: Game, GameMain {
         // the evening. The stub says "and have been since the streetcar", which
         // is a claim about the whole evening, so the second arm outlives the
         // first — and reads the flag that outlives it.
-        // Both arms are about being upright, so both are answers to the bare
-        // verb. `stand on the armchair` names something to stand on and is the
-        // stub's question, not this one.
+        // The bare verb's second arm is about being upright, so it only
+        // answers `stand` and `stand up` — `stand on the armchair` names
+        // something to stand on and is the stub's question, not this one.
+        // The knocked-flat arm answers first and regardless of an object,
+        // though: a man face down in the grass can't comply with "stand on
+        // the wall" either, and that's the more urgent fact about the turn.
         world.before(.stand) {
-            guard command.directObject == nil, wasInTheYardForTheBlast else { return }
-            try reply(
-                knockedFlat
-                    ? """
+            guard wasInTheYardForTheBlast else { return }
+            if knockedFlat {
+                try reply(
+                    """
                     You get an elbow under you and stop there. Whatever went off has not finished with the evening yet,
                     and the grass is as good a place as any to find that out from.
-                    """
-                    : """
-                    You are upright. That was not true earlier this evening, when the carriage house put you on your
-                    back, and there is still grass in your cuff.
                     """)
+            }
+            guard command.directObject == nil else { return }
+            try reply(
+                """
+                You are upright. That was not true earlier this evening, when the carriage house put you on your
+                back, and there is still grass in your cuff.
+                """)
         }
 
         // The three flights the house has got. A staircase that answers CLIMB

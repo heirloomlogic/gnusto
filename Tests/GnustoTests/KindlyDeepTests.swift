@@ -210,7 +210,10 @@ struct KindlyDeepTests {
     /// the straw." The straw claims the verb itself now, in every spelling a
     /// player who has just read that paragraph would type.
     @Test func lyingDownOnTheStrawIsTheRest() async throws {
-        for command in ["lie down on straw", "lie on straw", "lie in straw", "lie"] {
+        for command in [
+            "lie down on straw", "lie down in straw", "lie on straw", "lie in straw", "lie down",
+            "lie",
+        ] {
             let transcript = try await play(KindlyDeep(), ["light lamp", "down", command])
             #expect(
                 turnOutput(of: command, in: transcript).contains("and lie down in the straw"),

@@ -72,4 +72,24 @@ struct DisambiguationTests {
         let brassTurn = turnOutput(of: "brass", in: transcript)
         #expect(!brassTurn.contains("Taken."))
     }
+
+    /// #445 round 2: the recipient-first GIVE row (`give <recipient>
+    /// <gift>`, no "to") lost the answer-insertion context on the recipient
+    /// half. `give door lamp` asks "Which do you mean" over the two doors,
+    /// but the raw scope error went unpositioned, so the clarifying question
+    /// carried an empty prefix/suffix and a one-word answer could not splice
+    /// back into the sentence — it parsed alone and failed. The `to` spelling
+    /// (`give lamp to door`) never had this bug, because that slot always ran
+    /// its error through `positioned(_:tokens:phraseStart:)`.
+    @Test func recipientFirstAmbiguityAnswerSplices() async throws {
+        let transcript = try await play(
+            DoorGiftGame(), ["give door lamp", "wooden"])
+        expectInOrder(
+            transcript,
+            [
+                "Which do you mean: the trap door or the wooden door?",
+                "You can't give the lamp to the wooden door.",
+            ])
+        #expect(!transcript.contains("isn't one I recognize"))
+    }
 }

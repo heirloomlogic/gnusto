@@ -668,7 +668,8 @@ struct StandardParser {
             switch resolve(Array(tokens[cursor..<split]), in: scope) {
             case .success(let id): recipient = id
             case .failure(let error):
-                firstFailure = firstFailure ?? error
+                firstFailure =
+                    firstFailure ?? positioned(error, tokens: tokens, phraseStart: cursor)
                 continue
             }
             let phrase = Array(tokens[split...])
