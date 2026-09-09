@@ -54,10 +54,18 @@ private struct LampRoomGame: Game {
         description("Sooty glass.")
     }
 
+    /// Something to take that is neither lamp, so a fresh TAKE typed while the
+    /// question is open has an object of its own.
+    let key = Item {
+        name("iron key")
+        description("A plain iron key.")
+    }
+
     var map: WorldMap {
         player.starts(in: lampRoom)
         brassLamp.starts(in: lampRoom)
         oilLamp.starts(in: lampRoom)
+        key.starts(in: lampRoom)
     }
 }
 
@@ -220,5 +228,18 @@ struct AgainAndOopsTests {
         #expect(turnOutput(of: "x lamp", in: transcript).contains("Which"))
         #expect(turnOutput(of: "bras", in: transcript).contains("I don't know the word \"bras\"."))
         #expect(turnOutput(of: "oops brass", in: transcript).contains("Tarnished brass."))
+    }
+
+    /// A *fresh command* typed while a question is open is mended as itself.
+    /// The line opens with a verb, so it was never an answer: it falls through
+    /// and is parsed as a new sentence, and that sentence — not the one it
+    /// would have made spliced into the question — is what OOPS mends.
+    @Test func oopsMendsAFreshCommandTypedWhileAQuestionIsOpen() async throws {
+        let transcript = try await play(LampRoomGame(), ["x lamp", "take keyy", "oops key"])
+        #expect(turnOutput(of: "x lamp", in: transcript).contains("Which"))
+        #expect(
+            turnOutput(of: "take keyy", in: transcript)
+                .contains("I don't know the word \"keyy\"."))
+        #expect(turnOutput(of: "oops key", in: transcript).contains("Taken."))
     }
 }

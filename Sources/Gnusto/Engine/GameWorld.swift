@@ -286,13 +286,36 @@ public actor GameWorld {
                     let result = freeReply(error.playerMessage(definition.text))
                     return (result, TurnAudit(unknownWords: unknownWords(in: tokens)))
                 }
-                mendable = augmented
+                // Only a line the player offered *as an answer* is mended in
+                // the spliced sentence. A line that changes the subject is
+                // about to be read as a fresh command, and a fresh command is
+                // mended as itself.
+                if readsAsAnswer(tokens) { mendable = augmented }
             }
         }
 
         return performLine(
             tokens: tokens, rawInput: input, scope: scope, correction: correction,
             mendable: mendable)
+    }
+
+    /// Whether a line typed while a clarifying question was open reads as an
+    /// answer to it rather than as the player changing the subject.
+    ///
+    /// A clarifying question asks which thing was meant, so its answer is a
+    /// noun phrase: `wooden`, `the brass one`. A line that opens with a verb or
+    /// a direction is a sentence in its own right, and the engine is about to
+    /// read it as one — which decides, in turn, the line a later OOPS mends.
+    /// Both readings fail the same way when the line holds a word the game has
+    /// never heard of (`woden`, `frotz`), so the shape of the line is what
+    /// tells them apart.
+    ///
+    /// - Parameter tokens: the line the player just typed, tokenized.
+    /// - Returns: whether it could only have been an answer.
+    private func readsAsAnswer(_ tokens: [String]) -> Bool {
+        guard let first = tokens.first else { return false }
+        return !definition.vocabulary.verbWords.contains(first)
+            && definition.vocabulary.directions[first] == nil
     }
 
     /// Every token of a line the game has never heard of.
