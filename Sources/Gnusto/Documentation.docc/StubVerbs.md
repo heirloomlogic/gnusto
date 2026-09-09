@@ -256,8 +256,8 @@ var verbs: [SyntaxRule] {
   second-object-only: `give lamp` asking *"What do you want to give the lamp
   to?"* beats a canned line.
 - A stub verb's prompts speak its rows' own leading words, and every stub in the
-  table leads with a word — so ``StubVerb`` has no `displayVerb:` column, where
-  ``CoreVerb`` does. That column is what ``Intent/examine`` uses so `x` asks
+  table leads with a word — so `StubVerb` has no `displayVerb:` column, where
+  `CoreVerb` does. That column is what ``Intent/examine`` uses so `x` asks
   *"What do you want to examine?"* rather than *"What do you want to x?"*, and
   `everyPromptSpeaksAWord` walks the whole shipped table and is what would say
   the day a stub needed one.

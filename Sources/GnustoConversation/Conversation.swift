@@ -435,7 +435,7 @@ public struct Conversation: GameContent {
     /// `hi`, on the grounds that the engine left them to a conversation system;
     /// the engine ships them now (#445), and every spelling of a greeting —
     /// bare, with an object, and `say hello to <object>` — is a built-in row
-    /// reaching ``Intent/greet``.
+    /// reaching `Intent.greet`.
     ///
     /// `talk` is not here because it is the engine's: `Intent.talk` is
     /// a stub verb every game has, and ``actions`` promotes it — silently, as

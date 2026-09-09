@@ -56,7 +56,7 @@
 ///
 /// Left off, each row asks in its own leading words, which is right wherever
 /// they are words: `["haggle", "over", .directObject]` asks what you want to
-/// haggle over. See ``SyntaxRule/displayVerb``.
+/// haggle over. See `SyntaxRule.displayVerb`.
 @freestanding(declaration, names: arbitrary)
 public macro verb(
     _ intentName: String, _ patterns: [SyntaxElement]..., displayVerb: String? = nil

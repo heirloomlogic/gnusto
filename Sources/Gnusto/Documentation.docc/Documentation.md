@@ -173,7 +173,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 
 - <doc:AddingCustomVerbs>
 - <doc:StubVerbs>
-- ``verb(_:_:)``
+- ``verb(_:_:displayVerb:)``
 - ``SyntaxRule``
 - ``SyntaxElement``
 - ``IntentAction``

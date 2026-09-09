@@ -137,7 +137,7 @@ public struct SyntaxRule: Sendable {
     ///   - elements: the pattern of literal words and slots.
     ///   - intent: the intent a match produces.
     ///   - displayVerb: what a prompt about this row calls the verb, where the
-    ///     row's own leading words are an abbreviation — see ``displayVerb``.
+    ///     row's own leading words are an abbreviation — see `displayVerb`.
     public init(_ elements: SyntaxElement..., intent: Intent, displayVerb: String? = nil) {
         self.init(elements, intent: intent, displayVerb: displayVerb)
     }
