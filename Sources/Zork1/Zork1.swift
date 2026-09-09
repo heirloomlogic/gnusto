@@ -852,7 +852,7 @@ struct Zork1: Game, GameMain {
             thief.thief, named: "thiefSteals",
             candidates: treasureRoster,
             chancePerTurn: 30,
-            announcement: { Prose.thiefSteals($0) })
+            announcement: Prose.thiefSteals)
 
         // In his lair he ferries his takings into the hoard: a draw-free
         // deposit of everything he carries (bar the stiletto he keeps to hand)

@@ -195,7 +195,7 @@ var timers: [TimedEvent] {
                  rooms: [cellar, gallery, studio])
     actors.steals(thief, named: "thiefSteals",
                   candidates: [painting],
-                  announcement: { "A feather-light touch — and the \($0) is gone." })
+                  announcement: .naming { "A feather-light touch — and \($0) is gone." })
 }
 ```
 

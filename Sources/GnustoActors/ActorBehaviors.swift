@@ -155,7 +155,9 @@ public struct ActorBehaviors: GamePlugin {
 
     /// A daemon that, when `actor` shares the player's room, rolls
     /// `chancePerTurn` and moves one random *reachable* item from `candidates`
-    /// into the actor's inventory, announcing it with the stolen item's name.
+    /// into the actor's inventory, announcing it with the stolen item's
+    /// rendered name — "the silver chalice", "Ozymandias" — so the line writes
+    /// no article of its own.
     /// Like the original's thief, the actor lifts a candidate from wherever it
     /// lies in the shared room: out of the player's hands, off the floor, or
     /// from inside anything open — a sack, a trophy case, a table top — to any
@@ -168,14 +170,15 @@ public struct ActorBehaviors: GamePlugin {
     ///   - name: the daemon's global timer name.
     ///   - candidates: the items eligible to be stolen.
     ///   - percent: per-turn chance of a theft, while sharing the room.
-    ///   - announcement: builds the theft line from the stolen item's name.
+    ///   - announcement: the theft line, given the stolen item as a
+    ///     ``GameText/Noun`` — `.naming { "You suddenly notice that \($0) vanished." }`.
     /// - Returns: the theft daemon, for the host's `timers` block.
     public func steals(
         _ actor: Actor,
         named name: String,
         candidates: [Item],
         chancePerTurn percent: Int = 30,
-        announcement: @escaping @Sendable (String) -> String
+        announcement: GameText.Line<GameText.Noun>
     ) -> TimedEvent {
         daemon(name, autostart: true) {
             // Guards before any draw, so absent actors burn no randomness.
@@ -197,10 +200,12 @@ public struct ActorBehaviors: GamePlugin {
             guard !reachable.isEmpty else { return }
             guard chance(percent) else { return }
             let loot = reachable[random(0...reachable.count - 1)]
-            let name = loot.name
+            // Rendered before the move: the line is about the thing as the
+            // player last saw it, not as the thief's pocket now holds it.
+            let noun = loot.definiteNoun
             loot.move(heldBy: actor)
             if player.location.isLit {
-                say(announcement(name))
+                say(announcement(noun))
             }
         }
     }

@@ -89,8 +89,8 @@ extension Prose {
         to be gracious about it.
         """
 
-    static func thiefSteals(_ name: String) -> String {
-        "You suddenly notice that the \(name) vanished."
+    static let thiefSteals: GameText.Line<GameText.Noun> = .naming {
+        "You suddenly notice that \($0) vanished."
     }
 
     // MARK: - His weapon

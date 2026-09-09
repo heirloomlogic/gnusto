@@ -62,7 +62,7 @@ struct Gallery: Game {
             named: "thief.steal",
             candidates: [painting],
             chancePerTurn: 30,
-            announcement: { "A hand you never see relieves you of the \($0)." })
+            announcement: .naming { "A hand you never see relieves you of \($0)." })
     }
 
     var rules: Rules {

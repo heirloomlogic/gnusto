@@ -1,3 +1,5 @@
+import Gnusto
+
 /// Original Zork I prose for the cellar region (``ZorkCellar``): East of Chasm,
 /// the Gallery and its painting, the Studio and its chimney, the Troll Room,
 /// and the two villains who work the region — the troll and the thief. These
@@ -162,8 +164,8 @@ extension Prose {
     static let thiefArrives = "A shadowy figure slips into the room."
     static let thiefLeaves = "The shadowy figure melts away into the dark."
 
-    static func thiefSteals(_ name: String) -> String {
-        "You suddenly notice that the \(name) vanished."
+    static let thiefSteals: GameText.Line<GameText.Noun> = .naming {
+        "You suddenly notice that \($0) vanished."
     }
 
     static let trapDoorBarred = """

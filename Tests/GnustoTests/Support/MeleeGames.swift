@@ -486,6 +486,6 @@ struct CutpurseGame: Game {
             named: "melee.cutpurse.steals",
             candidates: [chalice, pearl, comb, seal],
             chancePerTurn: 100,
-            announcement: { "He lifts the \($0) clean out of your hand." })
+            announcement: .naming { "He lifts \($0) clean out of your hand." })
     }
 }

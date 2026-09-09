@@ -285,7 +285,7 @@ extension Dungeon {
             thief.thief, named: "thief.steals",
             candidates: treasureRoster,
             chancePerTurn: 30,
-            announcement: { Prose.thiefSteals($0) })
+            announcement: Prose.thiefSteals)
 
         // In the lair he unloads: everything he is carrying goes onto the floor
         // of the Treasure Room, bar the blade he keeps to hand. No draw — the
