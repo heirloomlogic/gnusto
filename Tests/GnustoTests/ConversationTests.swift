@@ -78,6 +78,14 @@ struct ConversationTests {
         #expect(transcript.contains("You can only talk to something animate."))
     }
 
+    /// The two refusals are stock lines, so a sweep can name them the way it
+    /// names the engine's own — by the line, not by its words.
+    @Test func theRefusalsAreStockLinesASweepCanName() async throws {
+        let transcript = try await play(Manor(), ["ask maid about zeppelins", "tell butler about tea"])
+        expectNoStockRefusal(
+            transcript, [Conversation.Text().cantTalkTo, Conversation.Text().cantTalkToSelf])
+    }
+
     // MARK: - Which intent
 
     @Test func anOnlyTellRowIgnoresAsk() async throws {
@@ -790,7 +798,7 @@ struct ReactionAfterTable: Game {
         talk.topics(of: porter) {
             topic("murder", reply: "The porter knows about the murder.")
         }
-        behaviors.reaction(of: porter, to: [.ask], reply: "The porter grunts.")
+        behaviors.reaction(of: porter, for: [.ask], reply: "The porter grunts.")
     }
 
     var map: WorldMap {
@@ -821,7 +829,7 @@ struct ReactionBeforeTable: Game {
     var content: GameContents { talk }
 
     var rules: Rules {
-        behaviors.reaction(of: porter, to: [.ask], reply: "The porter grunts.")
+        behaviors.reaction(of: porter, for: [.ask], reply: "The porter grunts.")
         talk.topics(of: porter) {
             topic("murder", reply: "The porter knows about the murder.")
         }

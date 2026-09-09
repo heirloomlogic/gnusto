@@ -1263,13 +1263,13 @@ struct KindlyDeep: Game, GameMain {
 
         // Canned reactions with the mule (§7).
         actors.reaction(
-            of: biscuit, to: [.talk],
+            of: biscuit, for: [.talk],
             reply: """
                 You tell him how it stands: the fall, the door, the shaft. He listens the way he always does — one
                 ear on you, one on the roof — and when you finish he breathes warm air down your collar, which is as
                 close as he comes to signing off on a plan.
                 """)
-        actors.reaction(of: biscuit, to: [.pet], reply: Self.theScratch)
+        actors.reaction(of: biscuit, for: [.pet], reply: Self.theScratch)
 
         // He is a mule. The stock actor-directed stub has no way to know that,
         // so it called him a person and declined to eat him on those grounds.

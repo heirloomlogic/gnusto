@@ -217,7 +217,7 @@ public struct ActorBehaviors: GamePlugin {
     @RuleBuilder
     public func reaction(
         of actor: Actor,
-        to intents: [Intent],
+        for intents: [Intent],
         reply text: String
     ) -> Rules {
         for intent in intents {

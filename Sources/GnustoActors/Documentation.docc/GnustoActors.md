@@ -14,7 +14,7 @@ no entities, no `@Global`, no saved state. An actor's position *is* his
 placement, which the engine already saves. So the plugin is never listed in
 `content`; it is stored as a plain property, and the host splices the return
 values into its own blocks. The three daemon factories return a `TimedEvent` for
-the `timers` block; ``ActorBehaviors/reaction(of:to:reply:)`` returns `Rules` for
+the `timers` block; ``ActorBehaviors/reaction(of:for:reply:)`` returns `Rules` for
 the `rules` block. Everything they act on — the actor, the room set, the loot,
 the prose — is handed in by the host.
 
@@ -66,7 +66,7 @@ struct Gallery: Game {
     }
 
     var rules: Rules {
-        actors.reaction(of: thief, to: [.give, .attack], reply: "The figure is not there when you reach it.")
+        actors.reaction(of: thief, for: [.give, .attack], reply: "The figure is not there when you reach it.")
     }
 
     var map: WorldMap { … }
@@ -139,4 +139,4 @@ treasure roster, and fighting back only in his own lair.
 
 ### Answering the player
 
-- ``ActorBehaviors/reaction(of:to:reply:)``
+- ``ActorBehaviors/reaction(of:for:reply:)``

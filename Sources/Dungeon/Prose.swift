@@ -37,7 +37,7 @@ enum Prose {
     /// The grue's two lines, as the plugin takes them.
     static let grueText: DangerousDark.Text = {
         var text = DangerousDark.Text()
-        text.warning = grueWarning
+        text.warning = .init(grueWarning)
         text.death = grueDeath
         return text
     }()

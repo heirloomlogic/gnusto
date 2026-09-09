@@ -213,7 +213,7 @@ struct PickpocketGame: Game {
 
     var rules: Rules {
         behaviors.reaction(
-            of: thief, to: [Intent("hail")],
+            of: thief, for: [Intent("hail")],
             reply: "He nods, warily.")
         world.before(Intent("accuse")) {
             let haul = thief.inventory.map(\.name).joined(separator: ", ")

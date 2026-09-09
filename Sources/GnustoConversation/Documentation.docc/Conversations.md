@@ -368,7 +368,7 @@ thing and looks away says more about the house than "shows no interest" does.
 A table registers before rules on its actor, so it takes an ordinary place in the
 precedence: world, then location, then item and actor `before` rules, then the
 game's `actions` row, then the engine's default. Within one actor, declaration
-order decides. `GnustoActors`' `reaction(of:to:reply:)` is this one level cruder,
+order decides. `GnustoActors`' `reaction(of:for:reply:)` is this one level cruder,
 being a before rule that always says the same thing, so a reaction declared after
 a table becomes its catch-all and one declared before shadows the table entirely.
 

@@ -56,7 +56,8 @@ public struct DangerousDark: GameContent {
         /// there, the dark-room line is the threat) reads it a single time on
         /// the turn it walks into the dark. Two different sentences are two
         /// different sentences, and both print.
-        public var warning = "The darkness is absolute, and something in it is breathing."
+        public var warning: GameText.Line<GameText.Nothing> =
+            "The darkness is absolute, and something in it is breathing."
         /// The `die(_:)` message, handed the **vehicle the player was aboard**
         /// — or nothing, when they were on their own feet. Write it with
         /// `.naming(orBare:)`; see ``DangerousDark/timers`` for why it takes a
@@ -118,7 +119,7 @@ public struct DangerousDark: GameContent {
             }
             darkTurns += 1
             if darkTurns == 1 {
-                sayOnceThisTurn(text.warning)
+                sayOnceThisTurn(text.warning())
             } else if darkTurns >= graceTurns + 2, chance(lethality) {
                 // `<FSET? <LOC ,WINNER> ,VEHBIT>`.
                 try die(text.death(player.vehicle?.definiteNoun))

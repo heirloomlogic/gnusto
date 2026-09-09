@@ -46,7 +46,7 @@ extension Intent {
 /// }
 /// ```
 ///
-/// **Composing with `GnustoActors`.** `reaction(of:to:reply:)` is this one
+/// **Composing with `GnustoActors`.** `reaction(of:for:reply:)` is this one
 /// level cruder — a before-rule that always says the same thing — and this
 /// subsumes it. Both are before-rules on the same actor, so declaration order
 /// decides: put a `reaction` *after* a `topics` table and it becomes the
@@ -91,9 +91,10 @@ public struct Conversation: GameContent {
             "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say about that."
         }
         /// The refusal for trying to talk to something inanimate.
-        public var cantTalkTo = "You can only talk to something animate."
+        public var cantTalkTo: GameText.Line<GameText.Nothing> =
+            "You can only talk to something animate."
         /// The refusal for addressing yourself.
-        public var cantTalkToSelf = "You keep your own counsel."
+        public var cantTalkToSelf: GameText.Line<GameText.Nothing> = "You keep your own counsel."
         /// What an actor says about a thing shown to them that no `shows(_:to:)`
         /// row covers.
         public var noInterest: GameText.Line<GameText.Noun> = .naming {
@@ -481,7 +482,7 @@ public struct Conversation: GameContent {
     /// - Parameter addressee: the entity the command named.
     /// - Throws: the refusal, when the addressee is the player or inanimate.
     private func requireSomebodyElse(_ addressee: Item) throws {
-        try require(!addressee.isPlayer, else: text.cantTalkToSelf)
-        try require(addressee.isActor, else: text.cantTalkTo)
+        try require(!addressee.isPlayer, else: text.cantTalkToSelf())
+        try require(addressee.isActor, else: text.cantTalkTo())
     }
 }
