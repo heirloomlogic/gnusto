@@ -33,6 +33,34 @@ private struct StudyGame: Game {
     }
 }
 
+/// Two lamps of different metals — the smallest world in which the parser has
+/// to ask which one, and the player can mistype the answer.
+private struct LampRoomGame: Game {
+    let title = "Lamp Room"
+    let intro = "Two lamps on a shelf."
+
+    let lampRoom = Location {
+        name("Lamp Room")
+        description("Shelves of lamps.")
+    }
+
+    let brassLamp = Item {
+        name("brass lamp")
+        description("Tarnished brass.")
+    }
+
+    let oilLamp = Item {
+        name("oil lamp")
+        description("Sooty glass.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: lampRoom)
+        brassLamp.starts(in: lampRoom)
+        oilLamp.starts(in: lampRoom)
+    }
+}
+
 struct AgainAndOopsTests {
     // MARK: - AGAIN
 
@@ -171,5 +199,26 @@ struct AgainAndOopsTests {
         let transcript = try await play(StudyGame(), ["take lampp", "look", "oops lamp"])
         #expect(
             turnOutput(of: "oops lamp", in: transcript).contains("There's nothing to correct."))
+    }
+
+    /// Asking *which* word is a question, not a spend: the line the engine
+    /// just offered to mend has to still be there on the next one, or the
+    /// question it asked was one the player could not answer.
+    @Test func bareOopsKeepsTheWordItAskedAbout() async throws {
+        let transcript = try await play(StudyGame(), ["take lampp", "oops", "oops lamp"])
+        #expect(
+            turnOutput(of: "oops", in: transcript)
+                .contains("You'll have to say which word you meant."))
+        #expect(turnOutput(of: "oops lamp", in: transcript).contains("Taken."))
+    }
+
+    /// A typo *in the answer to a question* is mended in the whole line the
+    /// answer was spliced into, not in the answer alone: `oops brass` after a
+    /// mistyped answer to "Which lamp?" runs `x brass`, not `brass`.
+    @Test func oopsMendsATypoInAnAnswerAgainstTheWholeLine() async throws {
+        let transcript = try await play(LampRoomGame(), ["x lamp", "bras", "oops brass"])
+        #expect(turnOutput(of: "x lamp", in: transcript).contains("Which"))
+        #expect(turnOutput(of: "bras", in: transcript).contains("I don't know the word \"bras\"."))
+        #expect(turnOutput(of: "oops brass", in: transcript).contains("Tarnished brass."))
     }
 }

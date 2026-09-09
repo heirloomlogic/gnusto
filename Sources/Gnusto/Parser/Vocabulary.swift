@@ -270,7 +270,12 @@ struct Vocabulary: Sendable {
     }
 
     /// Called once at bootstrap, after all words are registered.
+    ///
+    /// Every set it fills is *reassigned* rather than added to, so calling it a
+    /// second time answers for the lexicons as they stand rather than for their
+    /// union with whatever they used to hold.
     mutating func finalize() {
+        itemNouns = []
         allKnownWords =
             verbWords
             .union(directions.keys)

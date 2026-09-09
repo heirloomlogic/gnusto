@@ -1479,13 +1479,20 @@ struct StandardParser {
     /// The second pass both naming reaches make: judge the phrase over everyone
     /// it could possibly have meant, and answer only from those within reach.
     ///
-    /// **Calling somebody out of sight answers a *name*, never a description.**
+    /// **Calling somebody out of sight answers only an unambiguous phrase.**
     /// A phrase that picks out several people the player cannot see has named
     /// nobody, and listing them would hand over a cast they have not met —
     /// `follow man` in an empty hall must not enumerate everyone in the house.
     /// Which is why the two sets are separate: judging over `reach` alone, one
-    /// man next door out of three in the house would stop being a description
-    /// and start being his name. (#332)
+    /// man next door out of three in the house would stop being ambiguous and
+    /// start being an answer. (#332)
+    ///
+    /// The phrase itself may be a description rather than a name — ``matches``
+    /// falls back to one when nothing answers as a name (#445), so `follow
+    /// tall` can reach the one tall man next door. That costs the player
+    /// nothing they could not already have had: the two guards below are about
+    /// *how many* people a phrase picks out and *where they stand*, not about
+    /// how it picked them.
     ///
     /// - Parameters:
     ///   - tokens: the noun phrase.

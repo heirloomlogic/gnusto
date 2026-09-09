@@ -299,6 +299,39 @@ struct ContainerTests {
             ])
     }
 
+    /// An item authored open *and* locked at once — `startsOpen` with a
+    /// `lockedBy` key and no `startsUnlocked` — is already locked, and says so.
+    /// The lid guard #445 added is about a lock that would shoot home around an
+    /// open lid, and nothing shoots home here: telling the player to close it
+    /// first would be a lie about a lock that is already turned.
+    @Test func lockingSomethingOpenAndAlreadyLockedSaysItIsLocked() async throws {
+        struct StuckGame: Game {
+            let title = "Stuck"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let chest = Item {
+                name("banded chest")
+                container
+                openable
+                startsOpen
+            }
+            let key = Item { name("iron key") }
+            var map: WorldMap {
+                player.starts(in: room)
+                chest.starts(in: room)
+                chest.lockedBy(key)
+                key.startsHeld
+            }
+        }
+        let transcript = try await play(StuckGame(), ["lock chest with key"])
+        #expect(
+            turnOutput(of: "lock chest with key", in: transcript)
+                .contains("That's already locked."))
+    }
+
     @Test func moveInsideValidatesContainer() async throws {
         struct MoveGame: Game {
             let title = "Move"

@@ -241,8 +241,9 @@ public actor GameWorld {
         // OOPS rewrites the line just typed and nothing older, so every line
         // spends the context — a prompt answer included, since that is not a
         // command at all. Taken and cleared here, once, rather than in each of
-        // the branches below; the one branch that records a *fresh* one
-        // records it after.
+        // the branches below; the branch that records a *fresh* one records it
+        // after, and the bare OOPS that only asks which word puts this one
+        // back.
         let correction = pendingCorrection
         pendingCorrection = nil
 
@@ -259,6 +260,12 @@ public actor GameWorld {
         // line to the same parser.
         let scope = currentScope()
         let tokens = parser.tokenize(input)
+
+        // The line a later OOPS should mend, when that is not the line as
+        // typed. A line offered in answer to a question stands for the whole
+        // spliced sentence, so a typo in it is mended there: the answer alone
+        // — `wooden` — is not a sentence the parser could ever run.
+        var mendable: [String]?
 
         if let pending = pendingClarification {
             pendingClarification = nil
@@ -279,10 +286,13 @@ public actor GameWorld {
                     let result = freeReply(error.playerMessage(definition.text))
                     return (result, TurnAudit(unknownWords: unknownWords(in: tokens)))
                 }
+                mendable = augmented
             }
         }
 
-        return performLine(tokens: tokens, rawInput: input, scope: scope, correction: correction)
+        return performLine(
+            tokens: tokens, rawInput: input, scope: scope, correction: correction,
+            mendable: mendable)
     }
 
     /// Every token of a line the game has never heard of.
@@ -306,18 +316,24 @@ public actor GameWorld {
     ///   - rawInput: the line as it will ride on the command.
     ///   - scope: what the player can name, walked once for the whole line.
     ///   - correction: the OOPS context this line may spend, if it is an OOPS.
+    ///   - mendable: the line a later OOPS should mend, when that is not this
+    ///     one — an answer to a question is mended in its spliced sentence.
     /// - Returns: the turn's output and status, and the parse record.
     private func performLine(
-        tokens: [String], rawInput: String, scope: Scope, correction: Correction? = nil
+        tokens: [String], rawInput: String, scope: Scope, correction: Correction? = nil,
+        mendable: [String]? = nil
     ) -> (result: TurnResult, audit: TurnAudit) {
         let unknown = unknownWords(in: tokens)
         switch parser.parse(tokens: tokens, rawInput: rawInput, scope: scope) {
         case .failure(let error):
             // A word the game has never heard of is the one failure OOPS can
             // mend, so that line — and where in it the word stood — is kept
-            // for exactly one turn.
-            if case .unknownWord(let word) = error, let index = tokens.firstIndex(of: word) {
-                pendingCorrection = (tokens: tokens, index: index)
+            // for exactly one turn. The word can only stand in the part the
+            // player just typed, so looking for it in the spliced line finds
+            // the same one.
+            let line = mendable ?? tokens
+            if case .unknownWord(let word) = error, let index = line.firstIndex(of: word) {
+                pendingCorrection = (tokens: line, index: index)
             }
             pendingClarification = error.clarification
             let result = freeReply(error.playerMessage(definition.text))
@@ -384,6 +400,9 @@ public actor GameWorld {
     private func performOops(_ parsed: ParsedCommand, correction: Correction?) -> Rewrite {
         guard let correction else { return .refusal(definition.text.nothingToCorrect()) }
         guard let replacement = parsed.topic, !replacement.isEmpty else {
+            // Asking which word the player meant is a question, not a spend:
+            // put the context back, or the next line cannot answer it.
+            pendingCorrection = correction
             return .refusal(definition.text.oopsNeedsAWord())
         }
         var tokens = correction.tokens
