@@ -348,7 +348,6 @@ struct DungeonHouse: GameContent {
         firstSight(Prose.brickInPlace)
         description(Prose.brick)
         container
-        startsOpen
         trait(.weight, 9)
         trait(.burnable, true)
     }

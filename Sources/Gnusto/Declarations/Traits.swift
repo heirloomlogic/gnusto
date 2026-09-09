@@ -547,7 +547,8 @@ public let openable = ItemTrait(kind: .openable)
 /// "knock on the bench" without the game listing its doors by hand.
 public let door = ItemTrait(kind: .door)
 
-/// An `openable` item begins the game open rather than closed.
+/// An `openable` item begins the game open rather than closed. The bootstrap
+/// warns when this is declared without ``openable``, where it has no effect.
 public let startsOpen = ItemTrait(kind: .startsOpen)
 
 /// A container's contents are visible even while it is closed (but still not
@@ -560,7 +561,8 @@ public let transparent = ItemTrait(kind: .transparent)
 public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
 
 /// The maximum number of items that may be placed directly inside a container
-/// (enforced by the put-in action).
+/// (enforced by the put-in action). The bootstrap warns when it is declared on
+/// a non-container, where it has no effect.
 ///
 /// - Parameter n: the maximum number of items.
 /// - Returns: the capacity trait.

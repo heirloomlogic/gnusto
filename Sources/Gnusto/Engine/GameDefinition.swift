@@ -24,14 +24,22 @@ struct LocationDefinition: Sendable {
     var isAlwaysDescribed = false
     var customTraits: [String: StateValue] = [:]
 
-    init(traits: [LocationTrait]) {
+    init(traits: [LocationTrait], onDuplicate: (String) -> Void = { _ in }) {
         for trait in traits {
             switch trait.kind {
-            case .name(let text): name = text
-            case .description(let text): description = text
+            case .name(let text):
+                if name != nil { onDuplicate("name(…)") }
+                name = text
+            case .description(let text):
+                if description != nil { onDuplicate("description(…)") }
+                description = text
             case .dark: inherentlyLit = false
             case .alwaysDescribed: isAlwaysDescribed = true
-            case .custom(let key, let value): customTraits[key] = value
+            case .custom(let key, let value):
+                if customTraits[key] != nil {
+                    onDuplicate("custom trait \"\(key)\"")
+                }
+                customTraits[key] = value
             }
         }
     }
@@ -121,19 +129,35 @@ struct ItemDefinition: Sendable {
     /// Items are takable unless they're scenery — or people.
     var isTakable: Bool { !isScenery && !isActor }
 
-    init(traits: [ItemTrait]) {
+    init(traits: [ItemTrait], onDuplicate: (String) -> Void = { _ in }) {
         for trait in traits {
             switch trait.kind {
-            case .name(let text): name = text
-            case .description(let text): description = text
-            case .twoStateDescription(let pair): twoStateDescription = pair
+            case .name(let text):
+                if name != nil { onDuplicate("name(…)") }
+                name = text
+            case .description(let text):
+                if description != nil { onDuplicate("description(…)") }
+                description = text
+            case .twoStateDescription(let pair):
+                if twoStateDescription != nil {
+                    onDuplicate("description(when:_:otherwise:)")
+                }
+                twoStateDescription = pair
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .properName: isProperName = true
             case .plural: isPlural = true
-            case .pronoun(let word): pronoun = word
-            case .firstSight(let text): firstSight = text
-            case .twoStateFirstSight(let pair): twoStateFirstSight = pair
+            case .pronoun(let word):
+                if pronoun != nil { onDuplicate("pronoun(…)") }
+                pronoun = word
+            case .firstSight(let text):
+                if firstSight != nil { onDuplicate("firstSight(…)") }
+                firstSight = text
+            case .twoStateFirstSight(let pair):
+                if twoStateFirstSight != nil {
+                    onDuplicate("firstSight(when:_:otherwise:)")
+                }
+                twoStateFirstSight = pair
             case .wearable: isWearable = true
             case .scenery: isScenery = true
             case .surface: isSurface = true
@@ -143,14 +167,20 @@ struct ItemDefinition: Sendable {
             case .startsOpen: startsOpen = true
             case .transparent: isTransparent = true
             case .startsUnlocked: startsUnlocked = true
-            case .capacity(let n): capacity = n
+            case .capacity(let n):
+                if capacity != nil { onDuplicate("capacity(…)") }
+                capacity = n
             case .hidden: isHidden = true
             case .lightSource: isLightSource = true
             case .startsLit: startsLit = true
             case .enterable: isEnterable = true
             case .takesOrders: takesOrders = true
             case .alwaysListed: isAlwaysListed = true
-            case .custom(let key, let value): customTraits[key] = value
+            case .custom(let key, let value):
+                if customTraits[key] != nil {
+                    onDuplicate("custom trait \"\(key)\"")
+                }
+                customTraits[key] = value
             }
         }
     }

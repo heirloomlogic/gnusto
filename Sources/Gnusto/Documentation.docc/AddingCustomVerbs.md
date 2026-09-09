@@ -125,7 +125,10 @@ One verb this does not apply to. An **engine stub** — `squeeze`, `dig`, `climb
 
 ## Shape the pattern
 
-A pattern reads the way it's typed. Some shapes, from the standard table and beyond:
+A pattern reads the way it's typed. Each literal is one lowercase alphanumeric
+token; write a phrase as several literals (`["look", "under", …]`). `#verb`
+rejects malformed literals at compile time, and bootstrap applies the same rule
+to a hand-built `SyntaxRule`. Some shapes, from the standard table and beyond:
 
 | Pattern | Player types | Command gets |
 |---|---|---|

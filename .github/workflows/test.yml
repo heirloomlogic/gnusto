@@ -121,6 +121,10 @@ jobs:
       - name: Test (Debug)
         run: swift test --build-system swiftbuild --disable-experimental-prebuilts
 
+      # The warning must survive importing Gnusto from an author module.
+      - name: Entity interpolation diagnostics
+        run: bin/tests/entity-interpolation.sh "$(swift build --build-system swiftbuild --show-bin-path)"
+
       # The play-test server is a package trait, on by default, and this is the
       # one place the other configuration is compiled. Without it the whole
       # `Sources/Gnusto/Playtest/` directory drops out, so anything on the

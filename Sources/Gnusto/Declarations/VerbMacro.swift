@@ -26,7 +26,8 @@
 /// Each pattern is a complete row: literal words the player types plus
 /// `.directObject` / `.indirectObject` / `.direction` / `.topic` slots. Patterns are
 /// validated at compile time with the same rules the bootstrap applies to
-/// hand-built rows.
+/// hand-built rows. Each literal is one lowercase alphanumeric token; write
+/// multiword phrases as separate literals (`["look", "under", .directObject]`).
 ///
 /// The rows still need to reach the parser: list the intents in a `verbs`
 /// block, which splices everything they carry. (List several as one array —

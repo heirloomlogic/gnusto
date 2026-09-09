@@ -51,6 +51,7 @@ enum Bootstrap {
         var items: [EntityID: ItemDefinition] = [:]
         var globals: [EntityID: GlobalDefinition] = [:]
         var declaredBy: [EntityID: String] = [:]
+        var duplicateDeclarations: [EntityID: [String]] = [:]
 
         // The game's content bundles, read once so every phase below sees the
         // same bundle instances — and therefore the same reference tokens the
@@ -82,11 +83,48 @@ enum Bootstrap {
         // exactly what decides whether its declarations were registered. Only the
         // game is walked: `content` is a `Game`'s block, so a bundle held by
         // another bundle has no way to be listed and is a deliberate injection.
-        for child in Mirror(reflecting: game).children {
+        let gameChildren = Array(Mirror(reflecting: game).children)
+        for child in gameChildren {
             guard let label = child.label, let bundle = child.value as? any GameContent,
                 !listedNamespaces.contains(bundle.namespace)
             else { continue }
             diagnostics.append(Self.unlistedBundle(label, "\(type(of: bundle))"))
+        }
+
+        // A logic-only plugin is stored so the host can splice its factories,
+        // but its declarations have no namespace and are never registered.
+        // Catch them in the same host-property walk that discovers plugins for
+        // status fields, before their first live read can trap mid-turn.
+        let plugins = gameChildren.compactMap { child -> (property: String, plugin: any GamePlugin)? in
+            guard let property = child.label, let plugin = child.value as? any GamePlugin,
+                !(child.value is any GameContent)
+            else { return nil }
+            return (property, plugin)
+        }
+        for (property, plugin) in plugins {
+            let owner = "\(type(of: plugin))"
+            let pluginDeclarations = Mirror(reflecting: plugin).children.compactMap {
+                pluginChild -> (name: String, value: Any)? in
+                guard var declaration = pluginChild.label else { return nil }
+                if declaration.hasPrefix("_") { declaration.removeFirst() }
+                return (declaration, pluginChild.value)
+            }.sorted(by: { $0.name < $1.name })
+            for (declaration, value) in pluginDeclarations {
+                let kind: (type: String, plural: String)?
+                switch value {
+                case is AnyGlobal: kind = ("@Global", "global state")
+                case is Location: kind = ("Location", "locations")
+                case is Item: kind = ("Item", "items")
+                case is Actor: kind = ("Actor", "actors")
+                default: kind = nil
+                }
+                if let kind {
+                    diagnostics.append(
+                        "plugin \"\(property)\" (\(owner)) stores \(kind.type) "
+                            + "\"\(declaration)\"; a GamePlugin cannot declare \(kind.plural). "
+                            + "Use a GameContent bundle instead.")
+                }
+            }
         }
 
         // Phase 1 — discover stored declarations by reflection, over the game
@@ -136,7 +174,9 @@ enum Bootstrap {
                     }
                     registry.ids[ObjectIdentifier(location.token)] = id
                     registry.locations[id] = location
-                    locations[id] = LocationDefinition(traits: location.traits)
+                    locations[id] = LocationDefinition(traits: location.traits) {
+                        duplicateDeclarations[id, default: []].append($0)
+                    }
 
                 case let item as Item:
                     guard claim(id) else { continue }
@@ -148,7 +188,9 @@ enum Bootstrap {
                     }
                     registry.ids[ObjectIdentifier(item.token)] = id
                     registry.items[id] = item
-                    items[id] = ItemDefinition(traits: item.traits)
+                    items[id] = ItemDefinition(traits: item.traits) {
+                        duplicateDeclarations[id, default: []].append($0)
+                    }
 
                 case let actor as Actor:
                     guard claim(id) else { continue }
@@ -163,7 +205,9 @@ enum Bootstrap {
                     // definition's flag is what makes them people.
                     registry.ids[ObjectIdentifier(actor.token)] = id
                     registry.items[id] = actor.asItem
-                    var definition = ItemDefinition(traits: actor.traits)
+                    var definition = ItemDefinition(traits: actor.traits) {
+                        duplicateDeclarations[id, default: []].append($0)
+                    }
                     definition.isActor = true
                     items[id] = definition
 
@@ -208,12 +252,22 @@ enum Bootstrap {
             diagnostics.append(contentsOf: rule.patternProblems)
         }
 
-        for (id, definition) in locations where definition.name == nil {
-            diagnostics.append("location \"\(id)\" has no name(…) trait.")
+        for (id, definition) in locations.sorted(by: { $0.key < $1.key }) {
+            for declaration in duplicateDeclarations[id, default: []] {
+                diagnostics.append("location \"\(id)\" declares \(declaration) more than once.")
+            }
+            if definition.name == nil {
+                diagnostics.append("location \"\(id)\" has no name(…) trait.")
+            }
         }
-        for (id, definition) in items where definition.name == nil {
+        for (id, definition) in items.sorted(by: { $0.key < $1.key }) {
             let kind = definition.isActor ? "actor" : "item"
-            diagnostics.append("\(kind) \"\(id)\" has no name(…) trait.")
+            for declaration in duplicateDeclarations[id, default: []] {
+                diagnostics.append("\(kind) \"\(id)\" declares \(declaration) more than once.")
+            }
+            if definition.name == nil {
+                diagnostics.append("\(kind) \"\(id)\" has no name(…) trait.")
+            }
         }
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
@@ -274,7 +328,8 @@ enum Bootstrap {
             switch entry.kind {
             case .exit(let from, let direction, let to):
                 guard let fromID = resolveLocation(from, role: "the source of a \(direction) exit"),
-                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                    let toID = resolveLocation(
+                        to, role: "the \(direction) exit from \"\(fromID)\"")
                 else { continue }
                 claimExit(.to(toID), direction, from: fromID)
 
@@ -291,9 +346,13 @@ enum Bootstrap {
                 guard
                     let fromID = resolveLocation(
                         from, role: "the source of a \(direction) door exit"),
-                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                    let toID = resolveLocation(
+                        to, role: "the \(direction) exit from \"\(fromID)\"")
                 else { continue }
-                guard let doorID = resolveItem(doorToken, role: "the \(direction) door") else {
+                guard
+                    let doorID = resolveItem(
+                        doorToken, role: "the \(direction) door from \"\(fromID)\"")
+                else {
                     continue
                 }
                 // A door must be openable — otherwise `go` has no open state to
@@ -310,7 +369,8 @@ enum Bootstrap {
                 guard
                     let fromID = resolveLocation(
                         from, role: "the source of a conditional \(direction) exit"),
-                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                    let toID = resolveLocation(
+                        to, role: "the \(direction) exit from \"\(fromID)\"")
                 else { continue }
                 claimExit(
                     .conditional(to: toID, condition: condition, blocked: blocked),
@@ -466,7 +526,7 @@ enum Bootstrap {
             throw BootstrapError(diagnostics: diagnostics)
         }
 
-        for id in items.keys where placements[id] == nil {
+        for id in items.keys.sorted() where placements[id] == nil {
             placements[id] = .nowhere
         }
 
@@ -546,15 +606,16 @@ enum Bootstrap {
             }
             // A pattern's literals are declarations too, and die the same way.
             for word in rule.literalWords
-            where Vocabulary.words(in: word) != [word.lowercased()] {
+            where Vocabulary.words(in: word) != [word] {
                 wordDiagnostics.append(
                     "the verb pattern \"\(rule.patternDescription)\" declares the word "
-                        + "\"\(word)\", which the parser splits differently from what the "
-                        + "player types; no input can reach it.")
+                        + "\"\(word)\", which must be a single lowercase alphanumeric token "
+                        + "the parser can match.")
             }
         }
+        let sortedItems = items.sorted(by: { $0.key < $1.key })
         var vocabularyWarnings: [String] = []
-        for (id, item) in items {
+        for (id, item) in sortedItems {
             var lexicon = ItemLexicon()
             // A name and a synonym are both noun phrases: the last word is the
             // noun, the words in front of it are adjectives.
@@ -624,15 +685,37 @@ enum Bootstrap {
         vocabulary.finalize()
 
         var traitWarnings: [String] = []
-        for (id, item) in items where item.startsLit && !item.isLightSource {
-            traitWarnings.append(
-                "item \"\(id)\" declares startsLit but is not a lightSource; "
-                    + "the flag has no effect.")
-        }
-        for (id, item) in items where item.startsUnlocked && !item.isLockable {
-            traitWarnings.append(
-                "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
-                    + "the flag has no effect.")
+        for (id, item) in sortedItems {
+            if item.startsLit && !item.isLightSource {
+                traitWarnings.append(
+                    "item \"\(id)\" declares startsLit but is not a lightSource; "
+                        + "the flag has no effect.")
+            }
+            if item.startsUnlocked && !item.isLockable {
+                traitWarnings.append(
+                    "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
+                        + "the flag has no effect.")
+            }
+            if item.startsOpen && !item.isOpenable {
+                traitWarnings.append(
+                    "item \"\(id)\" declares startsOpen but is not openable; "
+                        + "the flag has no effect.")
+            }
+            if item.capacity != nil && !item.isContainer {
+                traitWarnings.append(
+                    "item \"\(id)\" declares capacity but is not a container; "
+                        + "the trait has no effect.")
+            }
+            if item.isTransparent && !item.isContainer {
+                traitWarnings.append(
+                    "item \"\(id)\" declares transparent but is not a container; "
+                        + "the trait has no effect.")
+            }
+            if wornItems.contains(id) && !item.isWearable {
+                traitWarnings.append(
+                    "item \"\(id)\" starts worn but is not wearable; the placement creates "
+                        + "an item the player cannot remove or wear again.")
+            }
         }
         // A two-state text with a branch that can never print: `isOpen` on
         // anything not `openable` is a constant, and so are `isLit` without
@@ -641,7 +724,7 @@ enum Bootstrap {
         // listing channel has gates of its own. The rows are the table in
         // `TwoStateText`. The closure form is wrong in silence here; the trait
         // form can say so.
-        for (id, item) in items {
+        for (id, item) in sortedItems {
             for (pair, channel) in item.twoStateTexts {
                 guard let why = pair.deadBranch(on: item, channel: channel) else { continue }
                 traitWarnings.append(
@@ -651,7 +734,8 @@ enum Bootstrap {
         }
         // Obeying is something a *person* does. On anything else the trait has
         // nobody to describe: the parser only ever addresses an actor.
-        for (id, item) in items where item.takesOrders && !item.isActor {
+        for (id, item) in sortedItems
+        where item.takesOrders && !item.isActor {
             traitWarnings.append(
                 "item \"\(id)\" declares takesOrders but is not an actor; only a "
                     + "person can be given an order, and the flag has no effect.")
@@ -672,7 +756,7 @@ enum Bootstrap {
         // A two-state text is two sentences on its channel, and the check is
         // about the words: one of them shared across the channels is the same
         // defect in a different spelling.
-        for (id, item) in items
+        for (id, item) in sortedItems
         where !item.isActor && !Set(item.firstSightTexts).isDisjoint(with: item.descriptionTexts) {
             traitWarnings.append(
                 "item \"\(id)\" gives one sentence to firstSight(…) and description(…); "
@@ -685,7 +769,7 @@ enum Bootstrap {
         // "Orange Grove Avenue"; warned about, because the author who meant a
         // proper name will otherwise find out from a transcript. Locations are
         // exempt: the engine never articles a room name.
-        for (id, item) in items
+        for (id, item) in sortedItems
         where !item.isProperName && item.name?.first?.isUppercase == true {
             traitWarnings.append(
                 "\(item.isActor ? "actor" : "item") \"\(id)\" is named "
@@ -696,7 +780,7 @@ enum Bootstrap {
         // Mechanical item traits on an actor are legal but almost never
         // intended — an actor holds things via its inventory, not by being a
         // container. Warn, don't strip: the trait behaves item-like if left.
-        for (id, item) in items where item.isActor {
+        for (id, item) in sortedItems where item.isActor {
             let mechanical: [(Bool, String)] = [
                 (item.isWearable, "wearable"), (item.isScenery, "scenery"),
                 (item.isSurface, "surface"), (item.isContainer, "container"),
@@ -798,10 +882,7 @@ enum Bootstrap {
         var statusFields: [@Sendable () -> [(String, String)]] = modules.map { module in
             { module.statusFields }
         }
-        for child in Mirror(reflecting: game).children {
-            guard let plugin = child.value as? any GamePlugin,
-                !(child.value is any GameContent)
-            else { continue }
+        for (_, plugin) in plugins {
             statusFields.append { plugin.statusFields }
         }
 
@@ -910,7 +991,7 @@ enum Bootstrap {
         // exclusive the way the text and a `describe { … }` rule are — judged
         // here, beside that pair. And an `Actor` key path names a Bool only a
         // person carries: on anything else there is no proxy to apply it to.
-        for (id, item) in items {
+        for (id, item) in sortedItems {
             if item.description != nil, item.twoStateDescription != nil {
                 ruleDiagnostics.append(
                     "item \"\(id)\" declares both description(…) and "
@@ -1072,7 +1153,7 @@ enum Bootstrap {
         // buries — read the same slot and so judge the trait for free. After
         // the throw above, so a slot is known empty: the trait beside a rule
         // is already fatal, and a non-actor never reaches `Actor(item)`.
-        for (id, item) in items
+        for (id, item) in sortedItems
         where item.twoStateDescription != nil || item.twoStateFirstSight != nil {
             guard let proxy = registry.items[id] else { continue }
             if let pair = item.twoStateDescription {
@@ -1192,7 +1273,7 @@ enum Bootstrap {
             return nil
         }
 
-        for (id, item) in items.sorted(by: { $0.key < $1.key }) {
+        for (id, item) in sortedItems {
             let channel: String? =
                 if item.firstSight != nil {
                     "firstSight(…)"
