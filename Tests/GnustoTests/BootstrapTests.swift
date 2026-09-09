@@ -109,6 +109,19 @@ struct BootstrapTests {
             ])
     }
 
+    @Test func reservedWordWarningsAreSortedWithinAnItem() throws {
+        let (definition, _) = try Bootstrap.build(ReservedWordItemGame())
+        #expect(
+            definition.warnings == [
+                "item \"ambiguous\" answers to \"it\", a reserved parser word "
+                    + "(pronoun or multi-object keyword); the parser will never "
+                    + "match it to this item.",
+                "item \"ambiguous\" answers to \"them\", a reserved parser word "
+                    + "(pronoun or multi-object keyword); the parser will never "
+                    + "match it to this item.",
+            ])
+    }
+
     @Test func capitalizedRuntimeVerbLiteralIsFatal() {
         #expect {
             try Bootstrap.build(CapitalizedVerbGame())

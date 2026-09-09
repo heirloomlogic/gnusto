@@ -635,7 +635,7 @@ enum Bootstrap {
             }
             // Pronouns and multi-object keywords resolve before any lexicon,
             // so a word claimed here would never reach this item.
-            for word in lexicon.nouns.union(lexicon.adjectives)
+            for word in lexicon.nouns.union(lexicon.adjectives).sorted()
             where Vocabulary.reservedWords.contains(word) {
                 vocabularyWarnings.append(
                     "item \"\(id)\" answers to \"\(word)\", a reserved parser word "

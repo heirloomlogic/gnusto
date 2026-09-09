@@ -77,6 +77,21 @@ struct InertDeclarationsGame: Game {
     }
 }
 
+struct ReservedWordItemGame: Game {
+    let title = "Reserved item words"
+    let intro = ""
+    let hall = Location { name("Hall") }
+    let ambiguous = Item {
+        name("it")
+        adjectives("them")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        ambiguous.starts(in: hall)
+    }
+}
+
 struct CapitalizedVerbGame: Game {
     let title = "Capitalized verb"
     let intro = ""
