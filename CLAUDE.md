@@ -422,14 +422,15 @@ computed `static var`, which rebuilds it on every read.
   the row can be a *line* rather than a closure.** `action(.wind, reach:
   .directObject, say: Prose.cannotWind)`, `action(_:reach:naming:)` and
   `action(_:orBare:reach:guardsActors:naming:)` are the three shapes, one per
-  `StubVerb` factory, and they route the verb through the stub path: the reach
-  guard, the object's rendered `Noun`, its number agreement and the
+  `StubVerb` factory, and they route the verb through the stub path: the
+  object's rendered `Noun`, its number agreement and the
   `yourself`/`somebodyElse` guards, none of which `action(.wind) { try
-  reply(…) }` can have — `actionOverrides` returns before `requireReach`, and a
-  custom intent declares no `reach:` column anywhere else. `reach:` defaults to
-  `.notNeeded`, which is what a custom intent has today, so the spelling never
-  tightens a verb silently; Dungeon's basket is raised from the far end of a
-  shaft and a `.directObject` default broke that walkthrough. The line is a
+  reply(…) }` can have. The **reach guard both forms declare the same way** —
+  `action(.show, reach: .bothObjects) { … }` — because a custom intent has no
+  `reach:` column anywhere else. It defaults to `.notNeeded`, which is what a
+  custom intent had before the column existed, so neither spelling tightens a
+  verb silently; Dungeon's basket is raised from the far end of a shaft and a
+  `.directObject` default broke that walkthrough. The line is a
   **floor**, said with `say` and not `reply`, so `after` rules still run and a
   `before` rule still promotes itself above it. On an *engine stub* intent it
   works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.

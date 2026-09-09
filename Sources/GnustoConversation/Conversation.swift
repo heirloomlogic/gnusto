@@ -334,6 +334,13 @@ public struct Conversation: GameContent {
     /// `again:` is the whole of the answer, which is what makes the transfer in
     /// a line like "she takes it out of your hand" safe to write down.
     ///
+    /// The thing has to be **in the player's hands**: showing is holding
+    /// something up, and a row that takes it from them cannot take it off the
+    /// floor across the room. A thing on the floor answers with the engine's
+    /// `notHolding` line, ahead of the body. A reaction to a thing that cannot
+    /// be picked up — a portrait on the wall — is not a `shows` row but a
+    /// hand-written `actor.before(.show)`.
+    ///
     /// - Parameters:
     ///   - item: the thing shown.
     ///   - actor: who it is shown to.
@@ -356,6 +363,14 @@ public struct Conversation: GameContent {
         // the shown item has of its own.
         return actor.before(.show) {
             guard command.directObject == item else { return }
+            // A repeat answers with `again:` whether or not the thing is still
+            // in the player's hands — the body may have taken it, and "the
+            // glove is in her lap" is the right answer to showing it twice.
+            // So the held check sits after the repeat and ahead of `sayOnce`,
+            // which records the showing before it runs the body: a refused
+            // first showing must not count as one.
+            if let again, heard.rows.contains(key) { try reply(again) }
+            try require(item.isHeld, else: gameText.notHolding())
             // Teaching happens on every showing, repeat or not, matching
             // `topics`. `learn` is idempotent.
             if let fact { learn(fact) }
@@ -460,7 +475,10 @@ public struct Conversation: GameContent {
             try requireSomebodyElse(addressee)
             try reply(text.nothingToTalkAbout(addressee.definiteNoun))
         }
-        action(.show) {
+        // Both slots: a thing shown is held up, and a person shown it is
+        // within arm's reach of it. `.show` is a verb this layer minted, so
+        // nothing else declares its column.
+        action(.show, reach: .bothObjects) {
             guard let addressee = command.indirectObject else { return }
             try requireSomebodyElse(addressee)
             try reply(text.noInterest(addressee.definiteNoun))

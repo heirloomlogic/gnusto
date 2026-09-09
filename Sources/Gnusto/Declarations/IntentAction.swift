@@ -21,18 +21,19 @@
 /// ``action(_:reach:say:)``, ``action(_:reach:naming:)``,
 /// ``action(_:orBare:reach:guardsActors:naming:)``. Those are not shorthand for
 /// the closure: they route the verb through the same path a stub verb takes, so
-/// it gets the reach guard, the object's rendered name and the
-/// `yourself`/`somebodyElse` guards, none of which a closure can have. See
-/// ``action(_:reach:say:)`` for why that difference is the point.
+/// it gets the object's rendered name and the `yourself`/`somebodyElse` guards,
+/// which a closure cannot have. The reach guard both forms declare the same
+/// way, with `reach:`. See ``action(_:reach:say:)`` for why the rest of that
+/// difference is the point.
 public struct IntentAction: Sendable {
     /// What the row answers with, and the whole of the difference between the
     /// two doors.
     ///
-    /// `body` is arbitrary behavior and stage 4 simply runs it. `line` is a
-    /// sentence, a `reach:` column and one flag — everything ``StubVerb`` holds
-    /// except the rows, which a custom verb already declared for itself in
-    /// `verbs`. Keeping the reach beside the renderer rather than inside it is
-    /// what lets stage 0 read the column too:
+    /// `body` is arbitrary behavior and stage 4 runs it once the reach guard
+    /// has passed. `line` is a sentence, the same `reach:` column and one flag —
+    /// everything ``StubVerb`` holds except the rows, which a custom verb
+    /// already declared for itself in `verbs`. Keeping the reach beside the
+    /// behavior rather than inside it is what lets stage 0 read the column too:
     /// `DefaultActions.reachRequirement(of:in:)` needs the answer before any
     /// rule runs, and a closure that guards internally could only answer at
     /// stage 4.
@@ -45,7 +46,7 @@ public struct IntentAction: Sendable {
     /// game's is checked at bootstrap, which is the only place both the row and
     /// the verb's rows are in scope.
     enum Kind: Sendable {
-        case body(@Sendable () throws -> Void)
+        case body(reach: Reach, @Sendable () throws -> Void)
         case line(
             reach: Reach, requiresObject: Bool, render: @Sendable (GameText, Command) -> String)
     }
@@ -60,10 +61,16 @@ public struct IntentAction: Sendable {
     ///
     /// - Parameters:
     ///   - intent: the intent this action handles.
+    ///   - reach: which object slots the player has to be able to touch before
+    ///     the body runs. See ``action(_:reach:perform:)``.
     ///   - body: the action's behavior.
-    public init(_ intent: Intent, perform body: @escaping @Sendable () throws -> Void) {
+    public init(
+        _ intent: Intent,
+        reach: Reach = .notNeeded,
+        perform body: @escaping @Sendable () throws -> Void
+    ) {
         self.intent = intent
-        self.kind = .body(body)
+        self.kind = .body(reach: reach, body)
     }
 
     /// Builds a stage-4 default *line* for `intent` — the door the three
@@ -94,38 +101,55 @@ public struct IntentAction: Sendable {
     /// starts no timers and names no declarations, so there is no owner for it
     /// to be read against.
     func owned(by namespace: String?) -> IntentAction {
-        guard let namespace, case .body(let body) = kind else { return self }
-        return IntentAction(intent) { try Ctx.owned(namespace, body) }
+        guard let namespace, case .body(let reach, let body) = kind else { return self }
+        return IntentAction(intent, reach: reach) { try Ctx.owned(namespace, body) }
     }
 }
 
 /// Builds a stage-4 default action for `intent` — shorthand for
-/// `IntentAction(_:perform:)` that reads naturally in an `actions` block.
+/// `IntentAction(_:reach:perform:)` that reads naturally in an `actions` block.
+///
+/// `reach:` is the same column a line row declares, read at the same two
+/// places: stage 0, where a `reach { … }` rule is settled ahead of every rule,
+/// and stage 4, where the engine's `cantReach` refuses a slot the player can
+/// see and not touch before the body runs. It defaults to ``Reach/notNeeded``,
+/// which is what a custom intent had before the column existed, so no closure
+/// tightens silently — and, as with a line, it is read only for a verb the
+/// *game* invented, since a built-in keeps its own physics whoever writes the
+/// behavior.
+///
+/// ```swift
+/// action(.show, reach: .bothObjects) {
+///     guard let addressee = command.indirectObject else { return }
+///     try reply(text.noInterest(addressee.definiteNoun))
+/// }
+/// ```
 ///
 /// - Parameters:
 ///   - intent: the intent this action handles.
+///   - reach: which object slots the player has to be able to touch.
 ///   - body: the action's behavior.
 /// - Returns: the intent action.
 public func action(
     _ intent: Intent,
+    reach: Reach = .notNeeded,
     perform body: @escaping @Sendable () throws -> Void
 ) -> IntentAction {
-    IntentAction(intent, perform: body)
+    IntentAction(intent, reach: reach, perform: body)
 }
 
 /// A custom verb's own default line: the sentence it answers with when no rule
 /// of the game's has anything better to say.
 ///
 /// This is what `action(.wind) { try reply(Prose.cannotWind) }` was reaching
-/// for, and it is not the same thing. A closure is dispatched out of
-/// `actionOverrides`, which returns *before* `requireReach` — and a custom
-/// intent is in neither half of the standard table, so ``Reach`` says
-/// `notNeeded` for it at stage 0 as well. A verb answered by a closure
-/// therefore **cannot have a reach guard at either stage**, however much it
-/// wants one: `wind the clock` through the glass of a shut cabinet answers as
-/// though the player were holding it, and there is nowhere to say otherwise. A
-/// verb answered by a line takes the path a stub verb takes, and `reach:` is
-/// the column that path reads.
+/// for, and it is not the same thing. A closure runs whatever it was written
+/// to run; a line takes the path a stub verb takes, which renders the object's
+/// name, agrees with its number and answers `wind me` and `wind the troll` in
+/// the engine's own words. The reach guard is not the difference any more:
+/// both forms declare it with `reach:`, and a custom intent has no column
+/// anywhere else — it is in neither half of the standard table, so without
+/// one `wind the clock` through the glass of a shut cabinet answers as though
+/// the player were holding it.
 ///
 /// ```swift
 /// var actions: [IntentAction] {

@@ -19,6 +19,9 @@ extension Intent {
     #verb("whistle", ["whistle"], ["whistle", "at", .directObject])
     /// The same shape answered by the wrong factory, which bootstrap catches.
     #verb("hoot", ["hoot"], ["hoot", "at", .directObject])
+    /// The closure form of the same guard: behavior, not a sentence, and
+    /// still refused through glass.
+    #verb("hoist", ["hoist", .directObject])
 }
 
 /// The default-line fixture: one room, one verb per shape, and everything the
@@ -74,11 +77,16 @@ struct DefaultLineGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        [.winch, .chant, .scold, .whistle]
+        [.winch, .chant, .scold, .whistle, .hoist]
     }
 
     var actions: [IntentAction] {
         action(.winch, reach: .directObject, say: "The winch does not answer to that.")
+        // The closure form, guarded the same way.
+        action(.hoist, reach: .directObject) {
+            guard let thing = command.directObject else { return }
+            try reply("You hoist \(thing.definiteNoun) an inch and put it down again.")
+        }
         action(.chant, say: "Nothing answers the chant.")
         action(.scold, naming: { "\($0.sentenceCased) \($0.verb("takes", "take")) no notice." })
         action(.whistle, orBare: "You whistle at nobody in particular.", guardsActors: true) {

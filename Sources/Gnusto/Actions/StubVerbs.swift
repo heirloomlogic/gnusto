@@ -895,9 +895,10 @@ extension DefaultActions {
     /// the two dispatch tables `run(_:frame:)` already uses rather than a third
     /// keyed copy of them.
     ///
-    /// A custom verb that declared a default *line* — ``action(_:reach:say:)``
-    /// and its siblings — states its own `reach:` there, and it is read **last**
-    /// rather than first. A line row reclaiming a verb the engine already
+    /// A custom verb that declared a default row — a closure through
+    /// ``action(_:reach:perform:)``, or a line through ``action(_:reach:say:)``
+    /// and its siblings — states its own `reach:` there, and it is read
+    /// **last** rather than first. A line row reclaiming a verb the engine already
     /// declares is reclaiming its *answer*, not its physics: `take` has to be
     /// able to touch what it takes whoever writes the sentence, so the standard
     /// table's column stands and the row's is ignored. Reading the row first
@@ -908,17 +909,16 @@ extension DefaultActions {
     /// too rather than destructuring the row, so stage 0 and stage 4 cannot
     /// disagree about what a verb has to touch.
     ///
-    /// A custom intent answered by a *closure* is in none of the three and
-    /// takes ``Reach/notNeeded``, unchanged: a verb whose whole behavior the
-    /// game wrote is a verb the game guards in its own rule.
+    /// A custom intent nothing answers is in none of the three and takes
+    /// ``Reach/notNeeded``.
     static func reachRequirement(of intent: Intent, in definition: GameDefinition) -> Reach {
         if let declared = coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach {
             return declared
         }
-        if case .line(let reach, _, _) = definition.actionOverrides[intent]?.kind {
-            return reach
+        switch definition.actionOverrides[intent]?.kind {
+        case .body(let reach, _), .line(let reach, _, _): return reach
+        case nil: return .notNeeded
         }
-        return .notNeeded
     }
 }
 
