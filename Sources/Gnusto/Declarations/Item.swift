@@ -429,7 +429,7 @@ public struct Item: Sendable, Equatable {
     /// - Parameter holder: the entity to hold the item.
     public func move(heldBy holder: Item) {
         let (frame, id) = resolved
-        let holderID = holder.id
+        let holderID = holder.holding(.actor, in: frame)
         frame.with { $0.state.place(id, .heldBy(holderID)) }
     }
 
@@ -694,20 +694,21 @@ public struct Item: Sendable, Equatable {
 /// where the two can still contradict each other — so every part of the message
 /// derives from the case instead, and there is no argument left to get wrong.
 ///
-/// It is deliberately not the general answer. `Placement` carries a third case,
-/// `.heldBy`, whose requirement is checked in `Bootstrap` and not here, and the
-/// preposition table is stated again there; a version of this beside
-/// ``Placement`` could serve all three. That is a wider change than the traps
-/// this was written for.
+/// Bootstrap validates declared `.heldBy` placements; this helper gives the
+/// equivalent runtime placement its own answer too. A version beside
+/// ``Placement`` could serve both paths, but that is wider than this local
+/// runtime validation.
 private enum HolderTrait: String {
     case container
     case surface
+    case actor
 
     /// Whether the target carries the trait.
     func isCarried(by definition: ItemDefinition) -> Bool {
         switch self {
         case .container: definition.isContainer
         case .surface: definition.isSurface
+        case .actor: definition.isActor
         }
     }
 
@@ -718,34 +719,20 @@ private enum HolderTrait: String {
         switch self {
         case .container: "move(inside:)"
         case .surface: "move(onto:)"
+        case .actor: "move(heldBy:)"
         }
     }
-
-    /// How a thing sits in relation to it — "inside" a container, "on" a
-    /// surface.
-    var preposition: String {
-        switch self {
-        case .container: "inside"
-        case .surface: "on"
-        }
-    }
-
-    /// The other way to place a thing, which is half the advice: an author who
-    /// reached for the wrong one of these usually wanted the other.
-    var sibling: HolderTrait {
-        switch self {
-        case .container: .surface
-        case .surface: .container
-        }
-    }
-
-    /// The trait behind its indefinite article, through the same helper the
-    /// game's own prose uses.
-    var article: String { GameText.indefinite(rawValue) }
 
     /// What to do instead — the half that turns the trap into a fix.
     var advice: String {
-        "declare it `\(rawValue)`, or `\(sibling.function)` for \(sibling.article)"
+        switch self {
+        case .container:
+            "declare it `container`, or `move(onto:)` for a surface"
+        case .surface:
+            "declare it `surface`, or `move(inside:)` for a container"
+        case .actor:
+            "pass an Actor, or use `move(inside:)` for a container or `move(onto:)` for a surface"
+        }
     }
 
     /// The whole complaint, for a target that does not carry the trait.
@@ -753,9 +740,19 @@ private enum HolderTrait: String {
     /// - Parameter id: the target that was handed in.
     /// - Returns: the message to trap with.
     func diagnostic(for id: EntityID) -> String {
-        """
-        Gnusto: \(function) target "\(id)" is not \(article). To put something \
-        \(preposition) it, \(advice).
-        """
+        switch self {
+        case .actor:
+            return """
+                Gnusto: \(function) target "\(id)" is not an actor. To hand an item to someone, \(advice).
+                """
+        case .container:
+            return """
+                Gnusto: \(function) target "\(id)" is not a container. To put something inside it, \(advice).
+                """
+        case .surface:
+            return """
+                Gnusto: \(function) target "\(id)" is not a surface. To put something on it, \(advice).
+                """
+        }
     }
 }

@@ -267,4 +267,68 @@ struct ActorTests {
                 warning.contains("actor \"boxer\" declares the item trait \"container\"")
             })
     }
+
+    @Test func itemViewsOfActorsAndThePlayerCanHoldItems() async throws {
+        let transcript = try await play(HolderValidationGame(), ["handoff"])
+        #expect(transcript.contains("porter=true player=true"))
+    }
+
+    #if GNUSTO_EXIT_TESTS
+
+    @Test func anOrdinaryItemCannotBeUsedAsARuntimeHolder() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(HolderValidationGame(), ["misplace"])
+        }
+        expectTrap(
+            result,
+            says: "move(heldBy:)", "pouch", "is not an actor", "move(inside:)", "move(onto:)")
+    }
+
+    #endif
+}
+
+extension Intent {
+    #verb("handoff")
+    #verb("misplace")
+}
+
+/// A small live game for the runtime holder boundary. `Actor.asItem` and
+/// `player.item` are both ordinary `Item` values at this overload, so the
+/// command makes each hold the coin in turn. The pouch is an ordinary item and
+/// must instead fail before the placement can make the coin disappear.
+private struct HolderValidationGame: Game {
+    let title = "Holder validation"
+    let intro = "A coin is waiting."
+
+    let room = Location {
+        name("Room")
+        description("A plain room.")
+    }
+
+    let porter = Actor { name("porter") }
+    let coin = Item { name("coin") }
+    let pouch = Item { name("pouch") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        porter.starts(in: room)
+        coin.starts(in: room)
+        pouch.starts(in: room)
+    }
+
+    var verbs: [SyntaxRule] { [.handoff, .misplace] }
+
+    var rules: Rules {
+        world.before(.handoff) {
+            coin.move(heldBy: porter.asItem)
+            let porterHasCoin = porter.holds(coin)
+            coin.move(heldBy: player.item)
+            try reply("porter=\(porterHasCoin) player=\(coin.isHeld)")
+        }
+        world.before(.misplace) {
+            coin.move(heldBy: pouch)
+        }
+    }
 }
