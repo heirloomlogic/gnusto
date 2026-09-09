@@ -39,7 +39,9 @@ extension GameWorld {
             }
             do {
                 let url = try SaveStore.resolveForWrite(line, in: saveDirectory)
-                try SaveFile.write(state, title: definition.title, to: url)
+                try SaveFile.write(
+                    state, title: definition.title,
+                    declaredTimerNames: definition.timers.keys.sorted(), to: url)
                 return freeReply(definition.text.saved())
             } catch {
                 return freeReply(definition.text.saveFailed())
@@ -56,7 +58,8 @@ extension GameWorld {
             }
             do {
                 let url = SaveStore.resolve(line, in: saveDirectory)
-                let restored = try SaveFile.read(from: url, matching: definition)
+                let restored = try SaveFile.read(
+                    from: url, matching: definition, pristineState: initialState)
                 return performRestore(restored)
             } catch {
                 switch error {
@@ -105,7 +108,7 @@ extension GameWorld {
     /// Swaps a validated save's state in and shows the player where they are.
     private func performRestore(_ restored: WorldState) -> TurnResult {
         // Already reconciled with what this build declares — see
-        // `SaveFile.reconcile(_:with:)`.
+        // `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:)`.
         state = restored
         undoSnapshot = nil
         pendingClarification = nil

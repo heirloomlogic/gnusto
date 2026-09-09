@@ -6,9 +6,10 @@ import Foundation
 /// A save is keyed by *name* throughout — timers by their declared name,
 /// globals by the property they were declared as — and the title-only
 /// fingerprint can't tell two builds of one game apart. So a restore re-binds
-/// what the current definition still declares and **drops what it doesn't**,
-/// for timers and globals alike: an author who retires a fuse or a `@Global`
-/// between builds must not thereby void every save their players are holding.
+/// what the current definition still declares, drops what it doesn't, and
+/// supplies the pristine placement or autostart schedule for declarations an
+/// older save predates. An author who adds an item or timer, or retires a fuse
+/// or `@Global`, must not thereby void every save their players are holding.
 /// The complementary rule is that a name the definition *does* declare, whose
 /// stored value a rule could not read back, refuses the whole file
 /// (`WorldState.isConsistent(with:)`) — dropping *that* would restore a world
@@ -56,6 +57,19 @@ struct SaveFile: Codable {
     let format: Int
     let title: String
     let state: WorldState
+    /// Timer names declared by the build that wrote this save. Absent on
+    /// legacy files; those fall back to the names present in their schedules.
+    let declaredTimerNames: [String]?
+
+    init(
+        format: Int, title: String, state: WorldState,
+        declaredTimerNames: [String]? = nil
+    ) {
+        self.format = format
+        self.title = title
+        self.state = state
+        self.declaredTimerNames = declaredTimerNames
+    }
 
     /// Just the header, decodable without the state.
     ///
@@ -93,8 +107,12 @@ struct SaveFile: Codable {
     /// provisions the saves directory — see `SaveStore`). The file is tightened
     /// to owner-only (0600) after the write, since a save can carry a game's
     /// entire progress and the atomic replace creates a fresh inode each time.
-    static func write(_ state: WorldState, title: String, to url: URL) throws {
-        let file = SaveFile(format: currentFormat, title: title, state: state)
+    static func write(
+        _ state: WorldState, title: String, declaredTimerNames: [String]? = nil, to url: URL
+    ) throws {
+        let file = SaveFile(
+            format: currentFormat, title: title, state: state,
+            declaredTimerNames: declaredTimerNames)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         try encoder.encode(file).write(to: url, options: .atomic)
@@ -102,13 +120,22 @@ struct SaveFile: Codable {
             [.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
-    /// Reads a save from `url` and validates it against `definition`, returning
-    /// the state it holds. Beyond the format and title fingerprint, the state
-    /// must be referentially consistent with the definition (see
+    /// Reads a save from `url`, validates it against `definition`, and settles
+    /// additions against `pristineState`, returning a state ready to install.
+    /// Beyond the format and title fingerprint, the saved state must be
+    /// referentially consistent with the definition (see
     /// `WorldState.isConsistent(with:)`); anything else is rejected rather than
     /// handed to the engine.
+    ///
+    /// - Parameters:
+    ///   - url: the save file to read.
+    ///   - definition: what this build declares.
+    ///   - pristineState: the post-bootstrap state for this build.
+    /// - Returns: the validated and reconciled world state.
+    /// - Throws: ``ReadError`` when the file cannot be read or does not match
+    ///   the current format, game, or definition.
     static func read(
-        from url: URL, matching definition: GameDefinition
+        from url: URL, matching definition: GameDefinition, pristineState: WorldState
     ) throws(ReadError) -> WorldState {
         // The header first, and the state only once the header says this build
         // can make sense of it — see `Envelope`.
@@ -130,7 +157,11 @@ struct SaveFile: Codable {
         guard let file = try? JSONDecoder().decode(SaveFile.self, from: data)
         else { throw .unreadable }
         guard file.state.isConsistent(with: definition) else { throw .inconsistent }
-        return reconcile(file.state, with: definition)
+        let reconciled = reconcile(
+            file.state, with: definition, pristineState: pristineState,
+            declaredTimerNames: file.declaredTimerNames)
+        guard reconciled.isConsistent(with: definition) else { throw .inconsistent }
+        return reconciled
     }
 
     /// Settles a validated save against what this build actually declares, so
@@ -144,24 +175,62 @@ struct SaveFile: Codable {
     /// - Parameters:
     ///   - state: the decoded, validated state.
     ///   - definition: what this build declares.
+    ///   - pristineState: the post-bootstrap state for this build.
+    ///   - declaredTimerNames: the timer roster stored by the build that wrote
+    ///     the save, or `nil` for a legacy file.
     /// - Returns: the state to install.
     private static func reconcile(
-        _ state: WorldState, with definition: GameDefinition
+        _ state: WorldState, with definition: GameDefinition, pristineState: WorldState,
+        declaredTimerNames: [String]?
     ) -> WorldState {
         var state = state
+        // A placement is present even when it explicitly says `.nowhere`, so a
+        // missing key is the exact signal that the save predates this item.
+        // Take that item's placement from Bootstrap rather than trying to
+        // reconstruct map semantics here.
+        for (id, placement) in pristineState.placements where state.placements[id] == nil {
+            state.place(id, placement)
+        }
         // Decoding writes every property at once, funnels included, so the one
         // invariant the engine maintains by construction is settled here rather
         // than taken on trust from the file: a boarding whose vehicle isn't in
         // the player's room is dropped, exactly as a live stranding would.
         state.strandIfSeparated()
+        // Remember the save's schedule before filtering. If a timer kept its
+        // name but changed kind, its old entry is discarded and must not then
+        // masquerade as a newly declared autostart.
+        let savedTimerNames = Set(state.activeFuses.keys).union(state.activeDaemons)
+        // Current saves carry the full roster, which distinguishes a stopped
+        // autostart from a timer added later. Legacy saves have only their live
+        // schedules, so absence remains the best available age signal.
+        let timersKnownToSave = declaredTimerNames.map(Set.init) ?? savedTimerNames
+
         // Re-bind the saved schedule and the saved globals to what this build
-        // declares, dropping the names it doesn't — the policy this type's doc
-        // comment gives, applied in the one place that can guarantee it ran.
+        // declares, dropping stale names and schedules of the wrong kind — the
+        // policy this type's doc comment gives, applied in the one place that
+        // can guarantee it ran.
         // A global that *is* declared has already been checked by
         // `isConsistent`; what goes here is only the unknown, and the `@Global`
         // then reads its declared default.
-        state.activeFuses = state.activeFuses.filter { definition.timers[$0.key] != nil }
-        state.activeDaemons = state.activeDaemons.filter { definition.timers[$0] != nil }
+        state.activeFuses = state.activeFuses.filter {
+            guard let event = definition.timers[$0.key] else { return false }
+            if case .fuse = event.kind { return true }
+            return false
+        }
+        state.activeDaemons = state.activeDaemons.filter {
+            guard let event = definition.timers[$0] else { return false }
+            if case .daemon = event.kind { return true }
+            return false
+        }
+        // Bootstrap has already resolved timer names, kinds, autostart flags,
+        // and fuse counts into the pristine schedules. Copy from that source of
+        // truth only when the save never knew the timer under either kind.
+        for (name, count) in pristineState.activeFuses where !timersKnownToSave.contains(name) {
+            state.activeFuses[name] = count
+        }
+        for name in pristineState.activeDaemons where !timersKnownToSave.contains(name) {
+            state.activeDaemons.insert(name)
+        }
         state.globals = state.globals.filter { definition.globals[$0.key] != nil }
         return state
     }
