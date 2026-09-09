@@ -362,6 +362,7 @@ struct DungeonVolcano: GameContent {
         name("Volcano Gnome")
         adjectives("volcano", "nervous")
         synonyms("gnome")
+        pronoun(.he)
         firstSight(Prose.gnomeInPlace)
         description(Prose.gnome)
         properName

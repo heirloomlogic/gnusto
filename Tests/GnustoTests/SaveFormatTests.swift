@@ -263,6 +263,8 @@ struct SaveFormatTests {
         state.unconsciousActors = [EntityID("probe-unconsciousActors")]
         state.pronounIt = EntityID("probe-pronounIt")
         state.pronounThem = [EntityID("probe-pronounThem")]
+        state.pronounHim = EntityID("probe-pronounHim")
+        state.pronounHer = EntityID("probe-pronounHer")
         state.score = 101
         state.moves = 102
         state.touched = [EntityID("probe-touched")]

@@ -92,11 +92,36 @@ struct Scope: Sendable {
     /// Both live in the same slot because the word does not distinguish
     /// them and the last one named wins either way.
     var pronounThem: [EntityID]
+    /// What "him" currently refers to, if anything. `GameWorld.referent(of:in:)`
+    /// settles which person that is, because only it can see the room.
+    var pronounHim: EntityID?
+    /// What "her" currently refers to, on the same terms as ``pronounHim``.
+    var pronounHer: EntityID?
     /// The one thing "them" names, when it names one thing. `nil` for a real
     /// group and for a word bound to nothing — the two cases where "them"
     /// is not a noun phrase.
     var soleThem: EntityID? {
         pronounThem.count == 1 ? pronounThem[0] : nil
+    }
+
+    /// The same scope seen from somebody else's place: what *they* can name,
+    /// and the pronouns as they stand, which are the player's words and travel
+    /// with the line rather than with the person carrying it out.
+    ///
+    /// The order reading needs this twice, and a hand-copied `Scope` in two
+    /// places is a pronoun that comes to be carried across one of them and not
+    /// the other.
+    ///
+    /// - Parameter items: what the addressee can name from where it stands.
+    /// - Returns: a scope over those items, with no actors and no order-takers,
+    ///   so an order can never be an order to somebody else.
+    func narrowed(to items: Set<EntityID>) -> Scope {
+        Scope(
+            visibleItems: items,
+            pronounIt: pronounIt,
+            pronounThem: pronounThem,
+            pronounHim: pronounHim,
+            pronounHer: pronounHer)
     }
     /// For each actor declared `takesOrders` the player could make hear them —
     /// here, met, or next door — what *that* actor could name from where it
@@ -118,6 +143,8 @@ struct Scope: Sendable {
         elsewhereActors: Set<EntityID> = [],
         pronounIt: EntityID? = nil,
         pronounThem: [EntityID] = [],
+        pronounHim: EntityID? = nil,
+        pronounHer: EntityID? = nil,
         orderTakers: [EntityID: Set<EntityID>] = [:],
         allOrderTakers: Set<EntityID> = []
     ) {
@@ -127,6 +154,8 @@ struct Scope: Sendable {
         self.elsewhereActors = elsewhereActors
         self.pronounIt = pronounIt
         self.pronounThem = pronounThem
+        self.pronounHim = pronounHim
+        self.pronounHer = pronounHer
         self.orderTakers = orderTakers
         self.allOrderTakers = allOrderTakers
     }
@@ -204,9 +233,7 @@ struct StandardParser {
                 guard !rest.isEmpty,
                     !isGreeting(
                         rest, at: addressee, address: address,
-                        scope: Scope(
-                            visibleItems: theirs, pronounIt: scope.pronounIt,
-                            pronounThem: scope.pronounThem))
+                        scope: scope.narrowed(to: theirs))
                 else {
                     return .failure(.notInScope)
                 }
@@ -297,9 +324,7 @@ struct StandardParser {
         _ rest: [String], to addressee: EntityID, address: [String],
         scope: Scope, rawInput: String
     ) -> Result<ParsedCommand, ParseError> {
-        let theirs = Scope(
-            visibleItems: scope.orderTakers[addressee] ?? [], pronounIt: scope.pronounIt,
-            pronounThem: scope.pronounThem)
+        let theirs = scope.narrowed(to: scope.orderTakers[addressee] ?? [])
         return parse(tokens: rest, rawInput: rawInput, scope: theirs)
             .map { parsed in
                 var parsed = parsed
@@ -1158,9 +1183,11 @@ struct StandardParser {
     private func resolveNoun(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID>
     ) -> Result<EntityID, ParseError> {
-        // Pronouns resolve ahead of any item lexicon, and both take the same
+        // Pronouns resolve ahead of any item lexicon, and each takes the same
         // two questions: is the word bound, and is what it names still
-        // nameable. "it" is whatever the player last named. "them" reaches
+        // nameable. "it" is whatever the player last named; "him" and "her"
+        // are whoever of that gender they last named, or the one person in
+        // view who answers to the word, settled in `GameWorld`. "them" reaches
         // here only when it names one thing — a plural item, or a group come
         // down to one — because `spellsKeyword(_:in:)` keeps a real group away
         // from this branch, and every slot asks that question first. (#403)
@@ -1173,6 +1200,19 @@ struct StandardParser {
         }
         if tokens == ["it"] { return pronoun("it", scope.pronounIt) }
         if tokens == ["them"] { return pronoun("them", scope.soleThem) }
+        if tokens == ["him"] { return pronoun("him", scope.pronounHim) }
+        if tokens == ["her"] { return pronoun("her", scope.pronounHer) }
+        // A possessive belongs to the phrase behind it: `x her leg` is whatever
+        // answers to `leg` — which, on a person whose own description names it,
+        // is that person — and `take her lamp` is the lamp. See
+        // ``Vocabulary/possessives`` for why the word is dropped here rather
+        // than stripped as noise. A phrase that names something on its own is
+        // left alone, so a game may still call a thing `his lordship`.
+        if tokens.count > 1, Vocabulary.possessives.contains(tokens[0]),
+            !isKnownNounPhrase(tokens)
+        {
+            return resolveNoun(Array(tokens.dropFirst()), in: scope, alsoConsidering: distant)
+        }
 
         let first = matches(tokens, among: scope.visibleItems)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
@@ -1228,7 +1268,9 @@ struct StandardParser {
     ///
     /// The `it` pronoun branch is deliberately absent: "it, take the sword" is
     /// not a sentence, and `pronounIt` names a thing far more often than a
-    /// person.
+    /// person. `him` and `her` are the opposite case and are read here — they
+    /// name a person by construction, so `her, take the lamp` is a sentence —
+    /// and they are judged against the people in view, exactly as a name is.
     ///
     /// - Parameters:
     ///   - tokens: the words before the comma.
@@ -1238,6 +1280,15 @@ struct StandardParser {
     private func resolveAddressee(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
+        if let word = tokens.first, tokens.count == 1, word == "him" || word == "her" {
+            guard let referent = word == "him" ? scope.pronounHim : scope.pronounHer else {
+                return .failure(.noReferent(word))
+            }
+            guard scope.visibleActors.contains(referent) || distant.contains(referent) else {
+                return .failure(.notInScope)
+            }
+            return .success(referent)
+        }
         let first = matches(tokens, among: scope.visibleActors)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
         return outOfSight(tokens, among: scope.allOrderTakers, answerableIn: distant)

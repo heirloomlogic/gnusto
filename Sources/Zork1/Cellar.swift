@@ -48,6 +48,7 @@ struct ZorkCellar: GameContent {
 
     let troll = Actor {
         name("troll")
+        pronoun(.he)
         description(Prose.troll)
         firstSight(Prose.trollPresence)
     }

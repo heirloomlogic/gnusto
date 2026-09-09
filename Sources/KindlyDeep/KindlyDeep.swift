@@ -475,6 +475,7 @@ struct KindlyDeep: Game, GameMain {
         // `animal` is the word both his room-listing line and his examine text
         // use for him, so it had better be one he answers to.
         synonyms("mule", "animal", "beast", "creature", "hooves", "hoof", "forelock")
+        pronoun(.he)
         // He is called Biscuit. Without this the stock lines say "the Biscuit",
         // and the bootstrap has been saying so on stderr at every launch.
         properName

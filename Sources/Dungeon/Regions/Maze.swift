@@ -147,6 +147,7 @@ struct DungeonMaze: GameContent {
         name("cyclops")
         synonyms("cyclops", "monster", "giant", "eye")
         adjectives("hungry", "one-eyed")
+        pronoun(.he)
     }
 
     // MARK: - Items

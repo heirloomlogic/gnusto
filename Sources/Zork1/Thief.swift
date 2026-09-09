@@ -24,6 +24,7 @@ struct ZorkThief: GameContent {
         name("thief")
         adjectives("shadowy")
         synonyms("figure")
+        pronoun(.he)
         description(Prose.thief)
         firstSight(Prose.thiefPresence)
     }

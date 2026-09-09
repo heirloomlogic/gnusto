@@ -507,11 +507,18 @@ struct LighthouseTranscriptTests {
     /// rather than a vocabulary gap.
     @Test func theKeeperAnswersToHerselfAndHerLeg() async throws {
         let transcript = try await play(
-            Lighthouse(), ["north", "x keeper", "x leg", "x woman"], seed: 22)
+            Lighthouse(), ["north", "x keeper", "x leg", "x woman", "x her", "x her leg"],
+            seed: 22)
 
         expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x keeper", in: transcript).contains("Small, weathered"))
         #expect(turnOutput(of: "x leg", in: transcript).contains("Small, weathered"))
+        // "her" is the parser's word, not a synonym the keeper spends on
+        // herself: she is the one woman in the room, so it names her with
+        // nobody named first, and the possessive in front of a noun belongs to
+        // the noun. (#445)
+        #expect(turnOutput(of: "x her", in: transcript).contains("Small, weathered"))
+        #expect(turnOutput(of: "x her leg", in: transcript).contains("Small, weathered"))
     }
 
     // MARK: - Stub verbs this game contradicts (#93)

@@ -175,6 +175,7 @@ struct ZorkMaze: GameContent {
         name("cyclops")
         synonyms("cyclops", "monster", "eye", "giant")
         adjectives("hungry", "giant", "one", "eyed")
+        pronoun(.he)
         description(Prose.cyclops)
         firstSight(Prose.cyclopsPresence)
     }

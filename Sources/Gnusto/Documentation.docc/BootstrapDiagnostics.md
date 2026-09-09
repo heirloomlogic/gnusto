@@ -132,7 +132,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 |---|---|
 | `custom verb "…" overrides a built-in verb of the same shape.` | A ``SyntaxRule`` in `verbs` matching a core row's verb word and shape with a different intent. Reclaiming is legal and last-wins; the warning exists so it is never an accident. |
 | `verb row "throw <object> into <second object>" is "throw <object> in <second object>" respelled, and can never match: a pattern's preposition already answers to its synonyms.` | Two rows on the merged table — the game's own, a bundle's, or the engine's — differing only in how a preposition is spelled. `in` already answers to `inside` and `into`, and `on` to `onto` and `upon`, so the row named first takes every line the second would. Delete the second row. |
-| `item "it" answers to "it", a reserved parser word (pronoun or multi-object keyword); the parser will never match it to this item.` | The reserved set is `it`, `them`, `all`, `everything`; they resolve before any item lexicon. Rename the noun or adjective. |
+| `item "it" answers to "it", a reserved parser word (pronoun or multi-object keyword); the parser will never match it to this item.` | The reserved set is `it`, `them`, `him`, `her`, `all`, `everything`; they resolve before any item lexicon. Rename the noun or adjective — and for `him`/`her`, declare ``pronoun(_:)`` instead, which is what binds those two. |
 | `item "lamp" declares startsLit but is not a lightSource; the flag has no effect.` | Add ``lightSource``. |
 | `item "box" declares startsUnlocked but has no lockedBy entry; the flag has no effect.` | Lockability comes from the `lockedBy` map entry, not a trait. |
 | `item "robot" declares takesOrders but is not an actor; only a person can be given an order, and the flag has no effect.` | Declare it as an `Actor`. |
@@ -202,6 +202,7 @@ See <doc:SplittingAGameAcrossFiles>.
 - ``SyntaxRule``
 - ``firstSight(_:)``
 - ``properName``
+- ``pronoun(_:)``
 - ``alwaysDescribed``
 - ``alwaysListed``
 - ``lightSource``

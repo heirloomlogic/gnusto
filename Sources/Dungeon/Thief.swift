@@ -66,6 +66,7 @@ struct DungeonThief: GameContent {
         name("thief")
         adjectives("shadowy", "suspicious", "looking", "seedy")
         synonyms("robber", "figure", "individual", "man", "bandit")
+        pronoun(.he)
         // Both channels branch on ``Actor/isUnconscious``. The listing line was
         // a `firstSight` constant, and an actor's listing line prints on every
         // look forever — so the turn after "The thief is battered into

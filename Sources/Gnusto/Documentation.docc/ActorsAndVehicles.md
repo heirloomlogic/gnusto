@@ -60,6 +60,14 @@ engine adds is perception and manners:
 - A named character wants `properName`, or every stock line that names
   them says "the Mrs. Vane". One word, and the whole table reads right —
   see <doc:TextAndRandomness>.
+- A person wants ``pronoun(_:)`` too, or `him` and `her` name nobody.
+  `pronoun(.she)` makes `x her`, `give her the lamp` and `talk to her` reach
+  that actor from every slot, and the word binds to whoever the player last
+  referred to — so it follows the conversation instead of belonging to one
+  character forever, which is what a synonym on the word would do. (It is a
+  synonym the parser would never reach anyway: `him` and `her` are reserved,
+  and an item declaring one is a bootstrap warning.) With nobody named yet,
+  the word falls back to the one thing in view that answers to it.
 
 `starts(in:)` is the only placement an actor accepts.
 

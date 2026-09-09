@@ -345,6 +345,17 @@ public actor GameWorld {
                 state.pronounThem = [direct]
             }
         }
+        // "him" and "her" bind from every slot that named a person, where "it"
+        // binds from the direct object alone. Naming somebody as the recipient
+        // of a gift or as the one you spoke to is referring to them just as
+        // squarely as examining them is, and the pronoun that follows means
+        // the person the player has in mind, not the last thing a verb took as
+        // its object. Later slots win, so `give the lamp to the keeper` leaves
+        // "her" on the keeper.
+        for named in [parsed.actor, parsed.directObject, parsed.indirectObject] {
+            guard let named else { continue }
+            bindGenderedPronoun(naming: named, in: &state)
+        }
         if let multiple = parsed.multiple {
             return runMultiTurn(parsed, multiple, snapshot: snapshot)
         }
@@ -510,6 +521,13 @@ public actor GameWorld {
                     frame.with { scratch in
                         scratch.command = command
                         scratch.defaultRan = false
+                        // Each object of the group is named in its turn, and
+                        // naming binds "it" here exactly as it does for a
+                        // single-object command — so `take all` leaves "it" on
+                        // the last thing the loop ran on rather than on
+                        // whatever the player named before the group. (#445)
+                        scratch.state.pronounIt = id
+                        bindGenderedPronoun(naming: id, in: &scratch.state)
                     }
                     let start = frame.with { $0.output.count }
                     performStages(command, frame: frame, upkeep: false)
@@ -913,7 +931,9 @@ public actor GameWorld {
                 visibleItems: visible,
                 visibleActors: visible.intersection(definition.castIDs),
                 pronounIt: state.pronounIt,
-                pronounThem: state.pronounThem)
+                pronounThem: state.pronounThem,
+                pronounHim: referent(of: .he, in: visible),
+                pronounHer: referent(of: .she, in: visible))
         }
         // Walked once and handed to both reaches: FOLLOW's quarry and an
         // order-taker's name ask the same question about distance.
@@ -930,6 +950,8 @@ public actor GameWorld {
             elsewhereActors: elsewhere.all,
             pronounIt: state.pronounIt,
             pronounThem: state.pronounThem,
+            pronounHim: referent(of: .he, in: visible),
+            pronounHer: referent(of: .she, in: visible),
             orderTakers: orderTakers,
             allOrderTakers: orderTakersStandingSomewhere())
     }
@@ -992,6 +1014,52 @@ public actor GameWorld {
     private func soleVisibleActor() -> EntityID? {
         let actors = visibleActorsHere()
         return actors.count == 1 ? actors.first : nil
+    }
+
+    /// Points "him" or "her" at the entity just named, where it answers to one
+    /// of the two words. Called from both the single-object path and the group
+    /// loop, so a pronoun cannot come to be bound on one and not the other.
+    ///
+    /// - Parameters:
+    ///   - id: the entity the player just named.
+    ///   - state: the state to bind in — live state, or a turn frame's copy.
+    private func bindGenderedPronoun(naming id: EntityID, in state: inout WorldState) {
+        switch definition.items[id]?.pronoun {
+        case .he: state.pronounHim = id
+        case .she: state.pronounHer = id
+        case nil: break
+        }
+    }
+
+    /// Who "him" or "her" names this turn.
+    ///
+    /// The person of that gender the player last referred to, while they are
+    /// still in view — and otherwise the one thing in view that answers to the
+    /// word, which is what lets `x her` work in a game with one woman in it and
+    /// no prior mention of her. Where nobody in view answers and somebody was
+    /// named, the binding stands — deliberately, and it is the one line here
+    /// that looks like a mistake: handing the parser a referent this method has
+    /// just proved invisible is what turns the answer into *"You can't see any
+    /// such thing"* rather than *"I don't know what that refers to"*. She is
+    /// known, and simply not here. Where two people answer and neither was
+    /// named, the word has no referent and says so rather than guessing.
+    ///
+    /// The candidates come from the bootstrap's index rather than a walk of the
+    /// room, for the reason ``GameDefinition/castIDs`` gives: who answers to a
+    /// pronoun is settled at declaration and never changes, and a game that
+    /// declared none — nearly all of them — pays one empty check a turn.
+    ///
+    /// - Parameters:
+    ///   - pronoun: which word is being resolved.
+    ///   - visible: what the player can see from where they stand.
+    /// - Returns: the entity the word names, or nil.
+    private func referent(of pronoun: Pronoun, in visible: Set<EntityID>) -> EntityID? {
+        let bound = pronoun == .he ? state.pronounHim : state.pronounHer
+        let candidates = definition.pronounIDs[pronoun] ?? []
+        guard !candidates.isEmpty else { return bound }
+        if let bound, visible.contains(bound) { return bound }
+        let answering = candidates.intersection(visible)
+        return answering.count == 1 ? answering.first : bound
     }
 
     /// The cast the player can currently see. Darkness gates it, because

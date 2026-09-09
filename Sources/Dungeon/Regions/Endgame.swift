@@ -635,6 +635,7 @@ struct DungeonEndgame: GameContent {
         // spelling of the person holding it. ``dungeonMasterStaff`` is the item
         // about it. (#332)
         synonyms("master", "man", "dungeonmaster", "wizard")
+        pronoun(.he)
         firstSight(Prose.dungeonMasterFirstSight)
         description(Prose.dungeonMaster)
         // He is the second actor in the game to take an order and the first to

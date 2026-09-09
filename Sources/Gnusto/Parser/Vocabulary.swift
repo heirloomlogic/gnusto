@@ -41,7 +41,12 @@ struct Vocabulary: Sendable {
     /// keywords. They resolve before any item lexicon is consulted, so an
     /// item using one as a noun or synonym could never be referred to by it
     /// (the bootstrap warns).
-    static let reservedWords: Set<String> = ["it", "them", "all", "everything"]
+    ///
+    /// `him` and `her` are here for that last reason above all: a game used to
+    /// have to spend a synonym on the word, which made the pronoun name that
+    /// one person forever, whoever the player had spoken of since. What binds
+    /// them now is the ``pronoun(_:)`` trait.
+    static let reservedWords: Set<String> = ["it", "them", "him", "her", "all", "everything"]
 
     /// The words that join two object phrases: `take the bottle and the sack`.
     ///
@@ -68,6 +73,23 @@ struct Vocabulary: Sendable {
     /// can answer to — so `name("last but one ticket")` keeps answering to
     /// every word of itself without needing a second pass to rescue it.
     static let exclusions: Set<String> = ["but", "except"]
+
+    /// The words that claim the noun behind them: `x her leg`, `take his lamp`.
+    ///
+    /// Claimed the way ``conjunctions`` and ``exclusions`` are, and for the
+    /// reason that keeps a word out of ``noiseWords``: noise is stripped from
+    /// the whole line before anything is matched, and `her` stripped that way
+    /// would take the pronoun down with the possessive. So the drop happens
+    /// inside noun resolution instead, only in front of *more words*, and only
+    /// once the phrase has failed to name anything on its own — a game is free
+    /// to call something `his lordship`, and the name wins.
+    ///
+    /// The engine stores no possession, so the word is dropped rather than
+    /// read: `take her lamp` in a room with one lamp means that lamp, whoever
+    /// the player believes owns it. (`my` is a noise word already, which is the
+    /// older half of the same idea; it is safe there because nothing means "my"
+    /// on its own.)
+    static let possessives: Set<String> = ["her", "his", "its", "their", "your", "our"]
 
     /// Spellings of a pattern's preposition that mean the same thing, mapped to
     /// the one the tables are written in.

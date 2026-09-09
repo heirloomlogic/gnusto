@@ -73,6 +73,7 @@ struct DungeonCellar: GameContent {
     let troll = Actor {
         name("troll")
         adjectives("nasty")
+        pronoun(.he)
     }
 
     /// The troll's axe. It starts in his hands — offstage — and clatters to

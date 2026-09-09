@@ -106,6 +106,9 @@ struct ItemDefinition: Sendable {
     /// The listing paragraph survives the first touch. See ``alwaysListed``.
     var isAlwaysListed = false
     var customTraits: [String: StateValue] = [:]
+    /// The gendered pronoun this entity answers to, or nil for the things
+    /// English calls "it". See ``pronoun(_:)``.
+    var pronoun: Pronoun?
     /// True when this entity was declared as an `Actor`. Set by Bootstrap
     /// after trait evaluation — actors share the item trait vocabulary, so
     /// there is no trait to switch on.
@@ -128,6 +131,7 @@ struct ItemDefinition: Sendable {
             case .synonyms(let words): synonyms += words
             case .properName: isProperName = true
             case .plural: isPlural = true
+            case .pronoun(let word): pronoun = word
             case .firstSight(let text): firstSight = text
             case .twoStateFirstSight(let pair): twoStateFirstSight = pair
             case .wearable: isWearable = true
@@ -216,6 +220,11 @@ struct GameDefinition: Sendable {
     /// an order to rather than a greeting. Empty for almost every game, which
     /// is what lets `currentScope()` skip the extra scope walk entirely.
     let orderTakerIDs: Set<EntityID>
+    /// Who answers to each gendered pronoun, by the ``pronoun(_:)`` trait.
+    /// Empty for almost every game, and precomputed for the reason ``castIDs``
+    /// gives: `currentScope()` asks the question twice a turn, and the answer
+    /// was settled at declaration.
+    let pronounIDs: [Pronoun: Set<EntityID>]
     let exits: [EntityID: [Direction: ExitTarget]]
     /// Every room some exit leads to. A game's off-map holding pens — the
     /// street a character is "out on", the limbo an actor waits in before their

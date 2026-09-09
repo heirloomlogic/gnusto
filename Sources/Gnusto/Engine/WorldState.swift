@@ -75,6 +75,15 @@ struct WorldState: Sendable, Codable {
     /// of one is what makes the word a noun phrase rather than a group marker,
     /// and `StandardParser.Scope.soleThem` is where that is read.
     var pronounThem: [EntityID] = []
+    /// What "him" currently refers to: the last person declared `pronoun(.he)`
+    /// the player named, from any slot that named one — the object, the
+    /// recipient, or the person addressed — because all three are ways of
+    /// referring to somebody, where "it" is bound from the direct object alone.
+    /// What the *parser* is handed is one step past this; see
+    /// `GameWorld.referent(of:in:)`.
+    var pronounHim: EntityID?
+    /// What "her" currently refers to, on the same terms as ``pronounHim``.
+    var pronounHer: EntityID?
     /// The `enterable` the player has boarded, or nil on foot. The player
     /// still never appears in `placements`; `playerLocation` stays the room.
     ///
@@ -143,6 +152,8 @@ struct WorldState: Sendable, Codable {
         case unconsciousActors
         case pronounIt
         case pronounThem
+        case pronounHim
+        case pronounHer
         case playerVehicle
         case score
         case moves
@@ -215,6 +226,8 @@ struct WorldState: Sendable, Codable {
         unconsciousActors = try value(.unconsciousActors, fresh.unconsciousActors)
         pronounIt = try container.decodeIfPresent(EntityID.self, forKey: .pronounIt)
         pronounThem = try value(.pronounThem, fresh.pronounThem)
+        pronounHim = try container.decodeIfPresent(EntityID.self, forKey: .pronounHim)
+        pronounHer = try container.decodeIfPresent(EntityID.self, forKey: .pronounHer)
         playerVehicle = try container.decodeIfPresent(EntityID.self, forKey: .playerVehicle)
         score = try value(.score, fresh.score)
         moves = try value(.moves, fresh.moves)
@@ -250,6 +263,8 @@ struct WorldState: Sendable, Codable {
         try container.encode(unconsciousActors, forKey: .unconsciousActors)
         try container.encode(pronounIt, forKey: .pronounIt)
         try container.encode(pronounThem, forKey: .pronounThem)
+        try container.encode(pronounHim, forKey: .pronounHim)
+        try container.encode(pronounHer, forKey: .pronounHer)
         try container.encode(playerVehicle, forKey: .playerVehicle)
         try container.encode(score, forKey: .score)
         try container.encode(moves, forKey: .moves)
@@ -502,6 +517,8 @@ extension WorldState {
         // Pronouns name items; a boarded vehicle is an enterable item.
         if let it = pronounIt, !isItem(it) { return false }
         guard pronounThem.allSatisfy(isItem) else { return false }
+        if let him = pronounHim, !isItem(him) { return false }
+        if let her = pronounHer, !isItem(her) { return false }
         if let vehicle = playerVehicle, items[vehicle]?.isEnterable != true { return false }
 
         // Every global this build still declares must hold a value a rule
