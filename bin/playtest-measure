@@ -119,25 +119,55 @@ def measure(probe):
     }
 
 
+# An empty argv is not zero probes measured, it is no question asked — a shell
+# glob that matched nothing (`probe-*` under nullglob, a typo'd label) reaches
+# here as no arguments at all, and looping over nothing used to leave `status`
+# at its initial 0. That is the silent false green: exit 2 and say so, the way
+# a usage error does everywhere else in bin/.
+if len(sys.argv) < 2:
+    print("Usage: bin/playtest-measure <probe-dir> [<probe-dir> ...]", file=sys.stderr)
+    sys.exit(2)
+
 # One argv is usually a whole round's probes, so a directory this cannot open
 # names itself and the rest are still measured. It is not a measurement of zero:
 # the difference has to leave here as a sentence, on stderr, with a non-zero
 # exit, which is the whole reason the instrument is worth pointing at anything.
 status = 0
+measured = 0
 for arg in sys.argv[1:]:
     try:
         stats = measure(arg)
-    except FileNotFoundError as gap:
-        name = Path(gap.filename).name
-        # `bin/playtest-replay` called its command list commands.effective.txt
-        # until #299, so a probe from before then is the one cause worth naming.
-        stale = " — a bin/playtest-replay probe from before #299" if (
-            Path(arg, "commands.effective.txt").exists()) else ""
-        print(f"playtest-measure: {arg} holds no {name}{stale}", file=sys.stderr)
+    except OSError as gap:
         status = 1
+        if isinstance(gap, FileNotFoundError):
+            name = Path(gap.filename).name
+            # `bin/playtest-replay` called its command list commands.effective.txt
+            # until #299, so a probe from before then is the one cause worth naming.
+            stale = " — a bin/playtest-replay probe from before #299" if (
+                Path(arg, "commands.effective.txt").exists()) else ""
+            print(f"playtest-measure: {arg} holds no {name}{stale}", file=sys.stderr)
+        else:
+            # Same non-zero contract for a probe this can open but not read —
+            # a permission-denied artifact, a directory where a file belongs —
+            # so "every argument failed" below is never reached by a traceback
+            # standing in for a message.
+            print(f"playtest-measure: {arg} unreadable: {gap.strerror or gap}", file=sys.stderr)
         continue
+    measured += 1
     print(f"\n=== {stats.pop('probe')} ===")
     width = max(len(k) for k in stats)
     for key, value in stats.items():
         print(f"{key:<{width}} : {value}")
+
+# Every argument named a probe and not one of them measured anything: distinct
+# from the per-gap lines above (which name the one directory each), because a
+# whole round reading as "no probes" is a different fact than any single gap.
+# `status` is already 1 here — every iteration that didn't increment `measured`
+# set it on its way past `continue` — so this only adds the summary line.
+if measured == 0:
+    print(
+        f"playtest-measure: nothing measured — all {len(sys.argv) - 1} "
+        f"argument(s) failed",
+        file=sys.stderr)
+
 sys.exit(status)

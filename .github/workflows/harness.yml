@@ -52,3 +52,5 @@ jobs:
         run: node --test bin/tests/playtest-headless.test.mjs
       - name: Preflight validation regressions
         run: node --test bin/tests/preflight-validation.test.mjs
+      - name: Measurement exit codes on empty and failing argv
+        run: node --test bin/tests/playtest-measure.test.mjs
