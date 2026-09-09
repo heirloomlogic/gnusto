@@ -165,6 +165,17 @@ public struct Scoring: GameContent {
     /// scoring.treasures([painting, egg], into: trophyCase)
     /// ```
     ///
+    /// The deposit ledger is **reconciled against the case's contents**, not
+    /// only against the verbs that usually fill and empty it. `take` and
+    /// `put in` settle it on the spot, so a rule that reads `player.score` in
+    /// the same turn, or ends the game on it, sees the number it expects. A
+    /// treasure moved any other way — a thief's `move(heldBy:)`, a death that
+    /// scatters the inventory, a rule of the host's own — is caught at the
+    /// start of the next costing turn and at the end of this one, whichever
+    /// comes first. The one window is a free turn typed straight after a
+    /// daemon's theft: `score` there still reads the credit the case no longer
+    /// earns, and the next `wait` corrects it.
+    ///
     /// - Parameters:
     ///   - items: treasures whose take and deposit values are scored.
     ///   - trophyCase: the container whose contents pay each `.depositValue`.
@@ -174,25 +185,44 @@ public struct Scoring: GameContent {
         for item in items {
             item.after(.take) {
                 payOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
-                // In-case accounting: taking a treasure out of the case
-                // revokes its deposit value. The `take` has already moved it
-                // into the player's hands, so a treasure no longer in the case
-                // whose deposit is still credited is one being withdrawn.
-                let key = "deposit.\(item.name)"
-                if cased.names.contains(key), !trophyCase.holds(item) {
-                    cased.names.remove(key)
-                    player.score -= item[.depositValue] ?? 0
-                }
+                reconcileDeposit(of: item, in: trophyCase)
             }
+            // The after-rule fires for *any* container; only the trophy case
+            // pays, which the reconcile reads off the case itself.
             item.after(.putIn) {
-                // The after-rule fires for *any* container; only the trophy
-                // case pays. Credit once per stay — a treasure already counted
-                // is not double-scored — and it is debited again on withdrawal.
-                let key = "deposit.\(item.name)"
-                guard trophyCase.holds(item), !cased.names.contains(key) else { return }
-                cased.names.insert(key)
-                player.score += item[.depositValue] ?? 0
+                reconcileDeposit(of: item, in: trophyCase)
             }
+        }
+        // The backstop, for every move that is not one of those two verbs.
+        // Before the timers tick as well as after, because a daemon's theft
+        // lands after the after-rules have run; each is a membership test per
+        // treasure and writes nothing on a turn nothing moved.
+        world.beforeEachTurn {
+            for item in items { reconcileDeposit(of: item, in: trophyCase) }
+        }
+        world.afterEachTurn {
+            for item in items { reconcileDeposit(of: item, in: trophyCase) }
+        }
+    }
+
+    /// Brings one treasure's deposit credit into line with where it is:
+    /// credited exactly while it sits in the case, debited when it does not.
+    /// Idempotent, and silent on a treasure whose credit already matches, so
+    /// it is safe to call as often as the case might have changed.
+    ///
+    /// - Parameters:
+    ///   - item: the treasure.
+    ///   - trophyCase: the case its deposit value follows.
+    func reconcileDeposit(of item: Item, in trophyCase: Item) {
+        let key = "deposit.\(item.name)"
+        let inCase = trophyCase.holds(item)
+        guard inCase != cased.names.contains(key) else { return }
+        if inCase {
+            cased.names.insert(key)
+            player.score += item[.depositValue] ?? 0
+        } else {
+            cased.names.remove(key)
+            player.score -= item[.depositValue] ?? 0
         }
     }
 }
