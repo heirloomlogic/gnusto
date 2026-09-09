@@ -52,7 +52,7 @@ struct DisambiguationTests {
     @Test func aPoliteCommandIsTheCommand() async throws {
         let transcript = try await play(LanternShopGame(), ["drop cloak please", "i"])
         #expect(turnOutput(of: "drop cloak please", in: transcript).contains("Dropped."))
-        #expect(!transcript.contains("I don\'t know the word"))
+        expectEveryNounAnswered(transcript)
     }
 
     @Test func aFullPhraseAnswersTheQuestion() async throws {

@@ -30,17 +30,15 @@ struct ParsedCommand: Equatable {
         /// ``StandardParser/spellsKeyword(_:in:)``, which has the scope to
         /// tell the two apart. (#403)
         static func keyword(phrase: [String], excluding: [EntityID] = []) -> MultiObject? {
-            // `take all of them` is `take all`: the tail restates the group the
-            // keyword already stands for. This is the one place `of` is
-            // dropped, and it is dropped here rather than as line noise
-            // because the word is a word the tables and the games own —
-            // `get out of the car`, an item called `cup of tea`. Stripping it
-            // from the line would leave `all them` behind, which spells no
-            // keyword either. Issue #445.
-            let phrase =
-                Array(phrase.suffix(2)) == ["of", "them"] ? Array(phrase.dropLast(2)) : phrase
-            return switch phrase {
-            case ["all"], ["everything"]: .all(excluding: excluding)
+            switch phrase {
+            // `all of them` is a row rather than a pre-pass that strips the
+            // tail, so this stays the flat table it says it is. It is the one
+            // place `of` is read at all: the word belongs to the tables and to
+            // the games — `get out of the car`, an item called `cup of tea` —
+            // so it is not line noise, and stripping it from the line would
+            // have left `all them` behind, which spells no keyword either.
+            // Issue #445.
+            case ["all"], ["everything"], ["all", "of", "them"]: .all(excluding: excluding)
             case ["them"]: .them(excluding: excluding)
             default: nil
             }
@@ -1032,9 +1030,17 @@ struct StandardParser {
 
     /// Whether the phrase ends in a word no item in the game answers to as a
     /// noun — the mark of a phrase that describes rather than names.
+    ///
+    /// Asked of the whole lexicon rather than of the candidates that were
+    /// ambiguous, and the asymmetry is deliberate: a *true* answer proves the
+    /// description pass raised this question, because a name match would have
+    /// required the last word to be somebody's noun. A false one may be either,
+    /// and takes the splice every ambiguity took before there was a description
+    /// pass at all — so the rule can only ever move a question that would
+    /// otherwise be unanswerable.
     private func namesNothing(_ phrase: [String]) -> Bool {
         guard let last = phrase.last else { return false }
-        return !vocabulary.itemLexicons.values.contains { $0.nouns.contains(last) }
+        return !vocabulary.itemNouns.contains(last)
     }
 
     // MARK: - Pieces

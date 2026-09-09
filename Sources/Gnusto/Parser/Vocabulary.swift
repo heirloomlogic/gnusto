@@ -7,7 +7,7 @@ struct ItemLexicon: Sendable {
     /// is one of its words, and the final token is a noun.
     func matches(_ tokens: [String]) -> Bool {
         guard let last = tokens.last, nouns.contains(last) else { return false }
-        return tokens.allSatisfy { nouns.contains($0) || adjectives.contains($0) }
+        return describes(tokens)
     }
 
     /// True when every token is one of this item's words, whether or not the
@@ -49,6 +49,7 @@ struct Vocabulary: Sendable {
     /// that anything normalizing author-written text the same way the parser
     /// normalizes player input — ``Topic/normalize(_:)`` — reads the one list
     /// rather than keeping a copy of it that can drift.
+    ///
     /// `please` is here and `of` deliberately is not. Filler is stripped from
     /// the whole line before anything is matched, so a word the tables spell
     /// would become untypeable — and two core rows spell `of` (`get out of the
@@ -187,6 +188,13 @@ struct Vocabulary: Sendable {
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
 
+    /// Every word some item answers to as a *noun*, flattened in the same
+    /// bootstrap pass. Separate from ``allKnownWords``, which also holds the
+    /// adjectives — and the difference between the two is the whole question
+    /// "does this phrase name something, or only describe it?", which the
+    /// parser asks when it decides where a clarifying answer belongs.
+    var itemNouns: Set<String> = []
+
     /// The verb words, sorted once at bootstrap — Tab-completion offers them
     /// every turn and the order never changes, so the sort is cached here
     /// rather than repeated per turn.
@@ -275,6 +283,7 @@ struct Vocabulary: Sendable {
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)
             allKnownWords.formUnion(lexicon.adjectives)
+            itemNouns.formUnion(lexicon.nouns)
         }
         sortedVerbWords = verbWords.sorted()
         sortedDirectionWords = directions.keys.sorted()

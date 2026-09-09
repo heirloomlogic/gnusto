@@ -55,7 +55,13 @@ public actor GameWorld {
     /// save file has anything to say about, and a restored game correcting the
     /// word from a session three weeks ago would be reading a line nobody is
     /// still looking at.
-    var pendingCorrection: (tokens: [String], index: Int)?
+    var pendingCorrection: Correction?
+
+    /// A line the parser refused for one word it had never heard of, and where
+    /// in it that word stood — everything `oops <word>` needs to write the line
+    /// again. Named rather than left an anonymous tuple because it travels
+    /// through three signatures.
+    typealias Correction = (tokens: [String], index: Int)
     /// The pristine post-bootstrap state, seed included — what RESTART
     /// rewinds to. Actor state, never part of `WorldState` itself.
     let initialState: WorldState
@@ -248,21 +254,21 @@ public actor GameWorld {
             return (result, TurnAudit(answeredPrompt: true))
         }
 
+        // One walk of the world per line, not per parse: nothing between the
+        // readings below mutates state, and AGAIN and OOPS each hand a second
+        // line to the same parser.
+        let scope = currentScope()
         let tokens = parser.tokenize(input)
 
         if let pending = pendingClarification {
             pendingClarification = nil
             let augmented = pending.prefix + tokens + pending.suffix
-            switch parser.parse(tokens: augmented, rawInput: input, scope: currentScope()) {
+            switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
             case .success(let parsed):
-                // Asked of the vocabulary rather than inferred from the reply:
-                // the player-facing message names at most one word and only on
-                // some of the failure paths, while this is every token the game
-                // has never heard of, available even on the lines that parsed.
-                // The *answer's* tokens, not the spliced line's — the rest of
-                // the line was reported when it was typed.
+                // The *answer's* unknown words, not the spliced line's: the
+                // rest of the line was reported when it was typed.
                 return performParsed(
-                    parsed, tokens: augmented, correction: correction,
+                    parsed, tokens: augmented, scope: scope, correction: correction,
                     unknown: unknownWords(in: tokens))
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
@@ -276,10 +282,18 @@ public actor GameWorld {
             }
         }
 
-        return performLine(tokens: tokens, rawInput: input, correction: correction)
+        return performLine(tokens: tokens, rawInput: input, scope: scope, correction: correction)
     }
 
     /// Every token of a line the game has never heard of.
+    ///
+    /// Asked of the vocabulary rather than inferred from the reply: the
+    /// player-facing message names at most one word and only on some of the
+    /// failure paths, while this is every token the game has never heard of,
+    /// available even on the lines that parsed.
+    ///
+    /// - Parameter tokens: the line, as the parser saw it.
+    /// - Returns: the tokens outside the game's whole vocabulary.
     private func unknownWords(in tokens: [String]) -> [String] {
         tokens.filter { !definition.vocabulary.knows($0) }
     }
@@ -290,13 +304,14 @@ public actor GameWorld {
     /// - Parameters:
     ///   - tokens: the line, tokenized, filler already dropped.
     ///   - rawInput: the line as it will ride on the command.
+    ///   - scope: what the player can name, walked once for the whole line.
     ///   - correction: the OOPS context this line may spend, if it is an OOPS.
     /// - Returns: the turn's output and status, and the parse record.
     private func performLine(
-        tokens: [String], rawInput: String, correction: (tokens: [String], index: Int)?
+        tokens: [String], rawInput: String, scope: Scope, correction: Correction? = nil
     ) -> (result: TurnResult, audit: TurnAudit) {
         let unknown = unknownWords(in: tokens)
-        switch parser.parse(tokens: tokens, rawInput: rawInput, scope: currentScope()) {
+        switch parser.parse(tokens: tokens, rawInput: rawInput, scope: scope) {
         case .failure(let error):
             // A word the game has never heard of is the one failure OOPS can
             // mend, so that line — and where in it the word stood — is kept
@@ -309,23 +324,36 @@ public actor GameWorld {
             return (result, TurnAudit(unknownWords: unknown))
         case .success(let parsed):
             return performParsed(
-                parsed, tokens: tokens, correction: correction, unknown: unknown)
+                parsed, tokens: tokens, scope: scope, correction: correction, unknown: unknown)
         }
     }
 
     /// Dispatches a parsed line: the two verbs that hand a *different* line
     /// back to the parser, and everything else, which is a turn.
     private func performParsed(
-        _ parsed: ParsedCommand, tokens: [String],
-        correction: (tokens: [String], index: Int)?, unknown: [String]
+        _ parsed: ParsedCommand, tokens: [String], scope: Scope,
+        correction: Correction?, unknown: [String]
     ) -> (result: TurnResult, audit: TurnAudit) {
         switch parsed.intent {
-        case .again: return performAgain(unknown: unknown)
-        case .oops: return performOops(parsed, correction: correction, unknown: unknown)
+        case .again, .oops:
+            switch rewritten(parsed, correction: correction) {
+            case .line(let tokens):
+                return performLine(
+                    tokens: tokens, rawInput: tokens.joined(separator: " "), scope: scope)
+            case .refusal(let line):
+                return (freeReply(line), TurnAudit(unknownWords: unknown))
+            }
         default:
             let result = armDeathPromptIfNeeded(run(parsed, tokens: tokens))
             return (result, TurnAudit(parsed, unknownWords: unknown))
         }
+    }
+
+    /// What AGAIN or OOPS makes of the line: another line to read, or the
+    /// reason there is not one.
+    private enum Rewrite {
+        case line([String])
+        case refusal(String)
     }
 
     /// AGAIN: the last command the player ran, read again against the room as
@@ -339,15 +367,10 @@ public actor GameWorld {
     /// Bounded without a counter: ``WorldState/lastCommand`` is written only
     /// for a command that is neither engine-level nor meta, so the line it
     /// hands back can never be another AGAIN.
-    private func performAgain(unknown: [String]) -> (result: TurnResult, audit: TurnAudit) {
+    private func performAgain() -> Rewrite {
         let tokens = state.lastCommand
-        guard !tokens.isEmpty else {
-            return (
-                freeReply(definition.text.nothingToRepeat()), TurnAudit(unknownWords: unknown)
-            )
-        }
-        return performLine(
-            tokens: tokens, rawInput: tokens.joined(separator: " "), correction: nil)
+        guard !tokens.isEmpty else { return .refusal(definition.text.nothingToRepeat()) }
+        return .line(tokens)
     }
 
     /// OOPS: the word the parser last refused, replaced by the one the player
@@ -358,23 +381,24 @@ public actor GameWorld {
     /// went wrong in their own words: there is a difference between having no
     /// misheard word to mend and offering no word to mend it with, and a
     /// player who cannot tell the two apart types OOPS twice.
-    private func performOops(
-        _ parsed: ParsedCommand, correction: (tokens: [String], index: Int)?, unknown: [String]
-    ) -> (result: TurnResult, audit: TurnAudit) {
-        guard let correction, correction.index < correction.tokens.count else {
-            return (
-                freeReply(definition.text.nothingToCorrect()), TurnAudit(unknownWords: unknown)
-            )
-        }
+    private func performOops(_ parsed: ParsedCommand, correction: Correction?) -> Rewrite {
+        guard let correction else { return .refusal(definition.text.nothingToCorrect()) }
         guard let replacement = parsed.topic, !replacement.isEmpty else {
-            return (
-                freeReply(definition.text.oopsNeedsAWord()), TurnAudit(unknownWords: unknown)
-            )
+            return .refusal(definition.text.oopsNeedsAWord())
         }
         var tokens = correction.tokens
         tokens.replaceSubrange(correction.index...correction.index, with: replacement)
-        return performLine(
-            tokens: tokens, rawInput: tokens.joined(separator: " "), correction: nil)
+        return .line(tokens)
+    }
+
+    /// The line one of the two rewriting verbs hands back, or its refusal.
+    ///
+    /// - Parameters:
+    ///   - parsed: the AGAIN or OOPS command.
+    ///   - correction: the OOPS context this line may spend.
+    /// - Returns: the replacement line, or the reason there is none.
+    private func rewritten(_ parsed: ParsedCommand, correction: Correction?) -> Rewrite {
+        parsed.intent == .again ? performAgain() : performOops(parsed, correction: correction)
     }
 
     /// Quits at the front end's request — a Ctrl-C, not a typed command.
