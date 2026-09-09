@@ -97,24 +97,6 @@ final class VerbMacroTests: XCTestCase {
             macros: macros)
     }
 
-    func testEscapesQuotesAndBackslashesInPatternWords() {
-        // A word with escape sequences decodes to its value ("\hi") and
-        // re-emits as a literal representing exactly that value — never as
-        // broken generated source.
-        assertMacroExpansion(
-            inIntentExtension(#"#verb("say", ["say", "\"\\hi\""])"#),
-            expandedSource: inIntentExtension(
-                ##"""
-                public static let say = Intent(
-                    "say",
-                    syntax: [
-                        SyntaxRule("say", #""\hi""#, intent: Intent("say"))
-                    ]
-                )
-                """##),
-            macros: macros)
-    }
-
     func testReclaimingABuiltInUnderANewName() {
         assertMacroExpansion(
             inIntentExtension(#"#verb("steal", ["take", .directObject])"#),
@@ -172,6 +154,24 @@ final class VerbMacroTests: XCTestCase {
         expectDiagnostic(
             source: inIntentExtension(#"#verb("ring\(bell)", ["ring"])"#),
             message: "the intent name must be a plain string literal.")
+    }
+
+    func testRejectsAnInterpolatedPatternWord() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("ring", ["ring\(suffix)"])"#),
+            message: "pattern words must be plain string literals.")
+    }
+
+    func testRejectsACapitalizedImplicitPatternWord() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("Ring")"#),
+            message: "pattern word \"Ring\" must be a single lowercase alphanumeric token.")
+    }
+
+    func testRejectsAMalformedPatternWord() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("ringBell", ["ring bell"])"#),
+            message: "pattern word \"ring bell\" must be a single lowercase alphanumeric token.")
     }
 
     func testRejectsAnInvalidIdentifier() {

@@ -531,7 +531,9 @@ public struct Item: Sendable, Equatable {
         MapEntry(kind: .placement(item: token, target: .inside(item.token)))
     }
 
-    /// The item starts the game worn by the player.
+    /// The item starts the game worn by the player. The bootstrap warns if the
+    /// item is not ``wearable``: the initial state would be possible only at
+    /// bootstrap and the player could not remove or restore it.
     public var startsWorn: MapEntry {
         MapEntry(kind: .placement(item: token, target: .worn))
     }

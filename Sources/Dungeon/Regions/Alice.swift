@@ -140,7 +140,6 @@ struct DungeonAlice: GameContent {
         description(Prose.bucket)
         enterable
         container
-        startsOpen
         trait(.weight, 100)
     }
 

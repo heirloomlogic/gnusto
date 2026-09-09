@@ -37,6 +37,103 @@ struct BootstrapTests {
         #expect(state.placements[EntityID("hat")] == .heldBy(.player))
     }
 
+    @Test func duplicateSingleValuedDeclarationsAreFatalAndDeterministic() {
+        #expect {
+            try Bootstrap.build(DuplicateDeclarationsGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                "location \"zeta\" declares name(…) more than once.",
+                "location \"zeta\" declares description(…) more than once.",
+                "location \"zeta\" declares custom trait \"diagnosticValue\" more than once.",
+                "item \"alpha\" declares name(…) more than once.",
+                "item \"alpha\" declares description(…) more than once.",
+                "item \"alpha\" declares firstSight(…) more than once.",
+                "item \"alpha\" declares capacity(…) more than once.",
+                "item \"alpha\" declares custom trait \"diagnosticValue\" more than once.",
+            ]
+        }
+    }
+
+    @Test func accumulatingWordsRemainLegal() {
+        var duplicates: [String] = []
+        let definition = ItemDefinition(
+            traits: [
+                name("coin"), synonyms("money"), synonyms("cash"),
+                adjectives("gold"), adjectives("small"),
+            ],
+            onDuplicate: { duplicates.append($0) })
+        #expect(duplicates.isEmpty)
+        #expect(definition.synonyms == ["money", "cash"])
+        #expect(definition.adjectives == ["gold", "small"])
+    }
+
+    @Test func sceneryFactoryDescriptionParticipatesInDuplicateChecking() {
+        let item = Item.scenery("wall", description: "Stone.") { description("Brick.") }
+        var duplicates: [String] = []
+        _ = ItemDefinition(traits: item.traits, onDuplicate: { duplicates.append($0) })
+        #expect(duplicates == ["description(…)"])
+    }
+
+    @Test func storedPluginDeclarationsAreRejectedBeforePlay() {
+        #expect {
+            try Bootstrap.build(StatefulPluginHost())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                "plugin \"contraband\" (StatefulPlugin) stores Actor \"actor\"; "
+                    + "a GamePlugin cannot declare actors. Use a GameContent bundle instead.",
+                "plugin \"contraband\" (StatefulPlugin) stores @Global \"counter\"; "
+                    + "a GamePlugin cannot declare global state. Use a GameContent bundle instead.",
+                "plugin \"contraband\" (StatefulPlugin) stores @Global \"fired\"; "
+                    + "a GamePlugin cannot declare global state. Use a GameContent bundle instead.",
+                "plugin \"contraband\" (StatefulPlugin) stores Item \"item\"; "
+                    + "a GamePlugin cannot declare items. Use a GameContent bundle instead.",
+                "plugin \"contraband\" (StatefulPlugin) stores Location \"room\"; "
+                    + "a GamePlugin cannot declare locations. Use a GameContent bundle instead.",
+            ]
+        }
+    }
+
+    @Test func inertItemDeclarationsWarnBeforePlay() throws {
+        let (definition, _) = try Bootstrap.build(InertDeclarationsGame())
+        #expect(
+            definition.warnings == [
+                "item \"capacityOnly\" declares capacity but is not a container; "
+                    + "the trait has no effect.",
+                "item \"openOnly\" declares startsOpen but is not openable; the flag has no effect.",
+                "item \"transparentOnly\" declares transparent but is not a container; "
+                    + "the trait has no effect.",
+                "item \"wornOnly\" starts worn but is not wearable; the placement creates "
+                    + "an item the player cannot remove or wear again.",
+            ])
+    }
+
+    @Test func reservedWordWarningsAreSortedWithinAnItem() throws {
+        let (definition, _) = try Bootstrap.build(ReservedWordItemGame())
+        #expect(
+            definition.warnings == [
+                "item \"ambiguous\" answers to \"it\", a reserved parser word "
+                    + "(pronoun or multi-object keyword); the parser will never "
+                    + "match it to this item.",
+                "item \"ambiguous\" answers to \"them\", a reserved parser word "
+                    + "(pronoun or multi-object keyword); the parser will never "
+                    + "match it to this item.",
+            ])
+    }
+
+    @Test func capitalizedRuntimeVerbLiteralIsFatal() {
+        #expect {
+            try Bootstrap.build(CapitalizedVerbGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                "the verb pattern \"Ring\" declares the word \"Ring\", which must be a "
+                    + "single lowercase alphanumeric token the parser can match."
+            ]
+        }
+    }
+
     @Test func brokenGameReportsAllProblemsAtOnce() {
         #expect {
             try Bootstrap.build(BrokenGame())
@@ -239,6 +336,17 @@ struct BootstrapTests {
             let text = bootstrapError.description
             return text.contains("the source of a north exit")  // the direction anchor
                 && text.contains("not a stored property")
+        }
+    }
+
+    @Test func danglingExitTargetsAndDoorsNameTheirSourceRoom() {
+        #expect {
+            try Bootstrap.build(DanglingExitTargetsGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("the north exit from \"hall\" references a location")
+                && text.contains("the east door from \"hall\" references an item")
         }
     }
 

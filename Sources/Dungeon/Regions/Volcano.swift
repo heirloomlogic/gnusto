@@ -338,7 +338,6 @@ struct DungeonVolcano: GameContent {
         description: Prose.oblongHole
     ) {
         container
-        startsOpen
         capacity(10)
     }
 

@@ -10,6 +10,9 @@ other, and either hands back a definition or reports every problem it found at
 once — never the first one, because a game with four mistakes in its map should
 cost one build to find all four.
 
+Reports use a stable order. A build with the same mistakes therefore prints
+the same list in the same order.
+
 A problem that would leave the world incoherent is fatal: ``BootstrapError`` is
 thrown and the game never starts. A problem that only leaves a declaration inert
 is a warning on standard error, and play continues. The distinction is worth
@@ -72,11 +75,13 @@ the table renders.
 |---|---|
 | `content bundles A and B share the namespace "N", so every property name any two of them have in common mints one entity ID and only one of those declarations survives; override 'var namespace' to give each bundle its own.` | Two instances of one ``GameContent`` type, or two types that overrode `namespace` to the same string. Override ``GameContent/namespace`` on one. |
 | `the game stores "attic" (Attic), a content bundle it never lists in its content block; nothing it declares — rooms, items, globals, rules, verbs, timers — is registered. Add attic to 'var content'.` | A bundle held as a property but missing from ``Game/content``. |
+| `plugin "combat" (CombatPlugin) stores @Global "round"; a GamePlugin cannot declare global state. Use a GameContent bundle instead.` | Also `Location`, `Item`, and `Actor`. A logic-only ``GamePlugin`` cannot own declarations because the bootstrap does not register or namespace them. Move stateful content to ``GameContent``. |
 | `"player" is a reserved entity ID (declared by MyGame); rename this declaration.` | The bootstrap synthesizes the player under that ID. Rename yours. |
 | `entity "coin" is declared by both MyGame and Attic.` | Two declarations minted the same `EntityID`. Rename one, or namespace the bundle. |
 | `"a" and "b" are the same Location value; each location must be its own declaration.` | One `Location` (or `Item`, or `Actor`) value assigned to two properties. Each entity is its own `let`. |
 | `location "hall" has no name(…) trait.` | Also `item "…"` and `actor "…"`. Every entity needs a `name(…)` trait. |
-| `the north exit references a location that is not a stored property of the game or any of its content bundles.` | Also `… references an item …`. The `map` block named something the reflection walk never saw — usually a computed property or one declared in an extension. |
+| `item "coin" declares name(…) more than once.` | Also `description(…)`, `firstSight(…)`, the two-state description forms, `pronoun(…)`, `capacity(…)`, custom traits, and location names/descriptions/custom traits. These are single-valued declarations; remove the duplicate instead of relying on the later value. `adjectives` and `synonyms` deliberately accumulate. |
+| `the north exit from "hall" references a location that is not a stored property of the game or any of its content bundles.` | Also `… door from "hall" references an item …`. The `map` block named something the reflection walk never saw — usually a computed property or one declared in an extension. If the source is also unresolved, the diagnostic names the direction instead. |
 | `"attic" declares its north exit more than once.` | Two `map` entries claim one direction. |
 | `"coin" declares its placement more than once: first in "hall", then inside "box".` | An item can have one initial position. This applies to every placement spelling: `starts(in:)`, `starts(on:)`, `starts(inside:)`, `startsWorn`, `startsHeld`, and `starts(heldBy:)`, including declarations split between the host map and a content bundle's map. Remove one entry. |
 | `"attic"'s north exit uses "door" as a door, which is not declared openable.` | A door exit needs an ``openable`` item; `go` has no open state to gate on otherwise. |
@@ -104,7 +109,7 @@ to be silently so.
 | Diagnostic | Cause and fix |
 |---|---|
 | `"coin" declares the name "…", which has no letters or digits in it; there is no word there for the parser to match.` | Also `the adjective "…"` and `the synonym "…"`. |
-| `the verb pattern "…" declares the word "…", which the parser splits differently from what the player types; no input can reach it.` | A literal in a custom pattern that is not a single bare word. |
+| `the verb pattern "…" declares the word "…", which must be a single lowercase alphanumeric token the parser can match.` | A literal in a hand-built custom pattern that contains punctuation or whitespace, or uses uppercase. `#verb` rejects the same spelling at compile time. |
 | `noise word "some" is also an item word; stripping it would make that word untypeable.` | The clause names what it collided with: `a verb word`, `a structural word in a verb pattern`, `a direction`, or `an item word`. Filler is dropped at tokenize time, before any matching, so a word that is both filler and a real word is a word nobody can type. The built-in filler (`the`, `a`, `an`, `my`, `that`, `this`, `some`, `please`) is checked against your declarations too, which is how an item that answers to `some` gets caught. |
 
 ### Gate 3 — rules and timers
@@ -135,6 +140,10 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `item "it" answers to "it", a reserved parser word (pronoun or multi-object keyword); the parser will never match it to this item.` | The reserved set is `it`, `them`, `him`, `her`, `all`, `everything`; they resolve before any item lexicon. Rename the noun or adjective — and for `him`/`her`, declare ``pronoun(_:)`` instead, which is what binds those two. |
 | `item "lamp" declares startsLit but is not a lightSource; the flag has no effect.` | Add ``lightSource``. |
 | `item "box" declares startsUnlocked but has no lockedBy entry; the flag has no effect.` | Lockability comes from the `lockedBy` map entry, not a trait. |
+| `item "box" declares startsOpen but is not openable; the flag has no effect.` | Add ``openable``, or remove ``startsOpen``. |
+| `item "box" declares capacity but is not a container; the trait has no effect.` | Add ``container``, or remove the capacity. |
+| `item "window" declares transparent but is not a container; the trait has no effect.` | Transparency only exposes a closed container's contents. Add ``container``, or remove ``transparent``. |
+| `item "hat" starts worn but is not wearable; the placement creates an item the player cannot remove or wear again.` | Add ``wearable``, or use `startsHeld`. |
 | `item "robot" declares takesOrders but is not an actor; only a person can be given an order, and the flag has no effect.` | Declare it as an `Actor`. |
 | `item "Vane" is named "Mrs. Vane", which reads as a proper name but is not declared properName; stock lines will say "the Mrs. Vane".` | Add ``properName``. Not inferred, because "Elvish sword" is a common noun and so is "Orange Grove Avenue". Locations are exempt — the engine never articles a room name. |
 | `actor "troll" declares the item trait "container"; actors hold things via their inventory, and the trait will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `lockable`, `startsUnlocked` and `capacity`. Legal, almost never meant; the trait is left in place rather than stripped. |
@@ -212,6 +221,20 @@ See <doc:SplittingAGameAcrossFiles>.
 - ``openable``
 - ``container``
 - ``surface``
+
+## Entity interpolation warns at compile time
+
+Interpolating an `Item`, `Actor`, or `Location` directly into a `String` produces a
+compiler warning. Use `item.definiteName` or `item.indefiniteName`, the corresponding
+actor properties, or `location.name` in prose. Ignoring the warning preserves the
+existing struct dump; interpolation does not read live game state for you.
+
+Swift skips unavailable interpolation overloads and falls back to its generic
+implementation, so Gnusto uses deprecated overloads to issue this warning. Build
+with `-warnings-as-errors` (`swift build -Xswiftc -warnings-as-errors`) to reject it.
+Values erased to `Any` or passed through an unconstrained generic still use Swift's
+generic interpolation and cannot receive this type-specific warning.
+
 
 ## See also
 

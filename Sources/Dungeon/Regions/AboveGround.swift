@@ -144,7 +144,6 @@ struct DungeonAboveGround: GameContent {
         // stamp. No `capacity(_:)`: the rule below refuses every insertion
         // outright, and two mechanisms aimed at one behaviour is one too many.
         container
-        startsOpen
         trait(.weight, 30)
         trait(.burnable, true)
     }

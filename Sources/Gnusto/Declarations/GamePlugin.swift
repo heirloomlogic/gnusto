@@ -17,13 +17,16 @@
 ///
 /// ## Logic-only: a plugin owns no state
 ///
-/// Unlike a ``GameContent`` bundle, a plugin is **not** reflected by the
-/// bootstrap, so it declares no rooms, items, or `@Global` state of its own. It
-/// operates entirely over entities and globals the **host** declares, receiving
-/// what it needs as parameters. That keeps a plugin portable: it makes no
+/// Unlike a ``GameContent`` bundle, a plugin's stored children are not
+/// registered or namespaced by the bootstrap, so it declares no rooms, items,
+/// or `@Global` state of its own. It operates entirely over entities and globals
+/// the **host** declares, receiving what it needs as parameters. That keeps a
+/// plugin portable: it makes no
 /// assumptions about the host's world beyond the traits and intents it agrees
 /// on. A plugin that genuinely needs to ship its own content is a
 /// ``GameContent`` bundle instead (list it in the game's `content`).
+/// The bootstrap enforces that boundary: a stored plugin containing a
+/// `Location`, `Item`, `Actor`, `@Global`, or `@Latch` is rejected before play.
 ///
 /// ## The host opts in by splicing
 ///

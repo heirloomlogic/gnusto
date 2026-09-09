@@ -41,6 +41,10 @@ public struct VerbMacro: DeclarationMacro {
         let rows = patterns.isEmpty ? [[Element.word(name)]] : patterns
 
         for row in rows {
+            for case .word(let word) in row where !isValidPatternWord(word) {
+                throw error(
+                    "pattern word \"\(word)\" must be a single lowercase alphanumeric token.")
+            }
             for problem in patternProblems(of: row) {
                 throw error(problem)
             }
@@ -209,6 +213,13 @@ public struct VerbMacro: DeclarationMacro {
     /// (`repeat`), spaces, and anything else that couldn't name the constant.
     private static func isValidIdentifier(_ name: String) -> Bool {
         name.isValidSwiftIdentifier(for: .variableName)
+    }
+
+    /// The spelling the runtime bootstrap accepts for a literal parser token.
+    /// Kept local because the macro target cannot import the engine's
+    /// `Vocabulary`; `Vocabulary.words(in:) == [word]` is the runtime twin.
+    private static func isValidPatternWord(_ word: String) -> Bool {
+        word == word.lowercased() && word.allSatisfy { $0.isLetter || $0.isNumber }
     }
 
     // MARK: - Pattern validation
