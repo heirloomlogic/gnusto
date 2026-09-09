@@ -106,6 +106,9 @@ extension DefaultActions {
                 ["carry", .directObject],
                 ["pick", "up", .directObject],
                 ["pick", .directObject, "up"],
+                ["take", .directObject, "from", .indirectObject],
+                ["take", .directObject, "off", .indirectObject],
+                ["take", .directObject, "out", "of", .indirectObject],
             ],
             reach: .directObject
         ) { try take($0, frame: $1) },
@@ -160,6 +163,7 @@ extension DefaultActions {
             .putOn,
             [
                 ["put", .directObject, "on", .indirectObject],
+                ["drop", .directObject, "on", .indirectObject],
                 ["hang", .directObject, "on", .indirectObject],
                 ["place", .directObject, "on", .indirectObject],
             ],
@@ -168,11 +172,21 @@ extension DefaultActions {
 
         .handled(
             .putIn,
-            [["put", .directObject, "in", .indirectObject]],
+            [
+                ["put", .directObject, "in", .indirectObject],
+                ["drop", .directObject, "in", .indirectObject],
+            ],
             reach: .bothObjects
         ) { try putIn($0, frame: $1) },
 
-        .handled(.open, [["open", .directObject]], reach: .directObject) { try open($0, frame: $1) },
+        .handled(
+            .open,
+            [
+                ["open", .directObject],
+                ["open", .directObject, "with", .indirectObject],
+            ],
+            reach: .directObject
+        ) { try open($0, frame: $1) },
 
         .handled(
             .close,

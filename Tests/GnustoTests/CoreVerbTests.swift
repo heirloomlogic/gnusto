@@ -33,7 +33,8 @@ struct CoreVerbTests {
     static let everyCoreCommand = [
         // take
         "take rod", "get rod", "grab rod", "hold rod", "carry rod",
-        "pick up rod", "pick rod up",
+        "pick up rod", "pick rod up", "take rod from sack", "take rod off bench",
+        "take rod out of sack",
         // drop
         "drop cloak", "discard cloak", "put down cloak", "put cloak down",
         // examine
@@ -45,11 +46,11 @@ struct CoreVerbTests {
         // doff
         "remove hat", "doff hat", "take off hat", "take hat off",
         // putOn
-        "put cloak on bench", "hang cloak on bench", "place cloak on bench",
+        "put cloak on bench", "drop cloak on bench", "hang cloak on bench", "place cloak on bench",
         // putIn
-        "put cloak in sack",
+        "put cloak in sack", "drop cloak in sack",
         // open / close
-        "open box", "close box", "shut box",
+        "open box", "open box with key", "close box", "shut box",
         // lock / unlock
         "lock box with key", "unlock box with key",
         // turnOn

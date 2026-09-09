@@ -877,6 +877,17 @@ struct StandardParser {
             case .success(let id):
                 ids.append(id)
             case .failure(let error):
+                // A resolved list member followed by a fresh command is not a
+                // second noun: `take cloak and go east` is one malformed
+                // sentence, rather than a thing the player cannot see.
+                if !ids.isEmpty,
+                    case .notInScope = error,
+                    let first = piece.first,
+                    isSyntaxWord(first),
+                    !isKnownNounPhrase(Array(piece))
+                {
+                    return .failure(.unmatchedSyntax)
+                }
                 // `piece.startIndex` is its offset within the slot's phrase,
                 // since every slice here indexes the same zero-based array.
                 return .failure(
@@ -1011,6 +1022,20 @@ struct StandardParser {
     func resolve(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
+        let resolved = resolveNoun(tokens, in: scope, alsoConsidering: distant)
+        guard case .failure(.notInScope) = resolved,
+            hasSyntaxTail(afterNounIn: tokens, scope: scope, distant: distant)
+        else {
+            return resolved
+        }
+        return .failure(.unmatchedSyntax)
+    }
+
+    /// Resolves only the noun, without interpreting any trailing sentence
+    /// structure. Prefix checks use this layer so diagnosis never recurses.
+    private func resolveNoun(
+        _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID>
+    ) -> Result<EntityID, ParseError> {
         // Pronouns resolve ahead of any item lexicon, and both take the same
         // two questions: is the word bound, and is what it names still
         // nameable. "it" is whatever the player last named. "them" reaches
@@ -1030,6 +1055,42 @@ struct StandardParser {
         let first = matches(tokens, among: scope.visibleItems)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
         return outOfSight(tokens, among: scope.elsewhereActors, answerableIn: distant)
+    }
+
+    /// Whether a phrase starts by naming something and then continues as
+    /// sentence structure: `cloak with key`, `cloak open door`, or `cloak e`.
+    /// A complete name anywhere in the game's lexicon wins first, even when it
+    /// is out of scope, so a name such as `cup of tea` keeps the scope error.
+    private func hasSyntaxTail(
+        afterNounIn tokens: [String], scope: Scope, distant: Set<EntityID>
+    ) -> Bool {
+        // A complete noun name wins even when its first word also belongs to
+        // grammar, and even when that noun is presently out of scope.
+        guard !isKnownNounPhrase(tokens) else { return false }
+        guard let first = tokens.first else { return false }
+        if tokens.count == 1 { return isSyntaxWord(first) }
+
+        for split in tokens.indices.dropFirst() where isSyntaxWord(tokens[split]) {
+            if case .success = resolveNoun(
+                Array(tokens[..<split]), in: scope, alsoConsidering: distant)
+            {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Whether the complete phrase names any item in the game's lexicon,
+    /// regardless of whether the item is currently in scope.
+    private func isKnownNounPhrase(_ tokens: [String]) -> Bool {
+        vocabulary.itemLexicons.values.contains { $0.matches(tokens) }
+    }
+
+    /// A word that belongs to sentence grammar rather than a noun phrase.
+    private func isSyntaxWord(_ word: String) -> Bool {
+        vocabulary.prepositions.contains(word)
+            || vocabulary.verbWords.contains(word)
+            || vocabulary.directions[word] != nil
     }
 
     /// Resolves the words to the left of a comma — which can only ever name a

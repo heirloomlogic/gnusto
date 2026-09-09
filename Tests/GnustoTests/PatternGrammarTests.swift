@@ -131,14 +131,14 @@ struct PatternGrammarTests {
     /// bootstrap derives from its name — the parser answers to both wherever
     /// an object *slot* asks, as the `examine` half of each pair shows — but a
     /// literal row matches text, so neither reaches this pattern. The player
-    /// names a thing standing in front of them and is told it isn't there,
-    /// which is the cost #151 records in the player's own words.
+    /// names a thing standing in front of them, but the row still does not fit,
+    /// so the parser reports a malformed sentence rather than a scope error.
     @Test(arguments: [("box", "push box north"), ("wooden crate", "push wooden crate north")])
     func adjectivesAndSynonymsStopAtThePattern(_ noun: String, _ input: String) throws {
         let parser = try Self.makeParser()
         let examined = try parser.parse("examine \(noun)", scope: Self.scope).get()
         #expect(examined.directObject == EntityID("crate"))
-        #expect(parser.parse(input, scope: Self.scope) == .failure(.notInScope))
+        #expect(parser.parse(input, scope: Self.scope) == .failure(.unmatchedSyntax))
     }
 
     // MARK: - A noun and a direction

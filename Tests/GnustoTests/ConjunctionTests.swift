@@ -128,9 +128,9 @@ struct ConjunctionTests {
 
     @Test func aConjunctionIsNotACommandSeparator() async throws {
         // "take the sword and go north" is two commands in English and one
-        // unparseable noun phrase here. It must not move the player.
+        // malformed sentence here. It must not move the player.
         let transcript = try await play(VaultGame(), ["take coin and go north", "look"])
-        expectInOrder(transcript, ["You can't see any such thing", "Vault"])
+        expectInOrder(transcript, ["I didn't understand that sentence", "Vault"])
         #expect(!transcript.contains("Closet"))
     }
 

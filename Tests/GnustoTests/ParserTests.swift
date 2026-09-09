@@ -29,6 +29,9 @@ struct ParserTests {
         ("get the cloak", Expected(intent: .take, direct: "cloak")),
         ("pick up the velvet cloak", Expected(intent: .take, direct: "cloak")),
         ("pick cloak up", Expected(intent: .take, direct: "cloak")),
+        ("take cloak from hook", Expected(intent: .take, direct: "cloak", indirect: "hook")),
+        ("take cloak off hook", Expected(intent: .take, direct: "cloak", indirect: "hook")),
+        ("take cloak out of hook", Expected(intent: .take, direct: "cloak", indirect: "hook")),
         ("drop cloak", Expected(intent: .drop, direct: "cloak")),
         ("put down cloak", Expected(intent: .drop, direct: "cloak")),
         ("put cloak down", Expected(intent: .drop, direct: "cloak")),
@@ -43,6 +46,11 @@ struct ParserTests {
         ("take cloak off", Expected(intent: .doff, direct: "cloak")),
         ("hang cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
         ("put cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("drop cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("put cloak in hook", Expected(intent: .putIn, direct: "cloak", indirect: "hook")),
+        ("drop cloak in hook", Expected(intent: .putIn, direct: "cloak", indirect: "hook")),
+        ("open cloak with hook", Expected(intent: .open, direct: "cloak", indirect: "hook")),
+        ("unlock cloak with hook", Expected(intent: .unlock, direct: "cloak", indirect: "hook")),
         (
             "put the velvet cloak onto the small brass hook",
             Expected(intent: .putOn, direct: "cloak", indirect: "hook")
@@ -107,6 +115,79 @@ struct ParserTests {
         let parser = try Self.makeParser()
         #expect(
             parser.parse("read message", scope: foyerScope)
+                == .failure(.notInScope))
+    }
+
+    @Test(
+        arguments: [
+            "take cloak with hook",  // known preposition
+            "take cloak examine hook",  // known verb
+            "take cloak east",  // known direction
+            "take cloak and go east",  // a second command is not an object-list member
+            "get up",  // a syntax word cannot fill the final object slot
+            "take east",  // nor can a bare direction
+        ])
+    func knownSyntaxAfterAResolvedFinalObjectIsAMalformedSentence(_ input: String) throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse(input, scope: Self.fullScope) == .failure(.unmatchedSyntax))
+    }
+
+    @Test func malformedTailClassificationCoversPronounsAndIndirectObjects() throws {
+        let parser = try Self.makeParser()
+        let pronounScope = Scope(
+            visibleItems: Self.fullScope.visibleItems, pronounIt: EntityID("cloak"))
+        #expect(
+            parser.parse("take it with hook", scope: pronounScope)
+                == .failure(.unmatchedSyntax))
+        #expect(
+            parser.parse("put cloak on hook with cloak", scope: Self.fullScope)
+                == .failure(.unmatchedSyntax))
+    }
+
+    @Test func trailingObjectDiagnosisPreservesNounErrors() throws {
+        let parser = try Self.makeParser()
+        let foyerScope = Scope(visibleItems: [EntityID("cloak")])
+
+        #expect(
+            parser.parse("take cloak grue", scope: Self.fullScope)
+                == .failure(.unknownWord("grue")))
+        #expect(
+            parser.parse("take cloak and go grue", scope: Self.fullScope)
+                == .failure(.unknownWord("grue")))
+        #expect(
+            parser.parse("take message with hook", scope: foyerScope)
+                == .failure(.notInScope))
+
+        var vocabulary = Vocabulary()
+        vocabulary.verbWords = ["take"]
+        vocabulary.prepositions = ["of"]
+        vocabulary.itemLexicons = [
+            EntityID("cup"): ItemLexicon(nouns: ["cup"]),
+            EntityID("tea"): ItemLexicon(nouns: ["tea"], adjectives: ["cup", "of"]),
+        ]
+        vocabulary.finalize()
+        let nounWithPreposition = StandardParser(
+            vocabulary: vocabulary,
+            syntaxRules: [SyntaxRule("take", .directObject, intent: .take)])
+        #expect(
+            nounWithPreposition.parse(
+                "take cup of tea", scope: Scope(visibleItems: [EntityID("cup")]))
+                == .failure(.notInScope))
+
+        var directionNameVocabulary = Vocabulary()
+        directionNameVocabulary.verbWords = ["take"]
+        directionNameVocabulary.directions = ["east": .east]
+        directionNameVocabulary.itemLexicons = [
+            EntityID("cloak"): ItemLexicon(nouns: ["cloak"]),
+            EntityID("eastDoor"): ItemLexicon(nouns: ["door"], adjectives: ["east"]),
+        ]
+        directionNameVocabulary.finalize()
+        let directionNameParser = StandardParser(
+            vocabulary: directionNameVocabulary,
+            syntaxRules: [SyntaxRule("take", .directObject, intent: .take)])
+        #expect(
+            directionNameParser.parse(
+                "take cloak and east door", scope: Scope(visibleItems: [EntityID("cloak")]))
                 == .failure(.notInScope))
     }
 
