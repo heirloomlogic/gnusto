@@ -116,6 +116,15 @@ class Server {
     this.proc.stderr.on('data', (d) => { this.stderr += d })
     this.proc.on('error', (e) => this.die(e.message))
     this.proc.on('exit', (code) => this.die(`server exited (${code})`))
+    // A server that dies before it reads the request leaves `send` writing into a
+    // pipe with no reader. Node reports that on the stream rather than at the call,
+    // and an unhandled `error` event is fatal — so preflight died with a stack and
+    // not one row, which is the shape a broken `.mcp.json` command has. The platform
+    // decides which spelling arrives: macOS destroys the stream when the child exits
+    // and the write fails quietly, Linux lets the write reach the pipe and raises
+    // EPIPE, which is why this only ever failed in CI. `die` is first-wins, so an
+    // `exit` that has already been observed keeps its more useful message.
+    this.proc.stdin.on('error', (e) => this.die(`server closed its input (${e.code || e.message})`))
     this.proc.stdout.on('data', (d) => {
       this.buf += d
       let i
@@ -147,7 +156,12 @@ class Server {
         timeoutMs
       )
       this.pending.set(id, { resolve: (m) => { clearTimeout(timer); resolve(m) } })
-      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n')
+      // The callback is what keeps a failed write from becoming an `error` event on
+      // the stream, and `die` resolves the waiter this call is already holding — so
+      // a dead server answers here in the same shape a live one does, rather than
+      // sitting out the 240s timeout.
+      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n',
+        (e) => { if (e) this.die(`server closed its input (${e.code || e.message})`) })
     })
   }
 

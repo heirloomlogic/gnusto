@@ -90,7 +90,11 @@ test('a healthy .mcp.json command still passes the mcp key row', (t) => {
   const f = fixture(t)
   const result = f.run(['Probe'])
   const out = stripAnsi(result.stdout)
-  assert.match(out, /ok\s+Probe mcp key\s+probe\s*$/m)
+  // stderr, not just stdout: preflight prints its rows only once every check has
+  // run, so anything that throws mid-check leaves a header and nothing else — and
+  // the reason is on the other stream. Asserting on stdout alone reported that as
+  // "the row is missing", which is the one thing it never was.
+  assert.match(out, /ok\s+Probe mcp key\s+probe\s*$/m, out + result.stderr)
 })
 
 test('a .mcp.json entry with args but no command reds the row instead of crashing', (t) => {
@@ -114,14 +118,14 @@ test('enabledMcpjsonServers merges .claude/settings.json and settings.local.json
   const f = fixture(t, { projectEnabled: [], localEnabled: ['probe'] })
   const result = f.run(['Probe'])
   const out = stripAnsi(result.stdout)
-  assert.match(out, /ok\s+Probe mcp key\s+probe\s*$/m, out)
+  assert.match(out, /ok\s+Probe mcp key\s+probe\s*$/m, out + result.stderr)
 })
 
 test('a key registered but enabled in neither settings file still reds the row', (t) => {
   const f = fixture(t, { projectEnabled: [], localEnabled: ['someone-else'] })
   const result = f.run(['Probe'])
   const out = stripAnsi(result.stdout)
-  assert.match(out, /FAIL\s+Probe mcp key\s+probe — registered but not enabled/, out)
+  assert.match(out, /FAIL\s+Probe mcp key\s+probe — registered but not enabled/, out + result.stderr)
 })
 
 test('an unknown flag is rejected rather than silently dropped', (t) => {
