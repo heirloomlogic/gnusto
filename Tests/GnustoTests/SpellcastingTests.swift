@@ -1,5 +1,5 @@
 import Foundation
-import Gnusto
+@testable import Gnusto
 import GnustoSpellcasting
 import GnustoTestSupport
 import Testing
@@ -134,6 +134,35 @@ struct SpellcastingTests {
 
     // MARK: - Save-safety
 
+    /// Every line about a spell names it by its word, which is `called:` when
+    /// the intent's own name is not one a player reads — so "the seal spell",
+    /// never "the castSeal spell", in the refusal, the memorizing and the
+    /// report alike.
+    @Test func aSpellIsNamedByItsWordNotItsIntent() async throws {
+        let transcript = try await play(
+            SpellLab(), ["seal", "memorize seal", "spells", "memorize seal", "cast seal"])
+        expectInOrder(
+            transcript,
+            [
+                "You don't have the seal spell prepared.",
+                "You fix the seal spell in your memory.",
+                "You hold in mind: seal.",
+                "You already have seal firmly in mind.",
+                "The seal sets.",
+            ])
+        #expect(!transcript.contains("castSeal"))
+    }
+
+    /// Two prepared spells on one memorize verb are two actions on one intent;
+    /// the bootstrap keeps the later and says so.
+    @Test func twoSpellsSharingAMemorizeVerbWarn() throws {
+        let (definition, _) = try Bootstrap.build(SharedLearnVerbLab())
+        #expect(
+            definition.warnings.contains {
+                $0.contains("custom action for intent \"learnMend\" overrides an earlier custom action")
+            })
+    }
+
     @Test func preparedSpellsAndManaSurviveSaveAndRestore() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-spell-\(UUID().uuidString)", isDirectory: true)
@@ -170,6 +199,10 @@ extension Intent {
     #verb("blink", ["blink"], ["cast", "blink"])
     #verb("learnMend", ["memorize", "mend"], ["learn", "mend"])
     #verb("learnWard", ["memorize", "ward"], ["learn", "ward"])
+    /// An intent whose name is not a word a player reads, so the spell is
+    /// `called:` something that is.
+    #verb("castSeal", ["seal"], ["cast", "seal"])
+    #verb("learnSeal", ["memorize", "seal"], ["learn", "seal"])
 }
 
 /// One room, one of every spell paradigm, effects that always succeed — a rig
@@ -203,7 +236,7 @@ struct SpellLab: Game {
     }
 
     var verbs: [SyntaxRule] {
-        [.spark, .mend, .ward, .bolt, .blink, .learnMend, .learnWard]
+        [.spark, .mend, .ward, .bolt, .blink, .learnMend, .learnWard, .castSeal, .learnSeal]
     }
 
     var actions: [IntentAction] {
@@ -216,11 +249,43 @@ struct SpellLab: Game {
         }
         magic.spell(.bolt, cost: .energy(4)) { say("The bolt streaks out.") }
         magic.spell(.blink, cost: .scroll(scroll)) { say("The world blinks.") }
+        magic.spell(.castSeal, called: "seal", cost: .prepared(book: nil, learnVia: .learnSeal)) {
+            say("The seal sets.")
+        }
     }
 
     var map: WorldMap {
         player.starts(in: lab)
         tome.starts(in: lab)
         scroll.starts(in: lab)
+    }
+}
+
+/// Two prepared spells wired to one memorize verb — the collision the
+/// bootstrap warns about.
+struct SharedLearnVerbLab: Game {
+    let title = "Shared Verb"
+    let intro = ""
+
+    let magic = Spellcasting()
+
+    let lab = Location {
+        name("Lab")
+        description("A bare stone cell.")
+    }
+
+    var content: GameContents { magic }
+
+    var verbs: [SyntaxRule] {
+        [.mend, .ward, .learnMend]
+    }
+
+    var actions: [IntentAction] {
+        magic.spell(.mend, cost: .prepared(book: nil, learnVia: .learnMend)) { say("Mended.") }
+        magic.spell(.ward, cost: .prepared(book: nil, learnVia: .learnMend)) { say("Warded.") }
+    }
+
+    var map: WorldMap {
+        player.starts(in: lab)
     }
 }

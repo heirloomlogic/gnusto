@@ -14,10 +14,15 @@ availability and price.
 
 A spell's identity is its own intent, declared with `#verb` like any custom
 verb, so `glow`, `cast glow` and `read passwall` are parser rows and a spell can
-carry as many phrasings as its author wants. ``Spellcasting/spell(_:cost:effect:)``
+carry as many phrasings as its author wants. ``Spellcasting/spell(_:called:cost:effect:)``
 returns the actions that intent needs — the cast handler, plus the memorize
 handler when the cost is ``SpellCost/prepared(book:learnVia:)`` — and the game
 splices them into its `actions` block.
+
+The layer's own lines name a spell by its **word** — "You fix the unbar spell
+in your memory" — which is the intent's name unless `called:` says otherwise.
+An intent that is not a word a player reads, `#verb("castFire", …)`, wants
+`called: "fire"`, or every line about it says "the castFire spell".
 
 It is a `GameContent` bundle rather than a `GamePlugin`, because it has state to
 save. The finite spell memory and the energy pool are `@Global`s it owns, so
@@ -83,6 +88,11 @@ magic.spell(.unbar, cost: .prepared(book: spellbook, learnVia: .learnUnbar)) {
 Pass `book: nil` and the spell can be memorized anywhere; pass an item and it
 has to be in hand.
 
+One memorize verb per prepared spell. `learnVia` registers a stage-4 action on
+that intent, and two spells declaring the same one collide: the bootstrap keeps
+the later and warns that it overrides the earlier. `memorize unbar` and
+`memorize seal` are two intents, not one `memorize` with an object.
+
 ## The worked example
 
 `Sources/Gramarye/` is a small original game built to test the claim in the
@@ -110,7 +120,7 @@ document is `docs/games/gramarye.md`.
 
 ### Registering a spell
 
-- ``Spellcasting/spell(_:cost:effect:)``
+- ``Spellcasting/spell(_:called:cost:effect:)``
 
 ### The four paradigms
 

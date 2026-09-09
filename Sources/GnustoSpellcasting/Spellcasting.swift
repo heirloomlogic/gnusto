@@ -188,8 +188,24 @@ public struct Spellcasting: GameContent {
     /// of memorizing it via `prepareIntent`. Splice the result into the game's
     /// `actions` block.
     ///
+    /// Every line the layer prints about the spell names it by its **word**:
+    /// "You fix the *unbar* spell in your memory", "You hold in mind: *glow*".
+    /// That word is the intent's own name unless `called:` says otherwise,
+    /// which it should whenever the intent is not a word a player reads —
+    /// `#verb("castFire", …)` wants `called: "fire"`, or every line says "the
+    /// castFire spell". The word is also the spell's key in memory, so two
+    /// spells never share one.
+    ///
+    /// **One memorize verb per prepared spell.** A `.prepared` cost registers a
+    /// stage-4 action on its `learnVia` intent, and two spells declaring the
+    /// same one collide: the bootstrap keeps the later and warns that it
+    /// overrides the earlier. `memorize unbar` and `memorize seal` are two
+    /// intents, not one `memorize` with an object.
+    ///
     /// - Parameters:
     ///   - intent: the spell's own intent (its castable identity).
+    ///   - word: what the layer's lines call the spell, and its key in
+    ///     memory. Defaults to the intent's own name.
     ///   - cost: how the spell becomes available and what casting it costs. A
     ///     `.prepared` cost carries its own memorize intent, so the memorize
     ///     behavior is registered automatically.
@@ -200,12 +216,14 @@ public struct Spellcasting: GameContent {
     ///   prepared.
     public func spell(
         _ intent: Intent,
+        called word: String? = nil,
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> [IntentAction] {
-        var built = [castAction(intent, cost: cost, effect: effect)]
+        let name = word ?? intent.raw
+        var built = [castAction(intent, named: name, cost: cost, effect: effect)]
         if case .prepared(let book, let learnVia) = cost {
-            built.append(prepareAction(learnVia, spell: intent, book: book))
+            built.append(prepareAction(learnVia, spell: name, book: book))
         }
         return built
     }
@@ -213,10 +231,10 @@ public struct Spellcasting: GameContent {
     /// The cast handler: gate on availability, run the effect, then pay.
     private func castAction(
         _ intent: Intent,
+        named name: String,
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> IntentAction {
-        let name = intent.raw
         return action(intent) {
             switch cost {
             case .cantrip:
@@ -246,8 +264,7 @@ public struct Spellcasting: GameContent {
 
     /// The memorize handler for a prepared spell: gate on free memory (and the
     /// spellbook, when required), then commit the spell to memory.
-    private func prepareAction(_ prepareIntent: Intent, spell: Intent, book: Item?) -> IntentAction {
-        let name = spell.raw
+    private func prepareAction(_ prepareIntent: Intent, spell name: String, book: Item?) -> IntentAction {
         return action(prepareIntent) {
             try require(!prepared.names.contains(name), else: text.alreadyMemorized(GameText.Word(name)))
             try require(prepared.names.count < memorySlots, else: text.memoryFull())

@@ -21,8 +21,10 @@ public enum SpellCost: Sendable {
 
     /// Must be memorized into the caster's finite spell memory before casting,
     /// and is spent on cast. `learnVia` is the memorize/learn intent that
-    /// commits it to memory. When `book` is set, memorizing requires that
-    /// spellbook be in hand; when nil, the spell can be memorized anywhere.
+    /// commits it to memory — one per spell, since two spells sharing it
+    /// register two actions on one intent and the later one wins. When `book`
+    /// is set, memorizing requires that spellbook be in hand; when nil, the
+    /// spell can be memorized anywhere.
     case prepared(book: Item?, learnVia: Intent)
 
     /// Draws the given amount from the shared magical-energy pool; refused when
