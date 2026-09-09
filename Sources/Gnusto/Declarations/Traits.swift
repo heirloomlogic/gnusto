@@ -21,6 +21,7 @@ public struct ItemTrait: Sendable {
         case synonyms([String])
         case properName
         case plural
+        case pronoun(Pronoun)
         case firstSight(String)
         case twoStateFirstSight(TwoStateText)
         case wearable
@@ -328,6 +329,41 @@ public let properName = ItemTrait(kind: .properName)
 /// is asking a game to rename a thing to suit a stub line. A mine has rails,
 /// not a rails, and the noun should not have to apologize for it.
 public let plural = ItemTrait(kind: .plural)
+
+/// The gendered pronoun this person answers to: `pronoun(.she)` makes `her`
+/// another way to name her, for every verb, without spending a synonym on the
+/// word.
+///
+/// The parser claims `him` and `her` the way it claims `it`, so they are never
+/// item words and a declaration is what binds them. Each names *the last
+/// person of that gender the player referred to*, while that person is still in
+/// view, and otherwise the one thing in view that answers to the word — so a
+/// game with a single woman in the room needs no prior mention for `x her` to
+/// work, and a game with two needs one.
+///
+/// Declared rather than inferred, as `properName` and `plural` are, and for the
+/// same reason: nothing in a name tells the engine who a person is. Nothing
+/// stops a game putting it on a thing, either — a ship is a *she* in the mouths
+/// of the people who sail her.
+///
+/// - Parameter pronoun: the pronoun the entity answers to.
+/// - Returns: the pronoun trait.
+public func pronoun(_ pronoun: Pronoun) -> ItemTrait {
+    ItemTrait(kind: .pronoun(pronoun))
+}
+
+/// A gendered pronoun an entity can answer to.
+///
+/// Two cases, because two words are what the parser reserves. There is no
+/// `they`: that word is already `them`, the multi-object keyword and the
+/// pronoun of a `plural` thing, and a third meaning for it would have to be
+/// told apart from a group inside every slot that expands one.
+public enum Pronoun: Sendable, Hashable {
+    /// Answers to `him`.
+    case he
+    /// Answers to `her`.
+    case she
+}
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).

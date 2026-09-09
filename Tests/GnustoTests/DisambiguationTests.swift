@@ -92,4 +92,20 @@ struct DisambiguationTests {
             ])
         #expect(!transcript.contains("isn't one I recognize"))
     }
+
+    /// #445 round 3: a possessive is dropped inside `resolveNoun`, but the
+    /// slot's `phraseStart` stayed on the dropped word — so an answer to a
+    /// question raised behind one spliced in front of the possessive rather
+    /// than in front of the noun. `x her door` + `wooden` became `x wooden her
+    /// door`, which parses as nothing; `x door` + `wooden` always worked.
+    @Test func anAmbiguityBehindAPossessiveCanBeAnswered() async throws {
+        let transcript = try await play(DoorGiftGame(), ["x her door", "wooden"])
+        expectInOrder(
+            transcript,
+            [
+                "Which do you mean: the trap door or the wooden door?",
+                "You see nothing special about the wooden door.",
+            ])
+        #expect(!transcript.contains("isn't one I recognize"))
+    }
 }

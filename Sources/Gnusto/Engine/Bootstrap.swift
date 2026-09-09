@@ -817,6 +817,10 @@ enum Bootstrap {
             items: items,
             castIDs: cast,
             orderTakerIDs: cast.filter { items[$0]?.takesOrders == true },
+            pronounIDs: Dictionary(
+                grouping: items.compactMap { id, item in item.pronoun.map { ($0, id) } },
+                by: \.0
+            ).mapValues { Set($0.map(\.1)) },
             exits: exits,
             reachableRooms: Set(
                 exits.values.flatMap(\.values).compactMap { target in

@@ -92,11 +92,36 @@ struct Scope: Sendable {
     /// Both live in the same slot because the word does not distinguish
     /// them and the last one named wins either way.
     var pronounThem: [EntityID]
+    /// What "him" currently refers to, if anything. `GameWorld.referent(of:in:)`
+    /// settles which person that is, because only it can see the room.
+    var pronounHim: EntityID?
+    /// What "her" currently refers to, on the same terms as ``pronounHim``.
+    var pronounHer: EntityID?
     /// The one thing "them" names, when it names one thing. `nil` for a real
     /// group and for a word bound to nothing — the two cases where "them"
     /// is not a noun phrase.
     var soleThem: EntityID? {
         pronounThem.count == 1 ? pronounThem[0] : nil
+    }
+
+    /// The same scope seen from somebody else's place: what *they* can name,
+    /// and the pronouns as they stand, which are the player's words and travel
+    /// with the line rather than with the person carrying it out.
+    ///
+    /// The order reading needs this twice, and a hand-copied `Scope` in two
+    /// places is a pronoun that comes to be carried across one of them and not
+    /// the other.
+    ///
+    /// - Parameter items: what the addressee can name from where it stands.
+    /// - Returns: a scope over those items, with no actors and no order-takers,
+    ///   so an order can never be an order to somebody else.
+    func narrowed(to items: Set<EntityID>) -> Scope {
+        Scope(
+            visibleItems: items,
+            pronounIt: pronounIt,
+            pronounThem: pronounThem,
+            pronounHim: pronounHim,
+            pronounHer: pronounHer)
     }
     /// For each actor declared `takesOrders` the player could make hear them —
     /// here, met, or next door — what *that* actor could name from where it
@@ -118,6 +143,8 @@ struct Scope: Sendable {
         elsewhereActors: Set<EntityID> = [],
         pronounIt: EntityID? = nil,
         pronounThem: [EntityID] = [],
+        pronounHim: EntityID? = nil,
+        pronounHer: EntityID? = nil,
         orderTakers: [EntityID: Set<EntityID>] = [:],
         allOrderTakers: Set<EntityID> = []
     ) {
@@ -127,6 +154,8 @@ struct Scope: Sendable {
         self.elsewhereActors = elsewhereActors
         self.pronounIt = pronounIt
         self.pronounThem = pronounThem
+        self.pronounHim = pronounHim
+        self.pronounHer = pronounHer
         self.orderTakers = orderTakers
         self.allOrderTakers = allOrderTakers
     }
@@ -175,7 +204,8 @@ struct StandardParser {
         if let comma = tokens.firstIndex(of: ","), comma > 0 {
             let address = Array(tokens[..<comma])
             let rest = Array(tokens[(comma + 1)...])
-            if case .success(let addressee) = resolveAddressee(address, in: scope) {
+            let addressed = resolveAddressee(address, in: scope)
+            if case .success(let addressee) = addressed {
                 if rest.isEmpty || isGreeting(rest, at: addressee, address: address, scope: scope) {
                     return .success(
                         ParsedCommand(
@@ -204,13 +234,22 @@ struct StandardParser {
                 guard !rest.isEmpty,
                     !isGreeting(
                         rest, at: addressee, address: address,
-                        scope: Scope(
-                            visibleItems: theirs, pronounIt: scope.pronounIt,
-                            pronounThem: scope.pronounThem))
+                        scope: scope.narrowed(to: theirs))
                 else {
                     return .failure(.notInScope)
                 }
                 return order(rest, to: addressee, address: address, scope: scope, rawInput: rawInput)
+            }
+            // `her, hello` addressed to a word bound to nobody, or bound to
+            // somebody a room away. It is an address either way — the pronoun
+            // can only ever have been one — so the reason it named nobody is
+            // the answer, and falling through to the verb table instead
+            // reports the grammar of a sentence the player did not write.
+            // Free, like every parse failure. A *name* still falls through:
+            // `cup, of tea` is not a form of address, and a phrase that names
+            // nobody may yet name something.
+            if isPronounAddress(address), case .failure(let error) = addressed {
+                return .failure(error)
             }
         }
         // Not an address, or not to a person: every comma left on the line is
@@ -297,9 +336,7 @@ struct StandardParser {
         _ rest: [String], to addressee: EntityID, address: [String],
         scope: Scope, rawInput: String
     ) -> Result<ParsedCommand, ParseError> {
-        let theirs = Scope(
-            visibleItems: scope.orderTakers[addressee] ?? [], pronounIt: scope.pronounIt,
-            pronounThem: scope.pronounThem)
+        let theirs = scope.narrowed(to: scope.orderTakers[addressee] ?? [])
         return parse(tokens: rest, rawInput: rawInput, scope: theirs)
             .map { parsed in
                 var parsed = parsed
@@ -582,7 +619,8 @@ struct StandardParser {
                 guard listSegments(of: phrase[...]) == nil else {
                     return .nearMiss(.multipleNotAllowed)
                 }
-                return .nearMiss(positioned(error, tokens: tokens, phraseStart: indirectStart))
+                return .nearMiss(
+                    positioned(error, tokens: tokens, phrase: phrase, at: indirectStart))
             }
         }
 
@@ -669,7 +707,9 @@ struct StandardParser {
             case .success(let id): recipient = id
             case .failure(let error):
                 firstFailure =
-                    firstFailure ?? positioned(error, tokens: tokens, phraseStart: cursor)
+                    firstFailure
+                    ?? positioned(
+                        error, tokens: tokens, phrase: Array(tokens[cursor..<split]), at: cursor)
                 continue
             }
             let phrase = Array(tokens[split...])
@@ -860,14 +900,28 @@ struct StandardParser {
 
     /// Fills an `ambiguous` error's answer-insertion context: the reply's
     /// adjectives belong just ahead of the phrase that was ambiguous.
+    ///
+    /// Ahead of the *noun*, that is, and a possessive the resolver dropped is
+    /// no longer part of it — so the insertion point skips exactly the words
+    /// ``possessivePrefix(of:)`` says were dropped. The phrase is passed rather
+    /// than sliced out of `tokens`, because that check reads the whole phrase
+    /// and a slot's phrase can end short of the line's last word.
+    ///
+    /// - Parameters:
+    ///   - error: the resolver's answer, positioned only when it is ambiguous.
+    ///   - tokens: the line as typed.
+    ///   - phrase: the slot's tokens, the ones that named nothing on their own.
+    ///   - phraseStart: where the phrase begins in `tokens`.
+    /// - Returns: the error, with the answer's place in the sentence filled in.
     private func positioned(
-        _ error: ParseError, tokens: [String], phraseStart: Int
+        _ error: ParseError, tokens: [String], phrase: [String], at phraseStart: Int
     ) -> ParseError {
         guard case .ambiguous(let names, _, _) = error else { return error }
+        let nounStart = phraseStart + possessivePrefix(of: phrase)
         return .ambiguous(
             names: names,
-            prefix: Array(tokens[..<phraseStart]),
-            suffix: Array(tokens[phraseStart...]))
+            prefix: Array(tokens[..<nounStart]),
+            suffix: Array(tokens[nounStart...]))
     }
 
     // MARK: - Pieces
@@ -987,7 +1041,9 @@ struct StandardParser {
         // joined by "and".
         guard let pieces = listSegments(of: group) else {
             return .failure(
-                positioned(wholeError, tokens: tokens, phraseStart: start + group.startIndex))
+                positioned(
+                    wholeError, tokens: tokens, phrase: Array(group),
+                    at: start + group.startIndex))
         }
 
         var ids: [EntityID] = []
@@ -1013,7 +1069,9 @@ struct StandardParser {
                 // `piece.startIndex` is its offset within the slot's phrase,
                 // since every slice here indexes the same zero-based array.
                 return .failure(
-                    positioned(error, tokens: tokens, phraseStart: start + piece.startIndex))
+                    positioned(
+                        error, tokens: tokens, phrase: Array(piece),
+                        at: start + piece.startIndex))
             }
         }
         return .success(ids)
@@ -1158,9 +1216,11 @@ struct StandardParser {
     private func resolveNoun(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID>
     ) -> Result<EntityID, ParseError> {
-        // Pronouns resolve ahead of any item lexicon, and both take the same
+        // Pronouns resolve ahead of any item lexicon, and each takes the same
         // two questions: is the word bound, and is what it names still
-        // nameable. "it" is whatever the player last named. "them" reaches
+        // nameable. "it" is whatever the player last named; "him" and "her"
+        // are whoever of that gender they last named, or the one person in
+        // view who answers to the word, settled in `GameWorld`. "them" reaches
         // here only when it names one thing — a plural item, or a group come
         // down to one — because `spellsKeyword(_:in:)` keeps a real group away
         // from this branch, and every slot asks that question first. (#403)
@@ -1173,6 +1233,19 @@ struct StandardParser {
         }
         if tokens == ["it"] { return pronoun("it", scope.pronounIt) }
         if tokens == ["them"] { return pronoun("them", scope.soleThem) }
+        if tokens == ["him"] { return pronoun("him", scope.pronounHim) }
+        if tokens == ["her"] { return pronoun("her", scope.pronounHer) }
+        // A possessive belongs to the phrase behind it: `x her leg` is whatever
+        // answers to `leg` — which, on a person whose own description names it,
+        // is that person — and `take her lamp` is the lamp. See
+        // ``Vocabulary/possessives`` for why the word is dropped here rather
+        // than stripped as noise. A phrase that names something on its own is
+        // left alone, so a game may still call a thing `his lordship`.
+        let dropped = possessivePrefix(of: tokens)
+        if dropped > 0 {
+            return resolveNoun(
+                Array(tokens.dropFirst(dropped)), in: scope, alsoConsidering: distant)
+        }
 
         let first = matches(tokens, among: scope.visibleItems)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
@@ -1208,11 +1281,40 @@ struct StandardParser {
         vocabulary.itemLexicons.values.contains { $0.matches(tokens) }
     }
 
+    /// How many leading words ``resolveNoun(_:in:alsoConsidering:)`` drops as
+    /// possessives before the phrase names anything.
+    ///
+    /// The one place that question is answered, because two callers ask it and
+    /// they must not come to disagree: the resolver drops the words, and
+    /// ``positioned(_:tokens:phrase:at:)`` skips the same ones so a clarifying
+    /// question raised behind a possessive is answerable. `x her door` over two
+    /// doors asks which, and the answer belongs in front of `door` — spliced in
+    /// front of `her` it reads `x wooden her door`, which is no sentence at all.
+    ///
+    /// - Parameter phrase: a slot's tokens.
+    /// - Returns: how many of its leading words are dropped, possibly none.
+    private func possessivePrefix(of phrase: [String]) -> Int {
+        var rest = phrase[...]
+        while rest.count > 1, Vocabulary.possessives.contains(rest[rest.startIndex]),
+            !isKnownNounPhrase(Array(rest))
+        {
+            rest = rest.dropFirst()
+        }
+        return phrase.count - rest.count
+    }
+
     /// A word that belongs to sentence grammar rather than a noun phrase.
     private func isSyntaxWord(_ word: String) -> Bool {
         vocabulary.prepositions.contains(word)
             || vocabulary.verbWords.contains(word)
             || vocabulary.directions[word] != nil
+    }
+
+    /// Whether the words before the comma are the bare gendered pronoun —
+    /// the one address that cannot be anything else, and so the one whose
+    /// failure ``parse(tokens:rawInput:scope:)`` may report as its own.
+    private func isPronounAddress(_ tokens: [String]) -> Bool {
+        tokens.count == 1 && (tokens[0] == "him" || tokens[0] == "her")
     }
 
     /// Resolves the words to the left of a comma — which can only ever name a
@@ -1228,7 +1330,9 @@ struct StandardParser {
     ///
     /// The `it` pronoun branch is deliberately absent: "it, take the sword" is
     /// not a sentence, and `pronounIt` names a thing far more often than a
-    /// person.
+    /// person. `him` and `her` are the opposite case and are read here — they
+    /// name a person by construction, so `her, take the lamp` is a sentence —
+    /// and they are judged against the people in view, exactly as a name is.
     ///
     /// - Parameters:
     ///   - tokens: the words before the comma.
@@ -1238,6 +1342,16 @@ struct StandardParser {
     private func resolveAddressee(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
+        if isPronounAddress(tokens) {
+            let word = tokens[0]
+            guard let referent = word == "him" ? scope.pronounHim : scope.pronounHer else {
+                return .failure(.noReferent(word))
+            }
+            guard scope.visibleActors.contains(referent) || distant.contains(referent) else {
+                return .failure(.notInScope)
+            }
+            return .success(referent)
+        }
         let first = matches(tokens, among: scope.visibleActors)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
         return outOfSight(tokens, among: scope.allOrderTakers, answerableIn: distant)

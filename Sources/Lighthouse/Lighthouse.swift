@@ -167,7 +167,8 @@ struct Lighthouse: Game {
     let keeper = Actor {
         name("lighthouse keeper")
         adjectives("old")
-        synonyms("woman", "her", "leg")
+        synonyms("woman", "leg")
+        pronoun(.she)
         description(
             """
             Small, weathered, and square-set. The bad leg is the newest thing

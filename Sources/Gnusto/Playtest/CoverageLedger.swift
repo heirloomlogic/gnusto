@@ -1827,11 +1827,10 @@ struct CoverageLedger: Sendable {
     ///
     /// Built *on* ``Vocabulary/reservedWords`` rather than restating it. That
     /// set is the engine's own definition of the words the parser claims for
-    /// itself — the three this doc names above are three of its four — so a
-    /// fifth added there has to reach ``isLabel(_:)`` too. Re-typed, it would
-    /// not: `isLabel` would accept the new word as an object label and build an
-    /// item id out of a word meaning "whatever the last line meant", which is
-    /// the one failure this list exists to prevent.
+    /// itself, so a word added there has to reach ``isLabel(_:)`` too.
+    /// Re-typed, it would not: `isLabel` would accept the new word as an object
+    /// label and build an item id out of a word meaning "whatever the last line
+    /// meant", which is the one failure this list exists to prevent.
     ///
     /// The rest are pronouns and quantifiers the parser has no opinion about
     /// but prose uses constantly, so they are named here and only here.
@@ -1841,7 +1840,7 @@ struct CoverageLedger: Sendable {
     /// ``Vocabulary/prepositions``, which the bootstrap fills per game and
     /// which is why ``prepositions`` below stays private.
     private static let pronouns: Set<String> = Vocabulary.reservedWords.union([
-        "they", "him", "her", "both", "those", "these", "one", "ones",
+        "they", "both", "those", "these", "one", "ones",
     ])
 
     /// A fragment short enough to quote inside a queue line.
