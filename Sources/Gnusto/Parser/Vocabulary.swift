@@ -239,6 +239,7 @@ struct Vocabulary: Sendable {
             .union(noiseWords)
             .union(Self.conjunctions)
             .union(Self.exclusions)
+            .union(Self.possessives)
             .union(Self.reservedWords)
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)

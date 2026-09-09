@@ -274,4 +274,36 @@ struct PronounTests {
                 "The laundress hops once, obligingly, and returns to the tub.",
             ])
     }
+
+    /// #445 round 3: `resolveAddressee`'s pronoun branch reported why nobody
+    /// was addressed and `parse` threw the answer away, binding the call with
+    /// `if case .success`. The hall holds two women, so the word is bound to
+    /// nobody, and the address said "I didn't understand that sentence" where
+    /// `x her` on the same state says which word it was.
+    @Test func addressingAnUnboundPronounSaysSo() async throws {
+        let transcript = try await play(PronounGame(), ["north", "her, jump"])
+        expectInOrder(transcript, ["Hall", #"I don't know what "her" refers to."#])
+        #expect(!transcript.contains("I didn't understand that sentence."))
+    }
+
+    /// The other half: bound, and a room away. The word names somebody, and
+    /// she is simply not here — the same answer `x her` gives.
+    @Test func addressingAStalePronounSaysSheIsNotHere() async throws {
+        let transcript = try await play(PronounGame(), ["x cook", "north", "her, jump"])
+        expectInOrder(
+            transcript,
+            [
+                "A broad woman in a flour-dusted apron.",
+                "Hall",
+                "You can't see any such thing.",
+            ])
+        #expect(!transcript.contains("I didn't understand that sentence."))
+    }
+
+    /// A greeting to an unbound pronoun is the same failure: `her, hello` has
+    /// nobody to greet, and says which word had nobody.
+    @Test func greetingAnUnboundPronounSaysSo() async throws {
+        let transcript = try await play(PronounGame(), ["north", "her, hello"])
+        expectInOrder(transcript, ["Hall", #"I don't know what "her" refers to."#])
+    }
 }
