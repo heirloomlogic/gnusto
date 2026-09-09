@@ -157,6 +157,17 @@ extension Prose {
         // there; this is what is left over, and it reports on the listener.
         stubs.listen = "You listen, and learn nothing you did not already know."
         stubs.taste = "You would regret it."
+        // `V-LOOK-UNDER`'s dust (`gverbs.zil:899`), adapted: this game has a
+        // welcome mat with a key coming out from under it and a rug over a trap
+        // door, and both answer for themselves before the floor is reached.
+        stubs.lookUnder = .naming { "There is nothing under \($0) but dust." }
+        // `V-LOOK-BEHIND` (`gverbs.zil:862`), adapted to the second person the
+        // rest of this floor speaks in.
+        stubs.lookBehind = .naming { "Nothing is hiding behind \($0)." }
+        // The palantir wing's line, hoisted: `look through` is in the
+        // vocabulary everywhere the moment the engine ships the row, and the
+        // spheres, the keyholes and the barred window all answer it themselves.
+        stubs.lookThrough = .init(Prose.nothingToLookThrough)
 
         // MARK: Body
 
@@ -190,6 +201,10 @@ extension Prose {
             let who = $0.recipient
             return "\(who.sentenceCased) \(who.verb("has", "have")) no use for \($0.gift)."
         }
+        // `V-GIVE`'s first branch (`gverbs.zil:715`), adapted: the source's
+        // exclamation reads as the parser's, and this floor speaks as the
+        // narrator.
+        stubs.giveToNobody = .naming { "\($0.recipient.sentenceCased) cannot take \($0.gift)." }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"
         stubs.wave = .init(Prose.verbWave)

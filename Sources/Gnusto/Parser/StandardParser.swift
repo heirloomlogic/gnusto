@@ -253,12 +253,17 @@ struct StandardParser {
             return .failure(.notAVerb(first))
         }
 
-        // Try each candidate rule; remember the most specific near-miss.
+        // Try each candidate rule; remember the most specific near-miss, and
+        // the most specific row whose only unfilled slot was a direction.
         var bestFailure: ParseError?
+        var emptyDirection: ParsedCommand?
         for rule in candidates {
             switch fit(rule, tokens: tokens, rawInput: rawInput, scope: scope) {
             case .command(let parsed):
                 return .success(parsed)
+            case .emptyDirection(let parsed):
+                emptyDirection = emptyDirection ?? parsed
+                continue
             case .mismatch:
                 continue
             case .nearMiss(let error):
@@ -267,6 +272,10 @@ struct StandardParser {
             }
         }
 
+        // Ahead of the near-miss, behind every real match: bare `go` still asks
+        // "Which way?", and bare `climb` reaches the stub verb the `climb
+        // <direction>` row would otherwise have swallowed.
+        if let emptyDirection { return .success(emptyDirection) }
         return .failure(bestFailure ?? .unmatchedSyntax)
     }
 
@@ -336,6 +345,13 @@ struct StandardParser {
     /// the player about if nothing matches.
     private enum FitOutcome {
         case command(ParsedCommand)
+        /// A match whose direction slot the player left empty — bare `go`, and
+        /// the branch that lets it ask "Which way?". It is a match, but the
+        /// weakest kind: it yields to any row that actually matched, so one
+        /// verb word can be a walk with a direction on it and something else
+        /// without. CLIMB is the word that needs that — `climb up` is a walk
+        /// and bare `climb` is the stub verb a game has voiced for itself.
+        case emptyDirection(ParsedCommand)
         case mismatch
         case nearMiss(ParseError)
     }
@@ -351,6 +367,16 @@ struct StandardParser {
         var cursor = leadingWords.count
         /// The far-sighted fallback set, empty for every ordinary intent.
         let distant = rule.intent.isFarSighted ? scope.distantActors : []
+
+        // `give the troll the sword`: two noun phrases with nothing between
+        // them, which the loop below cannot place — it splits a slot by
+        // arithmetic or by a literal, and here there is neither. Handled whole,
+        // ahead of it, so the ordinary path stays exactly as it was.
+        if rule.isRecipientFirst {
+            return fitRecipientFirst(
+                rule, tokens: tokens, from: cursor, verbPhrase: verbPhrase, rawInput: rawInput,
+                scope: scope)
+        }
 
         var directPhrase: [String]?
         var indirectPhrase: [String]?
@@ -473,8 +499,9 @@ struct StandardParser {
 
             case .direction:
                 guard cursor < tokens.count else {
-                    // "go" alone: the default action asks "Which way?"
-                    return .command(
+                    // "go" alone: the default action asks "Which way?" — but
+                    // only if nothing else on the table can answer the word.
+                    return .emptyDirection(
                         ParsedCommand(
                             intent: rule.intent, verbPhrase: verbPhrase,
                             rawInput: rawInput))
@@ -574,6 +601,48 @@ struct StandardParser {
                 topic: topicWords,
                 verbPhrase: verbPhrase,
                 rawInput: rawInput))
+    }
+
+    /// Places the two touching noun phrases of a recipient-first row.
+    ///
+    /// The cut is found rather than measured: every split of the remaining
+    /// tokens is tried left to right, and the first one whose *both* halves
+    /// resolve in scope wins. Leftmost rather than longest because the
+    /// recipient is a person the player is looking at and names in a word or
+    /// two, where the gift is the phrase that carries the adjectives — and
+    /// because a resolver that has to succeed twice is a far tighter filter
+    /// than any rule about phrase length.
+    ///
+    /// A split nothing satisfies is a ``FitOutcome/mismatch`` and not a near
+    /// miss: the `give <object> to <second object>` row is more specific, has
+    /// already been tried, and owns the question an incomplete GIVE asks.
+    ///
+    /// - Parameters:
+    ///   - rule: the recipient-first row.
+    ///   - tokens: the line as typed.
+    ///   - cursor: the first token after the row's leading words.
+    ///   - verbPhrase: those leading words, for messages.
+    ///   - rawInput: the line as the player typed it.
+    ///   - scope: what the player can see.
+    /// - Returns: the command, or `.mismatch`.
+    private func fitRecipientFirst(
+        _ rule: SyntaxRule, tokens: [String], from cursor: Int, verbPhrase: String,
+        rawInput: String, scope: Scope
+    ) -> FitOutcome {
+        guard tokens.count - cursor >= 2 else { return .mismatch }
+        for split in (cursor + 1)..<tokens.count {
+            guard case .success(let recipient) = resolve(Array(tokens[cursor..<split]), in: scope),
+                case .success(let gift) = resolve(Array(tokens[split...]), in: scope)
+            else { continue }
+            return .command(
+                ParsedCommand(
+                    intent: rule.intent,
+                    directObject: gift,
+                    indirectObject: recipient,
+                    verbPhrase: verbPhrase,
+                    rawInput: rawInput))
+        }
+        return .mismatch
     }
 
     /// Where the literal `word` stands on the line at or after `cursor` — the

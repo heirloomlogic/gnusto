@@ -347,6 +347,12 @@ enum DefaultActions {
         frame.say(locked ? frame.definition.text.lockedMessage() : frame.definition.text.unlockedMessage())
     }
 
+    /// The ``Intent/lookIn`` spellings that ask *where a thing is* rather than
+    /// *what is inside it*. Taken from the rows in `cores`, which is where they
+    /// are declared — a row respelled here and not there would silently stop
+    /// finding anybody.
+    private static let findingPhrases: Set<String> = ["find", "look for", "search for"]
+
     static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
@@ -359,6 +365,14 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
         if frame.definition.items[id]?.isActor == true {
+            // FIND and LOOK FOR share this intent with SEARCH, and only here do
+            // the two come apart: asking where somebody is has an answer, where
+            // asking what is inside them does not. The row that matched is the
+            // only thing that tells them apart, and `verbPhrase` is it.
+            guard !findingPhrases.contains(command.verbPhrase) else {
+                frame.say(frame.definition.text.actorIsRightHere(item.definiteNoun))
+                return
+            }
             try refuse(frame.definition.text.cantSearchActor(item.definiteNoun))
         }
         guard frame.definition.items[id]?.isContainer == true else {
@@ -706,7 +720,23 @@ enum DefaultActions {
     static func disembark(_ command: Command, frame: TurnFrame) throws {
         let vehicle = frame.with { $0.state.playerVehicle }
         guard let vehicle else {
-            try refuse(frame.definition.text.notInVehicle())
+            // On foot, EXIT and LEAVE are `V-EXIT`'s own second half: a walk
+            // OUT of the room. "You aren't in anything." answered a question
+            // the player standing in a doorway was not asking.
+            //
+            // Only where the room *has* an `out`, though. A room with none
+            // keeps the old line rather than borrowing GO's, because "You can't
+            // go that way." about a direction the player never named reads as a
+            // bug — and a blocked or conditional `out` is a real exit and says
+            // its own piece.
+            if let named = command.directObject {
+                try refuse(frame.definition.text.notInThat(named.definiteNoun))
+            }
+            let here = frame.with { $0.state.playerLocation }
+            guard frame.definition.exits[here]?[.out] != nil else {
+                try refuse(frame.definition.text.notInVehicle())
+            }
+            return try travel(.out, from: here, frame: frame)
         }
         if let named = command.directObject, named.id != vehicle {
             try refuse(frame.definition.text.notInThat(named.definiteNoun))

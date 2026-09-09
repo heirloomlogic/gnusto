@@ -234,7 +234,7 @@ sensitive. See `TestingYourGame.md`, "Sweep for tests that pass by luck".
   ~31 intents the engine backs with behavior — and derives `SyntaxRule.coreTable`,
   `builtInIntents`, `engineIntents` and the stage-4 dispatch from it; the handler
   bodies stay in `Actions/DefaultActions.swift`. `Actions/StubVerbs.swift` holds
-  `stubs` — ~47 intents that are words with one line of prose and no mechanic — and
+  `stubs` — ~52 intents that are words with one line of prose and no mechanic — and
   derives `stubTable` and `stubIntents`; their copy is `GameText.stubs`.
   `SyntaxRule.standardTable` is both tables. The intent constants are split the same
   way: core in `Actions/Command.swift`, stub in `Actions/StubVerbs.swift`. Stock

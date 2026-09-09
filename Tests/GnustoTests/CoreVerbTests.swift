@@ -42,13 +42,13 @@ struct CoreVerbTests {
         // read
         "read note",
         // wear
-        "wear cloak", "don cloak", "put on cloak",
+        "wear cloak", "don cloak", "put on cloak", "put cloak on",
         // doff
         "remove hat", "doff hat", "take off hat", "take hat off",
         // putOn
         "put cloak on bench", "drop cloak on bench", "hang cloak on bench", "place cloak on bench",
         // putIn
-        "put cloak in sack", "drop cloak in sack",
+        "put cloak in sack", "drop cloak in sack", "insert cloak in sack",
         // open / close
         "open box", "open box with key", "close box", "shut box",
         // lock / unlock
@@ -64,7 +64,7 @@ struct CoreVerbTests {
         // push
         "push bench", "move bench", "press bench",
         // go
-        "go north", "walk north", "run north",
+        "go north", "walk north", "run north", "climb up",
         // follow
         "follow rat", "chase rat", "go after rat", "run after rat", "walk after rat",
         // greet
@@ -75,7 +75,8 @@ struct CoreVerbTests {
         "go through boat", "walk through boat", "step through boat",
         "climb through boat", "walk in boat",
         // disembark
-        "exit", "exit boat", "disembark", "get out", "get out of boat",
+        "exit", "exit boat", "leave", "leave boat", "disembark",
+        "get out", "get out of boat",
         // wait / look / inventory
         "wait", "z", "look", "l", "inventory", "inv", "i",
         // meta

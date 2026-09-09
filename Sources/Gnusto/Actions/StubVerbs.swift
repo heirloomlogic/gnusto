@@ -265,6 +265,15 @@ extension Intent {
     public static let listen = Intent("listen")
     /// Taste or lick something.
     public static let taste = Intent("taste")
+    /// Look under something. Kept apart from ``lookBehind`` and ``lookThrough``
+    /// rather than folded into one "peer at it" intent, because what a game
+    /// hides under the rug, behind the painting and through the window are
+    /// three different puzzles and each wants its own rule.
+    public static let lookUnder = Intent("lookUnder")
+    /// Look behind something.
+    public static let lookBehind = Intent("lookBehind")
+    /// Look through something — a window, a keyhole, a telescope.
+    public static let lookThrough = Intent("lookThrough")
 
     // Body.
 
@@ -402,6 +411,7 @@ extension DefaultActions {
                 ["hit", .directObject],
                 ["hit", .directObject, "with", .indirectObject],
                 ["fight", .directObject],
+                ["kick", .directObject],
             ],
             reach: .directObject
         ) { $0.stubs.attack($1) },
@@ -564,6 +574,33 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.taste($1) },
 
+        // LOOK UNDER, LOOK BEHIND and LOOK THROUGH: the three things a player
+        // does with a room's furniture that LOOK IN cannot express. They are
+        // `named` — the answer is about the thing looked past, and a line that
+        // only says "nothing" reads as a house rule — and they reach their
+        // object, because tipping a rug up is contact.
+        .named(
+            .lookUnder,
+            [["look", "under", .directObject]],
+            reach: .directObject
+        ) { $0.stubs.lookUnder($1) },
+
+        .named(
+            .lookBehind,
+            [["look", "behind", .directObject]],
+            reach: .directObject
+        ) { $0.stubs.lookBehind($1) },
+
+        // No reach: a window is looked through from across the room.
+        .named(
+            .lookThrough,
+            [
+                ["look", "through", .directObject],
+                ["peer", "through", .directObject],
+            ],
+            reach: .notNeeded
+        ) { $0.stubs.lookThrough($1) },
+
         // MARK: Body
 
         .named(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
@@ -630,6 +667,14 @@ extension DefaultActions {
             [
                 ["give", .directObject, "to", .indirectObject],
                 ["hand", .directObject, "to", .indirectObject],
+                // The recipient-first spelling, which is what a player types at
+                // a person standing in front of them. Two adjacent slots with
+                // no preposition between them: the parser splits them by trying
+                // the leftmost cut that resolves both halves. The TO rows carry
+                // a literal and so outscore these, which is what keeps `give
+                // the lamp to the keeper` reading the way it always has.
+                ["give", .indirectObject, .directObject],
+                ["hand", .indirectObject, .directObject],
             ],
             reach: .bothObjects,
             namesObject: true
@@ -638,6 +683,12 @@ extension DefaultActions {
             else { return text.didntUnderstand() }
             // Either slot can be the player, and neither reads with its name.
             guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself() }
+            // A shelf takes nothing and wants nothing. `stubs.give` is about
+            // somebody declining a gift, and saying it about the furniture
+            // claims a refusal nobody made.
+            guard recipient.isActor else {
+                return text.stubs.giveToNobody(item.definiteNoun, recipient.definiteNoun)
+            }
             return text.stubs.give(item.definiteNoun, recipient.definiteNoun)
         },
 
@@ -665,6 +716,11 @@ extension DefaultActions {
 
         // MARK: Motion
 
+        // The bare row still fires, even though core's `["climb",
+        // .direction]` outscores it: a direction slot with nothing to fill it
+        // is the weakest kind of match, and yields to any row that really
+        // matched. That is what lets `climb up` be a walk and bare `climb` be
+        // this verb, which is the voice three shipped games have written.
         .optionallyNamed(
             .climb,
             [
@@ -690,14 +746,15 @@ extension DefaultActions {
 
         .plain(.dive, [["dive"]], reach: .notNeeded) { $0.stubs.dive() },
 
-        .plain(
+        .optionallyNamed(
             .stand,
             [
                 ["stand"],
                 ["stand", "up"],
+                ["stand", "on", .directObject],
             ],
-            reach: .notNeeded
-        ) { $0.stubs.stand() },
+            reach: .directObject
+        ) { $0.stubs.stand($1) },
 
         .optionallyNamed(
             .sit,
@@ -705,6 +762,7 @@ extension DefaultActions {
                 ["sit"],
                 ["sit", "down"],
                 ["sit", "on", .directObject],
+                ["sit", "in", .directObject],
             ],
             reach: .directObject
         ) { $0.stubs.sit($1) },
@@ -712,14 +770,16 @@ extension DefaultActions {
         // Bare `lie` earns its row for the same reason `sit down` does: `lie
         // down` puts "lie" in the vocabulary, so without it the word the engine
         // just claimed would answer `didntUnderstand`.
-        .plain(
+        .optionallyNamed(
             .lie,
             [
                 ["lie"],
                 ["lie", "down"],
+                ["lie", "on", .directObject],
+                ["lie", "down", "on", .directObject],
             ],
-            reach: .notNeeded
-        ) { $0.stubs.lie() },
+            reach: .directObject
+        ) { $0.stubs.lie($1) },
 
         .plain(.kneel, [["kneel"]], reach: .notNeeded) { $0.stubs.kneel() },
 

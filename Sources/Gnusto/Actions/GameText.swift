@@ -424,6 +424,14 @@ public struct GameText: Sendable {
         "\($0.sentenceCased) would have something to say about that."
     }
 
+    /// FIND or LOOK FOR aimed at somebody who is standing right in front of the
+    /// player. FIND shares ``Intent/lookIn`` with SEARCH, but the two questions
+    /// are not the same one: SEARCH asks what is inside a person and is refused,
+    /// where FIND asks where they are and has an answer.
+    public var actorIsRightHere: Line<Noun> = .naming {
+        "\($0.sentenceCased) \($0.verb("is", "are")) right here."
+    }
+
     /// Locking or unlocking with a key that isn't in hand.
     public var keyNotHeld: Line<Noun> = .naming {
         "You aren't holding \($0)."
@@ -867,6 +875,18 @@ extension GameText {
         public var listen: Line<Noun?> = "You hear nothing out of the ordinary."
         /// Tasting or licking something.
         public var taste: Line<Noun?> = "You'd rather not."
+        /// Looking under something.
+        public var lookUnder: Line<Noun> = .naming {
+            "You find nothing under \($0)."
+        }
+        /// Looking behind something.
+        public var lookBehind: Line<Noun> = .naming {
+            "You find nothing behind \($0)."
+        }
+        /// Looking through something — a window, a keyhole, a telescope.
+        public var lookThrough: Line<Noun> = .naming {
+            "You can't see anything through \($0)."
+        }
 
         // MARK: Body
 
@@ -902,6 +922,13 @@ extension GameText {
             let who = $0.recipient
             return "\(who.sentenceCased) \(who.verb("doesn't", "don't")) want \($0.gift)."
         }
+        /// Handing something to a thing rather than a person — `V-GIVE`'s own
+        /// first branch. ``give`` reports a refusal, which a stone shelf is in
+        /// no position to make; what the player meant was to put the thing
+        /// down, and PUT ON is the verb for that.
+        public var giveToNobody: Line<Gift> = .naming {
+            "You can't give \($0.gift) to \($0.recipient)."
+        }
         /// Yelling, shouting or screaming.
         public var yell: Line<Nothing> = "You shout. Nothing shouts back."
         /// Waving, with or without something in hand. The bare `wave` names
@@ -921,13 +948,19 @@ extension GameText {
         public var swim: Line<Nothing> = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
         public var dive: Line<Nothing> = "There's nothing here to dive into."
-        /// Standing when already upright.
-        public var stand: Line<Nothing> = "You're already standing."
+        /// Standing when already upright, or standing on something that
+        /// affords no standing on. The bare `stand` and `stand up` name nothing.
+        public var stand: Line<Noun?> = .naming(orBare: "You're already standing.") {
+            "You can't stand on \($0)."
+        }
         /// Sitting with nowhere to sit. The bare `sit` and `sit down` name
         /// nothing.
         public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
-        /// Lying down.
-        public var lie: Line<Nothing> = "The floor doesn't look inviting."
+        /// Lying down, on the floor or on something. The bare `lie` and `lie
+        /// down` name nothing.
+        public var lie: Line<Noun?> = .naming(orBare: "The floor doesn't look inviting.") {
+            "You can't lie down on \($0)."
+        }
         /// Kneeling.
         public var kneel: Line<Nothing> = "You kneel. Nothing takes notice."
 

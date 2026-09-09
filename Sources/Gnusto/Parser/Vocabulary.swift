@@ -90,6 +90,7 @@ struct Vocabulary: Sendable {
         "into": "in",
         "onto": "on",
         "upon": "on",
+        "underneath": "under",
     ]
 
     /// The one spelling of `word` the tables are written in — itself, for

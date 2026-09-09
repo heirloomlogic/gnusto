@@ -165,6 +165,17 @@ extension Prose {
         }
         // Invented: no `TASTE` or `LICK` anywhere in `gsyntax.zil`.
         stubs.taste = "I wouldn't put that in my mouth."
+        // `V-LOOK-UNDER` (`gverbs.zil:899`), which names nothing — the dust is
+        // wherever you looked. The rug in the Living Room and the tarnished
+        // mat by the grating answer for themselves long before this.
+        stubs.lookUnder = "There is nothing but dust there."
+        // `V-LOOK-BEHIND` (`gverbs.zil:862`).
+        stubs.lookBehind = .naming { "There is nothing behind \($0)." }
+        // Invented: `gsyntax.zil` has `LOOK IN`, `LOOK ON`, `LOOK UNDER` and
+        // `LOOK BEHIND`, and nothing for looking *through*. Written the way
+        // `V-LOOK-INSIDE`'s door branch is — the answer is about what the far
+        // side withholds, not about the thing in the way.
+        stubs.lookThrough = .naming { "You can't tell what's on the other side of \($0)." }
 
         // MARK: Body
 
@@ -204,6 +215,11 @@ extension Prose {
         stubs.give = .naming {
             "\($0.recipient.sentenceCased) \($0.recipient.verb("refuses", "refuse")) it politely."
         }
+        // `V-GIVE`'s first branch (`gverbs.zil:715`), which refuses the gift
+        // before anybody has had a chance to. The source prints indefinite
+        // articles ("a sword to a shelf"); the engine hands both nouns
+        // definite, which is the one departure.
+        stubs.giveToNobody = .naming { "You can't give \($0.gift) to \($0.recipient)!" }
         // `V-YELL` (`gverbs.zil:1616`).
         stubs.yell = "Aaaarrrrgggghhhh!"
         // `V-WAVE` (`gverbs.zil:1595`) hands `HACK-HACK` the stem "Waving the ",
