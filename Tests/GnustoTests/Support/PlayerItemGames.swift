@@ -29,7 +29,7 @@ struct SelfAwareGame: Game {
 
     var rules: Rules {
         player.item.describe {
-            player.isWearing(hat) ? "You are wearing a straw hat, and it suits you." : "Hatless."
+            hat.isWorn ? "You are wearing a straw hat, and it suits you." : "Hatless."
         }
         player.item.before(.drop) {
             try refuse("You stay where you are.")

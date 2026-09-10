@@ -246,7 +246,7 @@ public func description(_ text: String) -> ItemTrait {
 /// A Bool the block cannot see — another entity's state, a `@Global` — is an
 /// ``Item/describe(_:)`` rule, and declaring both on one item is a fatal
 /// bootstrap diagnostic, as is pairing this with a static `description(…)`.
-/// A ``Location`` has no form of this: the room describer sets `isVisited`
+/// A ``Location`` has no form of this: the room describer marks a room visited
 /// before it reads the description and prints ``GameText/pitchBlack`` in place
 /// of it while the room is dark, so both of a room's own Bools are one-armed
 /// as the player sees them — a room's live text is a ``Location/describe(_:)``

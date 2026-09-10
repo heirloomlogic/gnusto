@@ -27,8 +27,7 @@ would be painted over and lost; ``GameMain`` writes the report first, on the
 primary screen, where it is still there after the game exits. It goes to stderr
 rather than stdout so it stays out of the play transcript.
 
-That is the ``GameMain`` path and the MCP play-test server, which reports the
-same list into its session banner. A world built by hand — a test calling
+That is the ``GameMain`` path and the MCP play-test server, which writes the same report to standard error and also carries it in the `survey` tool's result, so an agent sees it without reading the client's log. A world built by hand — a test calling
 `play(_:_:)`, a custom front end constructing ``GameWorld`` itself — prints
 nothing, so run the game once as a binary after changing declarations.
 
@@ -56,9 +55,7 @@ gate has to pass before the next one runs:
 
 1. **Placement and map**, after reflection has discovered the declarations and
    the `map` block has been evaluated.
-2. **Vocabulary**, after every declared name, synonym, adjective, verb-pattern
-   literal and noise word has been split the way the tokenizer splits player
-   input.
+2. **Vocabulary**, after every item's and actor's declared name, synonym and adjective, every verb-pattern literal and every noise word has been split the way the tokenizer splits player input. A location's name is not vocabulary — nothing parses a room name — so it is not split or checked.
 3. **Rules and timers**, after the `rules` and `timers` blocks have been
    evaluated in a registration frame.
 
@@ -146,9 +143,12 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `item "hat" starts worn but is not wearable; the placement creates an item the player cannot remove or wear again.` | Add ``wearable``, or use `startsHeld`. |
 | `item "robot" declares takesOrders but is not an actor; only a person can be given an order, and the flag has no effect.` | Declare it as an `Actor`. |
 | `item "Vane" is named "Mrs. Vane", which reads as a proper name but is not declared properName; stock lines will say "the Mrs. Vane".` | Add ``properName``. Not inferred, because "Elvish sword" is a common noun and so is "Orange Grove Avenue". Locations are exempt — the engine never articles a room name. |
-| `actor "troll" declares the item trait "container"; actors hold things via their inventory, and the trait will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `lockable`, `startsUnlocked` and `capacity`. Legal, almost never meant; the trait is left in place rather than stripped. |
+| `item "lamp" gives one sentence to firstSight(…) and description(…); the room listing is spent on first touch and EXAMINE is not, so examining it while it is held will assert where it is lying.` | The two channels are read at different times: the listing line prints until the item is touched, the examine text prints forever. One sentence that says where the thing lies is true on the first and false on the second. Write two sentences. |
+| `actor "troll" declares the item trait "container"; actors hold things via their inventory, and the trait will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `startsUnlocked`, `capacity`, and a `lockedBy` map entry — the message says `"a lockedBy entry"` for that one, since there is no `lockable` trait to declare. Legal, almost never meant; the trait is left in place rather than stripped. |
 | `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS are answered before any stage runs. Nothing can override them. |
-| `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb is silent: a stub has no behavior to shadow, so the warning would be noise. See <doc:StubVerbs>. |
+| `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb with a *closure* row or a rule is silent: a stub has no behavior to shadow, so the warning would be noise. The *line* form is the one exception, next row. See <doc:StubVerbs>. |
+| `default line for intent "sing" replaces the engine's stub verb; assign text.stubs.sing instead, which keeps the verb's own guards.` | `action(.sing, say: …)` on an intent the engine already answers with a stub. The line works, but `text.stubs.sing = …` is the same sentence and keeps the verb's reach guard, the object's rendered name and the `yourself`/`somebodyElse` guards. |
+| `the default line for intent "wind" names its object, but the verb row "wind" takes none; that command would answer with a parse error. Use action(.wind, orBare:naming:), which asks for both halves.` | A `naming:` line is built out of the object's name and has nothing to say without one, so a bare row for the same verb would fall through to the parser's failure and cost a turn. Give the bare half its own sentence with `orBare:`. |
 | `custom action for intent "brawl" overrides an earlier custom action of the same intent.` | Two `actions` rows for one intent; the later wins. Bundle rows come before the host game's. |
 | `a rule watches intent "accuse", but no verb row produces it; if it was declared with #verb, list .accuse in a verbs block.` | Usually the forgotten `verbs` entry. The rule is fine; nothing typed can reach it. |
 | `a verb row produces intent "accuse", but nothing answers it; give it an action(.accuse) or a rule, or the verb just prints the engine's fall-back line.` | The mirror of the above. A rule that answers one noun and leaves the rest to the fall-back is the documented pattern and warns nothing, and a catch-all rule with empty `intents` names no intent, so `world.beforeEachTurn` cannot switch this check off. |

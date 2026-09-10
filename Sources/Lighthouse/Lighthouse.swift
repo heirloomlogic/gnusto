@@ -12,7 +12,7 @@ import GnustoScoring
 /// - **a fuse**: the `oilLamp` burning down (relighting restarts it),
 /// - **a daemon**: the rising `tide` that eventually floods the jetty,
 /// - **an actor**: the roaming `keeper`, moved by the `GnustoActors` plugin,
-/// - **`@Global` state**: `tideStage` and `keeperGreeted`,
+/// - **`@Global` state**: `tideStage`; **`@Latch` state**: `keeperGreeted`,
 /// - **plugins**: `GnustoActors` and `GnustoScoring`,
 /// - **content bundles**: the ``Tower``, which owns the Lamp Room and beacon,
 ///   and ``Fixtures``, which owns the scenery every room description names.
@@ -356,7 +356,7 @@ struct Lighthouse: Game {
         // to keeper" and the terser "talk keeper", and answers both with a stock
         // line — so a game with one person to talk to reclaims the word with
         // one rule, and `reply` is what lifts the rule above the stock line.
-        // Reads and writes the `keeperGreeted` `@Global`. Neither line says where
+        // Trips the `keeperGreeted` `@Latch`. Neither line says where
         // she is standing or what the player is already carrying, so both stay
         // true wherever she has wandered to and however far along the player is.
         keeper.before(.talk) {

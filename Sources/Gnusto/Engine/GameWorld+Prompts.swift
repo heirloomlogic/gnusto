@@ -95,9 +95,7 @@ extension GameWorld {
                 // The snapshot predates the fatal turn — this revives.
                 return performUndo()
             case "quit", "q":
-                // The score already printed at death; just stop reading.
-                state.status = .quit
-                return freeReply("")
+                return quitAtDeathPrompt()
             default:
                 pendingPrompt = .deathChoice
                 return freeReply(definition.text.deathChoiceUnrecognized())

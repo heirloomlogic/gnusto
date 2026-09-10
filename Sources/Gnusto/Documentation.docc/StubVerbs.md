@@ -88,8 +88,7 @@ checks for the player and answers ``GameText/StubReplies/yourself`` instead.
 Stubs whose lines name nothing keep their own answer, because it already reads
 correctly: `taste me` still says *"You'd rather not."*
 
-Eighteen of them are handed an **optional** name, and either of two things puts
-a verb there. Some have rows that carry no object at all — `smell` and `smell the
+The rest — every `Line<Noun?>` on ``GameText/StubReplies`` — are handed an **optional** name, and either of two things puts a verb there. Some have rows that carry no object at all — `smell` and `smell the
 troll` are one intent — so one sentence has to read both ways. The rest fill the
 slot on every row but read perfectly well with the name left out: `knock`,
 `taste`, `kiss`, `count`, `buy` and `sell` are about the player as much as the
@@ -97,8 +96,7 @@ thing, so the name is offered rather than required.
 
 The player takes the nameless half rather than the `yourself` deferral, which is
 the same answer by a different road: `smell me` still says *"You smell nothing
-out of the ordinary."* Seventeen of the eighteen also skip the `somebodyElse`
-guard, and that follows from the shape rather than being a convenience — a line
+out of the ordinary."* All but one of them also skip the `somebodyElse` guard, and that follows from the shape rather than being a convenience — a line
 with a nameless half is a line that can be said about anybody. `touch` is the
 one that keeps it, because laying hands on somebody is not the same as listening
 to them; `kiss` is the one that shows why the call is per verb, since kissing

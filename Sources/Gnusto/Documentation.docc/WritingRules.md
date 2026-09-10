@@ -20,11 +20,12 @@ This guide is a catalogue of what you can attach and how the bodies read state. 
 
 ## Choose an owner and a phase
 
-A rule is created by a factory method on the thing it watches. Three owners are available:
+A rule is created by a factory method on the thing it watches. Four owners are available:
 
 | Owner | Factories |
 |---|---|
-| An ``Item`` | `before`, `after`, `describe` |
+| An ``Item`` | `before`, `after`, `describe`, `presence`, `reach` |
+| An ``Actor`` | the same five — an actor is an item with a cast entry, and its `presence` and `reach` are the item's |
 | A ``Location`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
 | The ``World`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn` |
 
@@ -61,13 +62,13 @@ lever.after(.take) {
 }
 ```
 
-Locations expose a settable ``Location/isLit``, ``Location/isVisited``, ``Location/contains(_:)``, ``Location/name``, and a settable ``Location/description``:
+Locations expose a settable ``Location/isLit``, ``Location/contains(_:)``, ``Location/name``, and a settable ``Location/description``:
 
 ```swift
 cloak.after(.drop, .putOn) { bar.isLit = true }
 ```
 
-The player exposes a settable ``Player/location`` (assigning teleports without describing the destination), a settable ``Player/score``, ``Player/moves``, ``Player/isCarrying(_:)``, and ``Player/isWearing(_:)``:
+The player exposes a settable ``Player/location`` (assigning teleports without describing the destination), a settable ``Player/score``, and ``Player/moves``. Whether the player holds or wears a thing is the thing's own question — ``Item/isHeld`` and ``Item/isWorn``:
 
 ```swift
 message.before(.read) {
@@ -81,7 +82,7 @@ message.before(.read) {
 
 ```swift
 player.item.describe {
-    player.isCarrying(lantern) ? "Lit from below, and grubby." : "Grubby."
+    lantern.isHeld ? "Lit from below, and grubby." : "Grubby."
 }
 ```
 
@@ -319,7 +320,7 @@ Eight free functions are available in any rule body:
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
 - ``end(won:)`` — end the game; the engine prints the final score afterward.
 
-The three `say`s return normally; the rest return `Never` and read well after a `guard … else`.
+The three `say`s return normally, and so does ``require(_:else:)`` — it is `throws`, not `Never`, so it is a statement on its own line rather than the body of a `guard … else`. The rest return `Never` and read well after a `guard … else`.
 
 ### Running the default yourself with `proceed`
 

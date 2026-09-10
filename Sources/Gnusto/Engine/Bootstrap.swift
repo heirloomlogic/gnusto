@@ -785,7 +785,7 @@ enum Bootstrap {
                 (item.isWearable, "wearable"), (item.isScenery, "scenery"),
                 (item.isSurface, "surface"), (item.isContainer, "container"),
                 (item.isOpenable, "openable"), (item.startsOpen, "startsOpen"),
-                (item.isTransparent, "transparent"), (item.isLockable, "lockable"),
+                (item.isTransparent, "transparent"), (item.isLockable, "a lockedBy entry"),
                 (item.startsUnlocked, "startsUnlocked"), (item.capacity != nil, "capacity"),
             ]
             for (declared, trait) in mechanical where declared {

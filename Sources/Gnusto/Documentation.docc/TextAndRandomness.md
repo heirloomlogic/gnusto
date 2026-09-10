@@ -27,7 +27,7 @@ Every line is a ``GameText/Line``, and a `Line` takes a bare string as readily a
 
 ```swift
 text.cantReach = .naming { "\($0.sentenceCased) is right there, and yet." }
-text.pitchBlack = .live { lantern.isOn ? "Dark, and getting darker." : "Pitch black." }
+text.pitchBlack = .live { lantern.isLit ? "Dark, and getting darker." : "Pitch black." }
 ```
 
 What the generic parameter says is what the line is *given*. A line built around a name takes a ``GameText/Noun``; one about nothing in particular takes `Void`, and reaches for ``GameText/Line/live(_:)`` when it wants the turn it prints in rather than the moment it was written. Neither costs a game that wants the plain sentence anything: that spelling is the string literal, in every slot.

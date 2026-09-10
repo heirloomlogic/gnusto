@@ -25,7 +25,16 @@ After that the articles are a reference, not a sequence: read <doc:WritingRules>
 
 The package ships seven libraries beside the engine, each a separate product you import only if you want it: `GnustoClock` (a time of day rather than a turn counter), `GnustoConversation` (asking, telling, showing, and what somebody has already been asked), `GnustoScoring`, `GnustoSpellcasting` (four casting paradigms), `GnustoMeleeCombat`, `GnustoDangerousDark`, and `GnustoActors`. An eighth, `GnustoTestSupport`, belongs in a test target.
 
-Each has its own documentation in this archive. They are not linked from here: a merged archive resolves symbol links only within a module, so a link across one would render as plain text rather than fail loudly. See <doc:Plugins> and <doc:ContentBundles> for how they splice in.
+Each has its own documentation in this archive. They are not linked from here: a merged archive resolves symbol links only within a module, so a link across one would render as plain text rather than fail loudly. See <doc:Plugins> and <doc:ContentBundles> for how they splice in. The published archives, one per library:
+
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustoclock/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustoconversation/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustoscoring/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustospellcasting/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustomeleecombat/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustodangerousdark/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustoactors/`
+- `https://heirloomlogic.github.io/gnusto/documentation/gnustotestsupport/`
 
 ## Topics
 
@@ -126,10 +135,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Player/moves``
 - ``Player/inventory``
 - ``Player/item``
-- ``Player/isCarrying(_:)``
-- ``Player/isWearing(_:)``
 - ``Location/isLit``
-- ``Location/isVisited``
 
 ### Actors & Vehicles
 
@@ -187,6 +193,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``GameText/StubReplies``
 - ``random(_:)``
 - ``chance(_:)``
+- ``oneOf(_:_:)``
 
 ### Running a Game
 

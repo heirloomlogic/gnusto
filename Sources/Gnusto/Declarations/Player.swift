@@ -24,7 +24,7 @@ public struct Player: Sendable {
     ///
     /// ```swift
     /// player.item.describe {
-    ///     player.isCarrying(lantern) ? "Lit from below, and grubby." : "Grubby."
+    ///     lantern.isHeld ? "Lit from below, and grubby." : "Grubby."
     /// }
     /// player.item.before(.take) { try refuse("You have quite enough of yourself.") }
     /// ```
@@ -87,22 +87,6 @@ public struct Player: Sendable {
             scratch.state.containment().held[.player] ?? []
         }
         return held.compactMap { frame.definition.registry.items[$0] }
-    }
-
-    /// True if the player is carrying the item (including worn items).
-    ///
-    /// - Parameter item: the item to test.
-    /// - Returns: true if the player is carrying it.
-    public func isCarrying(_ item: Item) -> Bool {
-        item.isHeld
-    }
-
-    /// True if the player is wearing the item.
-    ///
-    /// - Parameter item: the item to test.
-    /// - Returns: true if the player is wearing it.
-    public func isWearing(_ item: Item) -> Bool {
-        item.isWorn
     }
 
     /// The player's starting location, declared in the `map` block.

@@ -59,10 +59,7 @@ struct PipeHandler: IOHandler {
 }
 ```
 
-That is ``ConsoleIOHandler`` in full, minus the `<br>` translation below. The
-other three — ``IOHandler/showStatus(_:)``, ``IOHandler/updateCompletions(_:)``
-and ``IOHandler/finish(_:)`` — default to doing nothing, which is the right
-answer for a handler whose output is a stream rather than a screen.
+That is ``ConsoleIOHandler`` in full, minus the `<br>` translation below. The other three — ``IOHandler/showStatus(_:)``, ``IOHandler/updateCompletions(_:)`` and ``IOHandler/finish(_:)`` — default to doing nothing, which is the right answer for a handler whose output is a stream rather than a screen. ``IOHandler/wantsCompletions`` defaults to `false` beside them: the candidates cost a scope walk and a read of the save directory after every turn, so the REPL computes them only for a handler that says it will use them, and only ``TerminalIOHandler`` does.
 
 The protocol is `Sendable`, so a handler that keeps state keeps it behind a
 lock. ``ScriptedIOHandler`` and ``TerminalIOHandler`` both box theirs in a
@@ -246,12 +243,7 @@ world built from a ``PreparedGame`` shared across several sessions.
 
 ## What the engine needs from the platform
 
-Nothing in the engine imports anything but Foundation, `Synchronization` (three
-files) and `Dispatch` (one). Four files reach for platform C, and all four do it
-behind `#if canImport(Darwin)` / `#elseif canImport(Glibc)`: the terminal
-handler, the `isatty` check in ``GameMain``, the MCP play-test server and its
-stdio transport. Nothing in the parser, the turn pipeline, the rule table or the
-world state touches any of it.
+Nothing in the engine imports anything but Foundation, `Synchronization` (three files) and `Dispatch` (one). Five files reach for platform C, and all five do it behind `#if canImport(Darwin)` / `#elseif canImport(Glibc)`: the terminal handler, the `isatty` check in ``GameMain``, the MCP play-test server, its stdio transport, and a thread-priority hint in `Engine/DeepStack.swift`. Nothing in the parser, the turn pipeline, the rule table or the world state touches any of it.
 
 The library therefore compiles for iOS unchanged, and the manifest declares
 `.iOS(.v18)`, so that is a configuration this package supports and builds rather
@@ -268,6 +260,7 @@ That is all an iOS app does differently: it supplies its own handler, because
 - ``IOHandler/write(_:)``
 - ``IOHandler/readLine(prompt:)``
 - ``IOHandler/showStatus(_:)``
+- ``IOHandler/wantsCompletions``
 - ``IOHandler/updateCompletions(_:)``
 - ``IOHandler/finish(_:)``
 - ``Input``

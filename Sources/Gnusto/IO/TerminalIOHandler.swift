@@ -159,6 +159,9 @@ public final class TerminalIOHandler: IOHandler {
         render()
     }
 
+    /// The line editor offers Tab-completion, so the engine should compute it.
+    public var wantsCompletions: Bool { true }
+
     /// Stores the completion candidates the engine computed for the next input
     /// line. Tab uses them; no repaint is needed.
     public func updateCompletions(_ candidates: CompletionCandidates) {

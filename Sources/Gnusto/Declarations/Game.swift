@@ -100,7 +100,9 @@ public protocol Game: Sendable {
     /// with `autostart`); a daemon runs every turn while active. Only the
     /// schedule lives in the world's state — the bodies declared here are
     /// re-bound by name on restore. Defaults to empty. Timer names must be
-    /// unique across the game and its bundles.
+    /// unique within the game and within each bundle; a bare name the game
+    /// and a bundle both declare is namespaced into the bundle's own
+    /// namespace at bootstrap, so the two coexist (see `GameContent.timers`).
     @TimerBuilder var timers: [TimedEvent] { get }
 
     /// Stage-4 default actions this game replaces or adds, keyed by intent.

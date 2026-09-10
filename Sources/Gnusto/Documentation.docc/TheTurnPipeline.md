@@ -10,7 +10,7 @@ Every line the player types runs through the same fixed sequence of stages. This
 
 The ``REPL`` reads a line and hands it to ``GameWorld/perform(_:)``. The parser first turns the text into a ``Command`` — an ``Intent`` (the canonical action, like ``Intent/take``) plus the objects, preposition, and direction it resolved.
 
-Parsing can fail: an unknown word, nothing in scope, a verb with no object. **Parse failures are free.** No rules run, the state is untouched, and the turn counter does not advance — the player just sees a message ("I don't understand that." / "You can't see any such thing here.") and a fresh prompt. Only a successfully parsed command enters the pipeline below.
+Parsing can fail: an unknown word, nothing in scope, a verb with no object. **Parse failures are free.** No rules run, the state is untouched, and the turn counter does not advance — the player just sees a message ("I didn't understand that sentence." / "You can't see any such thing.") and a fresh prompt. Only a successfully parsed command enters the pipeline below.
 
 ## How the parser converses
 

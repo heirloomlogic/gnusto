@@ -67,7 +67,7 @@ public struct IntentAction: Sendable {
     ///   - reach: which object slots the player has to be able to touch before
     ///     the body runs. See ``action(_:reach:perform:)``.
     ///   - body: the action's behavior.
-    public init(
+    init(
         _ intent: Intent,
         reach: Reach = .notNeeded,
         perform body: @escaping @Sendable () throws -> Void

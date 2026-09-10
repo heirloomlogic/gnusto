@@ -70,7 +70,7 @@ Seven variables configure a running game, two report on one, and one replaces th
 | `GNUSTO_STACK_REPORT` | Prints how much of the bootstrap's 16 MB stack the game's declarations actually used, one line per boot, on stderr. A flag, not a setting. Diagnostic — see <doc:SplittingAGameAcrossFiles#Split-for-reading-not-for-the-stack>. |
 | `GNUSTO_MCP` | Serves the play-test protocol over stdio instead of playing, the same as the `--mcp` flag. A flag, not a setting. For a client that can set an environment but not an argument vector — see <doc:PlayTesting>. |
 
-`GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
+`GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
 
 ```sh
 GNUSTO_SEED=0 GNUSTO_TRANSCRIPT=1 swift run Lighthouse

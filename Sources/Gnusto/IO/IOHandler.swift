@@ -18,8 +18,17 @@ public protocol IOHandler: Sendable {
     /// - Parameter status: the status line to display.
     func showStatus(_ status: StatusLine)
 
+    /// Whether this handler will use the words ``updateCompletions(_:)``
+    /// delivers. Computing them costs a scope walk and a read of the save
+    /// directory after every turn, so the REPL asks first and a handler with
+    /// no line editor — the console, a script, a test — never pays for a set
+    /// it would throw away. Defaults to `false`; ``TerminalIOHandler`` says
+    /// `true`.
+    var wantsCompletions: Bool { get }
+
     /// Receives the words Tab-completion may offer for the next input line.
     /// A handler with a line editor uses them; the plain console ignores them.
+    /// Called only when ``wantsCompletions`` is `true`.
     ///
     /// - Parameter candidates: verbs, in-scope nouns, directions, and save names.
     func updateCompletions(_ candidates: CompletionCandidates)
@@ -49,6 +58,9 @@ public enum Input: Sendable, Equatable {
 extension IOHandler {
     /// Defaults to showing no status line.
     public func showStatus(_ status: StatusLine) {}
+
+    /// Defaults to wanting no completion candidates, so none are computed.
+    public var wantsCompletions: Bool { false }
 
     /// Defaults to ignoring completion candidates.
     public func updateCompletions(_ candidates: CompletionCandidates) {}

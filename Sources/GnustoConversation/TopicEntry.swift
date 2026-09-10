@@ -70,7 +70,7 @@ public typealias TopicBuilder = GnustoBuilder<TopicEntry>
 ///     gates you expect to edit after release, to a row on an actor who shares
 ///     a display name with another, or to two rows that should retire
 ///     together. Also the only way to name a row for
-///     ``Conversation/hasHeard(_:from:)`` and ``Conversation/unhear(_:from:)``.
+///     ``Conversation/hasHeard(_:from:)``.
 ///   - line: what the actor says. Ends the turn.
 /// - Returns: the topic row.
 public func topic(

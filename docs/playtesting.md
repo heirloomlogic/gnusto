@@ -298,10 +298,7 @@ the most useful thing to have six months later, and the only way to catch the ha
 grading itself generously. The ledger is what stops a loop rediscovering its own
 rejected findings forever.
 
-One wrinkle: `.github/workflows/documentation.yml` does `rm -rf ./docs` in its own
-runner before generating the DocC site there. That doesn't touch the repo, but it does
-mean nothing under `docs/` is published to the documentation site. Reports live there
-to be read in the repo and in PR diffs.
+One wrinkle: `.github/workflows/documentation.yml` generates the DocC site into `.docs-build`, never into `./docs`, and publishes only that. Nothing under `docs/` reaches the documentation site. Reports live there to be read in the repo and in PR diffs.
 
 ## Calibration: the answer key
 

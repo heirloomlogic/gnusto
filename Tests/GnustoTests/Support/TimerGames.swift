@@ -36,6 +36,7 @@ struct ClockGame: Game {
         SyntaxRule("summon", intent: Intent("summon"))
         SyntaxRule("banish", intent: Intent("banish"))
         SyntaxRule("probe", intent: Intent("probe"))
+        SyntaxRule("chain", intent: Intent("chain"))
     }
 
     var rules: Rules {
@@ -62,6 +63,10 @@ struct ClockGame: Game {
         world.before(Intent("probe")) {
             try reply("Remaining: \(fuseRemaining("bomb").map(String.init) ?? "none")")
         }
+        world.before(Intent("chain")) {
+            startFuse("link", after: 1)
+            try reply("You light the chain.")
+        }
     }
 
     var timers: [TimedEvent] {
@@ -70,6 +75,13 @@ struct ClockGame: Game {
         }
         daemon("drip") {
             say("Drip.")
+        }
+        // A tick body that starts one of each: the tick is walking a schedule
+        // it read before any body ran, so neither runs until the next turn.
+        fuse("link", after: 1) {
+            say("The link burns through.")
+            startFuse("bomb", after: 1)
+            startDaemon("drip")
         }
     }
 }

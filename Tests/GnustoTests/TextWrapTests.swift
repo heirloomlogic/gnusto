@@ -94,6 +94,35 @@ struct TextWrapTests {
         #expect(TextWrap.plain("Title<br>\nTagline") == "Title\nTagline")
     }
 
+    @Test("plain() keeps a form's indent on both sides of a <br>")
+    func plainKeepsFormIndentAcrossBr() {
+        // A marker inside a form line splits it into two form lines. The
+        // reflowing renderer keeps the second segment's indent, because a form
+        // is never de-indented; plain() must agree.
+        #expect(TextWrap.plain("  ALPHA<br>  BETA") == "  ALPHA\n  BETA")
+        #expect(TextWrap.wrap("  ALPHA<br>  BETA", width: 40) == ["  ALPHA", "  BETA"])
+    }
+
+    @Test("plain() and wrap() agree wherever no reflow is possible")
+    func plainAgreesWithWrapWithoutReflow() {
+        // The doc promise stated as an assertion: the two channels share one
+        // fold and one notion of a form, so at a width nothing reflows at they
+        // render the same lines.
+        for text in [
+            "Title<br>Tagline",
+            "line one\nline two",
+            "Title\nHere<br>The\nsubtitle",
+            "Title<br>\nTagline",
+            "  ALPHA<br>  BETA",
+            "above\n  the form<br>  more form\nbelow",
+            "inscribed\n\n  Abandon every hope\n  all ye who enter here!",
+        ] {
+            #expect(
+                TextWrap.plain(text) == TextWrap.wrap(text, width: 200).joined(separator: "\n"),
+                "\(text.debugDescription)")
+        }
+    }
+
     @Test("plain() keeps a form's shape and the block separators around it")
     func plainKeepsFormsAndSeparators() {
         #expect(

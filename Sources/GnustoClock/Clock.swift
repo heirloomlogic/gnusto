@@ -62,7 +62,7 @@ public struct Clock: GameContent {
     }
 
     /// One scheduled actor's place: the stop he is keeping, and the reading of
-    /// ``elapsedMinutes`` at the tick that put him on it.
+    /// `elapsedMinutes` at the tick that put him on it.
     ///
     /// The time is the half that is easy to leave out and cannot be done
     /// without. A tick that walks the day forward over every stop it passed is
@@ -75,7 +75,7 @@ public struct Clock: GameContent {
     struct Place: Codable, Sendable {
         /// The index into the timetable's stops.
         var stop: Int
-        /// ``elapsedMinutes`` when this was written.
+        /// `elapsedMinutes` when this was written.
         var minutes: Int
     }
 
@@ -134,7 +134,7 @@ public struct Clock: GameContent {
 
     /// Minutes of game time since the opening, counting the host's own
     /// adjustments. Monotone unless the host rewinds.
-    public var elapsedMinutes: Int {
+    var elapsedMinutes: Int {
         effectiveMoves * minutesPerTurn + offsetMinutes
     }
 
@@ -155,7 +155,7 @@ public struct Clock: GameContent {
 
     /// Whether the clock is running — `false` between ``pause()`` and
     /// ``resume()``.
-    public var isRunning: Bool { pausedSinceMoves < 0 }
+    private var isRunning: Bool { pausedSinceMoves < 0 }
 
     // MARK: - Moving the clock
 

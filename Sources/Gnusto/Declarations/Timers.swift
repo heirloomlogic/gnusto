@@ -17,8 +17,11 @@
 /// the world's `after`/each-turn rules): fuses first, then daemons, each
 /// group in name order. They tick on refused turns (world time passes) but
 /// not on parse errors, meta commands, or once the game has ended. A timer
-/// started during a turn ticks at the end of that same turn — so a
-/// `fuse(after: 1)` started by a rule fires as that very turn ends.
+/// started by a rule ticks at the end of that same turn — so a
+/// `fuse(after: 1)` started by a rule fires as that very turn ends. A timer
+/// started from *inside a fuse or daemon body* is a turn behind that: the
+/// tick reads both schedules once before it runs any body, so the new timer
+/// first ticks at the end of the next turn.
 public struct TimedEvent: Sendable {
     enum Kind: Sendable {
         case fuse(turns: Int)
@@ -114,7 +117,9 @@ public func fuseRemaining(_ name: String) -> Int? {
     return frame.with { $0.state.activeFuses[key] }
 }
 
-/// Starts the named daemon; it first runs at the end of the current turn.
+/// Starts the named daemon; it first runs at the end of the current turn when
+/// called from a rule, or at the end of the next turn when called from a fuse
+/// or daemon body (the tick has already read its schedule by then).
 ///
 /// - Parameter name: the daemon to start.
 public func startDaemon(_ name: String) {

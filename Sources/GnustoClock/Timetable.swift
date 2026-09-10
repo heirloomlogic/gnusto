@@ -142,7 +142,7 @@ public struct Timetable: Sendable {
     ///
     /// - Parameter time: the time to resolve.
     /// - Returns: the stop the actor is keeping then.
-    public func stop(at time: TimeOfDay) -> Stop {
+    func stop(at time: TimeOfDay) -> Stop {
         stops[index(at: time)]
     }
 

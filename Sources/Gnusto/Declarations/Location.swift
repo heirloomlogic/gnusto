@@ -59,12 +59,6 @@ public struct Location: Sendable, Equatable {
         }
     }
 
-    /// Whether the player has seen this location (set on the first lit visit).
-    public var isVisited: Bool {
-        let (frame, id) = resolved
-        return frame.with { $0.state.visited.contains(id) }
-    }
-
     /// The location's long description. Assigning replaces it for the rest
     /// of the game.
     public var description: String {

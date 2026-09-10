@@ -291,6 +291,31 @@ struct TerminalUXTests {
         #expect(loaded.first?.hasPrefix(filler) == true)
     }
 
+    // MARK: - The REPL only computes candidates for a handler that wants them
+
+    @Test func replSkipsTheCandidateWalkForAHandlerThatDoesNotWantIt() async throws {
+        // The default: a console or scripted handler has no line editor, so
+        // the scope walk and the save-directory read are never paid.
+        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let io = RecordingIOHandler(inputs: [.line("look"), .line("east")])
+        await REPL(world: world, io: io).run()
+        #expect(io.completionPushes == 0)
+    }
+
+    @Test func replPushesCandidatesAfterTheOpeningAndEveryTurnToAHandlerThatWantsThem() async throws {
+        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let io = RecordingIOHandler(inputs: [.line("look"), .line("east")], wantsCompletions: true)
+        await REPL(world: world, io: io).run()
+        // Once after the opening, once after each of the two turns.
+        #expect(io.completionPushes == 3)
+    }
+
+    @Test func scriptedHandlerDoesNotWantCompletions() {
+        // The default any handler inherits; `TerminalIOHandler` overrides it,
+        // but constructing one takes over the terminal, so that half is read.
+        #expect(!ScriptedIOHandler(inputs: []).wantsCompletions)
+    }
+
     // MARK: - GameWorld.completionCandidates()
 
     @Test func candidatesIncludeStandardVerbsAndDirections() async throws {

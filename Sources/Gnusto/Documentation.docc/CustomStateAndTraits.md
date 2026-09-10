@@ -116,7 +116,7 @@ Custom traits are **immutable declared facts** — they never touch the world st
 
 ## Worked example
 
-The **Lighthouse** example (`Sources/Lighthouse/`) keeps two `@Global`s — `tideStage`, bumped by a daemon and read by a room's live description, and `keeperGreeted`, flipped by a dialogue rule — a compact look at custom state driving prose and branching.
+The **Lighthouse** example (`Sources/Lighthouse/`) keeps a `@Global`, `tideStage`, bumped by a daemon and read by a room's live description, and a `@Latch`, `keeperGreeted`, tripped once by a dialogue rule — a compact look at custom state driving prose and branching, and the worked example of a flag that only ever goes up (see <doc:WritingRules>, "One-time beats").
 
 `Tests/GnustoTests/Support/CustomStateGames.swift` builds `ShopGame`: a `Purse` struct held in a `@Global`, a lantern with a `trait(.price, 5)`, and a game-defined `buy` verb whose rule reads the price and debits the purse — the commerce plugin in miniature. `CustomStateTests` boots it and confirms the struct global round-trips through save/restore, the custom trait reads back through the typed subscript, and absent/wrong-type reads return `nil`.
 

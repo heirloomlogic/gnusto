@@ -1,27 +1,8 @@
 import Foundation
 import GnustoTestSupport
-import Synchronization
 import Testing
 
 @testable import Gnusto
-
-/// A scripted handler that also records what `finish` receives, so tests can
-/// assert the REPL's end-of-session hand-off.
-private final class FinishRecordingIOHandler: IOHandler {
-    private let inner: ScriptedIOHandler
-    private let finished = Mutex<String?>(nil)
-
-    init(inputs: [Input]) {
-        inner = ScriptedIOHandler(inputs: inputs)
-    }
-
-    func write(_ text: String) { inner.write(text) }
-    func readLine(prompt: String) -> Input? { inner.readLine(prompt: prompt) }
-    func finish(_ finalText: String) { finished.withLock { $0 = finalText } }
-
-    /// What `finish` was called with, or `nil` if it never was.
-    var finishedWith: String? { finished.withLock { $0 } }
-}
 
 /// `GameWorld.requestQuit()` and the REPL wiring that routes a front-end Ctrl-C
 /// (`Input.quit`) through it — issue #55. The quit is keyed to `Intent.quit`,
@@ -90,11 +71,26 @@ struct QuitTests {
         #expect(result.isFinished)
     }
 
+    @Test func requestQuitFromTheDeathPromptDoesNotPrintTheScoreTwice() async throws {
+        let world = try cachedWorld(MorgueGame(), seed: 1)
+        _ = await world.begin()
+
+        // The fatal turn already printed the epilogue once.
+        let death = await world.perform("take poison")
+        #expect(death.output.contains("Your score is"))
+
+        // A Ctrl-C at the prompt takes the same exit the typed `quit` does:
+        // stop reading, and do not say the score again.
+        let result = await world.requestQuit()
+        #expect(result.isFinished)
+        #expect(!result.output.contains("Your score is"))
+    }
+
     // MARK: - REPL wiring
 
     @Test func replHandsTheEndingTextToTheFrontEndOnQuit() async throws {
         let world = try GameWorld(game: MorgueGame(), seed: 1)
-        let io = FinishRecordingIOHandler(inputs: [.quit])
+        let io = RecordingIOHandler(inputs: [.quit])
         await REPL(world: world, io: io).run()
 
         // The front end got the epilogue, so a full-screen handler can keep
@@ -105,7 +101,7 @@ struct QuitTests {
     @Test func replSkipsTheEndingHandOffOnBareEndOfInput() async throws {
         let world = try GameWorld(game: MorgueGame(), seed: 1)
         // Input runs out without the game reaching an ending.
-        let io = FinishRecordingIOHandler(inputs: [.line("look")])
+        let io = RecordingIOHandler(inputs: [.line("look")])
         await REPL(world: world, io: io).run()
 
         #expect(io.finishedWith == nil)

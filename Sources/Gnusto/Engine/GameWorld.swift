@@ -451,13 +451,26 @@ public actor GameWorld {
     /// pending — which `perform` would otherwise consume the line as the
     /// filename answer.
     ///
+    /// At the death prompt the epilogue has already printed, on the fatal
+    /// turn, so this takes the exit the typed `quit` answer takes: stop
+    /// reading, say nothing more.
+    ///
     /// - Returns: the final turn's output and status (`isFinished == true`).
     public func requestQuit() -> TurnResult {
         pendingPrompt = nil
         pendingClarification = nil
+        if state.status == .dead { return quitAtDeathPrompt() }
         return runTurn(
             Command(intent: .quit, verbPhrase: "quit", rawInput: "quit"),
             snapshot: state)
+    }
+
+    /// Leaves the death prompt by quitting: the fatal turn already printed
+    /// the score epilogue, so this stops reading and says nothing more. The
+    /// typed `quit` answer and a front end's Ctrl-C both land here.
+    func quitAtDeathPrompt() -> TurnResult {
+        state.status = .quit
+        return freeReply("")
     }
 
     /// After a turn that killed the player, the next input line belongs to
@@ -995,14 +1008,23 @@ public actor GameWorld {
 
     /// One tick of the world's clock: every running fuse counts down (and
     /// fires at zero), then every running daemon runs — fuses first, each
-    /// group in name order, so firing order is deterministic. Each name is
-    /// re-checked against the live schedule before it acts, because an
-    /// earlier body may have stopped it this very tick; a fuse is removed
-    /// from the schedule *before* its body runs, so the body can restart it.
-    /// Bodies get the same interrupt handling as each-turn rules, and the
-    /// tick stops as soon as one of them ends the game.
+    /// group in name order, so firing order is deterministic. Both schedules
+    /// are read **once, before any body runs**, so a timer a body starts is
+    /// not on this tick's list and first ticks next turn — the same answer
+    /// for a fuse and a daemon, whichever kind of body started it, and never
+    /// one that depends on where its name sorts. (Draining new starts to a
+    /// fixpoint instead would let a fuse that restarts itself `after: 1` loop
+    /// inside one turn.) Each name is re-checked against the live schedule
+    /// before it acts, because an earlier body may have stopped it this very
+    /// tick; a fuse is removed from the schedule *before* its body runs, so
+    /// the body can restart it. Bodies get the same interrupt handling as
+    /// each-turn rules, and the tick stops as soon as one of them ends the
+    /// game.
     private func tickTimers(frame: TurnFrame) {
-        for name in frame.with({ $0.state.activeFuses.keys.sorted() }) {
+        let (fuses, daemons) = frame.with {
+            ($0.state.activeFuses.keys.sorted(), $0.state.activeDaemons.sorted())
+        }
+        for name in fuses {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name] else { continue }
             let fires = frame.with { scratch -> Bool in
@@ -1018,7 +1040,7 @@ public actor GameWorld {
                 runCatching(event, named: name, frame: frame)
             }
         }
-        for name in frame.with({ $0.state.activeDaemons.sorted() }) {
+        for name in daemons {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name],
                 frame.with({ $0.state.activeDaemons.contains(name) })
