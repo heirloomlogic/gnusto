@@ -99,16 +99,15 @@ extension Clock {
             // skipped when a coarse clock steps over it: every stop passed
             // since the last tick runs, in order, wrapping at midnight. The
             // first tick only takes his place.
-            guard let last, last != due else {
-                if last == nil { stopIndices.byDaemon[name] = due }
+            guard let last else {
+                stopIndices.byDaemon[name] = due
                 return
             }
+            guard last != due else { return }
             stopIndices.byDaemon[name] = due
-            var index = last
-            repeat {
-                index = (index + 1) % timetable.stops.count
+            for index in timetable.indices(after: last, through: due) {
                 try timetable.stops[index].perform?()
-            } while index != due
+            }
         }
     }
 

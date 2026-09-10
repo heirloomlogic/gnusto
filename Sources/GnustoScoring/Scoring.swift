@@ -185,45 +185,49 @@ public struct Scoring: GameContent {
         for item in items {
             item.after(.take) {
                 payOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
-                reconcileDeposit(of: item, in: trophyCase)
+                reconcileDeposits(of: [item], in: trophyCase)
             }
             // The after-rule fires for *any* container; only the trophy case
             // pays, which the reconcile reads off the case itself.
             item.after(.putIn) {
-                reconcileDeposit(of: item, in: trophyCase)
+                reconcileDeposits(of: [item], in: trophyCase)
             }
         }
         // The backstop, for every move that is not one of those two verbs.
         // Before the timers tick as well as after, because a daemon's theft
-        // lands after the after-rules have run; each is a membership test per
-        // treasure and writes nothing on a turn nothing moved.
-        world.beforeEachTurn {
-            for item in items { reconcileDeposit(of: item, in: trophyCase) }
-        }
-        world.afterEachTurn {
-            for item in items { reconcileDeposit(of: item, in: trophyCase) }
-        }
+        // lands after the after-rules have run.
+        world.beforeEachTurn { reconcileDeposits(of: items, in: trophyCase) }
+        world.afterEachTurn { reconcileDeposits(of: items, in: trophyCase) }
     }
 
-    /// Brings one treasure's deposit credit into line with where it is:
+    /// Brings each treasure's deposit credit into line with where it is:
     /// credited exactly while it sits in the case, debited when it does not.
     /// Idempotent, and silent on a treasure whose credit already matches, so
     /// it is safe to call as often as the case might have changed.
     ///
+    /// The ledger is a `@Global`, and a `@Global` holding a struct is boxed as
+    /// JSON on every read and write — so this reads it once, settles every
+    /// treasure against the copy, and writes it back only if something moved.
+    /// A quiet turn over Zork 1's nineteen treasures costs one decode.
+    ///
     /// - Parameters:
-    ///   - item: the treasure.
-    ///   - trophyCase: the case its deposit value follows.
-    func reconcileDeposit(of item: Item, in trophyCase: Item) {
-        let key = "deposit.\(item.name)"
-        let inCase = trophyCase.holds(item)
-        guard inCase != cased.names.contains(key) else { return }
-        if inCase {
-            cased.names.insert(key)
-            player.score += item[.depositValue] ?? 0
-        } else {
-            cased.names.remove(key)
-            player.score -= item[.depositValue] ?? 0
+    ///   - items: the treasures.
+    ///   - trophyCase: the case their deposit values follow.
+    func reconcileDeposits(of items: [Item], in trophyCase: Item) {
+        var ledger = cased
+        for item in items {
+            let key = "deposit.\(item.name)"
+            let inCase = trophyCase.holds(item)
+            guard inCase != ledger.names.contains(key) else { continue }
+            if inCase {
+                ledger.names.insert(key)
+                player.score += item[.depositValue] ?? 0
+            } else {
+                ledger.names.remove(key)
+                player.score -= item[.depositValue] ?? 0
+            }
         }
+        if ledger.names != cased.names { cased = ledger }
     }
 }
 

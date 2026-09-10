@@ -117,6 +117,24 @@ public struct Timetable: Sendable {
         return current
     }
 
+    /// The indices of the stops that come round after `last` and up to
+    /// `due`, in day order, wrapping at midnight — what a tick that stepped
+    /// from one to the other has to run. Empty when the two are the same.
+    ///
+    /// - Parameters:
+    ///   - last: the stop already kept.
+    ///   - due: the stop now in force.
+    /// - Returns: every index after `last` through `due`.
+    func indices(after last: Int, through due: Int) -> [Int] {
+        var crossed: [Int] = []
+        var index = last
+        while index != due {
+            index = (index + 1) % stops.count
+            crossed.append(index)
+        }
+        return crossed
+    }
+
     /// The stop in force at a given time.
     ///
     /// - Parameter time: the time to resolve.

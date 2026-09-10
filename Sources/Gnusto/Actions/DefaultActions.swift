@@ -29,10 +29,10 @@ enum DefaultActions {
             // touch — and so a row reclaiming a built-in cannot loosen it.
             let reach = reachRequirement(of: command.intent, in: frame.definition)
             switch override.kind {
-            case .body(_, let body):
+            case .body(let body):
                 try requireReach(reach, for: command, frame: frame)
                 try body()
-            case .line(_, _, let render):
+            case .line(_, let render):
                 // A custom verb carrying its own default line takes the stub
                 // path, name and guards and all — which is the whole reason
                 // the spelling exists.

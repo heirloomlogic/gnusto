@@ -838,7 +838,7 @@ enum Bootstrap {
             // the object's name, its number agreement and the
             // yourself/somebodyElse guards, all of which `text.stubs` keeps.
             // (#233)
-            if case .line(_, let requiresObject, _) = action.kind {
+            if case .line(let requiresObject, _) = action.kind {
                 if DefaultActions.stubIntents.contains(action.intent) {
                     actionWarnings.append(
                         "default line for intent \"\(action.intent.raw)\" replaces the "

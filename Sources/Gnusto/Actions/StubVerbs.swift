@@ -915,10 +915,7 @@ extension DefaultActions {
         if let declared = coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach {
             return declared
         }
-        switch definition.actionOverrides[intent]?.kind {
-        case .body(let reach, _), .line(let reach, _, _): return reach
-        case nil: return .notNeeded
-        }
+        return definition.actionOverrides[intent]?.reach ?? .notNeeded
     }
 }
 

@@ -280,18 +280,26 @@ public struct Conversation: GameContent {
     ///     record nothing — which is what keeps a game that writes no `again:`
     ///     byte-identical across saves.
     ///   - key: the heard-set key, evaluated only when `again` is non-nil.
+    ///   - gate: a requirement on the first answer, run after the repeat has
+    ///     been answered and before the answer is recorded — so a refused
+    ///     first showing does not count as one, and a repeat is answered
+    ///     whether or not the requirement still holds.
     ///   - body: the answer in full.
-    /// - Throws: whatever `body` throws, and the `TurnInterrupt` that `reply`
-    ///   raises to end the turn on a repeat.
+    /// - Throws: whatever `gate` or `body` throws, and the `TurnInterrupt`
+    ///   that `reply` raises to end the turn on a repeat.
     func sayOnce(
         _ again: String?,
         key: () -> String,
+        gate: () throws -> Void = {},
         then body: () throws -> Void
     ) throws {
         if let again {
             let key = key()
             if heard.rows.contains(key) { try reply(again) }
+            try gate()
             heard.rows.insert(key)
+        } else {
+            try gate()
         }
         try body()
     }
@@ -363,18 +371,19 @@ public struct Conversation: GameContent {
         // the shown item has of its own.
         return actor.before(.show) {
             guard command.directObject == item else { return }
-            // A repeat answers with `again:` whether or not the thing is still
-            // in the player's hands — the body may have taken it, and "the
-            // glove is in her lap" is the right answer to showing it twice.
-            // So the held check sits after the repeat and ahead of `sayOnce`,
-            // which records the showing before it runs the body: a refused
-            // first showing must not count as one.
-            if let again, heard.rows.contains(key) { try reply(again) }
-            try require(item.isHeld, else: gameText.notHolding())
-            // Teaching happens on every showing, repeat or not, matching
-            // `topics`. `learn` is idempotent.
-            if let fact { learn(fact) }
-            try sayOnce(again, key: { key }, then: body)
+            // The held check is the gate rather than a line above: a repeat
+            // answers with `again:` whether or not the thing is still in the
+            // player's hands — the body may have taken it, and "the glove is
+            // in her lap" is the right answer to showing it twice.
+            try sayOnce(
+                again, key: { key },
+                gate: { try require(item.isHeld, else: gameText.notHolding()) }
+            ) {
+                // Teaching happens on every showing, matching `topics`.
+                // `learn` is idempotent.
+                if let fact { learn(fact) }
+                try body()
+            }
         }
     }
 

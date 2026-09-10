@@ -30,10 +30,11 @@ public struct IntentAction: Sendable {
     /// two doors.
     ///
     /// `body` is arbitrary behavior and stage 4 runs it once the reach guard
-    /// has passed. `line` is a sentence, the same `reach:` column and one flag —
-    /// everything ``StubVerb`` holds except the rows, which a custom verb
-    /// already declared for itself in `verbs`. Keeping the reach beside the
-    /// behavior rather than inside it is what lets stage 0 read the column too:
+    /// has passed. `line` is a sentence and one flag — everything ``StubVerb``
+    /// holds except the rows, which a custom verb already declared for itself
+    /// in `verbs`, and the reach column, which both kinds share and so lives
+    /// on the action rather than in here. Keeping it beside the behavior
+    /// rather than inside it is what lets stage 0 read the column too:
     /// `DefaultActions.reachRequirement(of:in:)` needs the answer before any
     /// rule runs, and a closure that guards internally could only answer at
     /// stage 4.
@@ -46,12 +47,14 @@ public struct IntentAction: Sendable {
     /// game's is checked at bootstrap, which is the only place both the row and
     /// the verb's rows are in scope.
     enum Kind: Sendable {
-        case body(reach: Reach, @Sendable () throws -> Void)
-        case line(
-            reach: Reach, requiresObject: Bool, render: @Sendable (GameText, Command) -> String)
+        case body(@Sendable () throws -> Void)
+        case line(requiresObject: Bool, render: @Sendable (GameText, Command) -> String)
     }
 
     let intent: Intent
+    /// Which object slots the player has to be able to touch, whichever kind
+    /// of row this is. See ``action(_:reach:perform:)``.
+    let reach: Reach
     let kind: Kind
 
     /// Builds a stage-4 default action for `intent`. A row whose intent
@@ -70,7 +73,8 @@ public struct IntentAction: Sendable {
         perform body: @escaping @Sendable () throws -> Void
     ) {
         self.intent = intent
-        self.kind = .body(reach: reach, body)
+        self.reach = reach
+        self.kind = .body(body)
     }
 
     /// Builds a stage-4 default *line* for `intent` — the door the three
@@ -91,7 +95,8 @@ public struct IntentAction: Sendable {
         render: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
-        self.kind = .line(reach: reach, requiresObject: requiresObject, render: render)
+        self.reach = reach
+        self.kind = .line(requiresObject: requiresObject, render: render)
     }
 
     /// A copy of this action whose body runs with `namespace` bound as the
@@ -101,7 +106,7 @@ public struct IntentAction: Sendable {
     /// starts no timers and names no declarations, so there is no owner for it
     /// to be read against.
     func owned(by namespace: String?) -> IntentAction {
-        guard let namespace, case .body(let reach, let body) = kind else { return self }
+        guard let namespace, case .body(let body) = kind else { return self }
         return IntentAction(intent, reach: reach) { try Ctx.owned(namespace, body) }
     }
 }

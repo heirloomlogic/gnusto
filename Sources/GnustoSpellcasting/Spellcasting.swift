@@ -220,10 +220,10 @@ public struct Spellcasting: GameContent {
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> [IntentAction] {
-        let name = word ?? intent.raw
-        var built = [castAction(intent, named: name, cost: cost, effect: effect)]
+        let word = GameText.Word(word ?? intent.raw)
+        var built = [castAction(intent, named: word, cost: cost, effect: effect)]
         if case .prepared(let book, let learnVia) = cost {
-            built.append(prepareAction(learnVia, spell: name, book: book))
+            built.append(prepareAction(learnVia, spell: word, book: book))
         }
         return built
     }
@@ -231,20 +231,21 @@ public struct Spellcasting: GameContent {
     /// The cast handler: gate on availability, run the effect, then pay.
     private func castAction(
         _ intent: Intent,
-        named name: String,
+        named word: GameText.Word,
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> IntentAction {
-        action(intent) {
+        let name = word.word
+        return action(intent) {
             switch cost {
             case .cantrip:
                 break
             case .prepared:
-                try require(prepared.names.contains(name), else: text.notPrepared(GameText.Word(name)))
+                try require(prepared.names.contains(name), else: text.notPrepared(word))
             case .energy(let amount):
-                try require(mana >= amount, else: text.noEnergy(GameText.Word(name)))
+                try require(mana >= amount, else: text.noEnergy(word))
             case .scroll(let scroll):
-                try require(scroll.isHeld, else: text.noScroll(GameText.Word(name)))
+                try require(scroll.isHeld, else: text.noScroll(word))
             }
 
             try effect()
@@ -264,15 +265,18 @@ public struct Spellcasting: GameContent {
 
     /// The memorize handler for a prepared spell: gate on free memory (and the
     /// spellbook, when required), then commit the spell to memory.
-    private func prepareAction(_ prepareIntent: Intent, spell name: String, book: Item?) -> IntentAction {
-        action(prepareIntent) {
-            try require(!prepared.names.contains(name), else: text.alreadyMemorized(GameText.Word(name)))
+    private func prepareAction(
+        _ prepareIntent: Intent, spell word: GameText.Word, book: Item?
+    ) -> IntentAction {
+        let name = word.word
+        return action(prepareIntent) {
+            try require(!prepared.names.contains(name), else: text.alreadyMemorized(word))
             try require(prepared.names.count < memorySlots, else: text.memoryFull())
             if let book {
-                try require(book.isHeld, else: text.spellbookNeeded(GameText.Word(name)))
+                try require(book.isHeld, else: text.spellbookNeeded(word))
             }
             prepared.names.insert(name)
-            say(text.memorized(GameText.Word(name)))
+            say(text.memorized(word))
         }
     }
 }

@@ -78,7 +78,7 @@ public func play(
 /// - Returns: that turn's output, or "" when the command never appears.
 public func turnOutput(of command: String, in transcript: String) -> String {
     guard let start = transcript.range(of: "> \(command)\n") else { return "" }
-    return turnOutput(from: start.upperBound, in: transcript)
+    return output(before: "\n> ", in: String(transcript[start.upperBound...]))
 }
 
 /// The output of the **last** time a transcript ran `command` — the slice for
@@ -93,17 +93,7 @@ public func turnOutput(ofLast command: String, in transcript: String) -> String 
     guard let start = transcript.range(of: "> \(command)\n", options: .backwards) else {
         return ""
     }
-    return turnOutput(from: start.upperBound, in: transcript)
-}
-
-/// Everything from just after a `> command` line to the next prompt or the
-/// end — the tail both `turnOutput` forms share.
-private func turnOutput(from start: String.Index, in transcript: String) -> String {
-    let rest = transcript[start...]
-    if let nextPrompt = rest.range(of: "\n> ") {
-        return String(rest[..<nextPrompt.lowerBound])
-    }
-    return String(rest)
+    return output(before: "\n> ", in: String(transcript[start.upperBound...]))
 }
 
 /// Everything a transcript printed after its first occurrence of `marker` —
