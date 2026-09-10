@@ -782,15 +782,20 @@ enum Bootstrap {
         // container. Warn, don't strip: the trait behaves item-like if left.
         for (id, item) in sortedItems where item.isActor {
             let mechanical: [(Bool, String)] = [
-                (item.isWearable, "wearable"), (item.isScenery, "scenery"),
-                (item.isSurface, "surface"), (item.isContainer, "container"),
-                (item.isOpenable, "openable"), (item.startsOpen, "startsOpen"),
-                (item.isTransparent, "transparent"), (item.isLockable, "a lockedBy entry"),
-                (item.startsUnlocked, "startsUnlocked"), (item.capacity != nil, "capacity"),
+                (item.isWearable, "declares the item trait \"wearable\""),
+                (item.isScenery, "declares the item trait \"scenery\""),
+                (item.isSurface, "declares the item trait \"surface\""),
+                (item.isContainer, "declares the item trait \"container\""),
+                (item.isOpenable, "declares the item trait \"openable\""),
+                (item.startsOpen, "declares the item trait \"startsOpen\""),
+                (item.isTransparent, "declares the item trait \"transparent\""),
+                (item.isLockable, "declares a lockedBy entry"),
+                (item.startsUnlocked, "declares the item trait \"startsUnlocked\""),
+                (item.capacity != nil, "declares the item trait \"capacity\""),
             ]
-            for (declared, trait) in mechanical where declared {
+            for (declared, phrase) in mechanical where declared {
                 traitWarnings.append(
-                    "actor \"\(id)\" declares the item trait \"\(trait)\"; actors hold "
+                    "actor \"\(id)\" \(phrase); actors hold "
                         + "things via their inventory, and the trait will behave "
                         + "item-like if left in place.")
             }

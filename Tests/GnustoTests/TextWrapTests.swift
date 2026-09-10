@@ -106,8 +106,8 @@ struct TextWrapTests {
     @Test("plain() and wrap() agree wherever no reflow is possible")
     func plainAgreesWithWrapWithoutReflow() {
         // The doc promise stated as an assertion: the two channels share one
-        // fold and one notion of a form, so at a width nothing reflows at they
-        // render the same lines.
+        // fold and one notion of a form, so at a width where nothing reflows,
+        // they render the same lines.
         for text in [
             "Title<br>Tagline",
             "line one\nline two",

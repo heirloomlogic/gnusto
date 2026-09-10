@@ -451,24 +451,28 @@ public actor GameWorld {
     /// pending — which `perform` would otherwise consume the line as the
     /// filename answer.
     ///
-    /// At the death prompt the epilogue has already printed, on the fatal
-    /// turn, so this takes the exit the typed `quit` answer takes: stop
-    /// reading, say nothing more.
+    /// Once the game has already ended — the death prompt, or a `won`/`lost`/
+    /// `quit` status left by `end(won:)` or an earlier quit — the epilogue has
+    /// already printed, on the turn that ended it, so this takes the same
+    /// exit the typed `quit` answer takes at the death prompt: stop reading,
+    /// say nothing more.
     ///
     /// - Returns: the final turn's output and status (`isFinished == true`).
     public func requestQuit() -> TurnResult {
         pendingPrompt = nil
         pendingClarification = nil
-        if state.status == .dead { return quitAtDeathPrompt() }
+        if state.status != .playing { return quitAfterGameEnded() }
         return runTurn(
             Command(intent: .quit, verbPhrase: "quit", rawInput: "quit"),
             snapshot: state)
     }
 
-    /// Leaves the death prompt by quitting: the fatal turn already printed
+    /// Leaves the game silently once it has already ended: the turn that
+    /// ended it — a death, a win, a loss, or an earlier quit — already printed
     /// the score epilogue, so this stops reading and says nothing more. The
-    /// typed `quit` answer and a front end's Ctrl-C both land here.
-    func quitAtDeathPrompt() -> TurnResult {
+    /// typed `quit` answer at the death prompt and a front end's Ctrl-C after
+    /// any ending both land here.
+    func quitAfterGameEnded() -> TurnResult {
         state.status = .quit
         return freeReply("")
     }

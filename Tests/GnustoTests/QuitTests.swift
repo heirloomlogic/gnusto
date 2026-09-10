@@ -86,6 +86,23 @@ struct QuitTests {
         #expect(!result.output.contains("Your score is"))
     }
 
+    @Test func requestQuitAfterWinningDoesNotPrintTheScoreTwice() async throws {
+        let world = try cachedWorld(RankedScoreGame(), seed: 1)
+        _ = await world.begin()
+
+        // `bow` ends the game with `end(won: true)`, which already printed
+        // the epilogue once.
+        let win = await world.perform("bow")
+        #expect(win.output.contains("Rank: Novice."))
+
+        // A won game is not `.playing` and is not the death prompt either —
+        // `requestQuit()` must still take the silent exit rather than running
+        // a second full `quit` turn, which would print the epilogue again.
+        let result = await world.requestQuit()
+        #expect(result.isFinished)
+        #expect(!result.output.contains("Rank:"))
+    }
+
     // MARK: - REPL wiring
 
     @Test func replHandsTheEndingTextToTheFrontEndOnQuit() async throws {
@@ -96,6 +113,17 @@ struct QuitTests {
         // The front end got the epilogue, so a full-screen handler can keep
         // it visible after teardown.
         #expect(io.finishedWith?.contains("Your score is") == true)
+    }
+
+    @Test func replHandsFinishEmptyTextOnQuitAtTheDeathPrompt() async throws {
+        let world = try GameWorld(game: MorgueGame(), seed: 1)
+        let io = RecordingIOHandler(inputs: [.line("take poison"), .quit])
+        await REPL(world: world, io: io).run()
+
+        // The death turn's epilogue already went through `write`, not
+        // `finish` — a quit at the prompt hands the front end no text of its
+        // own to display a second time.
+        #expect(io.finishedWith == "")
     }
 
     @Test func replSkipsTheEndingHandOffOnBareEndOfInput() async throws {
