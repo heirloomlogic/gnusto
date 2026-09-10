@@ -112,9 +112,10 @@ struct KindlyDeep: Game, GameMain {
         text.stubs.yell =
             "You call out. Four hundred feet of rock takes it, considers it, and returns nothing."
         // These two were `action(…)` rows until #404, which is the trap #233
-        // describes: a row on a stub intent returns from `DefaultActions.run`
-        // before `requireReach`, so both quietly gave up the reach guard and the
-        // object's name to change a sentence. The sentence is all either wanted.
+        // describes: a closure row on a stub intent is reach-guarded only by
+        // the `reach:` it declares itself, so both quietly gave up the reach
+        // guard and the object's name to change a sentence. The sentence is all
+        // either wanted.
         text.stubs.drink = """
             There is nothing here fit to drink. Mine water is mine water, and a man who drinks it trades a bad
             day for a worse week.

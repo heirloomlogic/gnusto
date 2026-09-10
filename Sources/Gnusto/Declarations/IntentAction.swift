@@ -119,9 +119,20 @@ public struct IntentAction: Sendable {
 /// and stage 4, where the engine's `cantReach` refuses a slot the player can
 /// see and not touch before the body runs. It defaults to ``Reach/notNeeded``,
 /// which is what a custom intent had before the column existed, so no closure
-/// tightens silently — and, as with a line, it is read only for a verb the
-/// *game* invented, since a built-in keeps its own physics whoever writes the
-/// behavior.
+/// tightens silently.
+///
+/// The two forms part company on a verb the engine already declares, and the
+/// difference is the bargain each is making. A **line** reclaims that verb's
+/// answer and not its physics, so the standard table's column stands and the
+/// row's is ignored — `take` has to reach what it takes whoever writes the
+/// sentence. A **closure** is a game taking the verb over outright, so its
+/// stage-4 guard is the column written here and nothing else:
+/// `GnustoMeleeCombat`'s `action(.attack)` answers for a fish sealed behind
+/// glass rather than refusing to reach it, which is what it did before this
+/// column existed and what it has to go on doing. Stage 0 is not part of the
+/// bargain either way: `DefaultActions.reachRequirement(of:in:)` prefers the
+/// standard table, so no row of either kind can switch off a `reach { … }`
+/// rule.
 ///
 /// ```swift
 /// action(.show, reach: .bothObjects) {

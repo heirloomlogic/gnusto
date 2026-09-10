@@ -35,10 +35,11 @@ import GnustoMeleeCombat
 ///   Each takes one entry and the draw is noted.
 ///
 /// Installed as `text.stubs` in ``Zork1``, not as `action(…)` rows. The rows
-/// were how this game re-skinned its first thirteen, and `DefaultActions.run`
-/// returns from a closure override *before* `requireReach`, so each one had
-/// quietly given up the engine's reach guard, the object's rendered name, its
-/// number agreement, and the `yourself`/`somebodyElse` guards. Assigning the
+/// were how this game re-skinned its first thirteen, and a closure row is
+/// reach-guarded only by the `reach:` it declares itself — none of them did —
+/// so each one had quietly given up the engine's reach guard, the object's
+/// rendered name, its number agreement, and the `yourself`/`somebodyElse`
+/// guards. Assigning the
 /// line keeps all four; it is also what the play-test harness's survey measures,
 /// so the rows were invisible to a round on this game.
 ///

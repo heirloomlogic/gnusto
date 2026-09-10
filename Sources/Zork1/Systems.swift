@@ -132,10 +132,11 @@ struct ZorkSystems: GameContent {
         // re-voices — the thirteen that used to sit here, and the thirty-four
         // that never had a line at all — is now `text.stubs` in ``Zork1``, which
         // is ``Prose/stubFloor``. An `action(…)` *closure* on a stub intent
-        // claims the verb outright: `DefaultActions.run` returns from the
-        // override before `requireReach`, so the row silently gave up the
-        // engine's reach guard, the object's name, its number agreement and the
-        // `yourself`/`somebodyElse` guards, none of which this game meant to
+        // claims the verb outright: a closure is reach-guarded only by the
+        // `reach:` it declares itself, and none of them did, so the row
+        // silently gave up the engine's reach guard, the object's name, its
+        // number agreement and the `yourself`/`somebodyElse` guards, none of
+        // which this game meant to
         // trade away for a change of voice. (#242) The rows above are the other
         // door, for verbs this game invented and the engine has never heard of.
         // What each takes is what its own sentence needs: `raise` and `lower`

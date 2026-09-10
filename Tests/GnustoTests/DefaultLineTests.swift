@@ -174,6 +174,31 @@ struct DefaultLineTests {
         #expect(!turnOutput(of: "take crank", in: transcript).contains("stay that way"))
     }
 
+    /// A **closure** row reclaiming a built-in is guarded by the `reach:` it
+    /// declares itself and never by the standard table's column. `.squeeze` is
+    /// a stub carrying ``Reach/directObject``; the row declares none, so the
+    /// cog behind glass still gets the game's own answer — which is what every
+    /// such row did before the column existed, and what `GnustoMeleeCombat`'s
+    /// `action(.attack)` needs in order to go on answering for a fish in a
+    /// bottle.
+    @Test func aClosureOnABuiltInKeepsDecidingItsOwnReach() async throws {
+        let transcript = try await play(BuiltInClosureGame(), ["squeeze cog"])
+        let squeeze = turnOutput(of: "squeeze cog", in: transcript)
+
+        #expect(squeeze.contains("You squeeze the brass cog from here, somehow."))
+        #expect(!squeeze.contains("can't reach"))
+    }
+
+    /// And the same row asking for the guard back gets it: `reach:` on a
+    /// closure is opt-in, not decoration.
+    @Test func aClosureOnABuiltInThatDeclaresReachIsGuarded() async throws {
+        let transcript = try await play(BuiltInClosureGame(), ["touch cog"])
+        let touch = turnOutput(of: "touch cog", in: transcript)
+
+        #expect(touch.contains("You can't reach the brass cog."))
+        #expect(!touch.contains("lay a finger"))
+    }
+
     /// A *closure* on a stub intent stays silent, as it always has: that is a
     /// game taking the verb over rather than re-voicing it.
     @Test func aClosureOnAStubIntentStaysSilent() throws {

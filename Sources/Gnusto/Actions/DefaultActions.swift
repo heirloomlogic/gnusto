@@ -22,21 +22,30 @@ enum DefaultActions {
                 message: frame.definition.text.doesNotKnowHow(actor.definiteNoun))
         }
         if let override = frame.definition.actionOverrides[command.intent] {
-            // Either kind of row declares its `reach:` column, and a custom
-            // intent has no column anywhere else. It is read back through
-            // `reachRequirement(of:in:)` and not out of the row, so that stage
-            // 0 and this stage cannot disagree about what the verb has to
-            // touch — and so a row reclaiming a built-in cannot loosen it.
-            let reach = reachRequirement(of: command.intent, in: frame.definition)
             switch override.kind {
             case .body(let body):
-                try requireReach(reach, for: command, frame: frame)
+                // A closure is guarded by **its own** column and never by the
+                // standard table's, so a closure reclaiming a built-in still
+                // decides for itself: `MeleeCombat`'s `action(.attack)` gets
+                // to answer for a fish behind glass, exactly as it did before
+                // the column existed. The default is ``Reach/notNeeded``, so
+                // the guard is opt-in and no shipped row tightened when this
+                // spelling arrived. Stage 0 is not affected: a `reach { … }`
+                // rule is settled from `reachRequirement(of:in:)`, which
+                // prefers the table, so a row cannot switch one off.
+                try requireReach(override.reach, for: command, frame: frame)
                 try body()
             case .line(_, let render):
-                // A custom verb carrying its own default line takes the stub
-                // path, name and guards and all — which is the whole reason
-                // the spelling exists.
-                try sayLine(reach: reach, render, for: command, frame: frame)
+                // A line is the other bargain: it takes the stub path, name
+                // and guards and all — which is the whole reason the spelling
+                // exists — and its column is read back through
+                // `reachRequirement(of:in:)` rather than out of the row, so a
+                // line reclaiming a built-in cannot *loosen* the verb's
+                // physics. `take` has to reach what it takes whoever writes
+                // the sentence.
+                try sayLine(
+                    reach: reachRequirement(of: command.intent, in: frame.definition),
+                    render, for: command, frame: frame)
             }
             return
         }

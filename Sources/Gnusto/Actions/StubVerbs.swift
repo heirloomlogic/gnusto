@@ -905,9 +905,14 @@ extension DefaultActions {
     /// let `action(.take, say: …)` drop `take` to ``Reach/notNeeded`` and
     /// silently switch off every `reach { … }` rule in the game for that verb.
     ///
-    /// This is the only reader of the column, for either stage: `run` asks it
-    /// too rather than destructuring the row, so stage 0 and stage 4 cannot
-    /// disagree about what a verb has to touch.
+    /// This is stage 0's only reader, and stage 4's for a *line* row. A
+    /// **closure** row is guarded at stage 4 by its own column instead, read
+    /// straight off the row: a closure reclaiming a built-in has always
+    /// decided the whole answer for itself, including whether the thing is
+    /// near enough to answer about, and asking here would have tightened
+    /// every such row the day the column arrived. Stage 0 is unaffected either
+    /// way — a `reach { … }` rule is settled from the table, so no row can
+    /// switch one off.
     ///
     /// A custom intent nothing answers is in none of the three and takes
     /// ``Reach/notNeeded``.

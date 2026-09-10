@@ -182,6 +182,56 @@ struct BuiltInLineGame: Game {
     }
 }
 
+/// A `.body` row on two **built-in** verbs, one declaring a `reach:` column
+/// and one not. A closure is a game taking the verb over outright, so it is
+/// guarded by the column *it* writes and never by the standard table's: the
+/// unguarded row still answers through the glass of a shut jar, exactly as it
+/// did before the column existed, and the guarded one is refused there.
+struct BuiltInClosureGame: Game {
+    let title = "Built-in Closure"
+    let intro = "A workshop, and a jar you can see into."
+
+    let workshop = Location {
+        name("Workshop")
+        description("A workshop with a jar on the bench.")
+    }
+
+    /// Shut and transparent: the cog inside is in scope and out of reach.
+    let jar = Item {
+        name("glass jar")
+        adjectives("glass")
+        container
+        openable
+        transparent
+    }
+
+    let cog = Item {
+        name("brass cog")
+        adjectives("brass")
+        description("A small brass cog.")
+    }
+
+    var actions: [IntentAction] {
+        // `.squeeze` is a stub carrying `reach: .directObject`. This row
+        // declares none, so it answers whatever the distance.
+        action(.squeeze) {
+            guard let thing = command.directObject else { return }
+            try reply("You squeeze \(thing.definiteNoun) from here, somehow.")
+        }
+        // The same shape asking for the guard back.
+        action(.touch, reach: .directObject) {
+            guard let thing = command.directObject else { return }
+            try reply("You lay a finger on \(thing.definiteNoun).")
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+        jar.starts(in: workshop)
+        cog.starts(inside: jar)
+    }
+}
+
 /// A game that writes a default *line* for an intent the engine already answers
 /// with one. It works, and it warns: `text.stubs.squeeze` is the shorter road
 /// and keeps the verb's own rows, so a row here is almost always somebody who
