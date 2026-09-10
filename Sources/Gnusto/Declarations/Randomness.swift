@@ -52,11 +52,14 @@ public func oneOf(_ first: String, _ rest: String...) -> String {
 }
 
 /// One of the options, uniformly, from an array. Traps on an empty array — the
-/// case the variadic form above cannot express.
+/// case the variadic form above cannot express, which is why this is not
+/// public API: a game writes `oneOf("a", "b")`, and a library that stores its
+/// prose as an array (`GnustoMeleeCombat`) guards emptiness where the array is
+/// built and draws here.
 ///
 /// - Parameter options: the choices to draw from.
 /// - Returns: one option, chosen uniformly.
-public func oneOf(_ options: [String]) -> String {
+package func oneOf(_ options: [String]) -> String {
     guard !options.isEmpty else {
         fatalError("Gnusto: oneOf(…) needs at least one option.")
     }

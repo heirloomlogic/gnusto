@@ -55,7 +55,7 @@ public struct REPL: Sendable {
         io.write("\(output)\n\n")
         recorder?.record(openingOutput: output)
         io.showStatus(result.status)
-        io.updateCompletions(await world.completionCandidates())
+        if io.wantsCompletions { io.updateCompletions(await world.completionCandidates()) }
 
         while !result.isFinished, let input = io.readLine(prompt: "> ") {
             // Read before the turn runs: `turn=cost|free` is the move counter's
@@ -95,7 +95,7 @@ public struct REPL: Sendable {
             }
             io.write("\(output)\n\n")
             io.showStatus(result.status)
-            io.updateCompletions(await world.completionCandidates())
+            if io.wantsCompletions { io.updateCompletions(await world.completionCandidates()) }
         }
 
         recorder?.close()

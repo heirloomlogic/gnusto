@@ -162,16 +162,6 @@ public struct Conversation: GameContent {
         heard.rows.contains(Self.heardKey(id, actorName: actor.name))
     }
 
-    /// Marks the row declared with this `id:` unheard, so the actor gives it
-    /// in full the next time it is raised. Idempotent.
-    ///
-    /// - Parameters:
-    ///   - id: the row's `id:`.
-    ///   - actor: whose table it is in.
-    public func unhear(_ id: String, from actor: Actor) {
-        heard.rows.remove(Self.heardKey(id, actorName: actor.name))
-    }
-
     /// Forgets everything an actor has already said, so their whole table
     /// answers in full again. Idempotent.
     ///

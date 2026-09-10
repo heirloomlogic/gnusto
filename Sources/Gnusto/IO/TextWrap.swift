@@ -69,23 +69,39 @@ public enum TextWrap {
     /// - Parameter text: the game text to render.
     /// - Returns: the text folded, with every `<br>` replaced by a newline.
     public static func plain(_ text: String) -> String {
-        let segments = fold(text).components(separatedBy: lineBreak)
-        guard segments.count > 1 else { return segments[0] }
-        return segments.enumerated()
-            .map { index, segment in
-                // Trim only the whitespace flanking a marker, the way `wrap`
-                // drops it when it splits a segment into words — so a marker
-                // written at the end of a source line does not leave the next
-                // line indented by the space the fold joined on. Text away from
-                // a marker is never touched.
-                var segment = Substring(segment)
-                if index > 0 { segment = segment.drop(while: { $0 == " " || $0 == "\t" }) }
-                if index < segments.count - 1 {
-                    while segment.last == " " || segment.last == "\t" { segment = segment.dropLast() }
-                }
-                return String(segment)
+        fold(text).split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line in
+                let (isForm, parts) = segments(of: line)
+                // A form keeps every space it was written with, on both sides
+                // of the marker — the reflowing channel never de-indents one.
+                guard !isForm, parts.count > 1 else { return parts.joined(separator: "\n") }
+                return parts.enumerated()
+                    .map { index, part in
+                        // Trim only the whitespace flanking a marker, the way
+                        // `wrap` drops it when it splits a segment into words —
+                        // so a marker written at the end of a source line does
+                        // not leave the next line indented by the space the
+                        // fold joined on. Text away from a marker is never
+                        // touched.
+                        var part = Substring(part)
+                        if index > 0 { part = part.drop(while: { $0 == " " || $0 == "\t" }) }
+                        if index < parts.count - 1 {
+                            while part.last == " " || part.last == "\t" { part = part.dropLast() }
+                        }
+                        return String(part)
+                    }
+                    .joined(separator: "\n")
             }
             .joined(separator: "\n")
+    }
+
+    /// One folded line as both channels read it: whether it is a form, and
+    /// its hard-break segments — the pieces between `<br>` markers, which lay
+    /// out independently but stay adjacent. The one place that decides both,
+    /// so ``plain(_:)`` and the reflowing renderer cannot disagree about
+    /// where a line breaks or whether it keeps its indent.
+    static func segments(of line: Substring) -> (isForm: Bool, parts: [String]) {
+        (isPreformatted(line), line.components(separatedBy: lineBreak))
     }
 
     /// Whether a line is **preformatted** — indented past the paragraph margin,
@@ -182,10 +198,8 @@ public enum TextWrap {
                 pendingSeparator = false
             }
 
-            // Split on the hard-break marker into segments that lay out
-            // independently but stay adjacent (no paragraph gap between them).
-            let preformatted = isPreformatted(line)
-            for segment in line.components(separatedBy: lineBreak) {
+            let (preformatted, parts) = segments(of: line)
+            for segment in parts {
                 if preformatted {
                     lines += hardSplit(Substring(segment), width: width)
                 } else {

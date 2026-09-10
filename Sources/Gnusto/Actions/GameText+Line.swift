@@ -236,7 +236,7 @@ extension GameText.Line where Object == GameText.Nothing {
     ///
     /// ```swift
     /// text.pitchBlack = .live {
-    ///     lantern.isOn ? "The dark presses in anyway." : "It is pitch black."
+    ///     lantern.isLit ? "The dark presses in anyway." : "It is pitch black."
     /// }
     /// ```
     ///

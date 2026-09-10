@@ -29,7 +29,7 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~2,120 tests, ~10s
+swift test                                    # ~2,410 tests, ~25s
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
@@ -275,7 +275,7 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 |---|---|
 | item / actor | `before`, `after`, `describe`, `presence`, `reach` |
 | location | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
-| world | `before`, `after` |
+| world | `before`, `after`, `beforeEachTurn`, `afterEachTurn` |
 
 In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(won:)`, `die`,
 `describeSurroundings`, `arrive(at:)`, `enter(_:)`, `proceed`.

@@ -72,7 +72,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Darkness | The Lamp Room is dark, and the beacon in it is out. | The goal room stays dark. This is the only thing making the portable light load-bearing. |
 | Actor | The keeper, limping between the base and the lamp room. | **One** roaming actor, drawing from the seeded stream only on turns she could actually be seen. |
 | Reclaimed verb | `TALK TO KEEPER`, and the terser `TALK KEEPER` — the engine's own `talk` stub, taken over for the keeper. | **One** reclaimed verb, both sentence shapes, answered by a rule rather than an action. |
-| `@Global` state | `tideStage`, read by the jetty's live description; `keeperGreeted`, gating the briefing. | One number that live prose reads, and one flag that fires a line exactly once. Both save and restore. |
+| `@Global` and `@Latch` state | `tideStage`, a `@Global` read by the jetty's live description; `keeperGreeted`, a `@Latch` gating the briefing. | One number that live prose reads, and one flag that fires a line exactly once. Both save and restore. |
 | Content bundle | `Tower` owns the Lamp Room and the beacon; `Fixtures` owns the scenery. | The goal lives in a bundle and the fuel for it lives in the host. The seam is the demonstration. |
 | Cross-bundle rule | Lighting the beacon is the host's rule, because it checks for the oil can found downstairs. | The winning rule stays the host's. A bundle that could win on its own proves nothing about bundles. |
 | Promoted stubs | Four stub verbs the game contradicts — `pour`/`empty` on the can, `burn` on the lamp and the beacon, `swim`/`dive` on the jetty. | A stub line the game has just called false gets a rule. Per entity, with `reply`/`refuse`, never a wholesale re-skin. |

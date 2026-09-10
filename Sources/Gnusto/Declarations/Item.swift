@@ -294,9 +294,11 @@ public struct Item: Sendable, Equatable {
     }
 
     /// Reveals a `hidden` item: it becomes perceivable in visibility and room
-    /// descriptions from now on. A no-op for an item that isn't `hidden`.
+    /// descriptions from now on. A no-op for an item that isn't `hidden` —
+    /// it writes nothing, so the turn's state is untouched.
     public func reveal() {
         let (frame, id) = resolved
+        guard frame.definition.items[id]?.isHidden == true else { return }
         frame.with { _ = $0.state.revealedItems.insert(id) }
     }
 

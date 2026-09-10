@@ -201,7 +201,6 @@ closure they carry: the key records that a row *has* one, not which one.
 An `id:` is also the only handle on a row from outside the table.
 
 - ``Conversation/hasHeard(_:from:)``
-- ``Conversation/unhear(_:from:)`` — one row, given in full again
 - ``Conversation/unhearEverything(from:)`` — an actor's whole memory
 
 ## Greetings

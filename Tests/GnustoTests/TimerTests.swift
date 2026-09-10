@@ -69,6 +69,22 @@ struct TimerTests {
         #expect(turn.contains("The bomb goes off!"))
     }
 
+    @Test func timersStartedInsideATickBodyFirstTickNextTurn() async throws {
+        // `chain` lights a 1-turn fuse from a rule, so it fires at the end of
+        // that turn (the rule above). Its body starts a 1-turn fuse and a
+        // daemon — but the tick reads the schedule once, before any body runs,
+        // so both wait for the next turn's tick. Fuses and daemons alike: one
+        // sentence, not one per kind.
+        let transcript = try await play(ClockGame(), ["chain", "look"])
+        let chain = turnOutput(of: "chain", in: transcript)
+        #expect(chain.contains("The link burns through."))
+        #expect(!chain.contains("The bomb goes off!"))
+        #expect(!chain.contains("Drip."))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("The bomb goes off!"))
+        #expect(look.contains("Drip."))
+    }
+
     // MARK: - Daemons
 
     @Test func daemonRunsFromItsStartTurnUntilStopped() async throws {

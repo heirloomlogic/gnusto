@@ -159,6 +159,9 @@ public final class TerminalIOHandler: IOHandler {
         render()
     }
 
+    /// The line editor offers Tab-completion, so the engine should compute it.
+    public var wantsCompletions: Bool { true }
+
     /// Stores the completion candidates the engine computed for the next input
     /// line. Tab uses them; no repaint is needed.
     public func updateCompletions(_ candidates: CompletionCandidates) {
@@ -251,8 +254,10 @@ public final class TerminalIOHandler: IOHandler {
                 // Ctrl-C: confirm, then signal a quit *intent* rather than
                 // killing the process — the REPL routes `.quit` through
                 // `GameWorld.requestQuit()`, so the engine prints its epilogue
-                // and the terminal restores cleanly on the way out. Signaling
-                // the intent (not the editable "quit" verb word) means the quit
+                // (unless the game has already ended, in which case that turn
+                // already printed it and this exits silently) and the
+                // terminal restores cleanly on the way out. Signaling the
+                // intent (not the editable "quit" verb word) means the quit
                 // lands even while a save/restore prompt is pending, and can't
                 // drift if a game redefines the verb.
                 if confirmQuit() {
