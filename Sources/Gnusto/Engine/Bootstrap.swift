@@ -796,7 +796,7 @@ enum Bootstrap {
             for (declared, phrase) in mechanical where declared {
                 traitWarnings.append(
                     "actor \"\(id)\" \(phrase); actors hold "
-                        + "things via their inventory, and the trait will behave "
+                        + "things via their inventory, and it will behave "
                         + "item-like if left in place.")
             }
         }

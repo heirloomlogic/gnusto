@@ -104,12 +104,7 @@ where it is declared:
 > `.quit` to `GameWorld.requestQuit()`, which is keyed to `Intent.quit` rather
 > than the editable verb word.
 
-Handing the string `"quit"` back instead would work in most games most of the
-time, and fail in the two places a player reaches for Ctrl-C: mid-way through a
-save prompt, where the line becomes the filename, and in a game whose author
-spelled the verb something else. ``GameWorld/requestQuit()`` abandons any open
-prompt and ends the game through the same path the verb takes, so the score
-epilogue still prints.
+Handing the string `"quit"` back instead would work in most games most of the time, and fail in the two places a player reaches for Ctrl-C: mid-way through a save prompt, where the line becomes the filename, and in a game whose author spelled the verb something else. ``GameWorld/requestQuit()`` abandons any open prompt and ends the game through the same path the verb takes, so the score epilogue prints — unless the game has already ended, in which case that turn already printed it and this exits silently instead.
 
 A front end with no quit gesture — a pipe, a socket — never returns `.quit`, and
 `nil` (end of input) stops the loop instead.

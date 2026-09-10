@@ -254,8 +254,10 @@ public final class TerminalIOHandler: IOHandler {
                 // Ctrl-C: confirm, then signal a quit *intent* rather than
                 // killing the process — the REPL routes `.quit` through
                 // `GameWorld.requestQuit()`, so the engine prints its epilogue
-                // and the terminal restores cleanly on the way out. Signaling
-                // the intent (not the editable "quit" verb word) means the quit
+                // (unless the game has already ended, in which case that turn
+                // already printed it and this exits silently) and the
+                // terminal restores cleanly on the way out. Signaling the
+                // intent (not the editable "quit" verb word) means the quit
                 // lands even while a save/restore prompt is pending, and can't
                 // drift if a game redefines the verb.
                 if confirmQuit() {

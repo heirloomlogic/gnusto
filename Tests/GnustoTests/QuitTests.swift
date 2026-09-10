@@ -115,14 +115,15 @@ struct QuitTests {
         #expect(io.finishedWith?.contains("Your score is") == true)
     }
 
-    @Test func replHandsFinishEmptyTextOnQuitAtTheDeathPrompt() async throws {
+    @Test func replHandsFinishEmptyTextOnAFrontEndQuitAtTheDeathPrompt() async throws {
         let world = try GameWorld(game: MorgueGame(), seed: 1)
         let io = RecordingIOHandler(inputs: [.line("take poison"), .quit])
         await REPL(world: world, io: io).run()
 
         // The death turn's epilogue already went through `write`, not
-        // `finish` — a quit at the prompt hands the front end no text of its
-        // own to display a second time.
+        // `finish` — a front-end quit gesture (`.quit`, e.g. Ctrl-C) at the
+        // prompt hands the front end no text of its own to display a second
+        // time.
         #expect(io.finishedWith == "")
     }
 
