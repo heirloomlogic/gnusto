@@ -24,7 +24,10 @@ public struct Stop: Sendable {
     /// at or after its time, whether or not the player is there to watch. A
     /// coarse clock that steps over several stops in one tick runs each of
     /// them, in order; the stop in force when the game opens never "comes
-    /// round" and does not run.
+    /// round" and does not run, and neither do the stops a *jump* flies over —
+    /// a daemon restarted well after `stopDaemon(_:)`, a clock wound on by
+    /// hand — where only the stop then in force runs. See
+    /// ``Clock/schedule(_:named:_:)``, which draws that line.
     public let perform: (@Sendable () throws -> Void)?
 
     /// Declares one stop on a timetable.

@@ -149,6 +149,55 @@ struct TimetableTests {
         #expect(!transcript.contains("The butler winds the clock."))
     }
 
+    /// A daemon parked with `stopDaemon(_:)` and started again some turns
+    /// later is looking at a place that was true a long time ago. Walking the
+    /// day forward from it fires every stop the interval crossed, at once, in
+    /// a room the player is standing in — where `stopDaemon`/`startDaemon` is
+    /// documented as parking and rejoining. So the rejoining tick *lands*:
+    /// only the stop now in force runs.
+    @Test func aDaemonStartedAgainRunsOnlyTheStopNowInForce() async throws {
+        let transcript = try await play(
+            ScheduleJumpLab(),
+            ["z", "z", "dismiss"] + Array(repeating: "z", count: 6) + ["reinstate", "z"])
+        // 9:01 came round while he was on his rounds.
+        #expect(occurrences(of: "One.", in: transcript) == 1)
+        // 9:02 and 9:03 came round while he was off them, and stay unperformed.
+        #expect(!transcript.contains("Two."))
+        #expect(!transcript.contains("Three."))
+        // He rejoins on the stop the day says he is keeping now, once.
+        #expect(occurrences(of: "Four.", in: transcript) == 1)
+    }
+
+    /// `advance(by:)` with a negative amount rewinds the clock, which puts the
+    /// stop now in force *behind* the one last kept. The catch-up walk only
+    /// goes forwards, so walking it would wrap the whole way round the day and
+    /// replay every stop in it. A rewound tick lands instead.
+    @Test func aRewoundClockDoesNotReplayTheDay() async throws {
+        let transcript = try await play(ScheduleJumpLab(), ["z", "z", "z", "unwind", "z"])
+        // Nothing later in the day fires on the way back round.
+        #expect(!transcript.contains("Three."))
+        #expect(!transcript.contains("Four."))
+        // And time really is 9:01 again on the turn after, so 9:01 comes round
+        // a second time — which is the clock's contract, not a replay.
+        #expect(occurrences(of: "One.", in: transcript) == 2)
+        #expect(occurrences(of: "Two.", in: transcript) == 1)
+    }
+
+    /// A stop's action may `reply` or `die` — the engine catches both — and
+    /// that ends the tick where it stands. Writing the place before each
+    /// action rather than once before the walk is what lets the next tick pick
+    /// up at the stop after the one that threw, instead of dropping the rest
+    /// of the walk for good.
+    @Test func aStopThatThrowsDoesNotSwallowTheStopsBehindIt() async throws {
+        let transcript = try await play(ThrowingStopLab(), ["z", "z", "z"])
+        // Turn 2 (9:15) crosses all three; the first one throws.
+        expectInOrder(transcript, ["Five past.", "Ten past.", "Quarter past."])
+        #expect(occurrences(of: "Five past.", in: transcript) == 1)
+        // Turn 3 (9:30) resumes at the stop after it.
+        expectInOrder(
+            turnOutput(ofLast: "z", in: transcript), ["Ten past.", "Quarter past."])
+    }
+
     // MARK: - Determinism and persistence
 
     @Test func midScheduleSaveAndRestoreResumesTheSameRounds() async throws {

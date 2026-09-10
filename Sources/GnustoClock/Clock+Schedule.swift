@@ -51,8 +51,20 @@ extension Clock {
     /// The daemon's first tick seeds his place from the opening time and runs
     /// nothing: the stop in force when the game opens has not *come round*, so
     /// a 9:00 stop's `perform:` does not fire on turn one of a game that opens
-    /// at half past five. The place is written only when it changes, so a
-    /// quiet turn re-encodes nothing.
+    /// at half past five.
+    ///
+    /// After that, a tick either **walks** or **lands**, and which one depends
+    /// on the gap since the tick before it. A tick one turn after the last one
+    /// walks: every stop it passed runs its `perform:`, in order, wrapping at
+    /// midnight, which is what makes a clock running fifteen minutes to the
+    /// turn honest about stops five minutes apart. Any other tick lands — he
+    /// goes where the day says he is *now*, the stop in force runs, and the
+    /// ones the gap flew over stay unperformed. That is the answer for a
+    /// daemon started again some turns after `stopDaemon(_:)`, for a clock
+    /// moved by ``advance(by:)`` or ``set(to:)``, and for a rewind, none of
+    /// which mean he spent the interval walking his route. Inside a walk the
+    /// place is written before each `perform:`, so a body that throws leaves
+    /// that stop kept and the next tick picks up at the one after it.
     ///
     /// Timer names are global across a game; the convention here is
     /// `"<actor>.day"`.
@@ -69,11 +81,20 @@ extension Clock {
     ) -> TimedEvent {
         daemon(name, autostart: true) {
             let due = timetable.index(at: now)
-            let last = stopIndices.byDaemon[name]
+            let elapsed = elapsedMinutes
+            let last = schedulePlaces.byDaemon[name]
+            // Every path out of here records the place, because half of a
+            // place is *when* it was taken: the next tick subtracts the two
+            // readings to find out whether it is the turn immediately after
+            // this one, and only a tick that is may walk the day forward over
+            // the stops in between.
+            func keep(_ stop: Int) {
+                schedulePlaces.byDaemon[name] = Clock.Place(stop: stop, minutes: elapsed)
+            }
 
             // Offstage entirely: keep his place in the day, and nothing else.
             guard let here = actor.location else {
-                if last != due { stopIndices.byDaemon[name] = due }
+                keep(due)
                 return
             }
 
@@ -94,18 +115,38 @@ extension Clock {
                 }
             }
 
-            // Once per stop, on the tick it comes round — not once per turn it
-            // stays current, not skipped when two stops share a room, and not
-            // skipped when a coarse clock steps over it: every stop passed
-            // since the last tick runs, in order, wrapping at midnight. The
-            // first tick only takes his place.
-            guard let last else {
-                stopIndices.byDaemon[name] = due
+            // The first tick only takes his place, and a tick on which
+            // nothing came round has nothing to run.
+            guard let last, last.stop != due else {
+                keep(due)
                 return
             }
-            guard last != due else { return }
-            stopIndices.byDaemon[name] = due
-            for index in timetable.indices(after: last, through: due) {
+
+            // An irregular tick — a daemon started again after
+            // `stopDaemon(_:)`, a clock moved by `advance(by:)` or `set(to:)`,
+            // a rewind — is looking at a place that was true a long time ago,
+            // and walking the day forward from it would replay every stop
+            // between, in a rush, possibly twice. So it *lands* instead: he
+            // goes where the day says he is now and the stop in force runs,
+            // which is what a tick did before the catch-up walk existed. The
+            // stops the jump flew over stay unperformed, on the same grounds
+            // the offstage branch above keeps his place silently.
+            guard elapsed - last.minutes == minutesPerTurn else {
+                keep(due)
+                try stop.perform?()
+                return
+            }
+
+            // A regular tick: once per stop, on the tick it comes round — not
+            // once per turn it stays current, not skipped when two stops share
+            // a room, and not skipped when a coarse clock steps over it. Every
+            // stop passed since the last tick runs, in order, wrapping at
+            // midnight. The place is written *before* each `perform`, so a
+            // body that throws — `die`, a `reply` — leaves that stop marked
+            // kept and the next tick resumes at the one after it rather than
+            // dropping the rest of the walk for good.
+            for index in timetable.indices(after: last.stop, through: due) {
+                keep(index)
                 try timetable.stops[index].perform?()
             }
         }
