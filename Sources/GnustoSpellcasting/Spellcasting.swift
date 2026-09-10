@@ -42,7 +42,11 @@ public struct Spellcasting: GameContent {
     /// `GlobalValue` conformance is owned here rather than declared on a
     /// standard-library type.
     struct Prepared: Codable, Sendable, GlobalValue {
-        var names: Set<String> = []
+        /// Keyed by the spell's **intent**, valued by the word its lines call
+        /// it. The word is display and nothing else: two spells may share one
+        /// — a game with a `castFire` and a `burnFire` both `called: "fire"` —
+        /// and keying memory on it made memorizing either prepare both.
+        var byKey: [String: String] = [:]
     }
 
     /// The finite spell memory: which spells are prepared right now.
@@ -177,7 +181,9 @@ public struct Spellcasting: GameContent {
         }
 
         action(.spells) {
-            let held = prepared.names
+            // The report lists words, because that is what the player types
+            // and what every other line calls them.
+            let held = prepared.byKey.values
             say(held.isEmpty ? text.noSpellsHeld() : text.spellsHeld(SpellList(held)))
             say(text.energy(Energy(current: mana, maximum: maxMana)))
         }
@@ -193,8 +199,9 @@ public struct Spellcasting: GameContent {
     /// That word is the intent's own name unless `called:` says otherwise,
     /// which it should whenever the intent is not a word a player reads —
     /// `#verb("castFire", …)` wants `called: "fire"`, or every line says "the
-    /// castFire spell". The word is also the spell's key in memory, so two
-    /// spells never share one.
+    /// castFire spell". The word is display only: memory is keyed on the
+    /// *intent*, so two spells may be called the same thing and still be
+    /// memorized, cast and spent one at a time.
     ///
     /// **One memorize verb per prepared spell.** A `.prepared` cost registers a
     /// stage-4 action on its `learnVia` intent, and two spells declaring the
@@ -204,8 +211,9 @@ public struct Spellcasting: GameContent {
     ///
     /// - Parameters:
     ///   - intent: the spell's own intent (its castable identity).
-    ///   - word: what the layer's lines call the spell, and its key in
-    ///     memory. Defaults to the intent's own name.
+    ///   - word: what the layer's lines call the spell. Defaults to the
+    ///     intent's own name, and is display only — the spell's identity in
+    ///     memory is `intent`.
     ///   - cost: how the spell becomes available and what casting it costs. A
     ///     `.prepared` cost carries its own memorize intent, so the memorize
     ///     behavior is registered automatically.
@@ -223,7 +231,7 @@ public struct Spellcasting: GameContent {
         let word = GameText.Word(word ?? intent.raw)
         var built = [castAction(intent, named: word, cost: cost, effect: effect)]
         if case .prepared(let book, let learnVia) = cost {
-            built.append(prepareAction(learnVia, spell: word, book: book))
+            built.append(prepareAction(learnVia, spell: word, key: intent.raw, book: book))
         }
         return built
     }
@@ -235,13 +243,15 @@ public struct Spellcasting: GameContent {
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> IntentAction {
-        let name = word.word
+        // The spell's identity, and not `word`: a game may call two spells
+        // the same thing on purpose, and memorizing one must not arm the other.
+        let key = intent.raw
         return action(intent) {
             switch cost {
             case .cantrip:
                 break
             case .prepared:
-                try require(prepared.names.contains(name), else: text.notPrepared(word))
+                try require(prepared.byKey[key] != nil, else: text.notPrepared(word))
             case .energy(let amount):
                 try require(mana >= amount, else: text.noEnergy(word))
             case .scroll(let scroll):
@@ -254,7 +264,7 @@ public struct Spellcasting: GameContent {
             case .cantrip:
                 break
             case .prepared:
-                prepared.names.remove(name)
+                prepared.byKey[key] = nil
             case .energy(let amount):
                 mana -= amount
             case .scroll(let scroll):
@@ -266,16 +276,15 @@ public struct Spellcasting: GameContent {
     /// The memorize handler for a prepared spell: gate on free memory (and the
     /// spellbook, when required), then commit the spell to memory.
     private func prepareAction(
-        _ prepareIntent: Intent, spell word: GameText.Word, book: Item?
+        _ prepareIntent: Intent, spell word: GameText.Word, key: String, book: Item?
     ) -> IntentAction {
-        let name = word.word
-        return action(prepareIntent) {
-            try require(!prepared.names.contains(name), else: text.alreadyMemorized(word))
-            try require(prepared.names.count < memorySlots, else: text.memoryFull())
+        action(prepareIntent) {
+            try require(prepared.byKey[key] == nil, else: text.alreadyMemorized(word))
+            try require(prepared.byKey.count < memorySlots, else: text.memoryFull())
             if let book {
                 try require(book.isHeld, else: text.spellbookNeeded(word))
             }
-            prepared.names.insert(name)
+            prepared.byKey[key] = word.word
             say(text.memorized(word))
         }
     }

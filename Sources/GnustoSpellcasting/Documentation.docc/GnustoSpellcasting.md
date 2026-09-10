@@ -19,10 +19,7 @@ returns the actions that intent needs — the cast handler, plus the memorize
 handler when the cost is ``SpellCost/prepared(book:learnVia:)`` — and the game
 splices them into its `actions` block.
 
-The layer's own lines name a spell by its **word** — "You fix the unbar spell
-in your memory" — which is the intent's name unless `called:` says otherwise.
-An intent that is not a word a player reads, `#verb("castFire", …)`, wants
-`called: "fire"`, or every line about it says "the castFire spell".
+The layer's own lines name a spell by its **word** — "You fix the unbar spell in your memory" — which is the intent's name unless `called:` says otherwise. An intent that is not a word a player reads, `#verb("castFire", …)`, wants `called: "fire"`, or every line about it says "the castFire spell". The word is display and nothing more: memory is keyed on the intent, so two spells may share a word and are still memorized, cast and spent one at a time.
 
 It is a `GameContent` bundle rather than a `GamePlugin`, because it has state to
 save. The finite spell memory and the energy pool are `@Global`s it owns, so
@@ -88,10 +85,7 @@ magic.spell(.unbar, cost: .prepared(book: spellbook, learnVia: .learnUnbar)) {
 Pass `book: nil` and the spell can be memorized anywhere; pass an item and it
 has to be in hand.
 
-One memorize verb per prepared spell. `learnVia` registers a stage-4 action on
-that intent, and two spells declaring the same one collide: the bootstrap keeps
-the later and warns that it overrides the earlier. `memorize unbar` and
-`memorize seal` are two intents, not one `memorize` with an object.
+One memorize verb per prepared spell. `learnVia` registers a stage-4 action on that intent, and two spells declaring the same one collide: the bootstrap keeps the later and warns that it overrides the earlier. `memorize unbar` and `memorize seal` are two intents, not one `memorize` with an object.
 
 ## The worked example
 

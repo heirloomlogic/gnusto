@@ -164,6 +164,35 @@ struct SpellcastingTests {
             })
     }
 
+    /// The word is display and the intent is identity, so two spells `called:`
+    /// the same thing are memorized, cast and spent one at a time. Keying
+    /// memory on the word made memorizing either arm both, cast either spend
+    /// both, and the second memorize answer `alreadyMemorized`.
+    @Test func twoSpellsSharingAWordDoNotShareAMemorySlot() async throws {
+        let transcript = try await play(
+            SharedWordLab(),
+            [
+                "memorize kindle",
+                "cast quench",  // the other spell is still unprepared
+                "memorize quench",  // and can be memorized in its own right
+                "spells",
+                "cast kindle",
+                "cast kindle",  // spent
+                "cast quench",  // untouched by spending the first
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "You fix the fire spell in your memory.",
+                "You don't have the fire spell prepared.",
+                "You fix the fire spell in your memory.",
+                "You hold in mind: fire and fire.",
+                "The kindling takes.",
+                "You don't have the fire spell prepared.",
+                "The quenching takes.",
+            ])
+    }
+
     @Test func preparedSpellsAndManaSurviveSaveAndRestore() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-spell-\(UUID().uuidString)", isDirectory: true)
@@ -204,6 +233,47 @@ extension Intent {
     /// `called:` something that is.
     #verb("castSeal", ["seal"], ["cast", "seal"])
     #verb("learnSeal", ["memorize", "seal"], ["learn", "seal"])
+    /// Two spells a game deliberately calls the same thing.
+    #verb("kindleFire", ["kindle"], ["cast", "kindle"])
+    #verb("quenchFire", ["quench"], ["cast", "quench"])
+    #verb("learnKindle", ["memorize", "kindle"])
+    #verb("learnQuench", ["memorize", "quench"])
+}
+
+/// Two prepared spells that share a display word and nothing else — the
+/// `castFire`/`burnFire` shape, both `called: "fire"` so every line about
+/// either reads as a player would say it.
+struct SharedWordLab: Game {
+    let title = "Shared Word"
+    let intro = ""
+
+    let magic = Spellcasting(memorySlots: 2, maxMana: 6)
+
+    let lab = Location {
+        name("Lab")
+        description("A bare stone cell.")
+    }
+
+    var content: GameContents { magic }
+
+    var verbs: [SyntaxRule] {
+        [.kindleFire, .quenchFire, .learnKindle, .learnQuench]
+    }
+
+    var actions: [IntentAction] {
+        magic.spell(
+            .kindleFire, called: "fire", cost: .prepared(book: nil, learnVia: .learnKindle)
+        ) {
+            say("The kindling takes.")
+        }
+        magic.spell(
+            .quenchFire, called: "fire", cost: .prepared(book: nil, learnVia: .learnQuench)
+        ) {
+            say("The quenching takes.")
+        }
+    }
+
+    var map: WorldMap { player.starts(in: lab) }
 }
 
 /// One room, one of every spell paradigm, effects that always succeed — a rig
