@@ -254,7 +254,7 @@ talk.shows(
         """)
 ```
 
-Showing wants the thing in hand. The layer's own stage-4 default declares ``Reach/bothObjects``, and a `shows` row gates its reaction on the item being held, refusing with the engine's stock `notHolding` line — you cannot show somebody a receipt that is still lying on the table. The gate sits between the repeat answer and the recording, so a first showing that was refused is not recorded, and a repeat still answers with its `again:` even when the body took the thing away.
+Showing wants the thing in hand. The layer's own stage-4 default declares `reach: .bothObjects`, and a `shows` row gates its reaction on the item being held, refusing with the engine's stock `notHolding` line — you cannot show somebody a receipt that is still lying on the table. The gate sits between the repeat answer and the recording, so a first showing that was refused is not recorded, and a repeat still answers with its `again:` even when the body took the thing away.
 
 The rule is scoped on the actor rather than on the item, because item `before`
 rules run indirect object first, which puts this ahead of any rule the shown

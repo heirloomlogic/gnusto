@@ -171,7 +171,7 @@ public struct ActorBehaviors: GamePlugin {
     ///   - candidates: the items eligible to be stolen.
     ///   - percent: per-turn chance of a theft, while sharing the room.
     ///   - announcement: the theft line, given the stolen item as a
-    ///     ``GameText/Noun`` — `.naming { "You suddenly notice that \($0) vanished." }`.
+    ///     `GameText.Noun` — `.naming { "You suddenly notice that \($0) vanished." }`.
     /// - Returns: the theft daemon, for the host's `timers` block.
     public func steals(
         _ actor: Actor,
