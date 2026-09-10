@@ -214,7 +214,8 @@ public struct Scoring: GameContent {
     ///   - items: the treasures.
     ///   - trophyCase: the case their deposit values follow.
     func reconcileDeposits(of items: [Item], in trophyCase: Item) {
-        var ledger = cased
+        let before = cased
+        var ledger = before
         for item in items {
             let key = "deposit.\(item.name)"
             let inCase = trophyCase.holds(item)
@@ -227,7 +228,7 @@ public struct Scoring: GameContent {
                 player.score -= item[.depositValue] ?? 0
             }
         }
-        if ledger.names != cased.names { cased = ledger }
+        if ledger.names != before.names { cased = ledger }
     }
 }
 

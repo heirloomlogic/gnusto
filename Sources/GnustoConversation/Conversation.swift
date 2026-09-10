@@ -379,8 +379,9 @@ public struct Conversation: GameContent {
                 again, key: { key },
                 gate: { try require(item.isHeld, else: gameText.notHolding()) }
             ) {
-                // Teaching happens on every showing, matching `topics`.
-                // `learn` is idempotent.
+                // A repeat never gets here — `again:` is the whole of its
+                // answer — so the fact is taught on the showing that earns
+                // the reaction, and the repeat has already taught it.
                 if let fact { learn(fact) }
                 try body()
             }
