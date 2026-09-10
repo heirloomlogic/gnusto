@@ -24,10 +24,10 @@ import GnustoMeleeCombat
 /// has in ``DungeonCoalMine``.
 ///
 /// Installed as `text.stubs` in ``Dungeon``, not as `action(…)` rows. The rows
-/// were how this game re-skinned its first seventeen, and `DefaultActions.run`
-/// returns from a closure override *before* `requireReach`, so each one had
-/// quietly given up the engine's reach guard, its object naming, its number
-/// agreement, and the `yourself`/`somebodyElse` guards. Assigning the line keeps
+/// were how this game re-skinned its first seventeen, and a closure row is
+/// reach-guarded only by the `reach:` it declares itself — none of them did —
+/// so each one had quietly given up the engine's reach guard, its object
+/// naming, its number agreement, and the `yourself`/`somebodyElse` guards. Assigning the line keeps
 /// all of it; it is also what the play-test harness's own survey measures, so
 /// the rows were invisible to the round that filed the box.
 ///

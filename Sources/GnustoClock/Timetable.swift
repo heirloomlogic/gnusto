@@ -20,8 +20,14 @@ public struct Stop: Sendable {
     /// Printed here on arrival, if the player is standing here and can see.
     public let arrival: String?
 
-    /// What else happens when this stop comes round — once, on the turn it
-    /// becomes current, whether or not the player is there to watch.
+    /// What else happens when this stop comes round — once, on the first tick
+    /// at or after its time, whether or not the player is there to watch. A
+    /// coarse clock that steps over several stops in one tick runs each of
+    /// them, in order; the stop in force when the game opens never "comes
+    /// round" and does not run, and neither do the stops a *jump* flies over —
+    /// a daemon restarted well after `stopDaemon(_:)`, a clock wound on by
+    /// hand — where only the stop then in force runs. See
+    /// ``Clock/schedule(_:named:_:)``, which draws that line.
     public let perform: (@Sendable () throws -> Void)?
 
     /// Declares one stop on a timetable.
@@ -112,6 +118,24 @@ public struct Timetable: Sendable {
             current = index
         }
         return current
+    }
+
+    /// The indices of the stops that come round after `last` and up to
+    /// `due`, in day order, wrapping at midnight — what a tick that stepped
+    /// from one to the other has to run. Empty when the two are the same.
+    ///
+    /// - Parameters:
+    ///   - last: the stop already kept.
+    ///   - due: the stop now in force.
+    /// - Returns: every index after `last` through `due`.
+    func indices(after last: Int, through due: Int) -> [Int] {
+        var crossed: [Int] = []
+        var index = last
+        while index != due {
+            index = (index + 1) % stops.count
+            crossed.append(index)
+        }
+        return crossed
     }
 
     /// The stop in force at a given time.

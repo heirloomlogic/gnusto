@@ -1,3 +1,4 @@
+import GnustoDangerousDark
 import GnustoTestSupport
 import Testing
 
@@ -53,6 +54,9 @@ struct DangerousDarkTests {
         let transcript = try await play(
             NightfallGame(),
             ["take lamp", "north", "look", "look", "look", "look", "south", "quit"])
+        // By the line as well as by its words: the warning is a stock line a
+        // sweep can name, the way it names the engine's own refusals.
+        expectNoStockRefusal(transcript, [DangerousDark.Text().warning])
         #expect(!transcript.contains("breathing"))
         #expect(!transcript.contains("*** You have died ***"))
     }

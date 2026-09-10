@@ -78,6 +78,14 @@ struct ConversationTests {
         #expect(transcript.contains("You can only talk to something animate."))
     }
 
+    /// The two refusals are stock lines, so a sweep can name them the way it
+    /// names the engine's own — by the line, not by its words.
+    @Test func theRefusalsAreStockLinesASweepCanName() async throws {
+        let transcript = try await play(Manor(), ["ask maid about zeppelins", "tell butler about tea"])
+        expectNoStockRefusal(
+            transcript, [Conversation.Text().cantTalkTo, Conversation.Text().cantTalkToSelf])
+    }
+
     // MARK: - Which intent
 
     @Test func anOnlyTellRowIgnoresAsk() async throws {
@@ -161,13 +169,35 @@ struct ConversationTests {
         #expect(transcript.contains("The butler shows no interest."))
     }
 
+    /// A `shows` row is a thing held up, so a thing on the floor across the
+    /// room is refused in the engine's `notHolding` words and the row's body —
+    /// which may take it out of the player's hand — never runs.
+    @Test func aShownThingHasToBeHeld() async throws {
+        let transcript = try await play(
+            Manor(),
+            ["show letter to butler", "ask butler about alibi", "take letter", "show letter to butler"])
+        #expect(turnOutput(of: "show letter to butler", in: transcript).contains("You aren't holding that."))
+        // Not shown, so not learned: the lie stands.
+        #expect(turnOutput(of: "ask butler about alibi", in: transcript).contains("in the pantry"))
+        #expect(turnOutput(ofLast: "show letter to butler", in: transcript).contains("his colour goes"))
+    }
+
+    /// The layer's own default declares ``Reach/bothObjects``, so a thing the
+    /// player can see and not touch is refused at stage 0 by its own `reach`
+    /// rule, ahead of "shows no interest".
+    @Test func theShowDefaultIsReachGuarded() async throws {
+        let transcript = try await play(Manor(), ["show portrait to butler"])
+        #expect(transcript.contains("It hangs well out of reach."))
+        #expect(!transcript.contains("shows no interest"))
+    }
+
     /// `shows` had no `again:` where `greeting` and `topic` both did, so the
     /// paragraphs a mystery turns on — the ones a player is most likely to try
     /// twice — recited word for word. Same retirement key mechanism as the
     /// other two.
     @Test func aShownThingWithARepeatLineIsReactedToInFullOnlyOnce() async throws {
         let transcript = try await play(
-            Guardroom(), ["show whistle to corporal", "show whistle to corporal"])
+            Guardroom(), ["take whistle", "show whistle to corporal", "show whistle to corporal"])
         #expect(
             occurrences(of: "He looks at the whistle and does not take it.", in: transcript)
                 == 1)
@@ -179,7 +209,7 @@ struct ConversationTests {
     /// records nothing, so a game that never writes one is unchanged.
     @Test func aShowReactionWithNoRepeatLineRepeatsForever() async throws {
         let transcript = try await play(
-            Guardroom(), ["show order to sergeant", "show order to sergeant"])
+            Guardroom(), ["take order", "show order to sergeant", "show order to sergeant"])
         #expect(occurrences(of: "He reads it.", in: transcript) == 2)
     }
 
@@ -719,9 +749,18 @@ struct Manor: Game {
         hidden
     }
 
+    /// Visible and out of reach, for the default's reach column.
+    let portrait = Item {
+        name("portrait")
+        description("A portrait, hung high.")
+        scenery
+    }
+
     var content: GameContents { talk }
 
     var rules: Rules {
+        portrait.reach(otherwise: "It hangs well out of reach.") { false }
+
         talk.topics(of: butler, fallback: "\"I couldn't say, sir.\"") {
             // More specific first: "murder weapon" would otherwise never be
             // reached, since "murder" alone matches it too.
@@ -761,6 +800,7 @@ struct Manor: Game {
         maid.starts(in: hall)
         lamp.starts(in: hall)
         letter.starts(in: hall)
+        portrait.starts(in: hall)
         panel.starts(in: hall)
     }
 }
@@ -790,7 +830,7 @@ struct ReactionAfterTable: Game {
         talk.topics(of: porter) {
             topic("murder", reply: "The porter knows about the murder.")
         }
-        behaviors.reaction(of: porter, to: [.ask], reply: "The porter grunts.")
+        behaviors.reaction(of: porter, for: [.ask], reply: "The porter grunts.")
     }
 
     var map: WorldMap {
@@ -821,7 +861,7 @@ struct ReactionBeforeTable: Game {
     var content: GameContents { talk }
 
     var rules: Rules {
-        behaviors.reaction(of: porter, to: [.ask], reply: "The porter grunts.")
+        behaviors.reaction(of: porter, for: [.ask], reply: "The porter grunts.")
         talk.topics(of: porter) {
             topic("murder", reply: "The porter knows about the murder.")
         }

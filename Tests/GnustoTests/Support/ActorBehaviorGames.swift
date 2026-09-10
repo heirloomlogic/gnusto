@@ -81,6 +81,43 @@ struct WanderGame: Game {
     }
 }
 
+/// One thief, one candidate with a proper name: the announcement is handed
+/// the rendered noun, so it says "Ozymandias" and never "the Ozymandias".
+struct NamedLootGame: Game {
+    let title = "Named Loot"
+    let intro = ""
+
+    let plaza = Location {
+        name("Plaza")
+        description("Sun and pigeons.")
+    }
+
+    let thief = Actor {
+        name("nimble thief")
+        adjectives("nimble")
+    }
+
+    let idol = Item {
+        name("Ozymandias")
+        properName
+        description("A small jade king.")
+    }
+
+    let behaviors = ActorBehaviors()
+
+    var map: WorldMap {
+        player.starts(in: plaza)
+        thief.starts(in: plaza)
+        idol.startsHeld
+    }
+
+    var timers: [TimedEvent] {
+        behaviors.steals(
+            thief, named: "pick", candidates: [idol], chancePerTurn: 100,
+            announcement: .naming { "Featherlight fingers make off with \($0)." })
+    }
+}
+
 struct PickpocketGame: Game {
     let title = "Pickpocket"
     let intro = "Mind your pockets."
@@ -208,12 +245,12 @@ struct PickpocketGame: Game {
             named: "pick",
             candidates: [locket, coin, pebble, gem, ruby, medal, satchel, token],
             chancePerTurn: 100,
-            announcement: { "Featherlight fingers make off with the \($0)." })
+            announcement: .naming { "Featherlight fingers make off with \($0)." })
     }
 
     var rules: Rules {
         behaviors.reaction(
-            of: thief, to: [Intent("hail")],
+            of: thief, for: [Intent("hail")],
             reply: "He nods, warily.")
         world.before(Intent("accuse")) {
             let haul = thief.inventory.map(\.name).joined(separator: ", ")

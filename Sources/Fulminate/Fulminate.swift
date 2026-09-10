@@ -190,9 +190,10 @@ struct Fulminate: Game, GameMain {
         // carriage house while it is still standing — are rules.
         //
         // Each of these is an assignment and not an `action(…)` row: a closure
-        // row returns from `actionOverrides` before `requireReach` and gives up
-        // the reach guard, the rendered name, number agreement and the
-        // `yourself`/`somebodyElse` guards along with it. A `say:`/`naming:`
+        // row is reach-guarded only by the `reach:` it declares itself, and a
+        // row that declares none gives up the reach guard, the rendered name,
+        // number agreement and the `yourself`/`somebodyElse` guards along with
+        // it. A `say:`/`naming:`
         // row can keep all four, but it is still the wrong door here — these
         // verbs already have engine rows, and a row would throw those away for
         // a change of voice. That spelling is for a verb a game *invented* and

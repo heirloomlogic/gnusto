@@ -47,12 +47,14 @@ struct EngagementTests {
 
     /// Certainty needs no dice. A villain who always starts a fight and one who
     /// never does both leave the stream where they found it — which is why the
-    /// default of 100 moved not one of the suite's 370 pinned seeds.
+    /// default of 100 moved not one of the suite's 370 pinned seeds. The rule
+    /// is `chance`'s own now, and the proof that it draws nothing is that it
+    /// answers here, with no turn in progress to draw from.
     @Test func theExtremesOfStrikesFirstAskNoQuestion() {
-        #expect(MeleeCombat.startsAFight(chance: 100))
-        #expect(MeleeCombat.startsAFight(chance: 200))
-        #expect(!MeleeCombat.startsAFight(chance: 0))
-        #expect(!MeleeCombat.startsAFight(chance: -5))
+        #expect(chance(100))
+        #expect(chance(200))
+        #expect(!chance(0))
+        #expect(!chance(-5))
     }
 
     // MARK: - A villain who never starts one

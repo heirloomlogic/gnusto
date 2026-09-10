@@ -270,6 +270,22 @@ struct Zork1SystemsTests {
         expectInOrder(report, ["killed once", "one more time"])
     }
 
+    /// A closure row reclaiming a built-in decides the whole answer for
+    /// itself, reach included: `GnustoMeleeCombat`'s `action(.attack)` carries
+    /// no `reach:`, so attacking the water sealed in the shut glass bottle
+    /// reaches melee's own line instead of the engine's `cantReach`. `.attack`
+    /// is a stub with ``Reach/directObject``, and reading *that* column at
+    /// stage 4 would have silently tightened every closure row in every game
+    /// the day the column arrived.
+    @Test func attackingWaterThroughTheShutBottleReachesMelee() async throws {
+        let transcript = try await play(
+            Zork1(),
+            ["north", "east", "open window", "west", "attack water"])
+        let attack = turnOutput(of: "attack water", in: transcript)
+        #expect(attack.contains("but fighting a quantity of water?"))
+        #expect(!attack.contains("can't reach"))
+    }
+
     /// Bare `turn bolt` is the engine's stub verb, promoted so the bolt points
     /// at the tool it needs instead of answering the generic "doesn't turn".
     /// The original had no bare `turn`, so this line is ours — see `FIDELITY.md`.

@@ -24,13 +24,7 @@ and names the rooms whose first entry pays. ``Scoring`` reads those traits and
 moves the number; the engine's `score` verb, status line and end-of-game epilogue
 do all the reporting.
 
-**Take** value is paid once per treasure and never taken back — dropping a gem
-down a well does not refund it. **Deposit** value follows the original Zork's
-in-case accounting: credited when the treasure lands in the trophy case, debited
-when it comes back out, so the displayed score rises and falls as the hoard is
-rearranged. ``Scoring/awardOnce(_:)`` on a register missing from the table is a
-`fatalError` rather than a silent zero, because a typo that pays nothing puts the
-game quietly past its own maximum and nothing else would catch it.
+**Take** value is paid once per treasure and never taken back — dropping a gem down a well does not refund it. **Deposit** value follows the original Zork's in-case accounting: credited when the treasure lands in the trophy case, debited when it comes back out, so the displayed score rises and falls as the hoard is rearranged. The ledger follows the case's *contents*, not only the verbs that fill and empty it: `take` and `put in` settle it on the spot, and anything else that moves a treasure — a thief lifting one out of the case, a death that scatters the inventory — is caught at the start of the next turn that costs one. A free `score` typed straight after such a theft still reads the old number; the next `wait` corrects it. ``Scoring/awardOnce(_:)`` on a register missing from the table is a `fatalError` rather than a silent zero, because a typo that pays nothing puts the game quietly past its own maximum and nothing else would catch it.
 
 ## Wiring
 

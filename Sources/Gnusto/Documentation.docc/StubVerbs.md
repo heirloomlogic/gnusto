@@ -145,11 +145,7 @@ public var actions: [IntentAction] {
 
 ### To change only the words, assign the line
 
-An `actions` row replaces the stub's **whole** default, and the reach guard is
-part of that default: `DefaultActions.run` returns from an override before it
-calls `requireReach`, because a game that claims the verb is saying it will
-decide for itself what "close enough to touch" means. `GnustoMeleeCombat` wants
-exactly that.
+An `actions` row replaces the stub's **whole** default, and the reach guard is part of that default: a row whose body is a closure is guarded by the `reach:` *it* declares — defaulting to ``Reach/notNeeded`` — and never by the standard table's column, because a game that claims the verb is saying it will decide for itself what "close enough to touch" means. `GnustoMeleeCombat` wants exactly that: its `action(.attack)` answers for a fish sealed behind glass rather than refusing to reach it. A closure that would rather have the guard writes `reach:` and gets it.
 
 A game that only wants a different sentence does not, and gets it anyway. So
 re-voicing is an assignment, not a row — and the assignment is a sentence:
@@ -179,9 +175,7 @@ The assignment keeps the reach guard, the object's rendered name, its number
 agreement, and the ``GameText/StubReplies/yourself`` and
 ``GameText/StubReplies/somebodyElse`` guards — and, since wanting the name is
 now something an assignment can do, it has stopped being a reason to reach for a
-row at all. A row whose body is a *closure* keeps none of them and stays silent,
-because that is a game taking the verb over. `Sources/Dungeon/` re-skinned
-seventeen stubs that way and had given all four away without noticing.
+row at all. A row whose body is a *closure* keeps none of them and stays silent, because that is a game taking the verb over — the reach guard included, unless the row asks for it back with `reach:`. `Sources/Dungeon/` re-skinned seventeen stubs that way and had given all four away without noticing.
 
 A row whose body is a *line* — ``action(_:reach:say:)`` and its siblings, the
 spelling a **custom** verb uses to carry its own default — works on a stub

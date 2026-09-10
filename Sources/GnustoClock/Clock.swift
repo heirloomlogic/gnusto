@@ -49,16 +49,34 @@ public struct Clock: GameContent {
     /// The `moves` reading the clock is frozen at, or `-1` while running.
     @Global var pausedSinceMoves = -1
 
-    /// Which stop each scheduled actor was last seen keeping, by daemon name.
-    /// It belongs here rather than on ``Timetable`` so a timetable can stay
+    /// Where each scheduled actor stands in his day, by daemon name. It
+    /// belongs here rather than on ``Timetable`` so a timetable can stay
     /// stateless plain data — see that type for why that matters.
-    @Global var stopIndices = StopIndices()
+    @Global var schedulePlaces = SchedulePlaces()
 
     /// The scheduled actors' places in their days. A wrapper struct so the
     /// `GlobalValue` conformance is owned here rather than declared on a
     /// standard-library type.
-    struct StopIndices: Codable, Sendable, GlobalValue {
-        var byDaemon: [String: Int] = [:]
+    struct SchedulePlaces: Codable, Sendable, GlobalValue {
+        var byDaemon: [String: Place] = [:]
+    }
+
+    /// One scheduled actor's place: the stop he is keeping, and the reading of
+    /// ``elapsedMinutes`` at the tick that put him on it.
+    ///
+    /// The time is the half that is easy to leave out and cannot be done
+    /// without. A tick that walks the day forward over every stop it passed is
+    /// only correct if the tick before it was the turn before; a daemon
+    /// restarted twenty turns after `stopDaemon(_:)`, or a clock moved by
+    /// ``advance(by:)``, is looking at a place that was true a long time ago,
+    /// and walking from it replays a day that never happened. Storing when the
+    /// place was written is what lets ``schedule(_:named:_:)`` tell the two
+    /// apart.
+    struct Place: Codable, Sendable {
+        /// The index into the timetable's stops.
+        var stop: Int
+        /// ``elapsedMinutes`` when this was written.
+        var minutes: Int
     }
 
     /// The time the game opens at.

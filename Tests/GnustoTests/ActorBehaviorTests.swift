@@ -103,6 +103,14 @@ struct ActorBehaviorTests {
     /// announcements, and no line printed twice however long he loiters. The
     /// satchel is the case a one-level guard misses — once it is his, the ruby
     /// inside it is still within his reach and must stop counting as loot.
+    /// The announcement is handed the item's rendered noun, article and all,
+    /// so a proper name arrives bare rather than as "the Ozymandias".
+    @Test func theAnnouncementRendersTheLootsOwnArticle() async throws {
+        let transcript = try await play(NamedLootGame(), ["look", "inventory"], seed: 0)
+        #expect(transcript.contains("Featherlight fingers make off with Ozymandias."))
+        #expect(!transcript.contains("the Ozymandias"))
+    }
+
     @Test func aThiefNeverStealsFromHimself() async throws {
         let transcript = try await play(
             PickpocketGame(),

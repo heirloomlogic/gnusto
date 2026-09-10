@@ -46,7 +46,7 @@ extension Intent {
 /// }
 /// ```
 ///
-/// **Composing with `GnustoActors`.** `reaction(of:to:reply:)` is this one
+/// **Composing with `GnustoActors`.** `reaction(of:for:reply:)` is this one
 /// level cruder — a before-rule that always says the same thing — and this
 /// subsumes it. Both are before-rules on the same actor, so declaration order
 /// decides: put a `reaction` *after* a `topics` table and it becomes the
@@ -91,9 +91,10 @@ public struct Conversation: GameContent {
             "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say about that."
         }
         /// The refusal for trying to talk to something inanimate.
-        public var cantTalkTo = "You can only talk to something animate."
+        public var cantTalkTo: GameText.Line<GameText.Nothing> =
+            "You can only talk to something animate."
         /// The refusal for addressing yourself.
-        public var cantTalkToSelf = "You keep your own counsel."
+        public var cantTalkToSelf: GameText.Line<GameText.Nothing> = "You keep your own counsel."
         /// What an actor says about a thing shown to them that no `shows(_:to:)`
         /// row covers.
         public var noInterest: GameText.Line<GameText.Noun> = .naming {
@@ -279,18 +280,26 @@ public struct Conversation: GameContent {
     ///     record nothing — which is what keeps a game that writes no `again:`
     ///     byte-identical across saves.
     ///   - key: the heard-set key, evaluated only when `again` is non-nil.
+    ///   - gate: a requirement on the first answer, run after the repeat has
+    ///     been answered and before the answer is recorded — so a refused
+    ///     first showing does not count as one, and a repeat is answered
+    ///     whether or not the requirement still holds.
     ///   - body: the answer in full.
-    /// - Throws: whatever `body` throws, and the `TurnInterrupt` that `reply`
-    ///   raises to end the turn on a repeat.
+    /// - Throws: whatever `gate` or `body` throws, and the `TurnInterrupt`
+    ///   that `reply` raises to end the turn on a repeat.
     func sayOnce(
         _ again: String?,
         key: () -> String,
+        gate: () throws -> Void = {},
         then body: () throws -> Void
     ) throws {
         if let again {
             let key = key()
             if heard.rows.contains(key) { try reply(again) }
+            try gate()
             heard.rows.insert(key)
+        } else {
+            try gate()
         }
         try body()
     }
@@ -333,6 +342,13 @@ public struct Conversation: GameContent {
     /// `again:` is the whole of the answer, which is what makes the transfer in
     /// a line like "she takes it out of your hand" safe to write down.
     ///
+    /// The thing has to be **in the player's hands**: showing is holding
+    /// something up, and a row that takes it from them cannot take it off the
+    /// floor across the room. A thing on the floor answers with the engine's
+    /// `notHolding` line, ahead of the body. A reaction to a thing that cannot
+    /// be picked up — a portrait on the wall — is not a `shows` row but a
+    /// hand-written `actor.before(.show)`.
+    ///
     /// - Parameters:
     ///   - item: the thing shown.
     ///   - actor: who it is shown to.
@@ -355,10 +371,20 @@ public struct Conversation: GameContent {
         // the shown item has of its own.
         return actor.before(.show) {
             guard command.directObject == item else { return }
-            // Teaching happens on every showing, repeat or not, matching
-            // `topics`. `learn` is idempotent.
-            if let fact { learn(fact) }
-            try sayOnce(again, key: { key }, then: body)
+            // The held check is the gate rather than a line above: a repeat
+            // answers with `again:` whether or not the thing is still in the
+            // player's hands — the body may have taken it, and "the glove is
+            // in her lap" is the right answer to showing it twice.
+            try sayOnce(
+                again, key: { key },
+                gate: { try require(item.isHeld, else: gameText.notHolding()) }
+            ) {
+                // A repeat never gets here — `again:` is the whole of its
+                // answer — so the fact is taught on the showing that earns
+                // the reaction, and the repeat has already taught it.
+                if let fact { learn(fact) }
+                try body()
+            }
         }
     }
 
@@ -459,7 +485,10 @@ public struct Conversation: GameContent {
             try requireSomebodyElse(addressee)
             try reply(text.nothingToTalkAbout(addressee.definiteNoun))
         }
-        action(.show) {
+        // Both slots: a thing shown is held up, and a person shown it is
+        // within arm's reach of it. `.show` is a verb this layer minted, so
+        // nothing else declares its column.
+        action(.show, reach: .bothObjects) {
             guard let addressee = command.indirectObject else { return }
             try requireSomebodyElse(addressee)
             try reply(text.noInterest(addressee.definiteNoun))
@@ -481,7 +510,7 @@ public struct Conversation: GameContent {
     /// - Parameter addressee: the entity the command named.
     /// - Throws: the refusal, when the addressee is the player or inanimate.
     private func requireSomebodyElse(_ addressee: Item) throws {
-        try require(!addressee.isPlayer, else: text.cantTalkToSelf)
-        try require(addressee.isActor, else: text.cantTalkTo)
+        try require(!addressee.isPlayer, else: text.cantTalkToSelf())
+        try require(addressee.isActor, else: text.cantTalkTo())
     }
 }

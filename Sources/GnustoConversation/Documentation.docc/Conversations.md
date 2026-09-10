@@ -254,6 +254,8 @@ talk.shows(
         """)
 ```
 
+Showing wants the thing in hand. The layer's own stage-4 default declares `reach: .bothObjects`, and a `shows` row gates its reaction on the item being held, refusing with the engine's stock `notHolding` line — you cannot show somebody a receipt that is still lying on the table. The gate sits between the repeat answer and the recording, so a first showing that was refused is not recorded, and a repeat still answers with its `again:` even when the body took the thing away.
+
 The rule is scoped on the actor rather than on the item, because item `before`
 rules run indirect object first, which puts this ahead of any rule the shown
 thing has of its own. The `perform:` form takes a reaction that moves the world,
@@ -368,7 +370,7 @@ thing and looks away says more about the house than "shows no interest" does.
 A table registers before rules on its actor, so it takes an ordinary place in the
 precedence: world, then location, then item and actor `before` rules, then the
 game's `actions` row, then the engine's default. Within one actor, declaration
-order decides. `GnustoActors`' `reaction(of:to:reply:)` is this one level cruder,
+order decides. `GnustoActors`' `reaction(of:for:reply:)` is this one level cruder,
 being a before rule that always says the same thing, so a reaction declared after
 a table becomes its catch-all and one declared before shadows the table entirely.
 

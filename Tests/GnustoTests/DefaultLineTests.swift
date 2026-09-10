@@ -8,11 +8,10 @@ import Testing
 ///
 /// The measured thing this replaces is `action(.verb) { try reply(Prose.x) }`,
 /// which every demo game hand-rolled twenty-nine times. What the closure gave
-/// up doing it is what these tests are about: `DefaultActions.run` returns from
-/// an `actionOverrides` hit before `requireReach`, and a custom intent is in
-/// neither half of the standard table, so a verb answered by a closure has no
-/// reach column to declare and no name to print. Every check below is a thing
-/// the closure spelling could not do at all.
+/// up doing it is what these tests are about: a custom intent is in neither
+/// half of the standard table, so a verb answered by a closure has no name to
+/// print and no number to agree with. The reach column it *can* declare now,
+/// the same way a line does, and one test below pins that.
 struct DefaultLineTests {
     // MARK: - The reach guard, which is the whole point
 
@@ -27,6 +26,20 @@ struct DefaultLineTests {
         // And the guard is a guard, not a wall: a thing on the floor gets the
         // line.
         #expect(turnOutput(of: "winch jar", in: transcript).contains("does not answer to that"))
+    }
+
+    /// The closure form takes the same column, read at the same two places:
+    /// the engine's `cantReach` at stage 4 and a declared `reach { … }` rule at
+    /// stage 0. A closure that wants to touch what it names no longer has to
+    /// be rewritten as a line to say so.
+    @Test func aGuardedClosureRefusesWhatThePlayerCannotTouch() async throws {
+        let transcript = try await play(
+            DefaultLineGame(), ["hoist cog", "hoist crank", "hoist jar"])
+
+        #expect(turnOutput(of: "hoist cog", in: transcript).contains("can't reach"))
+        #expect(!turnOutput(of: "hoist cog", in: transcript).contains("an inch"))
+        #expect(turnOutput(of: "hoist crank", in: transcript).contains("The grille is in the way."))
+        #expect(turnOutput(of: "hoist jar", in: transcript).contains("You hoist the glass jar an inch"))
     }
 
     /// The default is ``Reach/notNeeded``, and that is deliberate rather than
@@ -159,6 +172,31 @@ struct DefaultLineTests {
 
         #expect(turnOutput(of: "take crank", in: transcript).contains("The grille is in the way."))
         #expect(!turnOutput(of: "take crank", in: transcript).contains("stay that way"))
+    }
+
+    /// A **closure** row reclaiming a built-in is guarded by the `reach:` it
+    /// declares itself and never by the standard table's column. `.squeeze` is
+    /// a stub carrying ``Reach/directObject``; the row declares none, so the
+    /// cog behind glass still gets the game's own answer — which is what every
+    /// such row did before the column existed, and what `GnustoMeleeCombat`'s
+    /// `action(.attack)` needs in order to go on answering for a fish in a
+    /// bottle.
+    @Test func aClosureOnABuiltInKeepsDecidingItsOwnReach() async throws {
+        let transcript = try await play(BuiltInClosureGame(), ["squeeze cog"])
+        let squeeze = turnOutput(of: "squeeze cog", in: transcript)
+
+        #expect(squeeze.contains("You squeeze the brass cog from here, somehow."))
+        #expect(!squeeze.contains("can't reach"))
+    }
+
+    /// And the same row asking for the guard back gets it: `reach:` on a
+    /// closure is opt-in, not decoration.
+    @Test func aClosureOnABuiltInThatDeclaresReachIsGuarded() async throws {
+        let transcript = try await play(BuiltInClosureGame(), ["touch cog"])
+        let touch = turnOutput(of: "touch cog", in: transcript)
+
+        #expect(touch.contains("You can't reach the brass cog."))
+        #expect(!touch.contains("lay a finger"))
     }
 
     /// A *closure* on a stub intent stays silent, as it always has: that is a

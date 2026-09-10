@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoActors
 import GnustoScoring
 
 /// Fixture for the `GnustoScoring` plugin: one vault room, a gem worth
@@ -75,6 +76,74 @@ struct TreasureVaultGame: Game {
         }
         world.before(Intent("perish")) {
             try die("The dust was not dust.")
+        }
+    }
+}
+
+/// The vault with a thief in the anteroom: `summon` brings him in, and his
+/// `steals` daemon lifts the gem straight out of the display case with a raw
+/// `move(heldBy:)` that no `take` or `put in` rule ever sees. The deposit
+/// ledger has to notice anyway.
+struct PilferedVaultGame: Game {
+    let title = "Pilfered Vault"
+    let intro = ""
+    let maxScore = 10
+
+    let vault = Location {
+        name("Vault")
+        description("Steel walls, a display case, and dust.")
+    }
+
+    let anteroom = Location {
+        name("Anteroom")
+        description("Where the thief waits.")
+    }
+
+    let gem = Item {
+        name("green gem")
+        adjectives("green")
+        trait(.takeValue, 4)
+        trait(.depositValue, 6)
+    }
+
+    let showcase = Item {
+        name("display case")
+        adjectives("display")
+        container
+    }
+
+    let thief = Actor {
+        name("nimble thief")
+        adjectives("nimble")
+    }
+
+    let scoring = Scoring()
+    let behaviors = ActorBehaviors()
+
+    var content: GameContents { scoring }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+        gem.starts(in: vault)
+        showcase.starts(in: vault)
+        thief.starts(in: anteroom)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("summon", intent: Intent("summon"))
+    }
+
+    var timers: [TimedEvent] {
+        behaviors.steals(
+            thief, named: "pilfer", candidates: [gem], chancePerTurn: 100,
+            announcement: .naming { "A hand darts into the case and \($0) is gone." })
+    }
+
+    var rules: Rules {
+        scoring.treasures([gem], into: showcase)
+        world.before(Intent("summon")) {
+            thief.move(to: vault)
+            try reply("The thief slips in.")
         }
     }
 }

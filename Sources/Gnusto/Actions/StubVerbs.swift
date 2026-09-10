@@ -895,30 +895,32 @@ extension DefaultActions {
     /// the two dispatch tables `run(_:frame:)` already uses rather than a third
     /// keyed copy of them.
     ///
-    /// A custom verb that declared a default *line* — ``action(_:reach:say:)``
-    /// and its siblings — states its own `reach:` there, and it is read **last**
-    /// rather than first. A line row reclaiming a verb the engine already
+    /// A custom verb that declared a default row — a closure through
+    /// ``action(_:reach:perform:)``, or a line through ``action(_:reach:say:)``
+    /// and its siblings — states its own `reach:` there, and it is read
+    /// **last** rather than first. A line row reclaiming a verb the engine already
     /// declares is reclaiming its *answer*, not its physics: `take` has to be
     /// able to touch what it takes whoever writes the sentence, so the standard
     /// table's column stands and the row's is ignored. Reading the row first
     /// let `action(.take, say: …)` drop `take` to ``Reach/notNeeded`` and
     /// silently switch off every `reach { … }` rule in the game for that verb.
     ///
-    /// This is the only reader of the column, for either stage: `run` asks it
-    /// too rather than destructuring the row, so stage 0 and stage 4 cannot
-    /// disagree about what a verb has to touch.
+    /// This is stage 0's only reader, and stage 4's for a *line* row. A
+    /// **closure** row is guarded at stage 4 by its own column instead, read
+    /// straight off the row: a closure reclaiming a built-in has always
+    /// decided the whole answer for itself, including whether the thing is
+    /// near enough to answer about, and asking here would have tightened
+    /// every such row the day the column arrived. Stage 0 is unaffected either
+    /// way — a `reach { … }` rule is settled from the table, so no row can
+    /// switch one off.
     ///
-    /// A custom intent answered by a *closure* is in none of the three and
-    /// takes ``Reach/notNeeded``, unchanged: a verb whose whole behavior the
-    /// game wrote is a verb the game guards in its own rule.
+    /// A custom intent nothing answers is in none of the three and takes
+    /// ``Reach/notNeeded``.
     static func reachRequirement(of intent: Intent, in definition: GameDefinition) -> Reach {
         if let declared = coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach {
             return declared
         }
-        if case .line(let reach, _, _) = definition.actionOverrides[intent]?.kind {
-            return reach
-        }
-        return .notNeeded
+        return definition.actionOverrides[intent]?.reach ?? .notNeeded
     }
 }
 

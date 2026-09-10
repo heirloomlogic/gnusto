@@ -265,10 +265,11 @@ struct DungeonSystems: GameContent {
         // re-voices — the seventeen that used to sit here, and the thirty that
         // never had a line at all — is now `text.stubs` in ``Dungeon``, which
         // is ``Prose/stubFloor``. An `action(…)` *closure* on a stub intent
-        // claims the verb outright: `DefaultActions.run` returns from the
-        // override before `requireReach`, so the row silently gave up the
-        // engine's reach guard, the object's name, its number agreement and
-        // the `yourself`/`somebodyElse` guards, none of which this game meant
+        // claims the verb outright: a closure is reach-guarded only by the
+        // `reach:` it declares itself, and none of them did, so the row
+        // silently gave up the engine's reach guard, the object's name, its
+        // number agreement and the `yourself`/`somebodyElse` guards, none of
+        // which this game meant
         // to trade away for a change of voice. (#233) The `say:` rows above are
         // the other door, for verbs this game invented and the engine has never
         // heard of: they *can* carry a reach column and a rendered name, and

@@ -65,8 +65,19 @@ public func oneOf(_ options: [String]) -> String {
 
 /// True `percent` times out of a hundred: `if chance(30) { … }`.
 ///
+/// A hundred and nought are not questions, so neither draws: a daemon gated
+/// on `chance(100)` and one gated on `chance(0)` both leave the stream exactly
+/// where they found it, and nothing downstream of them shifts. That is the
+/// opposite call from ``oneOf(_:_:)``, which draws even for a single option —
+/// deliberately, and the two do not want reconciling. `oneOf`'s option count
+/// is a list an author edits, and the stream must not notice the edit; a
+/// `chance` argument is a constant of its caller, declared once, and moving
+/// it *onto* an edge is as much an edit as moving it off one.
+///
 /// - Parameter percent: the odds, out of a hundred.
 /// - Returns: `true` with the given probability.
 public func chance(_ percent: Int) -> Bool {
-    random(1...100) <= percent
+    if percent >= 100 { return true }
+    if percent <= 0 { return false }
+    return random(1...100) <= percent
 }

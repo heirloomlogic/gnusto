@@ -405,34 +405,8 @@ computed `static var`, which rebuilds it on every read.
   the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
   nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that
   only `say`s prints *both* lines.
-- **To change a stub's words, assign the line; a row buys the whole default.**
-  `DefaultActions.run` returns from an `actionOverrides` hit *before*
-  `requireReach`, so `action(.squeeze) { try reply(…) }` silently gives up the
-  reach guard, the object's rendered name, its number agreement and the
-  `yourself`/`somebodyElse` guards. `text.stubs.squeeze = …` keeps all four and
-  is what the play-test survey measures. A row means *this game has behavior
-  here*; if all it has is a sentence, assign the sentence. The line takes either
-  spelling — `text.stubs.sit = "…"` or
-  `text.stubs.sit = .naming(orBare: "…") { "You can't sit on \($0)." }` — so
-  wanting the object's name has stopped being a reason to reach for a row. A
-  plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers
-  `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not
-  `text.stubs.attack`.
-- **A custom verb has no stub line to assign, so its sentence is a row — but
-  the row can be a *line* rather than a closure.** `action(.wind, reach:
-  .directObject, say: Prose.cannotWind)`, `action(_:reach:naming:)` and
-  `action(_:orBare:reach:guardsActors:naming:)` are the three shapes, one per
-  `StubVerb` factory, and they route the verb through the stub path: the reach
-  guard, the object's rendered `Noun`, its number agreement and the
-  `yourself`/`somebodyElse` guards, none of which `action(.wind) { try
-  reply(…) }` can have — `actionOverrides` returns before `requireReach`, and a
-  custom intent declares no `reach:` column anywhere else. `reach:` defaults to
-  `.notNeeded`, which is what a custom intent has today, so the spelling never
-  tightens a verb silently; Dungeon's basket is raised from the far end of a
-  shaft and a `.directObject` default broke that walkthrough. The line is a
-  **floor**, said with `say` and not `reply`, so `after` rules still run and a
-  `before` rule still promotes itself above it. On an *engine stub* intent it
-  works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.
+- **To change a stub's words, assign the line; a row buys the whole default.** A closure row is guarded at stage 4 by the `reach:` *it* declares and never by the standard table's, and that column defaults to `.notNeeded` — so `action(.squeeze) { try reply(…) }` gives up the reach guard along with the object's rendered name, its number agreement and the `yourself`/`somebodyElse` guards. `text.stubs.squeeze = …` keeps all four and is what the play-test survey measures. A row means *this game has behavior here*; if all it has is a sentence, assign the sentence. The line takes either spelling — `text.stubs.sit = "…"` or `text.stubs.sit = .naming(orBare: "…") { "You can't sit on \($0)." }` — so wanting the object's name has stopped being a reason to reach for a row. A plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not `text.stubs.attack`.
+- **A custom verb has no stub line to assign, so its sentence is a row — but the row can be a *line* rather than a closure.** `action(.wind, reach: .directObject, say: Prose.cannotWind)`, `action(_:reach:naming:)` and `action(_:orBare:reach:guardsActors:naming:)` are the three shapes, one per `StubVerb` factory, and they route the verb through the stub path: the object's rendered `Noun`, its number agreement and the `yourself`/`somebodyElse` guards, none of which `action(.wind) { try reply(…) }` can have. The **reach guard both forms declare the same way** — `action(.show, reach: .bothObjects) { … }` — because a custom intent has no `reach:` column anywhere else, and it defaults to `.notNeeded`, so neither spelling tightens a verb silently; Dungeon's basket is raised from the far end of a shaft and a `.directObject` default broke that walkthrough. What the two do on a verb the *engine* already declares differs, and that is the point: a line reclaims the verb's answer and not its physics, so the standard table's column stands, while a closure goes on deciding the whole question for itself and is guarded only by the `reach:` it writes down. The line is a **floor**, said with `say` and not `reply`, so `after` rules still run and a `before` rule still promotes itself above it. On an *engine stub* intent it works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.
 - **UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS can't be overridden at all.** The
   engine answers them before the pipeline, so no rule sees them and `action(.save)`
   never runs. That's `DefaultActions.engineIntents`, and declaring one now warns
@@ -514,8 +488,10 @@ computed `static var`, which rebuilds it on every read.
 Transcript tests, almost exclusively: `play(Game(), ["cmd", …], seed:)` returns the
 whole transcript as a string, then `#expect(...contains(...))`. Helpers in
 `GnustoTestSupport`: `play`, `turnOutput(of:in:)` (one turn's output — matches the
-*first* occurrence, so vary commands rather than repeating them), `expectInOrder`,
-`cachedWorld`. For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
+*first* occurrence; `turnOutput(ofLast:in:)` is the last, and for anything between
+vary the commands rather than repeating them), `expectInOrder`, `cachedWorld`
+(keyed on the game's *type*, so a fixture that takes an argument goes through
+`play(fresh:)`). For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
 and inspect `BootstrapError.diagnostics`.
 
 A `fatalError` trap is asserted with `expectTrap`, over a Swift Testing exit test —

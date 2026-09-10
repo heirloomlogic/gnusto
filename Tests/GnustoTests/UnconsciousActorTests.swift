@@ -51,8 +51,7 @@ struct UnconsciousActorTests {
         let transcript = try await play(
             CutpurseGame(),
             ["parley", "attack cutpurse", "wait", "check", "wait", "check"],
-            seed: 0)
-
+            seed: 19)
         expectInOrder(
             transcript,
             [

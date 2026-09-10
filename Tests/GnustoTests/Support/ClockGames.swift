@@ -21,6 +21,10 @@ extension Intent {
     #verb("rearm", ["rearm"])
     /// Report which day it is.
     #verb("today", ["today"])
+    /// Put a dismissed actor back on his rounds.
+    #verb("reinstate", ["reinstate"])
+    /// Wind the clock *back* three minutes, across a stop boundary.
+    #verb("unwind", ["unwind"])
 }
 
 /// `skip` means the same thing in every fixture that has it, and two tests
@@ -350,5 +354,192 @@ struct ManorLab: Game {
         // Where the timetable says he is when the game opens — read from the
         // timetable rather than repeated, so the two can't disagree.
         butler.starts(in: butlerDay.location(at: TimeOfDay(20, 0)))
+    }
+}
+
+/// A manor that opens at eight in the evening on a timetable whose first
+/// stop is nine in the *morning* — the stop in force at the opening time,
+/// which has therefore not come round and must not run its action on turn one.
+struct LateOpeningLab: Game {
+    let title = "Late Opening"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(20, 0), minutesPerTurn: 1)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let study = Location {
+        name("Study")
+        description("A study.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall) { say("The bell rings for nine.") },
+            Stop(at: TimeOfDay(20, 2), in: study, departure: "The butler goes up.") {
+                say("The bell rings for two past.")
+            },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        hall.up(study)
+        player.starts(in: hall)
+        butler.starts(in: hall)
+    }
+}
+
+/// A quarter of an hour to the turn over stops five minutes apart, so one
+/// tick steps over two stops on its way to the third. Each one's action still
+/// runs, in order; only the arrival is narrated, because only the arrival
+/// happened where anybody could see it.
+struct CoarseClockLab: Game {
+    let title = "Coarse Clock"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(9, 0), minutesPerTurn: 15)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let cellar = Location {
+        name("Cellar")
+        description("A cellar.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall),
+            Stop(at: TimeOfDay(9, 5), in: hall) { say("Five past.") },
+            Stop(at: TimeOfDay(9, 10), in: hall) { say("Ten past.") },
+            Stop(at: TimeOfDay(9, 15), in: cellar, departure: "The butler goes down.") {
+                say("Quarter past.")
+            },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        hall.down(cellar)
+        player.starts(in: hall)
+        butler.starts(in: hall)
+    }
+}
+
+/// Five stops a minute apart, four of them with an action, and the two verbs
+/// that make a tick irregular: `dismiss`/`reinstate` (a daemon parked and
+/// started again some turns later) and `unwind` (the clock wound back across
+/// a stop boundary). Nobody moves — every stop is the hall — so the only
+/// thing a transcript records is which actions ran.
+struct ScheduleJumpLab: Game {
+    let title = "Schedule Jump"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(9, 0), minutesPerTurn: 1)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall),
+            Stop(at: TimeOfDay(9, 1), in: hall) { say("One.") },
+            Stop(at: TimeOfDay(9, 2), in: hall) { say("Two.") },
+            Stop(at: TimeOfDay(9, 3), in: hall) { say("Three.") },
+            Stop(at: TimeOfDay(9, 4), in: hall) { say("Four.") },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var verbs: [SyntaxRule] { [.dismiss, .reinstate, .unwind] }
+
+    var actions: [IntentAction] {
+        action(.dismiss) {
+            stopDaemon("butler.day")
+            say("Dismissed.")
+        }
+        action(.reinstate) {
+            startDaemon("butler.day")
+            say("Reinstated.")
+        }
+        action(.unwind) {
+            clock.advance(by: -3)
+            say("Wound back to \(clock.now).")
+        }
+    }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        butler.starts(in: hall)
+    }
+}
+
+/// A coarse clock whose catch-up walk hits a stop whose action **throws** —
+/// `reply` from a daemon is house-legal and the engine catches it, which ends
+/// the tick where it stands. The stops behind it must not be lost with it.
+struct ThrowingStopLab: Game {
+    let title = "Throwing Stop"
+    let intro = ""
+
+    let clock = Clock(startingAt: TimeOfDay(9, 0), minutesPerTurn: 15)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+    }
+
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(9, 0), in: hall),
+            Stop(at: TimeOfDay(9, 5), in: hall) { try reply("Five past.") },
+            Stop(at: TimeOfDay(9, 10), in: hall) { say("Ten past.") },
+            Stop(at: TimeOfDay(9, 15), in: hall) { say("Quarter past.") },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var timers: [TimedEvent] { clock.schedule(butler, named: "butler.day", butlerDay) }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        butler.starts(in: hall)
     }
 }

@@ -55,6 +55,38 @@ struct ScoringTests {
         #expect(!transcript.contains("score is 16"))
     }
 
+    /// The deposit ledger follows the case's contents, not only `take` and
+    /// `put in`: a thief's raw `move(heldBy:)` out of the case debits the
+    /// value at the next costing turn. The free `score` typed straight after
+    /// the theft is the documented window and still reads the credit; UNDO
+    /// rolls the ledger and the score back together, since both are globals.
+    @Test func aTreasureStolenFromTheCaseIsDebited() async throws {
+        let transcript = try await play(
+            PilferedVaultGame(),
+            [
+                "take gem", "put gem in case", "score",  // 4 + 6 → 10
+                "summon",  // the daemon lifts the gem out of the case this turn
+                "score",  // free turn: the window, still 10
+                "wait", "score",  // reconciled → 4
+                "undo", "score",  // back to the credited state → 10
+                "wait", "score",  // and forward again → 4
+                "quit",
+            ])
+        #expect(turnOutput(of: "summon", in: transcript).contains("the green gem is gone"))
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 10 of a possible 10",
+                "Your score is 10 of a possible 10",
+                "Your score is 4 of a possible 10",
+                "Your score is 10 of a possible 10",
+                "Your score is 4 of a possible 10",
+            ])
+        #expect(occurrences(of: "score is 10", in: transcript) == 3)
+        // Two readings and the quit epilogue.
+        #expect(occurrences(of: "score is 4", in: transcript) == 3)
+    }
+
     @Test func theSackIsNotTheCase() async throws {
         let transcript = try await play(
             TreasureVaultGame(),

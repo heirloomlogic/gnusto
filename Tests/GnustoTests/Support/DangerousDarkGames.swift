@@ -181,7 +181,7 @@ struct GrueVoicedDarkGame: Game {
 
     static let darkText: DangerousDark.Text = {
         var text = DangerousDark.Text()
-        text.warning = GrueVoicedDarkGame.grue
+        text.warning = .init(GrueVoicedDarkGame.grue)
         text.death = "Something in the dark finds you before you find it."
         return text
     }()
