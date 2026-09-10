@@ -1,8 +1,9 @@
 import Foundation
-@testable import Gnusto
 import GnustoSpellcasting
 import GnustoTestSupport
 import Testing
+
+@testable import Gnusto
 
 /// Library-level behavior of `GnustoSpellcasting`, exercised through a tiny
 /// synthetic game whose spell effects always succeed — so each test isolates

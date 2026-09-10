@@ -174,7 +174,7 @@ example that wires the first four:
 | `GnustoScoring` | `GameContent` | award-once registers | the award table to `init(awards:)`, treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun/engagement by key) | villains, weapons, prose to `villain`/`aggression`, and each villain's `strikesFirst` odds of picking a fight nobody offered him |
-| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their `SpellCost` to `spell(_:cost:effect:)`; a `Text` for the system's own refusals and the `spells` report |
+| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their `SpellCost` to `spell(_:called:cost:effect:)`; a `Text` for the system's own refusals and the `spells` report |
 | `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)`, timetables to `schedule(_:named:_:)` |
 | `GnustoConversation` | `GameContent` | the facts the player has worked out, and which answers each actor has already given | actors + topic rows to `topics(of:)` (with `again:` lines for the answers that should land once), opening lines to `greeting(of:)`, evidence to `shows(_:to:)` |
 

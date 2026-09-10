@@ -270,26 +270,6 @@ public struct MeleeCombat: GameContent {
         }
     }
 
-    /// Whether an unengaged villain picks this turn to start something — the
-    /// source's `F-FIRST?` branch, as a probability out of a hundred.
-    ///
-    /// A hundred and nought are not questions, so neither draws: a villain who
-    /// always starts one and a villain who never does both leave the random
-    /// stream exactly where they found it, and their standing in the room
-    /// shifts nothing downstream of them. That is the opposite call from
-    /// ``oneOf(_:)``, which draws even for a single option — deliberately, and
-    /// the two do not want reconciling. `oneOf`'s option count is a list an
-    /// author edits, and the stream must not notice the edit; this is a
-    /// constant of the villain, declared once at his call site.
-    ///
-    /// - Parameter percent: the odds he starts a fight, out of a hundred.
-    /// - Returns: whether he starts one this turn.
-    static func startsAFight(chance percent: Int) -> Bool {
-        if percent >= 100 { return true }
-        if percent <= 0 { return false }
-        return chance(percent)
-    }
-
     /// Registers a villain: attacks against `actor` resolve a weapon, roll
     /// the outcome table, and track his health under `key`. At zero health
     /// the death line prints, `onDefeat` runs (unbar the door, drop the
@@ -415,7 +395,7 @@ public struct MeleeCombat: GameContent {
     /// strikes in the turn he starts it rather than telegraphing it. `I-FIGHT`
     /// clears the bit on the villain the player is no longer standing with, so
     /// walking out ends a fight and walking back in asks the question again.
-    /// Neither 0 nor 100 draws; see `startsAFight(chance:)`.
+    /// Neither 0 nor 100 draws; that is `chance`'s own rule.
     ///
     /// `when:` is an extra gate evaluated before the same-room guard and
     /// before any draw — so a villain whose combat is scoped (the thief only
@@ -504,7 +484,9 @@ public struct MeleeCombat: GameContent {
             // same-room guard, so a villain alone in his lair burns no
             // randomness on the hundreds of turns nobody is standing in it.
             if !wasEngaged {
-                guard Self.startsAFight(chance: strikesFirst) else { return }
+                // The source's `F-FIRST?` branch, as a probability out of a
+                // hundred; `chance` itself draws nothing for 0 or 100.
+                guard chance(strikesFirst) else { return }
                 // He strikes in the turn he starts it: `F-FIRST?` sets
                 // `FIGHTBIT` and `I-FIGHT` falls straight through to the blow.
                 ledger.engaged.insert(key)

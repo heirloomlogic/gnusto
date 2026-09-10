@@ -235,7 +235,7 @@ public struct Spellcasting: GameContent {
         cost: SpellCost,
         effect: @escaping @Sendable () throws -> Void
     ) -> IntentAction {
-        return action(intent) {
+        action(intent) {
             switch cost {
             case .cantrip:
                 break
@@ -265,7 +265,7 @@ public struct Spellcasting: GameContent {
     /// The memorize handler for a prepared spell: gate on free memory (and the
     /// spellbook, when required), then commit the spell to memory.
     private func prepareAction(_ prepareIntent: Intent, spell name: String, book: Item?) -> IntentAction {
-        return action(prepareIntent) {
+        action(prepareIntent) {
             try require(!prepared.names.contains(name), else: text.alreadyMemorized(GameText.Word(name)))
             try require(prepared.names.count < memorySlots, else: text.memoryFull())
             if let book {

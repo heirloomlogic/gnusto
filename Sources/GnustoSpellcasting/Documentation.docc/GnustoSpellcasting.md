@@ -75,7 +75,7 @@ struct Tower: Game {
 ```
 
 A ``SpellCost/prepared(book:learnVia:)`` spell carries its own memorize intent,
-so the one `spell(_:cost:effect:)` call registers both halves:
+so the one `spell(_:called:cost:effect:)` call registers both halves:
 
 ```swift
 magic.spell(.unbar, cost: .prepared(book: spellbook, learnVia: .learnUnbar)) {

@@ -121,7 +121,7 @@ world.afterEachTurn {
 let damage = random(2...12)
 ```
 
-All three draw from one stream whose position lives in the world state. That buys two guarantees:
+All three draw from one stream whose position lives in the world state — with one exception worth knowing: `chance(0)` and `chance(100)` are not questions, so neither draws, and a daemon gated on either leaves the stream where it found it. `oneOf` makes the opposite call and draws even for a single option, because its option count is a list an author edits and the stream must not notice the edit. That buys two guarantees:
 
 - **Replays**: a world built with ``GameWorld/init(game:seed:saveDirectory:)`` plays out identically for the same seed and commands, on every platform — the backbone of transcript tests and reproducible bug reports. The plain ``GameWorld/init(game:saveDirectory:)`` seeds fresh each run.
 - **Saves**: the stream's position is part of the saved state, so a restored game continues with exactly the randomness it would have had.
