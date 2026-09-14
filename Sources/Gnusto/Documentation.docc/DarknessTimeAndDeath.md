@@ -4,6 +4,8 @@ Light sources that carry into dark rooms, fuses and daemons that tick the world'
 
 ## Overview
 
+![An open trapdoor reveals stone steps descending into darkness.](darkness-time-and-death.png)
+
 A dark room is not a described room with the lights off. Its contents stop being nouns: there is nothing to examine, nothing to take, and no exits worth naming until somebody brings a light. That is the sharpest of the four mechanics on this page, and the other three take from the player the same way — fuses and daemons move the world while they think about it, `undo` gives exactly one turn back, and ``die(_:)`` ends the game without ending the process. A burning lantern chased by a grue is all four at once.
 
 ## Darkness and light sources

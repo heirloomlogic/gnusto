@@ -4,6 +4,8 @@ How rooms connect, and where everything starts.
 
 ## Overview
 
+![Paths on a folded map lead into a cave, a shaft with a ladder, and a stone keep.](world-map-and-exits.png)
+
 `foyer.south(bar)` puts an exit on the foyer. It puts nothing on the bar. Walking
 south out of the foyer and walking north out of the bar are two facts about two
 rooms, and the `map` block states each one:

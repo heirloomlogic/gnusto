@@ -4,6 +4,8 @@ How a single Swift type becomes a world the engine can run.
 
 ## Overview
 
+![An open book becomes a cutaway house with connected rooms and a staircase.](anatomy-of-a-game.png)
+
 A Gnusto game is one type conforming to ``Game``. That one type carries everything: the rooms and things, where they start, and the rules that govern them. This article is the model underneath — how the engine finds your declarations, how one value is both a declaration and a live reference, and how the world that never changes is kept apart from the state that does.
 
 ## Declarations are stored properties

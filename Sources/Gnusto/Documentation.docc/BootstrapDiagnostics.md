@@ -4,6 +4,8 @@ Every message the bootstrap can print, and what to change.
 
 ## Overview
 
+![An engineer uses a lantern to inspect the exposed workings of a machine.](bootstrap-diagnostics.png)
+
 A Gnusto game is validated once, at boot. `Bootstrap.build` reads every
 declaration the game and its content bundles make, checks them against each
 other, and either hands back a definition or reports every problem it found at

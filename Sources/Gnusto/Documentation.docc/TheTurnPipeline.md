@@ -4,6 +4,8 @@ What happens between the player pressing Return and the next prompt.
 
 ## Overview
 
+![A boat enters a sequence of canal locks leading to a lit archway.](the-turn-pipeline.png)
+
 Every line the player types runs through the same fixed sequence of stages. This section walks that sequence — which rules fire, in what order, and how one rule can stop the rest — from raw input to committed state.
 
 ## From input to command

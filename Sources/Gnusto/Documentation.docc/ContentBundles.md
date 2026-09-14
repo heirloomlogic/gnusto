@@ -4,6 +4,8 @@ Give a region its own declarations — its own type, and even its own package.
 
 ## Overview
 
+![An open trunk contains a miniature harbor village, with a pier extending outside.](content-bundles.png)
+
 <doc:SplittingAGameAcrossFiles> shows how a game's `map` and `rules` compose from per-region helpers, but its **entity declarations** all have to stay in the one ``Game`` struct's body. Content bundles lift that limit. A bundle is a self-contained slice of the world — its own rooms, items, and `@Global` state, plus the geography, rules, and verbs that go with them — declared in its own type, and even its own SPM package.
 
 Reach for a bundle when a region is big or independent enough to own its declarations (not just its `map`/`rules`), or when you want to ship a region as a reusable package. For everything smaller, the extension-based file split is lighter and is still the right tool.

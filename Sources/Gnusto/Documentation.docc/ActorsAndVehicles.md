@@ -5,6 +5,8 @@ and enterables the player can ride.
 
 ## Overview
 
+![A cloaked figure holds a lantern beside a boat carrying a backpack.](actors-and-vehicles.png)
+
 A world with one person in it is a museum. The player is not the only
 thing that can hold something, take a turn, or leave; an ``Actor``
 compiles down to the same storage as an ``Item``, and a vehicle is one

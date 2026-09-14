@@ -4,6 +4,8 @@ The verbs the parser knows as words even where your game has no mechanic.
 
 ## Overview
 
+![A gloved hand points a sword at an upholstered chair beside a fireplace.](stub-verbs.png)
+
 A player five minutes into their first room will type `attack the chair`, `smell`,
 `listen`, `climb the ladder`, `jump`, `dig`, `buy lamp`. None of those is a verb
 most games implement. All of them are verbs every player tries.

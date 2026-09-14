@@ -4,6 +4,8 @@ Carry your own data on entities and in globals, alongside the engine's closed co
 
 ## Overview
 
+![A coat carries a badge, a pouch, and a counter, with a broken medallion beside it.](custom-state-and-traits.png)
+
 The engine only ever branches on a closed set of traits and scalar globals, and that is what keeps its behavior auditable: every decision it can make is visible in a handful of small enums. Your game's own data does not have to live in that set. A wallet, a set of combat stats, an item's price — custom state and custom traits ride along type-erased through the same storage the engine already saves and restores, read by your rules and by nothing else.
 
 ## Rich `@Global` state

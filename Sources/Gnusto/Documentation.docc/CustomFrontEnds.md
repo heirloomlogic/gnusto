@@ -4,6 +4,8 @@ Putting the engine behind something that is not a terminal.
 
 ## Overview
 
+![Interchangeable theater frames present one shared scene of a lantern-lit doorway.](custom-front-ends.png)
+
 ``GameWorld`` is an actor with three public methods — ``GameWorld/begin()``,
 ``GameWorld/perform(_:)`` and ``GameWorld/requestQuit()`` — and none of them
 knows what a terminal is. Everything a player sees comes back as a

@@ -4,6 +4,8 @@ Turn a finished game into a single command-line binary you can hand to a friend.
 
 ## Overview
 
+![A hand offers an open box containing a miniature path to a glowing doorway.](sharing-your-game.png)
+
 The person you want to play your game should not need Xcode, a toolchain, or any idea what SwiftPM is. This guide takes a game from *runs on my machine* to *one file that runs on somebody else's*, which is `bin/export-game` and a short conversation with Gatekeeper.
 
 `bin/export-game` builds macOS only, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every executable product for macOS and Linux and attaches them to the release. Neither path notarizes, so a downloaded macOS binary still has to be un-quarantined by hand.

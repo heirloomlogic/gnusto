@@ -4,6 +4,8 @@ Re-skin the engine's stock lines, and roll dice that replay.
 
 ## Overview
 
+![Three pages feed into a typewriter behind its roller while one centered page wraps around the front and underneath.](text-and-randomness.png)
+
 Every line the engine can say on its own initiative lives on one value, ``GameText``, and any of them can be replaced without writing a rule. The other half of a game's voice is variation, and Gnusto gets it from a seeded stream: the same seed replays the same session, so a response can be different every time and still be a test.
 
 ## Speaking in your own voice
