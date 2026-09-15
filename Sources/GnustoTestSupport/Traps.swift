@@ -22,7 +22,8 @@ import Testing
 /// ```
 ///
 /// A trap test fails in two very different ways and the message says which:
-/// **nothing on stderr** means the process died before it could print, and
+/// **nothing on stderr** means no diagnostic was captured (an optimized
+/// `precondition` can trap without printing), and
 /// **a different message** means the trap fired with the wrong wording.
 ///
 /// **What it costs, and when to spend it.** Each call is a child process — some
@@ -75,7 +76,7 @@ public func expectTrap(
     guard !stderr.isEmpty else {
         Issue.record(
             """
-            The process died without printing anything, so no trap was reached. \
+            The process exited without a captured diagnostic on standard error. \
             Exit status: \(result.exitStatus). Expected a trap saying: \
             \(needles.joined(separator: ", ")).
             """,

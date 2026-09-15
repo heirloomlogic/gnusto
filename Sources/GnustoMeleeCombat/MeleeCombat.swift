@@ -192,7 +192,10 @@ public struct MeleeCombat: GameContent {
     /// select a rotating line. The arrays stay mutable for games that re-voice
     /// a villain after construction, so factories check them again at registration.
     static func requireRotatingProse(_ lines: [String], named field: String) {
-        precondition(!lines.isEmpty, "GnustoMeleeCombat: \(field) needs at least one line.")
+        // Unlike precondition, fatalError preserves the diagnostic in Release builds.
+        guard !lines.isEmpty else {
+            fatalError("GnustoMeleeCombat: \(field) needs at least one line.")
+        }
     }
 
     /// Creates the plugin with the given combat text.
