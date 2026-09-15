@@ -4,6 +4,8 @@ Play scripted sessions in your test suite and assert on the transcript.
 
 ## Overview
 
+![A thick ancient spell book contains a branching decision tree of adventure choices and outcomes, inscribed across both pages and into the gutter.](testing-your-game.png)
+
 A Gnusto game is a value, and a play session is a function of its typed input — so the natural test is a *transcript test*: boot the game, feed it the commands a player would type, and assert on what it printed. The `GnustoTestSupport` product packages the helpers Gnusto's own suite is built on.
 
 ## Add the product to your test target

@@ -2,6 +2,10 @@
 
 A round sends agents through a game, replays their evidence, and writes a report of confirmed and refuted findings. It is the author-facing workflow around the instruments in <doc:PlayTesting>.
 
+## Overview
+
+![A hand compares several recorded routes against a larger map.](run-a-play-test-round.png)
+
 ## Start with preflight
 
 From the game package root, build once and run preflight with the executable product's name:

@@ -4,6 +4,8 @@ Package a reusable game system as an importable unit of verbs and rules.
 
 ## Overview
 
+![A hand fits a removable clockwork module into a matching opening in a larger mechanism.](plugins.png)
+
 A content bundle (<doc:ContentBundles>) splits a game's own world across types and packages. A plugin does something else: it packages a reusable *system* — spellcasting, a wall clock, combat — so a second game can import it. The seven `Gnusto*` libraries in this repo are all built this way, and so is the `buy`/`sell` logic you would otherwise hand-copy into every shop game.
 
 A plugin is **logic only**. It contributes the vocabulary its system needs and the rules that react to it, and owns no rooms, items, or `@Global` state; everything it touches is declared by the host game and handed to it as a parameter. A plugin that needs a room of its own is not a plugin.

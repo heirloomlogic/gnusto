@@ -9,6 +9,8 @@ An engine for writing interactive fiction in Swift.
 
 ## Overview
 
+![A brass lantern with a warm flame.](gnusto-lantern.png)
+
 A game is one type conforming to ``Game``, and the engine reads four things off it: the ``Location``, ``Item``, ``Actor`` and ``Global`` values you declared as stored properties, which it finds by reflection and names after each property; a `map` block of exits and starting places; a `rules` block of behavior; and an optional `verbs` block that teaches the parser new words. <doc:GettingStarted> builds one from an empty package. <doc:AnatomyOfAGame> is the model underneath.
 
 The same value is both the declaration and the live reference: `let cloak = Item { … }` declares the cloak, and `cloak.isWorn` reads its state inside a rule. That is the idea most of the rest follows from.

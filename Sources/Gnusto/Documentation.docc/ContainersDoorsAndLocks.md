@@ -4,6 +4,8 @@ Hold things, open and close, lock with keys, and gate the map.
 
 ## Overview
 
+![A key rests inside a cabinet beside a partly open door.](containers-doors-and-locks.png)
+
 A world feels physical when things can be inside other things, and Gnusto spells that as one word in an `Item { … }` block. Write ``container`` and the parser accepts `put coin in box` that moment; there is nothing else to wire up. The same goes for ``surface``, for ``openable``, and — with one line in the `map` rather than the item — for a lock and its key, and for a door standing between two rooms. All of them expose live state a rule can read and set.
 
 For the traits themselves see ``ItemTrait``; for writing the rules that react to them see <doc:WritingRules>.

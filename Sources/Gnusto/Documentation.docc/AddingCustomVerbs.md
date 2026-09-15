@@ -4,6 +4,8 @@ Teach the parser words the built-in table doesn't know.
 
 ## Overview
 
+![A hand adds a CONJURE word block beside LOOK and TAKE in a printer's composing stick.](adding-custom-verbs.png)
+
 Gnusto ships with a standard verb table in two tiers. The **core** tier is verbs the engine backs with real behavior: `take`, `drop`, `examine`, `wear`, `go`, `follow`, `greet`, `look`, `wait` (`z`), and their synonyms. The **stub** tier is verbs the parser knows as *words* with no mechanic behind them — `attack`, `dig`, `smell`, `climb`, `jump`, `buy`, `pray`, `xyzzy` and some forty more — each answering with one line of stock prose. See <doc:StubVerbs> for what they are and how to give one real behavior.
 
 When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `barter` — you declare it once with `#verb` and handle it in a rule.

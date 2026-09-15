@@ -4,6 +4,8 @@ Build and run your first text adventure, one piece at a time.
 
 ## Overview
 
+![A lantern lights an open stone doorway and the stairs beyond.](getting-started.png)
+
 By the end of this guide you will have a game with two rooms, one object, one rule, and a test that plays it. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
 
 Prefer to start from something that already runs? `bin/new-game Zwank ~/dev/Zwank` writes a complete starter package named for your game — then skim this guide for the *why* behind each piece.

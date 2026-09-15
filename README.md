@@ -1,5 +1,7 @@
 # Gnusto
 
+<img src="Sources/Gnusto/Documentation.docc/Resources/gnusto-lantern@3x.png" alt="A brass lantern with a warm flame." width="160" align="right">
+
 Gnusto is a Swift engine for writing interactive fiction. One type is one game: rooms, things, and rules are ordinary stored properties, and the engine takes it from the player's sentence to the next prompt.
 
 You declare the world and the engine finds those declarations by reflection, naming each one after the property it was stored in. Nothing has to be registered anywhere, and every reference is ordinary property access, so a room you misspell is a build error rather than a bug report. `swift run` and it is a game.

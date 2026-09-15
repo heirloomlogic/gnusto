@@ -4,6 +4,8 @@ Reading a transcript as prose, and the tools that make somebody else do it.
 
 ## Overview
 
+![An investigator shines a light on a floating teacup in a cellar.](play-testing-a-game.png)
+
 A transcript test asserts that a line *appears*. It never asks whether the line is *true of the room the player is standing in*. That gap is not a hole in anybody's test suite — it is a hole in what a test suite can express, and it is where this class of defect lives: a character goes on looking at the fire from the bottom of a dark coal cellar; dust settles on the hall table in a transcript read from the kitchen; a room offers an exit it described two states ago.
 
 Every assertion in this repo's suite passes while those lines print. Catching them means playing the game and reading what comes back, which is slow, and which nobody does often enough. So the engine ships the machinery to make it cheap: a status footer that says where a line was printed from, a replay script that pins the seed, and a play-test server that hands the whole job to an agent and then asks it what it never followed up.

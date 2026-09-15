@@ -4,6 +4,8 @@ Attach game logic to items, locations, and the world.
 
 ## Overview
 
+![A winged guardian holds a coin beside a raised portcullis.](writing-rules.png)
+
 A rule is four things: a phase (when it runs), an owner (what it watches), an optional set of intents (which actions it cares about), and a body of ordinary Swift that reads and writes the live world. Nothing about the body is special — it is Swift, in your module, with the whole world in scope.
 
 Every rule lives in a game's `rules` block, which yields a ``Rules`` value:

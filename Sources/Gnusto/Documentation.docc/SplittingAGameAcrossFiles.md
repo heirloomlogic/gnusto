@@ -4,6 +4,8 @@ Keep a large game readable by composing its map and rules from per-region helper
 
 ## Overview
 
+![One winding path connects coastal, village, and mountain scenes across a folded map.](splitting-a-game-across-files.png)
+
 A Gnusto game is one type conforming to ``Game``. That does **not** mean it must live in one file. A large game splits cleanly along two of its three parts today; the third has a known boundary worth understanding.
 
 ## The one rule: declarations stay in the struct body
