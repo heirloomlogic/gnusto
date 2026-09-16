@@ -57,4 +57,35 @@ struct PipelineTests {
         #expect(turn.contains("blunders=0"))
         #expect(!turn.contains("You see nothing special"))
     }
+
+    /// #523, site A — the single-command turn. `performStages` read the room
+    /// once, before the world's each-turn rules, and looked the location
+    /// `beforeEachTurn`, `before` and `after` rules up against that reading.
+    @Test func eachTurnMoveRedirectsTheTurnsLocationRules() async throws {
+        let transcript = try await play(DriftProbeGame(), ["look"])
+        let turn = turnOutput(of: "look", in: transcript)
+
+        expectInOrder(
+            turn,
+            [
+                "[current]",
+                "[raft-each-before]",
+                "[raft-before]",
+                "[raft-after]",
+            ])
+        #expect(!turn.contains("[dock-each-before]"))
+        #expect(!turn.contains("[dock-before]"))
+        #expect(!turn.contains("[dock-after]"))
+    }
+
+    /// #523, site B — the same reading in `runUpkeepBefore`, which is where a
+    /// multi-object command runs its once-per-turn upkeep, ahead of the
+    /// per-object loop.
+    @Test func eachTurnMoveRedirectsUpkeepOnAMultiObjectTurn() async throws {
+        let transcript = try await play(DriftProbeGame(), ["take all"])
+        let turn = turnOutput(of: "take all", in: transcript)
+
+        expectInOrder(turn, ["[current]", "[raft-each-before]"])
+        #expect(!turn.contains("[dock-each-before]"))
+    }
 }

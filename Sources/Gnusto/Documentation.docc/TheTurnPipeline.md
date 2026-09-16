@@ -45,7 +45,7 @@ Once a single-object command parses, the engine runs these stages in order. Rule
 
 Then the turn counter advances by one and the turn commits.
 
-`before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
+`before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. Which room the location rules of stages 2 and 5 belong to is settled once stage 1 has run, and does not move again: a `world.beforeEachTurn` rule that moves the player — a current carrying the boat at the start of the turn — hands the rest of that turn to the room it carried them into, and the room they typed in gets none of its own rules, while a `before` rule or the default action that walks them on afterwards leaves stage 5 with the room the turn was taken in, which is why `go north` runs the `after` rules of the room it left. The same reading governs the once-per-turn upkeep a multi-object command pulls ahead of its object loop. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
 
 ## Stopping the turn: refuse, reply, and end
 

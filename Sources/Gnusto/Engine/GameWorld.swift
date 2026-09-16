@@ -823,12 +823,82 @@ public actor GameWorld {
     private func runUpkeepBefore(_ intent: Intent, frame: TurnFrame) throws {
         frame.with { $0.inBeforeRule = true }
         defer { frame.with { $0.inBeforeRule = false } }
-        let here = frame.with { $0.state.playerLocation }
         try runBefore(
             definition.rules.worldBefore.filter { $0.phase == .beforeEachTurn },
             matching: intent, frame: frame)
+        // Read after the world's rules and not before them, for the reason
+        // `runBeforeStages` gives: a `beforeEachTurn` rule that moves the
+        // player moves which room's upkeep this is.
+        let here = frame.with { $0.state.playerLocation }
         try runBefore(
             definition.rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+    }
+
+    /// Stages 1–3 for one command — the world's `before` rules, then the
+    /// location's, then the objects' — returning the room the rest of the turn
+    /// belongs to. Nil for a meta intent, which talks to the game program and
+    /// runs no rules at all; stage 5 is skipped on the same answer.
+    ///
+    /// That room is read between stage 1 and stage 2, and nothing later moves
+    /// it: stages 2, 3 and 5 all look their location rules up against the one
+    /// reading. Read any earlier and a `world.beforeEachTurn` rule that moves
+    /// the player — a current carrying the boat — leaves the turn running the
+    /// departed room's rules and none of the destination's. Read any later and
+    /// `go north` would answer to the room it walked into rather than the one
+    /// it left, and so would a `before` rule that walked the player on itself.
+    /// One seam: a stage-1 rule calling `proceed()` runs stage 4 ahead of the
+    /// reading, so that walk does move it.
+    ///
+    /// `inBeforeRule` is set for the span of these stages so `proceed()` can
+    /// recognize a legal call site; a rule that calls it runs stage 4 early and
+    /// flips `defaultRan`. Once that flag is set, `runBefore` skips every
+    /// remaining before-phase for the rest of this sequence — `proceed()` means
+    /// "run the default now", so later before-guards for this command are moot
+    /// and must not run. Stage 4's own call site checks the same flag to avoid
+    /// running the default a second time.
+    private func runBeforeStages(
+        _ command: Command, frame: TurnFrame, upkeep: Bool
+    ) throws -> EntityID? {
+        let intent = command.intent
+        guard !intent.isMeta else { return nil }
+        let rules = definition.rules
+        frame.with { $0.inBeforeRule = true }
+        defer { frame.with { $0.inBeforeRule = false } }
+
+        // Stage 1: the world's rules — its `beforeEachTurn` upkeep among them
+        // on a single-command turn, interleaved in declaration order.
+        try runBefore(
+            upkeep ? rules.worldBefore : rules.worldBefore.filter { $0.phase == .before },
+            matching: intent, frame: frame)
+
+        // Who is carrying this out, and where. The player, in their own room,
+        // unless somebody was told to do it — then it is the person told and
+        // the room *they* are standing in.
+        let here = frame.with { $0.state.playerLocation }
+        let agent = command.actor?.id
+        let stage =
+            agent.flatMap { id in frame.with { Visibility.standing(id, in: $0.state) } } ?? here
+
+        // Stage 2: the location's rules.
+        if upkeep {
+            try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+        }
+        try runBefore(rules.locationBefore[stage] ?? [], matching: intent, frame: frame)
+
+        // Stage 3: the objects' rules. The one told is told first — before the
+        // thing they were told about — so `robot.before(.go)` can answer an
+        // order that names no object at all. Skipped when they *are* one of the
+        // objects, so nobody's rules run twice.
+        if let agent, agent != command.directObject?.id, agent != command.indirectObject?.id {
+            try runBefore(rules.itemBefore[agent] ?? [], matching: intent, frame: frame)
+        }
+        if let indirect = command.indirectObject {
+            try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
+        }
+        if let direct = command.directObject {
+            try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
+        }
+        return here
     }
 
     /// Stages 1–5 for one command. With `upkeep` the each-turn `before`
@@ -837,55 +907,14 @@ public actor GameWorld {
     private func performStages(_ command: Command, frame: TurnFrame, upkeep: Bool) {
         let intent = command.intent
         let rules = definition.rules
-        // Who is carrying this out, and where. The player, in their own room,
-        // unless somebody was told to do it — then it is the person told and
-        // the room *they* are standing in.
-        let agent = command.actor?.id
-        let here = frame.with { $0.state.playerLocation }
-        let stage = agent.flatMap { id in frame.with { Visibility.standing(id, in: $0.state) } } ?? here
 
         do {
             // Stage 0: the objects' `reach { … }` rules, which have to be
             // settled ahead of the rules that could pre-empt stage 4.
             try DefaultActions.requireReachRules(for: command, frame: frame)
 
-            // Stages 1–3: world, location, and item `before` rules.
-            // Meta intents talk to the game program; no rules see them.
-            // `inBeforeRule` is set for the span of these stages so
-            // `proceed()` can recognize a legal call site; a rule that
-            // calls it runs stage 4 early and flips `defaultRan`. Once
-            // that flag is set, `run` (below) skips every remaining
-            // before-phase for the rest of this sequence — `proceed()`
-            // means "run the default now", so later before-guards for
-            // this command are moot and must not run. Stage 4's own
-            // call site (further down) checks the same flag to avoid
-            // running the default a second time.
-            if !intent.isMeta {
-                frame.with { $0.inBeforeRule = true }
-                defer { frame.with { $0.inBeforeRule = false } }
-                let worldBefore =
-                    upkeep
-                    ? rules.worldBefore
-                    : rules.worldBefore.filter { $0.phase == .before }
-                try runBefore(worldBefore, matching: intent, frame: frame)
-                if upkeep {
-                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
-                }
-                try runBefore(rules.locationBefore[stage] ?? [], matching: intent, frame: frame)
-                // The one told is told first — before the thing they were told
-                // about — so `robot.before(.go)` can answer an order that names
-                // no object at all. Skipped when they *are* one of the objects,
-                // so nobody's rules run twice.
-                if let agent, agent != command.directObject?.id, agent != command.indirectObject?.id {
-                    try runBefore(rules.itemBefore[agent] ?? [], matching: intent, frame: frame)
-                }
-                if let indirect = command.indirectObject {
-                    try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
-                }
-                if let direct = command.directObject {
-                    try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
-                }
-            }
+            // Stages 1–3, and with them the room this turn belongs to.
+            let here = try runBeforeStages(command, frame: frame, upkeep: upkeep)
 
             // Stage 4: the default action — skipped if a `before` rule
             // already ran it early via `proceed()`.
@@ -893,8 +922,9 @@ public actor GameWorld {
                 try DefaultActions.run(command, frame: frame)
             }
 
-            // Stage 5: item and location `after` rules.
-            if !intent.isMeta {
+            // Stage 5: item and location `after` rules. A meta intent has no
+            // room of record, and runs none of them.
+            if let here {
                 if let direct = command.directObject {
                     try run(rules.itemAfter[direct.id] ?? [], matching: intent)
                 }

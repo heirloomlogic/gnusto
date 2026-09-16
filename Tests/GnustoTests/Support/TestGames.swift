@@ -313,6 +313,53 @@ struct OrderProbeGame: Game {
     }
 }
 
+/// A `world.beforeEachTurn` rule that carries the player out of the room they
+/// typed in, so the turn's location rules have to be looked up against where
+/// they are standing now rather than where they started. Every marker names
+/// its own room, so a transcript says which room's rules the turn ran.
+struct DriftProbeGame: Game {
+    let title = "Drift"
+    let intro = "Drift."
+
+    let dock = Location {
+        name("Dock")
+        description("A wooden dock.")
+    }
+
+    let raft = Location {
+        name("Raft")
+        description("A raft on the current.")
+    }
+
+    let crate = Item { name("crate") }
+    let rope = Item { name("rope") }
+
+    /// The current takes the player once, on the first turn of the game.
+    @Latch var drifted
+
+    var map: WorldMap {
+        player.starts(in: dock)
+        crate.starts(in: dock)
+        rope.starts(in: dock)
+    }
+
+    var rules: Rules {
+        world.beforeEachTurn {
+            guard $drifted.trips() else { return }
+            say("[current]")
+            arrive(at: raft)
+        }
+
+        dock.beforeEachTurn { say("[dock-each-before]") }
+        dock.before(.look) { say("[dock-before]") }
+        dock.after(.look) { say("[dock-after]") }
+
+        raft.beforeEachTurn { say("[raft-each-before]") }
+        raft.before(.look) { say("[raft-before]") }
+        raft.after(.look) { say("[raft-after]") }
+    }
+}
+
 /// Rules that read and write every kind of live state, reporting through the
 /// transcript: proxies, description overrides, @Global persistence, and
 /// player score/location.
