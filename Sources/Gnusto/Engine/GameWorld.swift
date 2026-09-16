@@ -828,7 +828,14 @@ public actor GameWorld {
             matching: intent, frame: frame)
         // Read after the world's rules and not before them, for the reason
         // `runBeforeStages` gives: a `beforeEachTurn` rule that moves the
-        // player moves which room's upkeep this is.
+        // player moves which room's upkeep this is. Only those rules, though.
+        // A multi-object command runs the world's `.before` rules once per
+        // object, inside the loop this pass runs ahead of, so they have not
+        // happened yet and no reading taken here could see them. That is the
+        // one way this reading and `runBeforeStages`' differ, and it is the
+        // shape of the multi-object turn rather than a choice — on a
+        // single-command turn stage 1 is one interleaved pass over both
+        // phases and the reading comes after all of it.
         let here = frame.with { $0.state.playerLocation }
         try runBefore(
             definition.rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
@@ -839,15 +846,28 @@ public actor GameWorld {
     /// belongs to. Nil for a meta intent, which talks to the game program and
     /// runs no rules at all; stage 5 is skipped on the same answer.
     ///
-    /// That room is read between stage 1 and stage 2, and nothing later moves
-    /// it: stages 2, 3 and 5 all look their location rules up against the one
-    /// reading. Read any earlier and a `world.beforeEachTurn` rule that moves
-    /// the player — a current carrying the boat — leaves the turn running the
-    /// departed room's rules and none of the destination's. Read any later and
-    /// `go north` would answer to the room it walked into rather than the one
-    /// it left, and so would a `before` rule that walked the player on itself.
-    /// One seam: a stage-1 rule calling `proceed()` runs stage 4 ahead of the
-    /// reading, so that walk does move it.
+    /// The room is read once, after stage 1 and before stage 2, and the rule
+    /// is that simple: everything that runs ahead of the reading can move it
+    /// and nothing that runs after it can. That is stage 0's `reach` rules —
+    /// predicates, with no business moving anybody, but they do run first —
+    /// and the whole of stage 1. Read any earlier and a
+    /// `world.beforeEachTurn` rule that moves the player — a current carrying
+    /// the boat — leaves the turn running the departed room's rules and none
+    /// of the destination's (#523). Read any later and `go north` would answer
+    /// to the room it walked into rather than the one it left. A stage-1 rule
+    /// that calls `proceed()` obeys the same rule rather than breaking it:
+    /// stage 4 runs *inside* stage 1, so the walk it makes is a stage-1 move
+    /// and the reading is the room it walked into.
+    ///
+    /// Two lookups use the reading itself — stage 2's `locationBeforeEachTurn`
+    /// on a single-command turn, and stage 5's `locationAfter`, which is why
+    /// this returns it. Stage 2's `locationBefore` is keyed on `stage`
+    /// instead: the room the *addressee* is standing in when somebody was told
+    /// to act, and the reading only when nobody was — or when the addressee is
+    /// not directly in a room at all, which is the one answer
+    /// `Visibility.standing` has none for. Stage 3 looks up no location rules
+    /// at all, `runUpkeepBefore` takes its own reading, and stage 6's
+    /// `locationAfterEachTurn` takes a fresh one in `finishTurn`.
     ///
     /// `inBeforeRule` is set for the span of these stages so `proceed()` can
     /// recognize a legal call site; a rule that calls it runs stage 4 early and
