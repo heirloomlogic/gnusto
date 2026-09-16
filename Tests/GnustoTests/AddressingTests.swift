@@ -111,6 +111,25 @@ struct AddressingTests {
         #expect(!transcript.contains("room in general"))
     }
 
+    /// A second actor between the address and the greeting used to change who
+    /// got greeted. `clerk, robot, hello` addresses the clerk first; the
+    /// greeting probe's second try used to re-read `robot, hello, clerk` in
+    /// the player's own scope, which read `robot` as a nested address of its
+    /// own, found the robot an order-taker, and handed `hello, clerk` to
+    /// `order()` — which parsed it as a plain greet naming the clerk and
+    /// stamped the *robot* as its actor. That direct object happened to equal
+    /// the outer addressee, which is exactly what the second try was checking
+    /// for, so the whole line answered GREET CLERK without the robot, an
+    /// order-taker, ever hearing an order. Narrowing the probe's scope to drop
+    /// every order-taker closes off that nested `order()` reading, so the
+    /// line now falls through to the ordinary check on the clerk, who does
+    /// not take orders.
+    @Test func aSecondActorBetweenTheAddressAndTheGreetingIsAnOrderNotAGreeting() async throws {
+        let transcript = try await play(MachineRoom(), ["clerk, robot, hello"])
+        #expect(transcript.contains("The clerk has no intention of taking orders from you."))
+        #expect(!transcript.contains("The clerk nods, and says nothing."))
+    }
+
     // MARK: - Cost
 
     /// A line of nothing but repeated address — `usher, usher, usher, …` — used

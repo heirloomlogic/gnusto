@@ -422,12 +422,17 @@ struct StandardParser {
     /// Narrowing drops the actors, the address branch becomes unreachable
     /// inside the probe, and the cost is linear in the line.
     ///
-    /// Nothing is given up by it. A nested address reading always yields a
-    /// *named* addressee, so it can never answer the first question, which
-    /// wants no object at all; and it can only come back a bare greet where
-    /// this same question already said yes one level down. Nested addressing
-    /// itself was never read — ``order(_:to:address:scope:rawInput:)`` narrows
-    /// the same way, so an order is never an order to somebody else.
+    /// What is given up: a line naming two actors, `<visible actor A>,
+    /// <order-taker B>, hello`, used to bottom out one level down as an
+    /// order to B, whose parsed direct object happened to be A — which this
+    /// question read as "yes, a greeting for A" and returned GREET A,
+    /// without B ever hearing an order. Narrowing drops every order-taker
+    /// from the probe, so that nested reading can no longer happen; the same
+    /// line now answers as a plain order to A, refused or reported on A's
+    /// own terms. No demo game seats an order-taker beside a second actor,
+    /// so the case is believed unreachable outside a deliberately
+    /// constructed room, and the two tries above still answer every
+    /// single-actor address exactly as before.
     private func isGreeting(
         _ rest: [String], at addressee: EntityID, address: [String], scope: Scope
     ) -> Bool {
