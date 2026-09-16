@@ -422,17 +422,30 @@ struct StandardParser {
     /// Narrowing drops the actors, the address branch becomes unreachable
     /// inside the probe, and the cost is linear in the line.
     ///
-    /// What is given up: a line naming two actors, `<visible actor A>,
-    /// <order-taker B>, hello`, used to bottom out one level down as an
-    /// order to B, whose parsed direct object happened to be A — which this
-    /// question read as "yes, a greeting for A" and returned GREET A,
-    /// without B ever hearing an order. Narrowing drops every order-taker
-    /// from the probe, so that nested reading can no longer happen; the same
-    /// line now answers as a plain order to A, refused or reported on A's
-    /// own terms. No demo game seats an order-taker beside a second actor,
-    /// so the case is believed unreachable outside a deliberately
-    /// constructed room, and the two tries above still answer every
-    /// single-actor address exactly as before.
+    /// What is given up, stated as the rule rather than as a case: **a line
+    /// carrying a second address** — a second comma after the first, with a
+    /// name or a pronoun in front of it. That is the whole of the exception,
+    /// and it is the *only* shape the narrowing can reach: the probe's own
+    /// address reading is the one thing inside it that the dropped actors
+    /// feed. (FOLLOW's far-sighted fallback is the other, and a FOLLOW is not
+    /// a greeting either way.) A line carrying one address is untouched.
+    ///
+    /// What such a line used to do: the remainder was re-read in the player's
+    /// own scope, so a `<B>,` inside it was an address in its own right, and
+    /// the tail could bottom out as a greeting whose object was the outer
+    /// addressee A — which this question read as "yes, a greeting for A" and
+    /// answered GREET A, a greeting nobody had typed. Two ways in, both real:
+    /// `usher, usher, hello` is one ordinary actor addressed twice, where the
+    /// inner address resolved to A itself and `hello usher usher` read as
+    /// GREET USHER; `clerk, robot, hello` goes through an order-taker, whose
+    /// `hello clerk`, parsed in the robot's own scope, came back GREET CLERK
+    /// without the robot ever hearing an order. An order-taker is not needed
+    /// and the second address need not be a second *person*.
+    ///
+    /// Narrowing empties the probe of actors, so a second address names
+    /// nobody inside it and the remainder is read as a plain sentence
+    /// instead. Both lines now answer on A's own terms — an order A declines,
+    /// or a sentence nobody understood.
     private func isGreeting(
         _ rest: [String], at addressee: EntityID, address: [String], scope: Scope
     ) -> Bool {

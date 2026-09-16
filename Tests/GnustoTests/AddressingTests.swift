@@ -111,23 +111,54 @@ struct AddressingTests {
         #expect(!transcript.contains("room in general"))
     }
 
+    // MARK: - A second address on the line
+
+    /// The one shape the greeting probe's narrowed scope answers differently
+    /// from the parser before #497: a line carrying a *second* address — a
+    /// second comma with a name or a pronoun in front of it. A line carrying
+    /// one address is untouched, and every test above is one of those.
+    ///
     /// A second actor between the address and the greeting used to change who
     /// got greeted. `clerk, robot, hello` addresses the clerk first; the
-    /// greeting probe's second try used to re-read `robot, hello, clerk` in
+    /// greeting probe's second try used to re-read `robot, hello clerk` in
     /// the player's own scope, which read `robot` as a nested address of its
-    /// own, found the robot an order-taker, and handed `hello, clerk` to
+    /// own, found the robot an order-taker, and handed `hello clerk` to
     /// `order()` — which parsed it as a plain greet naming the clerk and
     /// stamped the *robot* as its actor. That direct object happened to equal
     /// the outer addressee, which is exactly what the second try was checking
     /// for, so the whole line answered GREET CLERK without the robot, an
     /// order-taker, ever hearing an order. Narrowing the probe's scope to drop
-    /// every order-taker closes off that nested `order()` reading, so the
-    /// line now falls through to the ordinary check on the clerk, who does
-    /// not take orders.
+    /// every actor closes off that nested `order()` reading, so the line now
+    /// falls through to the ordinary check on the clerk, who does not take
+    /// orders.
     @Test func aSecondActorBetweenTheAddressAndTheGreetingIsAnOrderNotAGreeting() async throws {
         let transcript = try await play(MachineRoom(), ["clerk, robot, hello"])
         #expect(transcript.contains("The clerk has no intention of taking orders from you."))
         #expect(!transcript.contains("The clerk nods, and says nothing."))
+    }
+
+    /// And the second address does not have to be a second *person*: the same
+    /// person addressed twice is the plainer way in, and it needs no
+    /// order-taker at all. `robot, robot, hello` used to re-read `robot,
+    /// hello robot` in the player's own scope, and one level further down
+    /// `hello robot robot` resolved its object to the robot — GREET ROBOT,
+    /// the outer addressee, which the second try accepted. `clerk, clerk,
+    /// hello` did the same through an actor who takes no orders, so the
+    /// exception was never about order-takers.
+    ///
+    /// Neither line is a greeting now. Each falls through to what the words
+    /// after the first comma actually are: an order the clerk declines, and a
+    /// sentence nobody can read for the robot, who would take one.
+    @Test(arguments: [
+        ("robot, robot, hello", "I didn't understand that sentence."),
+        ("clerk, clerk, hello", "The clerk has no intention of taking orders from you."),
+    ])
+    func addressingTheSamePersonTwiceIsNotAGreeting(
+        _ line: String, _ answer: String
+    ) async throws {
+        let transcript = try await play(MachineRoom(), [line])
+        #expect(transcript.contains(answer))
+        #expect(!transcript.contains("nods, and says nothing"))
     }
 
     // MARK: - Cost
