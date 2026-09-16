@@ -143,6 +143,58 @@ struct MCPProtocolTests {
         }
     }
 
+    /// A frame nested past `JSONValue.maxDepth` is refused the same way any
+    /// other unreadable frame is. Why that cap exists is stated once, on
+    /// `JSONValue.maxDepth` itself.
+    ///
+    /// What this adds is that the *process* is the thing under test, so the
+    /// assertion carrying the most weight here is the least visible one: the
+    /// suite is still running by the time the `ping` at the end is answered.
+    /// Both of the server's entries are driven, because `serve` asks
+    /// `mutatesState(line:)` of every frame *before* `handle` sees it, and
+    /// that one parses too.
+    @Test func aFrameNestedPastTheCapIsAParseErrorAndTheServerSurvives() async throws {
+        let server = try server()
+        let depth = 400
+        let line = """
+            {"jsonrpc":"2.0","id":9,"method":"ping","params":\
+            \(String(repeating: "[", count: depth))\
+            \(String(repeating: "]", count: depth))}
+            """
+
+        #expect(server.mutatesState(line: line) == false)
+
+        let response = try parse(await server.handle(line: line))
+        #expect(response["error"]?["code"]?.intValue == -32_700)
+        #expect(response["id"] == .null)
+
+        let afterwards = try parse(
+            await server.handle(line: #"{"jsonrpc":"2.0","id":10,"method":"ping"}"#))
+        #expect(afterwards["id"]?.intValue == 10)
+        #expect(afterwards["result"] == .object([:]))
+    }
+
+    /// The cap sits far enough above real traffic that nothing ordinary
+    /// notices it. A frame nested well past anything this protocol carries,
+    /// and still under the limit, parses to exactly the value it spells and is
+    /// dispatched as usual.
+    @Test func nestingWithinTheCapIsUnchanged() async throws {
+        let depth = 20
+        let nested = """
+            \(String(repeating: "[", count: depth))"deep"\
+            \(String(repeating: "]", count: depth))
+            """
+        var expected = JSONValue.string("deep")
+        for _ in 0..<depth { expected = .array([expected]) }
+        #expect(try JSONValue(text: nested) == expected)
+
+        let response = try parse(
+            await server().handle(
+                line: #"{"jsonrpc":"2.0","id":11,"method":"ping","params":\#(nested)}"#))
+        #expect(response["id"]?.intValue == 11)
+        #expect(response["result"] == .object([:]))
+    }
+
     @Test func aRequestWithNoMethodIsAnInvalidRequest() async throws {
         let response = try parse(await server().handle(line: #"{"jsonrpc":"2.0","id":4}"#))
 
