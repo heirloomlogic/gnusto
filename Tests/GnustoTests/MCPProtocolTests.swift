@@ -195,6 +195,53 @@ struct MCPProtocolTests {
         #expect(response["result"] == .object([:]))
     }
 
+    /// The two tests above pick depths well clear of the boundary on both
+    /// sides, so an off-by-one in the `>=` inside `JSONValue.init(from:)`
+    /// would pass the suite either way. This one drives the boundary itself.
+    ///
+    /// A bare document's own boundary is `maxDepth` accepted, `maxDepth + 1`
+    /// refused, driven directly against `JSONValue(text:)`. Through the
+    /// server the boundary sits one level lower: `MCPServer.call` and
+    /// `initialize` read `request["params"]`, and `request` is the *whole*
+    /// frame decoded as one `JSONValue`, so `params` starts one object key
+    /// deeper than a bare document does. `maxDepth - 1` nested inside
+    /// `params` is therefore the deepest frame that still answers `ping`,
+    /// and `maxDepth` is the first refused with `-32700`.
+    @Test func theCapAcceptsExactlyMaxDepthAndRefusesOneMore() async throws {
+        func nested(depth: Int) -> String {
+            """
+            \(String(repeating: "[", count: depth))"deep"\
+            \(String(repeating: "]", count: depth))
+            """
+        }
+
+        let atTheCap = JSONValue.maxDepth
+        var expected = JSONValue.string("deep")
+        for _ in 0..<atTheCap { expected = .array([expected]) }
+        #expect(try JSONValue(text: nested(depth: atTheCap)) == expected)
+
+        let oneOver = atTheCap + 1
+        #expect(throws: (any Error).self) {
+            try JSONValue(text: nested(depth: oneOver))
+        }
+
+        let deepestAcceptedFrame = atTheCap - 1
+        let accepted = try parse(
+            await server().handle(
+                line: #"{"jsonrpc":"2.0","id":12,"method":"ping","params":\#(nested(depth: deepestAcceptedFrame))}"#
+            ))
+        #expect(accepted["id"]?.intValue == 12)
+        #expect(accepted["result"] == .object([:]))
+
+        let firstRefusedFrame = atTheCap
+        let refused = try parse(
+            await server().handle(
+                line: #"{"jsonrpc":"2.0","id":13,"method":"ping","params":\#(nested(depth: firstRefusedFrame))}"#
+            ))
+        #expect(refused["error"]?["code"]?.intValue == -32_700)
+        #expect(refused["id"] == .null)
+    }
+
     @Test func aRequestWithNoMethodIsAnInvalidRequest() async throws {
         let response = try parse(await server().handle(line: #"{"jsonrpc":"2.0","id":4}"#))
 

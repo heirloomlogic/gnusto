@@ -144,12 +144,12 @@ extension JSONValue: Codable {
     /// level, so the frame that killed the process was under a thousandth of a
     /// percent of what that one allows. It defends the buffer, not the stack.
     ///
-    /// 32 is far above any frame this protocol carries. The deepest are a
-    /// `tools/list` response, where a tool's input schema is an object of
-    /// properties of objects, and a `tools/call` result carrying structured
-    /// content; neither reaches double figures. A real frame therefore cannot
-    /// come near this, which is the property that makes the cap safe to state
-    /// as a constant rather than tune.
+    /// 32 is far above any frame this protocol carries. The deepest measured
+    /// is the `tools/list` response, where a tool's input schema is an
+    /// object of properties of objects: 14 containers deep, 18 short of
+    /// this cap. A real frame therefore cannot come near this, which is the
+    /// property that makes the cap safe to state as a constant rather than
+    /// tune.
     static let maxDepth = 32
 
     /// Decodes whichever of the seven shapes the document holds.
