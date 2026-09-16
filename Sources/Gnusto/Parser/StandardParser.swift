@@ -412,17 +412,34 @@ struct StandardParser {
     /// GREET, which is what keeps `butler, take the lamp` from becoming
     /// anything at all.
     ///
-    /// Recursion is bounded: each inner parse gets a strictly shorter list, in
-    /// a scope with nobody in it to address.
+    /// **The probe scope is narrowed here rather than at the call sites**, so
+    /// no caller can hand this an address to read. Both inner parses get a
+    /// strictly shorter token list, which bounds the recursion — but a bound is
+    /// not a budget. Able to read an address of its own, each level spawns two
+    /// more, and a line of repeated `<actor>,` costs Fibonacci time: three
+    /// seconds at sixteen repetitions and the rest of the session at
+    /// twenty-five, on an MCP play-test server as much as at a terminal (#497).
+    /// Narrowing drops the actors, the address branch becomes unreachable
+    /// inside the probe, and the cost is linear in the line.
+    ///
+    /// Nothing is given up by it. A nested address reading always yields a
+    /// *named* addressee, so it can never answer the first question, which
+    /// wants no object at all; and it can only come back a bare greet where
+    /// this same question already said yes one level down. Nested addressing
+    /// itself was never read — ``order(_:to:address:scope:rawInput:)`` narrows
+    /// the same way, so an order is never an order to somebody else.
     private func isGreeting(
         _ rest: [String], at addressee: EntityID, address: [String], scope: Scope
     ) -> Bool {
-        if case .success(let inner) = parse(tokens: rest, rawInput: "", scope: scope),
+        // The addressee is still nameable as an *object* — actors are members
+        // of `visibleItems` — which is what the second try needs.
+        let probe = scope.narrowed(to: scope.visibleItems)
+        if case .success(let inner) = parse(tokens: rest, rawInput: "", scope: probe),
             inner.intent == .greet, inner.directObject == nil
         {
             return true
         }
-        if case .success(let inner) = parse(tokens: rest + address, rawInput: "", scope: scope),
+        if case .success(let inner) = parse(tokens: rest + address, rawInput: "", scope: probe),
             inner.intent == .greet, inner.directObject == addressee
         {
             return true

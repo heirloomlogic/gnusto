@@ -1,6 +1,7 @@
-import Gnusto
 import GnustoTestSupport
 import Testing
+
+@testable import Gnusto
 
 /// `<actor>, <words>` — the one place a comma changes who a sentence is aimed
 /// at. It reads first, ahead of the separator reading `ConjunctionTests` pins.
@@ -108,5 +109,51 @@ struct AddressingTests {
         let transcript = try await play(FollowLab(), ["greet"])
         #expect(transcript.contains("The walker nods, and says nothing."))
         #expect(!transcript.contains("room in general"))
+    }
+
+    // MARK: - Cost
+
+    /// A line of nothing but repeated address — `usher, usher, usher, …` — used
+    /// to cost Fibonacci time. The greeting probe re-read the words after the
+    /// comma in the player's full scope, so every level found a comma of its
+    /// own and spawned two more levels. Sixteen repetitions took about three
+    /// seconds, twenty-five wedged the session, and the same line wedged an MCP
+    /// play-test server, which has no turn timeout. (#497)
+    ///
+    /// The bound is wall-clock, because the cost is the thing being pinned, but
+    /// it is a loose one: the parser now answers each of these in well under a
+    /// millisecond, so half a second is a thousandfold margin that no loaded
+    /// runner is going to eat. The lengths ascend and the loop stops at the
+    /// first one to bust the bound, so a regression fails here in a couple of
+    /// seconds at sixteen rather than hanging at twenty-five.
+    ///
+    /// The answer is asserted alongside the time: every length must come back
+    /// the same refusal the two-word line does, which is what says the speed
+    /// was not bought by reading the line differently.
+    @Test func aLineOfRepeatedAddressParsesInLinearTime() throws {
+        let (definition, _) = try Bootstrap.build(Antechamber())
+        let parser = StandardParser(
+            vocabulary: definition.vocabulary,
+            syntaxRules: definition.syntaxRules)
+        let scope = Scope(
+            visibleItems: [EntityID("usher"), EntityID("page"), EntityID("lamp")],
+            visibleActors: [EntityID("usher"), EntityID("page")])
+        let bound = Duration.milliseconds(500)
+
+        for repetitions in [2, 16, 18, 25] {
+            let line = Array(repeating: "usher", count: repetitions).joined(separator: ", ")
+            let start = ContinuousClock.now
+            let result = parser.parse(line, scope: scope)
+            let elapsed = ContinuousClock.now - start
+
+            guard case .failure(.notTakingOrders) = result else {
+                Issue.record("\(repetitions) repetitions parsed as \(result)")
+                return
+            }
+            guard elapsed < bound else {
+                Issue.record("\(repetitions) repetitions took \(elapsed), over \(bound)")
+                return
+            }
+        }
     }
 }
