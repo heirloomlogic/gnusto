@@ -145,11 +145,12 @@ extension JSONValue: Codable {
     /// percent of what that one allows. It defends the buffer, not the stack.
     ///
     /// 32 is far above any frame this protocol carries. The deepest measured
-    /// is the `tools/list` response, where a tool's input schema is an
-    /// object of properties of objects: 14 containers deep, 18 short of
-    /// this cap. A real frame therefore cannot come near this, which is the
-    /// property that makes the cap safe to state as a constant rather than
-    /// tune.
+    /// is `survey`'s `outputSchema` in the `tools/list` response, where a
+    /// room's exits carry an enum of kind strings nested under properties of
+    /// properties: 14 containers deep, 18 short of this cap. The deepest
+    /// `inputSchema` measured, `vocabulary`'s, is 8. A real frame therefore
+    /// cannot come near this, which is the property that makes the cap safe
+    /// to state as a constant rather than tune.
     static let maxDepth = 32
 
     /// Decodes whichever of the seven shapes the document holds.

@@ -201,12 +201,13 @@ struct MCPProtocolTests {
     ///
     /// A bare document's own boundary is `maxDepth` accepted, `maxDepth + 1`
     /// refused, driven directly against `JSONValue(text:)`. Through the
-    /// server the boundary sits one level lower: `MCPServer.call` and
-    /// `initialize` read `request["params"]`, and `request` is the *whole*
-    /// frame decoded as one `JSONValue`, so `params` starts one object key
-    /// deeper than a bare document does. `maxDepth - 1` nested inside
-    /// `params` is therefore the deepest frame that still answers `ping`,
-    /// and `maxDepth` is the first refused with `-32700`.
+    /// server the boundary sits one level lower, and this holds even for
+    /// `ping`, which never reads `params` at all: `handle(line:)` decodes the
+    /// *whole* frame as one `JSONValue` before any method is dispatched, so
+    /// `params` starts one object key deeper than a bare document does,
+    /// regardless of which method the frame names. `maxDepth - 1` nested
+    /// inside `params` is therefore the deepest frame that still answers
+    /// `ping`, and `maxDepth` is the first refused with `-32700`.
     @Test func theCapAcceptsExactlyMaxDepthAndRefusesOneMore() async throws {
         func nested(depth: Int) -> String {
             """
