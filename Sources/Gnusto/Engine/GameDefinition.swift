@@ -232,12 +232,6 @@ struct GameDefinition: Sendable {
     let tagline: String
     let intro: String
     let maxScore: Int
-    /// The most weight the player may hold at once, from a ``Burden`` in the
-    /// game's content; `nil` when no content declares one and the player's
-    /// hands are unlimited. Read by `take` after its own refusals, which is
-    /// what keeps the broad "no room in your hands" from answering for the
-    /// specific ones. Two caps in one game leave the tightest standing.
-    let carryCap: Int?
     /// The stock player-facing lines, as the game re-skinned them.
     let text: GameText
     let locations: [EntityID: LocationDefinition]

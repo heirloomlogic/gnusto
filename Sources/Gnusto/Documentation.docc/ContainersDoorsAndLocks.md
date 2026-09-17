@@ -41,7 +41,7 @@ let basket = Item {
 }
 ```
 
-A cap on the *player's* hands is ``Burden``: a number, with no rooms and no rules of its own, that refuses any `take` tipping the load over its `carryCap`. Every takeable item weighs its ``TraitKey/weight`` (5 unless declared), a container brings its contents along, and ``Item/burden`` and ``Player/burden`` weigh the same way for a game's own load gates:
+A cap on the *player's* hands is ``Burden``: a bundle with no rooms of its own that refuses any `take` tipping the load over its `carryCap`. Every takeable item weighs its ``TraitKey/weight`` (5 unless declared), a container brings its contents along, and ``Item/burden`` and ``Player/burden`` weigh the same way for a game's own load gates:
 
 ```swift
 let burden = Burden(carryCap: 100)
@@ -54,7 +54,7 @@ let coffin = Item {
 }
 ```
 
-The cap is the **last** question `take` asks. It is the broadest answer the verb has, so every refusal that is about the particular thing outranks it — taking yourself, taking a person, taking what you already hold or wear, taking scenery, taking what you can't reach, taking the vehicle you're standing in, and any refusal your own `before(.take)` rule writes. Weight already in the player's hands is not weighed twice either: lifting the garlic out of a sack they're carrying changes the load by nothing, so the cap has no opinion about it however full the sack is.
+The cap is asked first — its rule is world scope, so stage 1 — and that is what holds it for a game that replaces the verb with an `action(.take)` of its own, and what stops a `before(.take)` rule that changes the world from committing the change and then being told the player's hands are full. But it answers last: "no room in your hands" is the broadest line `take` has, so the rule reads `take`'s own ladder first and says nothing wherever `take` has a more particular answer — taking yourself, taking a person, taking what you already hold or wear, taking scenery, taking what you can't reach, taking the vehicle you're standing in. A refusal your own `before(.take)` rule writes is stage 3, so it is printed only once the cap has passed; put it in a `reach { … }` rule to have it answer first. Weight already in the player's hands is not weighed twice either: lifting the garlic out of a sack they're carrying changes the load by nothing, so the cap has no opinion about it however full the sack is.
 
 Inside a rule, the live relationships are:
 
