@@ -33,15 +33,19 @@ extension Prose {
         The window is slightly ajar, but not enough to allow entry.
         """
 
-    static let sack = "On the table is an elongated brown sack, smelling of hot peppers."
+    /// `SANDWICH-BAG`'s `FDESC`; the sack has no `TEXT`, so `EXAMINE` is the
+    /// engine's stock line. (#514)
+    static let sackFirstSight = "On the table is an elongated brown sack, smelling of hot peppers."
 
     static let garlic = "A single clove of garlic, papery and pungent."
 
-    static let lunch = "A hot pepper sandwich is here."
+    /// `LUNCH`'s `LDESC`, the only line the source gives the sandwich. It
+    /// prints from inside the sack, which the room listing reaches because
+    /// this game's sack starts on the kitchen floor rather than on the table.
+    static let lunchFirstSight = "A hot pepper sandwich is here."
 
-    static let bottle = """
-        A bottle is sitting on the table.
-        """
+    /// `BOTTLE`'s `FDESC`. (#514)
+    static let bottleFirstSight = "A bottle is sitting on the table."
 
     static let water = "A quantity of ordinary water."
 
@@ -70,7 +74,8 @@ extension Prose {
         A burned-out lamp won't light.
         """
 
-    static let sword = """
+    /// `SWORD`'s `FDESC`. (#514)
+    static let swordFirstSight = """
         Above the trophy case hangs an elvish sword of great antiquity.
         """
 
@@ -100,9 +105,11 @@ extension Prose {
         This is the attic. The only exit is a stairway leading down.
         """
 
-    static let rope = "A large coil of rope is lying in the corner."
+    /// `ROPE`'s `FDESC`. (#514)
+    static let ropeFirstSight = "A large coil of rope is lying in the corner."
 
-    static let knife = "On a table is a nasty-looking knife."
+    /// `KNIFE`'s `FDESC`. (#514)
+    static let knifeFirstSight = "On a table is a nasty-looking knife."
 
     static let cellar = """
         You are in a dark and damp cellar with a narrow passageway leading

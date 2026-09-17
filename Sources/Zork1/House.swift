@@ -68,7 +68,7 @@ struct ZorkHouse: GameContent {
         // (#407) The listing line names hot peppers; the pepper nouns are the
         // sack's smell, not a thing apart.
         synonyms("peppers", "pepper")
-        description(Prose.sack)
+        firstSight(Prose.sackFirstSight)
         container
         openable
         startsOpen
@@ -82,13 +82,13 @@ struct ZorkHouse: GameContent {
 
     let lunch = Item {
         name("lunch")
-        description(Prose.lunch)
+        firstSight(Prose.lunchFirstSight)
     }
 
     let bottle = Item {
         name("glass bottle")
         adjectives("glass")
-        description(Prose.bottle)
+        firstSight(Prose.bottleFirstSight)
         container
         openable
         transparent
@@ -179,7 +179,7 @@ struct ZorkHouse: GameContent {
     let sword = Item {
         name("elvish sword")
         adjectives("elvish")
-        description(Prose.sword)
+        firstSight(Prose.swordFirstSight)
         trait(.weapon, true)
         trait(.weaponStrength, 3)  // a keen elvish blade — best of the hero's arms
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
@@ -265,13 +265,13 @@ struct ZorkHouse: GameContent {
     let rope = Item {
         name("coil of rope")
         adjectives("coil")
-        description(Prose.rope)
+        firstSight(Prose.ropeFirstSight)
     }
 
     let knife = Item {
         name("nasty knife")
         adjectives("nasty")
-        description(Prose.knife)
+        firstSight(Prose.knifeFirstSight)
         trait(.weapon, true)
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }

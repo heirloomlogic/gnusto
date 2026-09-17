@@ -1,7 +1,7 @@
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// Zork 1's prose, where prose is the subject rather than the mechanic behind
@@ -239,6 +239,132 @@ struct Zork1ProseTests {
         #expect(turnOutput(of: "push leaves", in: transcript).contains("grating is revealed"))
         // And `grate` is a noun at last: `SYNONYM GRATE GRATING`, undeclared.
         #expect(turnOutput(of: "x grate", in: transcript).contains("A sturdy iron grating"))
+    }
+
+    /// **The sweep, and the only assertion in this section that cannot go
+    /// stale.** #350 fixed nine items of this class and guarded them by naming
+    /// them; #514 then found eight more, because a guard that names items sees
+    /// only the items it names. This one derives its subjects from the built
+    /// game instead: every item's examine text, checked for a sentence that
+    /// asserts *where the thing is*. Such a sentence is a listing line, belongs
+    /// on `firstSight(…)`, and lies the moment the player picks the thing up.
+    @Test func noZork1ItemExaminesToASentenceAboutWhereItIs() throws {
+        let (definition, _) = try Bootstrap.build(Zork1())
+
+        /// Fixed to its chain and never carried, so "At the end of the chain is
+        /// a basket." is true of it wherever the chain hangs. The original
+        /// splits it into `LOWERED-BASKET` and `RAISED-BASKET` for the same
+        /// reason; this port uses one item and a stand-in.
+        let fixedToTheScenery: Set<String> = ["basket", "basketStandin"]
+
+        // Two shapes: a sentence ending "… is here.", and one that opens with a
+        // place and then puts the thing in it — "On the table is a sack.",
+        // "Above the trophy case hangs a sword.", "Beside the skeleton is a
+        // knife." The second needs the verb list because the source writes the
+        // inversion several ways.
+        let locative = try Regex(
+            #"(?i)\bis here\.|\bis (lying|sitting|suspended|hanging)\b"#
+                + #"|^(on|above|at the end of|beside|from|in) (the|a|an) .+\b(is|are|hangs|stands|lies|sits)\b"#
+        )
+
+        let offenders = definition.items
+            .filter { item in
+                !item.value.isActor
+                    && !fixedToTheScenery.contains { item.key.raw.hasSuffix($0) }
+            }
+            .filter { $0.value.descriptionTexts.contains { $0.contains(locative) } }
+            .keys.sorted()
+
+        #expect(offenders.isEmpty, "these examine texts are listing lines: \(offenders)")
+    }
+
+    /// The same class again, in the house (#514). `SANDWICH-BAG`, `BOTTLE`,
+    /// `ROPE`, `KNIFE` and `SWORD` carry an `FDESC` and `LUNCH` an `LDESC`; all
+    /// six were declared as the examine text, so the Kitchen, the Living Room
+    /// and the Attic listed their contents in the engine's stock words while
+    /// `x sack` answered, from the player's own hand, with a sentence about a
+    /// table two rooms away. No Zork 1 object has a `TEXT` property, so the
+    /// examine channel is the stock line.
+    @Test func theHousesListingLinesListAndExamineFallsThrough() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // → Kitchen
+                "take sack", "take bottle",
+                "up",  // → Attic
+                "take rope", "take knife",
+                "down", "west", "take sword",  // → Kitchen → Living Room
+                "x sack", "x bottle", "x rope", "x knife", "x sword", "x lunch",
+            ])
+
+        let livingRoom = turnOutput(ofLast: "west", in: transcript)
+        #expect(livingRoom.contains("Above the trophy case hangs an elvish sword of great antiquity."))
+
+        let kitchen = turnOutput(of: "west", in: transcript)
+        #expect(kitchen.contains("On the table is an elongated brown sack, smelling of hot peppers."))
+        #expect(kitchen.contains("A bottle is sitting on the table."))
+        #expect(kitchen.contains("A hot pepper sandwich is here."))
+
+        let attic = turnOutput(of: "up", in: transcript)
+        #expect(attic.contains("A large coil of rope is lying in the corner."))
+        #expect(attic.contains("On a table is a nasty-looking knife."))
+
+        // In hand, each answers about itself — which here means the stock line,
+        // and never the sentence that just listed it in a room two floors down.
+        for (command, noun, listing) in [
+            ("x sack", "brown sack", "On the table is"),
+            ("x bottle", "glass bottle", "sitting on the table"),
+            ("x rope", "coil of rope", "in the corner"),
+            ("x knife", "nasty knife", "On a table is"),
+            ("x sword", "elvish sword", "Above the trophy case"),
+            ("x lunch", "lunch", "sandwich is here"),
+        ] {
+            let answer = turnOutput(of: command, in: transcript)
+            #expect(answer.contains("There's nothing special about the \(noun)."))
+            #expect(!answer.contains(listing))
+        }
+    }
+
+    /// The two treasures of the same class (#514). `PAINTING` and `SCEPTRE` each
+    /// carry both an `FDESC` and an `LDESC`; the `LDESC` had been declared as the
+    /// examine text, so a banked painting still claimed to be hanging in the
+    /// Gallery. The `FDESC` is the listing line and the examine channel is the
+    /// stock sentence, as in the original.
+    @Test func theTreasuresListingLinesListAndExamineFallsThrough() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Zork1Tests.toGallery + ["take painting", "x painting"],
+            // Seed 1, as in `cellarLoopByLanternLight`: the thief keeps away.
+            seed: 1)
+
+        let gallery = turnOutput(ofLast: "east", in: transcript)
+        #expect(gallery.contains("for on the far wall is a painting of unparalleled beauty"))
+
+        let examined = turnOutput(of: "x painting", in: transcript)
+        #expect(examined.contains("There's nothing special about the painting."))
+        #expect(!examined.contains("neglected genius"))
+    }
+
+    /// The sceptre half of the pair, which needs the temple route.
+    @Test func theSceptreIsListedInTheCoffinAndExaminesToTheStockLine() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Zork1TempleTests.toDomeRoom + [
+                "tie rope to railing", "down",  // → Torch Room
+                "south", "east",  // → Temple → Egyptian Room
+                "open coffin", "look",
+                "take sceptre", "x sceptre",
+            ],
+            seed: 0)
+
+        // The coffin's contents are listed in the sceptre's own sentence.
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("A sceptre, possibly that of ancient Egypt itself, is in the coffin."))
+
+        let examined = turnOutput(of: "x sceptre", in: transcript)
+        #expect(examined.contains("There's nothing special about the sceptre."))
+        #expect(!examined.contains("tapering to a sharp point, is here"))
     }
 
     /// `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): from

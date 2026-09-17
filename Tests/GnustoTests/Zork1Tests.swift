@@ -93,15 +93,20 @@ struct Zork1Tests {
     /// chimney into the Kitchen — runs by lantern light, exercising the
     /// reveal-on-descent, the lit `dark`-trait rooms, and the one-way
     /// chimney in a single walk.
+    /// Into the house, lantern lit, down the trap door and round to the Gallery.
+    /// Shared with `Zork1ProseTests`, which asserts the painting's two channels
+    /// from the same frame.
+    static let toGallery: [String] = [
+        "south", "east", "open window", "west", "west",
+        "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down",
+        "south", "east",
+    ]
+
     @Test func cellarLoopByLanternLight() async throws {
         let transcript = try await play(
             Zork1(),
-            [
-                "south", "east", "open window", "west", "west",
-                "take lantern", "turn on lantern",
-                "push rug", "open trap door", "down",
-                "south", "east", "take painting", "north", "up",
-            ],
+            Self.toGallery + ["take painting", "north", "up"],
             // Seed 1, recorded: the thief never crosses your path. Taking the
             // painting summons him, and the lantern is as much his to take — one
             // theft and these lit rooms go pitch black. 20 seeds in 5,000.

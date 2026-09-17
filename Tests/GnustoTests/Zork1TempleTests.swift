@@ -18,7 +18,7 @@ import Testing
 struct Zork1TempleTests {
     /// Enter the house, take the sword, lantern (lit), and the attic rope, kill
     /// the troll, and press east into the Round Room.
-    private static let toRoundRoom: [String] = [
+    static let toRoundRoom: [String] = [
         "south", "east", "open window", "west",
         "up", "take rope", "down",
         "west",
@@ -31,7 +31,7 @@ struct Zork1TempleTests {
 
     /// From the Round Room, southeast into the Engravings Cave and east to the
     /// Dome Room — the mouth of the temple region, rope in hand.
-    private static let toDomeRoom: [String] =
+    static let toDomeRoom: [String] =
         toRoundRoom + ["southeast", "east"]
 
     /// Detour through the hub to the Dam Lobby for the matchbook, then down the

@@ -35,7 +35,12 @@ Zork 1's across is the mistake it exists to prevent.
   it means the item declares `firstSight(…)` and no `description(…)`. Wiring
   the listing line to both channels made `x pot of gold` answer *"At the end
   of the rainbow is a pot of gold."* while the pot was in the player's hands.
-  `ListingLineChannelTests` is the standing guard. (#350)
+  The guard is wherever each item's own region suite walks past it — the rusty
+  knife and the burned-out lantern in `Zork1MazeTests`, and so on. (#350; this
+  entry previously named a `ListingLineChannelTests` suite that has never
+  existed, which is how the eight in #514 went unnoticed.)
+- **Eight more of the same class, in the house, the Gallery and the Egyptian Room.** The brown sack, the glass bottle, the coil of rope, the nasty knife and the elvish sword each carry an `FDESC`, the lunch an `LDESC`, and the painting and the sceptre both; every one of those eight sentences had been declared as the item's `description(…)`, so `x sack` answered a player holding it with *"On the table is an elongated brown sack, smelling of hot peppers."* and the Kitchen, the Living Room and the Attic listed their contents in the engine's stock words instead of the source's. No object in `1dungeon.zil` has a `TEXT` property at all, so all eight now declare `firstSight(…)` and no `description(…)`, and `EXAMINE` falls through to `V-EXAMINE`'s stock line as the original does. The standing guard this time is a **derived sweep** rather than a list of names — `noZork1ItemExaminesToASentenceAboutWhereItIs` walks every item of the built game and fails on an examine text shaped like a listing line, which is what #350's per-item guard could not do. (#514)
+- **Two `LDESC`s are withdrawn rather than reproduced, because this engine has no slot for them.** `PAINTING` and `SCEPTRE` each carry an `FDESC` *and* an `LDESC`: the original prints the `FDESC` until the object is handled and the `LDESC` for every listing after that. `firstSight(…)` is the first half only, and the second half is the engine's own *"There is a painting here."* So *"A painting by a neglected genius is here."* and *"An ornamented sceptre, tapering to a sharp point, is here."* are no longer declared anywhere. The sceptre's `FDESC` — *"A sceptre, possibly that of ancient Egypt itself, is in the coffin…"* — is new to the port, and it is the line for the slot it now fills: the sceptre as the opened coffin first shows it. (#514)
 - **The troll keeps the pairing, because he is a person.** `TROLL-FCN`'s
   `<VERB? EXAMINE>` branch answers with `<GETP ,TROLL ,P?LDESC>` by the
   source's own choice, and an actor's listing line is standing state reprinted
