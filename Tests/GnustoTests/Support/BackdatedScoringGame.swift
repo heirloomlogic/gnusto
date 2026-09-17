@@ -15,6 +15,11 @@ import Gnusto
 /// that is already reconciling it, which is why this is a second fixture rather
 /// than a second verb on the first.
 ///
+/// The score and the two register keys are written by hand, so this is a
+/// stand-in for a pre-change save rather than a file an old build produced:
+/// it asserts what the old keys do to the current build, not that an older
+/// build wrote exactly these.
+///
 /// `@testable` because ``Scoring/claimed`` and ``Scoring/cased`` are the
 /// plugin's own storage and there is no public way to seed them.
 struct LegacyVaultGame: Game {
