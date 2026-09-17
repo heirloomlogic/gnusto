@@ -129,16 +129,66 @@ extension JSONValue {
 }
 
 extension JSONValue: Codable {
+    /// How many containers deep a document may nest before it is refused.
+    ///
+    /// This type is recursive and its input comes from a remote party, so
+    /// without a cap the recursion below is the client's to choose: a frame of
+    /// a few hundred nested brackets overflowed the cooperative pool thread's
+    /// stack and killed the process, taking every open session with it and
+    /// telling the client nothing — the precise outcome the no-trap rule at
+    /// the top of ``MCPServer`` exists to forbid. `JSONDecoder` has a limit of
+    /// its own, but it is 512, which is well past where this overflowed.
+    ///
+    /// Depth and length are separate properties and want separate caps:
+    /// `LineBuffer.maxPendingBytes` is 64 MiB, and nesting costs two bytes a
+    /// level, so the frame that killed the process was under a thousandth of a
+    /// percent of what that one allows. It defends the buffer, not the stack.
+    ///
+    /// 32 is far above any frame this protocol carries. The deepest measured
+    /// is `survey`'s `outputSchema` in the `tools/list` response, where a
+    /// room's exits carry an enum of kind strings nested under properties of
+    /// properties: 14 containers deep, 18 short of this cap. The deepest
+    /// `inputSchema` measured, `vocabulary`'s, is 8. A real frame therefore
+    /// cannot come near this, which is the property that makes the cap safe
+    /// to state as a constant rather than tune.
+    static let maxDepth = 32
+
     /// Decodes whichever of the seven shapes the document holds.
     ///
     /// Order matters at exactly one place: `Bool` is tried before `Int`, and
     /// `Int` before `Double`, so `true` stays a boolean and `1` stays a whole
     /// number rather than becoming `1.0` in an echoed request id.
     ///
+    /// The ``maxDepth`` check sits on the first branch that would *descend*
+    /// rather than at the top, so a scalar never reads `codingPath` at all —
+    /// and `codingPath` is built on demand, so where it is read is a question
+    /// worth asking. Scalars are almost everything in a frame: the array of
+    /// commands a `replay` carries is one container holding thousands of
+    /// strings, and a `tools/list` response is the densest in containers
+    /// anything here sends. Decoding both 2,000 times, with the check and
+    /// without it, put the two inside each other's run-to-run noise and not
+    /// always in the same order, so the placement is the cheap one and the
+    /// remaining cost does not measure.
+    ///
+    /// A note on the message, which is deliberately not load-bearing: the
+    /// cascade of `try?` above swallows whatever a nested value threw, so the
+    /// error that finally leaves a too-deep document is the generic one below
+    /// rather than the depth complaint. That costs nothing, because
+    /// ``MCPServer/handle(line:)`` renders every decoding failure as the same
+    /// `-32700`, and a remote party is told no more about why its frame was
+    /// refused either way.
+    ///
     /// - Parameter decoder: the decoder to read from.
-    /// - Throws: `DecodingError.dataCorrupted` for a value that is none of
-    ///   them, which the standard decoders cannot actually produce.
+    /// - Throws: `DecodingError.dataCorrupted` for a value that is none of the
+    ///   seven, and for a document nested past ``maxDepth``.
     init(from decoder: any Decoder) throws {
+        func notAValue(_ why: String) -> DecodingError {
+            DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: why))
+        }
+
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self = .null
@@ -150,15 +200,14 @@ extension JSONValue: Codable {
             self = .double(value)
         } else if let value = try? container.decode(String.self) {
             self = .string(value)
+        } else if decoder.codingPath.count >= Self.maxDepth {
+            throw notAValue("JSON nested deeper than \(Self.maxDepth) containers")
         } else if let value = try? container.decode([JSONValue].self) {
             self = .array(value)
         } else if let value = try? container.decode([String: JSONValue].self) {
             self = .object(value)
         } else {
-            throw DecodingError.dataCorrupted(
-                DecodingError.Context(
-                    codingPath: decoder.codingPath,
-                    debugDescription: "not a JSON value"))
+            throw notAValue("not a JSON value")
         }
     }
 
