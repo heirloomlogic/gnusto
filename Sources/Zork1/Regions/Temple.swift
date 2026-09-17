@@ -156,7 +156,7 @@ struct ZorkTemple: GameContent {
         name("sceptre")
         adjectives("ornate", "gold", "sharp")
         synonyms("scepter", "sceptre", "staff", "wand")
-        description(Prose.sceptre)
+        firstSight(Prose.sceptreFirstSight)
         trait(.sharp, true)  // its point holes the river boat — see ZorkRiver
         trait(.takeValue, 4)  // find
         trait(.depositValue, 6)  // case
