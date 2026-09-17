@@ -109,20 +109,20 @@ struct MultiObjectTests {
 
     // MARK: - What `take all` may offer (#267)
 
-    /// The question `TAKE ALL` asks is "what could I pick up here", not "what
-    /// can I name" — and both directions of that walk in one turn. The water is
-    /// in the canteen and the canteen is in your hand, so offering it would
-    /// only earn a refusal by name; the wafer is a level down inside a crate
-    /// the player is *not* carrying, and stays fair game.
-    @Test func takeAllSkipsWhatYouCarryAtAnyDepthAndNotWhatYouDont() async throws {
-        let transcript = try await play(NestedAllGame(), ["take all", "look in canteen"])
+    /// The question `TAKE ALL` asks is "what could I pick up off the floor
+    /// here", not "what can I name". The water is in the canteen and the
+    /// canteen is in your hand; the wafer is a level down inside a crate. Both
+    /// are packed, and `all` does not unpack anything (#267, #510).
+    @Test func takeAllSweepsTheFloorAndNotWhatIsPackedOnIt() async throws {
+        let transcript = try await play(NestedAllGame(), ["take all", "look in crate"])
         let taking = turnOutput(of: "take all", in: transcript)
         #expect(taking.contains("brass key: Taken."))
-        #expect(taking.contains("dry wafer: Taken."))
+        #expect(taking.contains("wooden crate: Taken."))
+        #expect(!taking.contains("dry wafer"))
         #expect(!taking.contains("water"))
         #expect(!taking.contains("canteen:"))
         // Still where it was: nothing tried to move it.
-        #expect(turnOutput(of: "look in canteen", in: transcript).contains("quantity of water"))
+        #expect(turnOutput(of: "look in crate", in: transcript).contains("dry wafer"))
     }
 
     /// A shut transparent case shows its contents without letting the player
@@ -134,10 +134,23 @@ struct MultiObjectTests {
         #expect(turnOutput(of: "examine medal", in: transcript).contains("bronze medal"))
     }
 
-    /// Opening the case is the whole difference — the same medal, now reachable.
-    @Test func openingTheGlassMakesItsContentsTakable() async throws {
-        let transcript = try await play(NestedAllGame(), ["open showcase", "take all"])
-        #expect(turnOutput(of: "take all", in: transcript).contains("bronze medal: Taken."))
+    /// Naming the container is how you sweep one: `take all from the crate`
+    /// empties the crate and nothing else, and `from` reads a carried container
+    /// as readily as one standing here. Opening the case is still the whole
+    /// difference — a shut one has nothing in reach to sweep.
+    @Test func takeAllFromAContainerSweepsThatContainerInstead() async throws {
+        let transcript = try await play(
+            NestedAllGame(),
+            [
+                "take all from crate", "take all from canteen", "take all from showcase",
+                "open showcase", "take all from showcase",
+            ])
+        let crate = turnOutput(of: "take all from crate", in: transcript)
+        #expect(crate.contains("dry wafer: Taken."))
+        #expect(!crate.contains("brass key"))
+        #expect(turnOutput(of: "take all from canteen", in: transcript).contains("quantity of water: Taken."))
+        #expect(!turnOutput(of: "take all from showcase", in: transcript).contains("medal"))
+        #expect(turnOutput(ofLast: "take all from showcase", in: transcript).contains("bronze medal: Taken."))
     }
 
     /// Lifting from somebody else's hands is a plugin's job (stealing). The
@@ -159,13 +172,26 @@ struct MultiObjectTests {
         #expect(turnOutput(of: "look in canteen", in: transcript).contains("quantity of water"))
     }
 
-    /// The subtraction is of the live inventory, not of a starting one — and
-    /// it is the *carrying* that excluded the water, not the canteen. Put the
-    /// canteen down and both come back, exactly as the crate's wafer does.
+    /// The sweep reads the live floor, not a starting one: put the canteen down
+    /// and `all` picks it up again — with the water still inside it.
     @Test func whatYouPutDownBecomesTakableAgain() async throws {
-        let transcript = try await play(NestedAllGame(), ["drop canteen", "take all"])
+        let transcript = try await play(NestedAllGame(), ["drop canteen", "take all", "look in canteen"])
         let taking = turnOutput(of: "take all", in: transcript)
         #expect(taking.contains("tin canteen: Taken."))
-        #expect(taking.contains("quantity of water: Taken."))
+        #expect(!taking.contains("quantity of water: Taken."))
+        #expect(turnOutput(of: "look in canteen", in: transcript).contains("quantity of water"))
+    }
+
+    /// The round trip, which is the whole of #510: TAKE ALL and DROP ALL are
+    /// each other's inverse, so two commands leave the room exactly as it was
+    /// rather than emptying every open container onto the floor.
+    @Test func takeAllThenDropAllLeavesEveryContainerPacked() async throws {
+        let transcript = try await play(
+            NestedAllGame(), ["take all", "drop all", "look in crate", "look in canteen"])
+        let dropping = turnOutput(of: "drop all", in: transcript)
+        #expect(dropping.contains("wooden crate: Dropped."))
+        #expect(!dropping.contains("dry wafer"))
+        #expect(turnOutput(of: "look in crate", in: transcript).contains("dry wafer"))
+        #expect(turnOutput(of: "look in canteen", in: transcript).contains("quantity of water"))
     }
 }

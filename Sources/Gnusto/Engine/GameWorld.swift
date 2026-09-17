@@ -714,24 +714,36 @@ public actor GameWorld {
         switch multiple {
         case .all where intent == .take:
             let index = state.containment()
-            // The question TAKE ALL asks is "what could I pick up here", and
-            // that is the *reachable* set, not the nameable one: a shut glass
-            // case shows its medal and the troll's axe is plainly in his hands,
-            // but offering either only earns a refusal by name (#267). A
-            // `reach { … }` veto is deliberately still offered — `reachableItems`
-            // is containment-only, and a rule that says "the length of the
-            // gallery away" wants to say it, not to vanish the thing.
+            // TAKE ALL sweeps one level, the floor of the room the player is
+            // standing in, because DROP ALL puts things back on that same floor
+            // and the pair has to be a round trip. Sweeping the whole reachable
+            // closure instead took the sack *and* the garlic inside it, and two
+            // commands later the sack was empty and its contents were loose on
+            // the ground — a rearrangement nobody asked for (#510). What sits
+            // inside a container or on a table here is taken by name, or by
+            // `take all from <it>` below.
+            //
+            // `from`/`off`/`out of` names the thing to sweep instead: its
+            // surface items and its contents, whether it is standing here or in
+            // the player's hands.
+            let source =
+                if let indirect = parsed.indirectObject {
+                    index.children(of: indirect)
+                } else {
+                    index.inRoom[state.playerLocation] ?? []
+                }
+            // Intersected with the *reachable* set, not the nameable one: a
+            // hidden item that has not been revealed lies in the room without
+            // being on offer, and a shut glass case shows its medal without
+            // letting anyone touch it (#267). A `reach { … }` veto is
+            // deliberately still offered — `reachableItems` is containment-only,
+            // and a rule that says "the length of the gallery away" wants to say
+            // it, not to vanish the thing.
             let reachable = Visibility.reachableItems(
                 at: state.playerLocation, definition: definition, state: state, index: index)
-            // Subtract the player's inventory to *any* depth. The direct
-            // children are not enough: the water is in the bottle and the
-            // bottle is in your hand, and ALL has nothing to add to that.
-            // A TAKE ALL policy, not an impossibility — `take water` by name
-            // still runs, and is still the game's own business to answer.
-            let carried = index.closure(under: index.held[.player] ?? [])
             objects = inDisplayOrder(
-                reachable.filter {
-                    definition.items[$0]?.isTakable == true && !carried.contains($0)
+                source.filter {
+                    reachable.contains($0) && definition.items[$0]?.isTakable == true
                 })
         case .all:
             // DROP/PUT ALL is the opposite question and keeps the opposite
