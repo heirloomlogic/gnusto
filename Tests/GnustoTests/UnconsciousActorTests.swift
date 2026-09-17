@@ -15,8 +15,16 @@ struct UnconsciousActorTests {
     // MARK: - The reported bug
 
     /// The bug from the field: battered senseless on one line, lifting the
-    /// chalice out of your hand on the next. He is down for exactly the two
-    /// turns his counter-attack skips, and lifts nothing in either of them.
+    /// chalice out of your hand on the next. `Actor.isUnconscious` covers two
+    /// turns — the knockout and the one after it — and he lifts nothing in
+    /// either.
+    ///
+    /// The third turn is the seam between the two plugins, and this test pins
+    /// which way it falls. Melee's daemon spends that turn getting him up and
+    /// clears the flag as it goes; the theft daemon is named later, fires later
+    /// in the same tick, and reads a man already on his feet. So he skips one
+    /// counter-attack more than he skips thefts. `MeleeCombat.Ledger` records
+    /// the same gap from the other side. (#508)
     @Test func theKnockedOutVillainLiftsNothingWhileHeIsDown() async throws {
         let transcript = try await play(
             CutpurseGame(),
@@ -39,6 +47,8 @@ struct UnconsciousActorTests {
         #expect(!whileDown.contains("He lifts the"))
 
         // And he does resume — the guard suppresses theft, it doesn't end it.
+        // This is the wake turn, and the theft daemon runs after melee has
+        // cleared the flag on it.
         #expect(turnOutput(of: "wait", in: transcript).contains("He lifts the"))
     }
 

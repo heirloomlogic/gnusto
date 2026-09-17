@@ -223,6 +223,62 @@ struct MeleeCombatTests {
         #expect(extract(afterSave).contains { $0.contains("Defeated: true.") })
     }
 
+    /// The knockout's whole span (#508). The countdown rests at zero for the
+    /// last turn the villain is down, so both halves of "he is out cold" have
+    /// to be read off the ledger entry's *presence* and never its count.
+    ///
+    /// Seed 0 in `StunLabGame`: the golem strikes first on the bare `take bar`
+    /// turn — that line is the control, and it says this golem strikes whenever
+    /// he is able — then the first swing knocks him down. The three ticks that
+    /// follow are his, and he spends every one of them on the floor.
+    @Test func anUnconsciousVillainLandsNoBlowOnAnyTurnHeIsDown() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "attack golem", "check", "check", "check", "quit"],
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                // He is willing and able before the knockout...
+                "The golem swipes and catches nothing.",
+                "The golem drops to its knees and stays there.",
+                // ...and unconscious for two probed turns after it.
+                "Out cold: true.",
+                "Out cold: true.",
+                "Out cold: false.",
+            ])
+
+        // Everything from the knockout up to the turn he is first seen back on
+        // his feet: three daemon ticks, and not one of them is a blow.
+        let whileDown = output(
+            before: "Out cold: false.",
+            in: output(after: "stays there", in: transcript))
+        #expect(!whileDown.contains("swipes and catches nothing"))
+        #expect(!whileDown.contains("rakes your forearm"))
+        #expect(!whileDown.contains("brings both fists down"))
+
+        // And the daemon is asleep, not dead: the first tick after he is up
+        // strikes again.
+        let afterWaking = output(after: "Out cold: false.", in: transcript)
+        #expect(afterWaking.contains("The golem swipes and catches nothing."))
+    }
+
+    /// The finishing blow on the turn the stun clears — the turn the player
+    /// spent the knockout to buy. Seed 0 again, one probe turn further in, so
+    /// the swing lands with the countdown resting at zero: `stunned[key] != nil`
+    /// is still true, the table is not rolled, and the blow kills outright.
+    @Test func theFinishingBlowLandsCleanOnTheTurnTheStunClears() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "attack golem", "check", "attack golem", "quit"],
+            seed: 0)
+        let finish = turnOutput(ofLast: "attack golem", in: transcript)
+        #expect(finish.contains("The golem comes apart into wet shards."))
+        // Not a rolled outcome: neither of the table's other survivable lines.
+        #expect(!finish.contains("A flake of clay spins away."))
+        #expect(!finish.contains("The bar rings off the floor."))
+    }
+
     /// The two rows the plugin adds beyond the engine's `attack` stubs. Worth a
     /// test of its own because the failure mode is silent: drop them and `stab`
     /// falls back to "I don't know the word" with nothing red anywhere else —

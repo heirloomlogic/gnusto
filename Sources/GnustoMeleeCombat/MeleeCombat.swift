@@ -150,6 +150,16 @@ public struct MeleeCombat: GameContent {
     /// for the last of those turns. `Actor.isUnconscious` is the same fact
     /// where other plugins can see it; `stun(_:key:turnsLeft:)` writes both.
     ///
+    /// The two are the same fact but not quite the same *span*, and the gap is
+    /// one tick wide. `aggression`'s daemon spends the last of those turns
+    /// getting the villain off the floor, and clears both halves as it does —
+    /// so a plugin whose own daemon is named later in the tick (daemons fire in
+    /// name order) reads `Actor.isUnconscious` as false on a turn melee still
+    /// counts as spent. `GnustoActors`' theft daemon is the live instance:
+    /// `Tests/GnustoTests/UnconsciousActorTests.swift` pins a cutpurse who
+    /// lifts a purse on the turn he gets up. Nothing here decides which span is
+    /// right; it is written down so the difference isn't read as an accident.
+    ///
     /// `engaged` is the source's `FIGHTBIT`: a villain is in it from the blow
     /// that starts the fight — the player's, or his own — until the two of them
     /// are no longer standing in one room. It is the whole of the difference
@@ -280,8 +290,9 @@ public struct MeleeCombat: GameContent {
     /// vanishes), and the actor is removed from play.
     ///
     /// One roll per swing against a per-weapon table (see
-    /// `outcomeCutpoints(weaponStrength:)`). A stunned villain doesn't roll —
-    /// the next blow lands clean.
+    /// `outcomeCutpoints(weaponStrength:)`). A villain whose
+    /// `Actor.isUnconscious` is set doesn't roll — the blow lands clean, on
+    /// every turn he is down, the one he spends coming round included.
     ///
     /// A knockout also sets `Actor.isUnconscious` — see `stun(_:key:turnsLeft:)`.
     /// It is cleared again by the villain's own
@@ -345,7 +356,12 @@ public struct MeleeCombat: GameContent {
             ledger.engaged.insert(key)
 
             var health = ledger.health[key] ?? strength
-            if ledger.stunned[key, default: 0] > 0 {
+            // Membership, not the count. The countdown rests at zero for the
+            // last of the turns he is down, so `> 0` let the finishing blow
+            // roll the ordinary table on that turn — see `stun(_:key:turnsLeft:)`.
+            // `stunned[key] != nil` is the condition `Actor.isUnconscious` is
+            // written from, so the two cannot disagree. (#508)
+            if ledger.stunned[key] != nil {
                 // Finishing the unconscious: no roll, the blow lands clean.
                 stun(actor, key: key, turnsLeft: nil)
                 health = 0
@@ -387,7 +403,10 @@ public struct MeleeCombat: GameContent {
     /// room, and *in a fight*, each end-of-turn tick rolls once — miss ≤ 50,
     /// wound ≤ 85, an outright kill above. `playerStrength` hits end the
     /// player; wounds don't heal this phase. A stunned villain spends his turn
-    /// coming to instead (no roll).
+    /// coming to instead (no roll) — on every turn the ledger holds him,
+    /// including the last one, where he gets up. So a knockout taken with
+    /// `turnsLeft: 2` buys three ticks without a counter-attack: the tick that
+    /// knocked him down and the two he spends on the floor.
     ///
     /// *In a fight* is the source's `FIGHTBIT`. `I-FIGHT` (`1actions.zil:3810`)
     /// has a villain strike only once the player has engaged him or once his own
@@ -462,18 +481,23 @@ public struct MeleeCombat: GameContent {
             // shut — the thief anywhere but his own lair — would otherwise
             // never wake at all. It draws no randomness, so nothing seeded
             // moves by being here.
+            //
+            // An entry at all means he is down, and every turn he is down is a
+            // turn spent on the floor — so this returns whichever way the
+            // ternary goes. Zero is the last of those turns: the counter rests
+            // there rather than clearing, which is what keeps a villain from
+            // waking halfway through it and picking a pocket on the way up, one
+            // daemon over. The zero arm used to clear the stun and then fall
+            // through to the blow, which let him wake and counter-attack in a
+            // single tick — the tick the player spent the knockout to buy.
+            // (#508)
+            //
+            // So this daemon abstains for one tick more than
+            // `Actor.isUnconscious` is set for, since it clears the flag on the
+            // way out of the tick it is still spending. See ``Ledger``.
             if let stunTurns = ledgered.stunned[key] {
-                guard stunTurns == 0 else {
-                    // Still out. He spends the turn coming to.
-                    stun(actor, key: key, turnsLeft: stunTurns - 1)
-                    return
-                }
-                // Zero is the last of the turns he spends down — the counter
-                // rests there rather than clearing, so that "unconscious"
-                // lasts exactly as long as the turns he skips. Without it he
-                // woke halfway through the last one and picked a pocket on the
-                // way up, which is this bug again, one daemon over.
-                stun(actor, key: key, turnsLeft: nil)
+                stun(actor, key: key, turnsLeft: stunTurns == 0 ? nil : stunTurns - 1)
+                return
             }
             // The host's gate: a false gate is a quiet turn, no draw.
             guard condition() else { return }

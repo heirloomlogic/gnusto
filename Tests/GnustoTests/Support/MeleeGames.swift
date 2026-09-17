@@ -489,3 +489,77 @@ struct CutpurseGame: Game {
             announcement: .naming { "He lifts \($0) clean out of your hand." })
     }
 }
+
+/// Fixture for the knockout's whole span (#508). One room, a golem with
+/// `strength: 20` so an ordinary wound never finishes him, a baseline weapon,
+/// and `playerStrength: 50` so an ordinary counter-attack never finishes the
+/// player — what is left ending a run early is the outcome table's outright-kill
+/// branch at either end, which is what the pinned seeds are chosen against.
+///
+/// `strikesFirst` stays at the default 100 and the golem is engaged from the
+/// player's first swing, so every tick he is able to strike on is a tick he
+/// does strike on. That is what makes a *quiet* tick evidence: a turn with no
+/// golem line in it is a turn the stun guard held, not a roll that went the
+/// player's way.
+///
+/// `check` is the probe. It is an ordinary custom verb, so it costs a turn and
+/// the daemon ticks behind it — which is the point, since the turns being
+/// counted are daemon ticks.
+struct StunLabGame: Game {
+    let title = "Stun Lab"
+    let intro = "A chalk circle, a clay golem, and an iron bar."
+
+    let lab = Location {
+        name("Lab")
+        description("A chalk circle scuffed down to the floorboards.")
+    }
+
+    let golem = Actor {
+        name("clay golem")
+        adjectives("clay")
+        description("Fired clay, badly, and still upright.")
+    }
+
+    let bar = Item {
+        name("iron bar")
+        adjectives("iron")
+        trait(.weapon, true)
+    }
+
+    let melee = MeleeCombat()
+
+    var content: GameContents { melee }
+
+    var map: WorldMap {
+        player.starts(in: lab)
+        golem.starts(in: lab)
+        bar.starts(in: lab)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("check", intent: Intent("check"))
+    }
+
+    var rules: Rules {
+        melee.villain(
+            golem, key: "golem", strength: 20,
+            prose: MeleeCombat.VillainProse(
+                miss: ["The bar rings off the floor."],
+                wound: ["A flake of clay spins away."],
+                knockout: "The golem drops to its knees and stays there.",
+                death: "The golem comes apart into wet shards."))
+        world.before(Intent("check")) {
+            try reply("Out cold: \(golem.isUnconscious).")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        melee.aggression(
+            of: golem, key: "golem", named: "melee.golem",
+            playerStrength: 50,
+            prose: MeleeCombat.AggressionProse(
+                miss: ["The golem swipes and catches nothing."],
+                wound: ["The golem rakes your forearm."],
+                playerDeath: "The golem brings both fists down at once."))
+    }
+}
