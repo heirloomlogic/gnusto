@@ -725,17 +725,21 @@ public actor GameWorld {
             //
             // `from`/`off`/`out of` names the thing to sweep instead: its
             // surface items and its contents, whether it is standing here or in
-            // the player's hands.
+            // the player's hands. The indirect slot is a *source* here and a
+            // *destination* for `put all in the sack`, which is why the
+            // subtraction further down reads it only for `.putIn`/`.putOn`:
+            // TAKE's rows spell no destination, so the two never meet.
             let source =
                 if let indirect = parsed.indirectObject {
                     index.children(of: indirect)
                 } else {
                     index.inRoom[state.playerLocation] ?? []
                 }
-            // Intersected with the *reachable* set, not the nameable one: a
-            // hidden item that has not been revealed lies in the room without
-            // being on offer, and a shut glass case shows its medal without
-            // letting anyone touch it (#267). A `reach { … }` veto is
+            // Intersected with the *reachable* set, not the nameable one. On
+            // the floor sweep that is the revealed test: a `hidden` item lies
+            // in the room without being on offer until something reveals it.
+            // On the `from` sweep it is also what keeps a shut glass case from
+            // handing over the medal it shows (#267). A `reach { … }` veto is
             // deliberately still offered — `reachableItems` is containment-only,
             // and a rule that says "the length of the gallery away" wants to say
             // it, not to vanish the thing.
