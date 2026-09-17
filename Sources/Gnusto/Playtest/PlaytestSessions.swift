@@ -471,13 +471,25 @@ actor PlaytestSessions {
         // a round's eight staged sessions is eight calls where it was seventy-two.
         let already = Set(SaveStore.existingSaveNames(in: destination))
         var copied: [String] = []
-        for slot in slots where !already.contains(slot) {
-            try FileManager.default.copyItem(
-                at: SaveStore.resolve(slot, in: source),
-                to: try SaveStore.resolveForWrite(slot, in: destination))
+        var restorable: [String] = []
+        for slot in slots {
+            if already.contains(slot) {
+                restorable.append(slot)
+                continue
+            }
+            // `existingSaveNames` lists only names the save prompt resolves back
+            // to themselves, so neither of these is nil. A slot that somehow was
+            // stays out of *both* lists rather than only out of `copied`, which
+            // is what keeps `restorable`'s promise true by construction: nothing
+            // is reported restorable that was not staged.
+            guard let from = SaveStore.resolve(slot, in: source),
+                let to = try SaveStore.resolveForWrite(slot, in: destination)
+            else { continue }
+            try FileManager.default.copyItem(at: from, to: to)
             copied.append(slot)
+            restorable.append(slot)
         }
-        return StagedSlots(from: source, copied: copied, restorable: slots)
+        return StagedSlots(from: source, copied: copied, restorable: restorable)
     }
 
     /// Whether a URL names a directory that exists.

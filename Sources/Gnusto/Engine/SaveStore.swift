@@ -28,27 +28,35 @@ enum SaveStore {
         directory.appendingPathComponent(historyFileName)
     }
 
-    /// Resolves a player's answer to the save/restore prompt into a file URL.
-    /// Pure — it never touches the filesystem, so it is safe on the read path.
+    /// Resolves a player's answer to the save/restore prompt into a file URL,
+    /// or `nil` when the answer names no usable slot. Pure — it never touches
+    /// the filesystem, so it is safe on the read path.
     ///
     /// - A **bare name** (no `/`, no leading `~`) becomes
-    ///   `directory/<sanitized name>.gnusto`. Sanitizing also neutralizes path
-    ///   tricks like `..`, so a slot name can never escape `directory`.
+    ///   `directory/<name>.gnusto`, the name run through
+    ///   ``FilesystemName/component(_:)``. That keeps Unicode letters and
+    ///   numbers, so two Japanese slot names are two files, and it neutralizes
+    ///   path tricks like `..`, so a slot name can never escape `directory`.
+    /// - A bare name with **nothing usable in it** — all punctuation, or all
+    ///   dots — is `nil`. It used to become the literal slot `save`, which
+    ///   meant two names that shared nothing but being unusable overwrote each
+    ///   other in silence. The caller has a player in front of it and refuses.
     /// - An **explicit path** (contains `/`, or starts with `~`) is expanded and
     ///   returned as-is, unchanged from the classic behavior.
     ///
     /// - Parameters:
     ///   - answer: the raw line the player typed at the prompt.
     ///   - directory: the saves directory bare names resolve under.
-    /// - Returns: the file URL to read or write.
-    static func resolve(_ answer: String, in directory: URL) -> URL {
+    /// - Returns: the file URL to read or write, or `nil` for an unusable name.
+    static func resolve(_ answer: String, in directory: URL) -> URL? {
         let trimmed = answer.trimmingCharacters(in: .whitespaces)
         if isExplicitPath(trimmed) {
             return URL(fileURLWithPath: (trimmed as NSString).expandingTildeInPath)
         }
+        guard let slot = FilesystemName.component(trimmed) else { return nil }
         return
             directory
-            .appendingPathComponent(sanitize(trimmed))
+            .appendingPathComponent(slot)
             .appendingPathExtension(fileExtension)
     }
 
@@ -62,16 +70,21 @@ enum SaveStore {
     ///   - answer: the raw line the player typed at the prompt.
     ///   - directory: the saves directory bare names resolve under.
     /// - Throws: if the saves directory can't be created.
-    /// - Returns: the file URL to write.
-    static func resolveForWrite(_ answer: String, in directory: URL) throws -> URL {
-        if !isExplicitPath(answer.trimmingCharacters(in: .whitespaces)) {
+    /// - Returns: the file URL to write, or `nil` when the answer names no
+    ///   usable slot — in which case nothing was created.
+    static func resolveForWrite(_ answer: String, in directory: URL) throws -> URL? {
+        // Resolved first, so an unusable name provisions nothing: a refused
+        // save leaves no empty directory behind.
+        let trimmed = answer.trimmingCharacters(in: .whitespaces)
+        guard let url = resolve(trimmed, in: directory) else { return nil }
+        if !isExplicitPath(trimmed) {
             // Owner-only (0700): a saves directory holds a player's whole
             // progress and has no reason to be group- or world-readable.
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
         }
-        return resolve(answer, in: directory)
+        return url
     }
 
     /// Whether `answer` names an explicit filesystem path — it contains a `/`
@@ -92,6 +105,20 @@ enum SaveStore {
     /// its `.gnusto` files, without the extension. Empty when the directory has
     /// none, or doesn't exist yet.
     ///
+    /// Only names a player could type back are listed: a basename is kept when
+    /// ``FilesystemName/component(_:)`` returns that same name, so typing it at
+    /// the restore prompt lands on the file it came from. Everything this
+    /// package writes passes, since the transform is idempotent. What it
+    /// excludes is a `.gnusto` dropped in the directory by hand under a name
+    /// the prompt would refuse or rewrite — listing one of those offered a slot
+    /// that could not then be restored.
+    ///
+    /// The comparison is against the name's **NFC form**, not its bytes,
+    /// because a volume may hand a filename back decomposed even though it was
+    /// written composed. The two spell the same name and reach the same file,
+    /// and dropping a player's save from the listing over that would be the
+    /// same disappearance this listing is here to prevent.
+    ///
     /// - Parameter directory: the saves directory to scan.
     /// - Returns: the sorted slot names.
     static func existingSaveNames(in directory: URL) -> [String] {
@@ -102,6 +129,10 @@ enum SaveStore {
             contents
             .filter { $0.pathExtension == fileExtension }
             .map { $0.deletingPathExtension().lastPathComponent }
+            .compactMap { basename -> String? in
+                let slot = FilesystemName.component(basename)
+                return slot == basename.precomposedStringWithCanonicalMapping ? slot : nil
+            }
             .sorted()
     }
 
@@ -147,22 +178,8 @@ enum SaveStore {
             base
             .appendingPathComponent("Gnusto", isDirectory: true)
             .appendingPathComponent("Saves", isDirectory: true)
-            .appendingPathComponent(sanitize(title), isDirectory: true)
-    }
-
-    /// The characters kept verbatim in a slot name; every other run (including
-    /// spaces and hyphens the player typed) collapses to a single hyphen.
-    private static let nameCharacters = Set(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
-
-    /// Reduces a name or title to one safe path component: alphanumerics and
-    /// underscores survive; every other run collapses to a single hyphen. An
-    /// empty result (a name that was all punctuation) becomes `save`, so the
-    /// resolver always yields a usable filename.
-    private static func sanitize(_ raw: String) -> String {
-        let squeezed = String(raw.map { nameCharacters.contains($0) ? $0 : " " })
-            .split(separator: " ")
-            .joined(separator: "-")
-        return squeezed.isEmpty ? "save" : squeezed
+            .appendingPathComponent(
+                FilesystemName.component(title) ?? FilesystemName.untitled,
+                isDirectory: true)
     }
 }

@@ -38,7 +38,9 @@ extension GameWorld {
                 return freeReply(definition.text.savePathRefused())
             }
             do {
-                let url = try SaveStore.resolveForWrite(line, in: saveDirectory)
+                guard let url = try SaveStore.resolveForWrite(line, in: saveDirectory) else {
+                    return freeReply(definition.text.saveNameUnusable())
+                }
                 try SaveFile.write(
                     state, title: definition.title,
                     declaredTimerNames: definition.timers.keys.sorted(), to: url)
@@ -57,7 +59,10 @@ extension GameWorld {
                         definition.text.savePathRefused(), returnToDeathPrompt)
             }
             do {
-                let url = SaveStore.resolve(line, in: saveDirectory)
+                guard let url = SaveStore.resolve(line, in: saveDirectory) else {
+                    return restoreFailed(
+                        definition.text.saveNameUnusable(), returnToDeathPrompt)
+                }
                 let restored = try SaveFile.read(
                     from: url, matching: definition, pristineState: initialState)
                 return performRestore(restored)
