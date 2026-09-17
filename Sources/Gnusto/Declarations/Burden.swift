@@ -22,12 +22,18 @@ extension TraitKey<Int> {
 /// The refusal is ``GameText/handsFull``, re-voiced like any other stock line:
 /// `text.handsFull = "You're holding too many things already!"`.
 ///
-/// **The cap is asked first and answers last.** The rule is world scope, so
-/// it runs at stage 1 — ahead of the game's own `before(.take)` rules and
-/// ahead of `take` itself. That is what holds the cap for a game that replaces
-/// the verb with an `action(.take)` of its own, and it is what stops a
-/// `before(.take)` rule that changes the world from committing its change and
-/// then being told the player's hands are full.
+/// **The cap is asked early and answers last.** The rule is world scope, so
+/// it runs at stage 1, ahead of the game's own location and item rules and
+/// ahead of `take` itself. Not ahead of everything the game writes: the
+/// bootstrap files a game's own rules before any module's, so a
+/// `world.before(.take)` the game declares is asked before the cap is.
+///
+/// Stage 1 is what holds the cap for a game that replaces the verb with an
+/// `action(.take)` of its own, and what stops a `before(.take)` rule that
+/// changes the world from committing its change and then being told the
+/// player's hands are full. A cap refusal also unwinds before the room's
+/// `beforeEachTurn` upkeep runs, which is what a stage-1 refusal has always
+/// done.
 ///
 /// Running first would make "no room in your hands" answer for every refusal
 /// `take` owns, which is the broad line printed over the specific one. So the
