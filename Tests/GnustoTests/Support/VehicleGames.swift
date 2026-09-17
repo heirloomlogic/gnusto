@@ -4,8 +4,8 @@ import Gnusto
 /// vehicle), a pine crate (enterable, for the one-at-a-time refusal), a tin
 /// bucket (carriable enterable), and a pebble for cargo. A log raft and a
 /// diving pod are the surface and the shuttable-hull vehicles, each with a
-/// piece of cargo, for the listing walk. The boathouse and the dark cave give
-/// the rides somewhere to go.
+/// piece of cargo, for the listing walk; a flat barge is both channels at once.
+/// The boathouse and the dark cave give the rides somewhere to go.
 struct HarborGame: Game {
     let title = "Harbor"
     let intro = "Gulls, rope, and one questionable boat."
@@ -87,6 +87,26 @@ struct HarborGame: Game {
         adjectives("rusty")
     }
 
+    /// Hull and deck at once, for the two listing channels on one vehicle.
+    /// Carries a sack inside and a bell on top.
+    let barge = Item {
+        name("flat barge")
+        adjectives("flat")
+        enterable
+        container
+        surface
+    }
+
+    let sack = Item {
+        name("burlap sack")
+        adjectives("burlap")
+    }
+
+    let bell = Item {
+        name("brass bell")
+        adjectives("brass")
+    }
+
     /// A rideable actor — the hull that is also somebody.
     let mule = Actor {
         name("gray mule")
@@ -121,6 +141,9 @@ struct HarborGame: Game {
         pod.starts(in: dock)
         wrench.starts(inside: pod)
         mule.starts(in: dock)
+        barge.starts(in: dock)
+        sack.starts(inside: barge)
+        bell.starts(on: barge)
     }
 
     var verbs: [SyntaxRule] {

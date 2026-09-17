@@ -356,6 +356,8 @@ struct VehicleTests {
         #expect(ashore.contains("In the red boat is a smooth pebble."))
     }
 
+    /// A guard rather than a regression test: this one passes on base too,
+    /// and is here so the fix cannot grow a sentence for an empty hull.
     @Test func anEmptyVehiclePrintsNothingExtra() async throws {
         let transcript = try await play(
             HarborGame(),
@@ -365,6 +367,8 @@ struct VehicleTests {
         #expect(!aboard.contains("In the red boat"))
     }
 
+    /// Also a guard that passes on base: boarding an actor must not start
+    /// printing its paragraph under the title that already names it.
     @Test func aRiddenActorStillLosesItsOwnParagraph() async throws {
         let transcript = try await play(
             HarborGame(),
@@ -389,6 +393,27 @@ struct VehicleTests {
         #expect(aboard.contains("Dock, in the log raft"))
         #expect(aboard.contains("An oar lies athwart the raft."))
         #expect(!aboard.contains("There is a log raft here."))
+    }
+
+    @Test func aVehicleThatIsHullAndDeckPrintsBothChannels() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter barge", "look", "quit"])
+        let aboard = turnOutput(of: "look", in: transcript)
+        #expect(aboard.contains("In the flat barge is a burlap sack."))
+        #expect(aboard.contains("On the flat barge is a brass bell."))
+        #expect(!aboard.contains("There is a flat barge here."))
+    }
+
+    /// An actor in the room is listed once while the player is aboard: the
+    /// vehicle now survives the walk that builds `present`, and the actor
+    /// paragraphs must not double up because of it.
+    @Test func anActorInTheRoomIsStillListedExactlyOnceWhileAboard() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter barge", "look", "quit"])
+        let aboard = turnOutput(of: "look", in: transcript)
+        #expect(aboard.components(separatedBy: "A gray mule is here.").count == 2)
     }
 
     @Test func aTouchedCargoItemFallsBackToTheStockSentence() async throws {

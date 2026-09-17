@@ -109,13 +109,20 @@ enum RoomDescriber {
         //
         // `alwaysListed` is the opt-out of the touch gate, for a mobile thing
         // whose paragraph is its state — see the trait. An actor needs no such
-        // flag; the loop below never gates one.
+        // flag: neither gate applies to one, here or in the actor loop below,
+        // because an actor is always listed where they are. The actor loop
+        // reads the room's own contents, so a person one level down — inside a
+        // container, on a surface — arrives here instead. No author API places
+        // an actor there today (`Actor.move(to:)` takes a location), so this
+        // arm is a guard on the rule rather than a path with a test behind
+        // it.
         func sayListing(of id: EntityID, stock: () -> String) {
             let item = definition.items[id]
-            let stillNews = !touched.contains(id) || item?.isAlwaysListed == true
+            let isActor = item?.isActor == true
+            let stillNews = isActor || !touched.contains(id) || item?.isAlwaysListed == true
             if stillNews, let presence = frame.presenceText(of: id) {
                 frame.say(presence)
-            } else if item?.isScenery != true {
+            } else if isActor || item?.isScenery != true {
                 frame.say(stock())
             }
         }
