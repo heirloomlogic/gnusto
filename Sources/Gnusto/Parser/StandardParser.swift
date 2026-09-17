@@ -246,6 +246,13 @@ struct StandardParser {
     /// bound moved onto the value rather than a third guard added here: a token
     /// list type whose initializer enforces it, produced by ``tokenize(_:)``
     /// and consumed by both. Two doors do not pay for that yet.
+    ///
+    /// **Internal, and still a compatibility surface.** No game can read or set
+    /// it, but ``WorldState/isConsistent(with:)`` reads it to refuse a save
+    /// whose `lastCommand` is longer — so lowering the number changes which
+    /// existing save files a build will restore, and raising it changes which
+    /// files a later, lower build will refuse. Changing it is a save-format
+    /// decision, not only a parser one.
     static let tokenLimit = 100
 
     func parse(_ input: String, scope: Scope) -> Result<ParsedCommand, ParseError> {

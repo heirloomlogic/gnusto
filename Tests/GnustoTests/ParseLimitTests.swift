@@ -116,6 +116,23 @@ struct ParseLimitTests {
         }
     }
 
+    /// The other half of the claim: what the cap *admits*. The worst shape at
+    /// the limit is the recipient-first row, every split of which resolves —
+    /// so a line of exactly `tokenLimit` tokens in that shape is the ceiling a
+    /// line has to be written to reach, and it is still cheap. The bound is
+    /// the same loose half-second, which is two orders of magnitude above the
+    /// measurement in ``StandardParser/tokenLimit``; this pins the order, not
+    /// the figure.
+    @Test func theWorstLineTheCapAdmitsIsStillCheap() throws {
+        let parser = try ParserTests.makeParser()
+        let pairs = Array(repeating: "cloak hook", count: (StandardParser.tokenLimit - 2) / 2)
+        let line = "give " + pairs.joined(separator: " ") + " cloak"
+        #expect(parser.tokenize(line).count == StandardParser.tokenLimit)
+
+        let (_, elapsed) = Self.timed { parser.parse(line, scope: Self.scope) }
+        #expect(elapsed < Self.bound)
+    }
+
     // MARK: - The other door
 
     /// `GameWorld.resolve(_:)` — the play-test seam that reports which entity
