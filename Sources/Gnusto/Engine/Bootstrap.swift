@@ -899,6 +899,11 @@ enum Bootstrap {
             tagline: game.tagline,
             intro: game.intro,
             maxScore: game.maxScore,
+            // A `Burden` declares a number and no rule: the cap is enforced by
+            // `take` itself, last, so every refusal `take` owns is printed
+            // ahead of it. Two of them leave the tightest standing rather than
+            // whichever the mirror walk reached first.
+            carryCap: modules.compactMap { ($0 as? Burden)?.carryCap }.min(),
             text: game.text,
             locations: locations,
             items: items,

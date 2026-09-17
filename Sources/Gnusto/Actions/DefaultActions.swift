@@ -96,6 +96,18 @@ enum DefaultActions {
         guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
+        // A `Burden`'s cap, last of all. It is the broadest thing `take` can
+        // say — "no room in your hands" — so it answers only once every
+        // refusal about *this* thing has passed, the game's own `before` rules
+        // included. Weight already in the player's hands is not weighed again:
+        // lifting the garlic out of the sack they are carrying changes the
+        // load by nothing, however full the sack is.
+        if let cap = frame.definition.carryCap {
+            let alreadyCarried = frame.with { $0.state.isPossession(id, of: .player) }
+            if !alreadyCarried, Player().burden + item.burden > cap {
+                try refuse(frame.definition.text.handsFull(item.definiteNoun))
+            }
+        }
         frame.with { scratch in
             scratch.state.place(id, .heldBy(.player))
             scratch.state.touched.insert(id)

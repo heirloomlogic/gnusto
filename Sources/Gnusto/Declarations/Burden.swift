@@ -10,8 +10,8 @@ extension TraitKey<Int> {
 /// brings its contents along — may not exceed ``carryCap``. A `take` that would
 /// tip the load over is refused before it happens.
 ///
-/// A world-wide `before(.take)` rule with no rooms of its own, added to the
-/// game's `content` like any other bundle:
+/// A number and no rules of its own, added to the game's `content` like any
+/// other bundle:
 ///
 /// ```swift
 /// let burden = Burden(carryCap: 100)
@@ -21,6 +21,22 @@ extension TraitKey<Int> {
 ///
 /// The refusal is ``GameText/handsFull``, re-voiced like any other stock line:
 /// `text.handsFull = "You're holding too many things already!"`.
+///
+/// **The cap is the last thing `take` asks, not the first.** It is the broadest
+/// answer the verb has — "no room in your hands" — so every refusal that is
+/// about *this* thing outranks it: taking yourself, taking a person, taking
+/// what you already hold or wear, taking scenery, taking what you cannot
+/// reach, taking the vehicle you are standing in, and any refusal the game
+/// writes in a rule of its own. The cap is checked where `take` decides,
+/// after all of those, which is why `Burden` declares no rule.
+///
+/// Because the cap is `take`'s own last question, a game that replaces the
+/// verb wholesale with an `action(.take)` of its own owns the cap along with
+/// every other refusal it just took responsibility for.
+///
+/// Weight already in the player's hands is not weighed twice. Taking something
+/// out of a sack they are carrying does not change the load, so the cap has no
+/// opinion about it however full the sack is.
 ///
 /// ``Item/burden`` and ``Player/burden`` weigh the way the cap weighs, so a
 /// game's own load gates — a crack too narrow for a coffin, a rope that holds
@@ -34,17 +50,6 @@ public struct Burden: GameContent {
     /// - Parameter carryCap: the most weight the player can hold at once.
     public init(carryCap: Int) {
         self.carryCap = carryCap
-    }
-
-    /// The one rule: a `take` that would tip the load over the cap is refused
-    /// before it happens.
-    public var rules: Rules {
-        world.before(.take) {
-            guard let target = command.directObject else { return }
-            try require(
-                player.burden + target.burden <= carryCap,
-                else: gameText.handsFull(target.definiteNoun))
-        }
     }
 }
 
