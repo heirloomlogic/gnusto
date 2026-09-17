@@ -70,11 +70,32 @@ struct BareVerbTests {
     /// own, so there is no slot to be short of and no question to ask. Bare SAY
     /// is deliberately nobody's verb (`CoreVerbs`, `.greet`), and the other
     /// four go the same way.
-    @Test func aVerbWhoseRowsAllNeedASecondWordStillDeclines() async throws {
-        let words = ["peer", "point", "say", "speak", "step"]
-        let transcript = try await play(AuditLab(), words)
-        for word in words {
-            #expect(turnOutput(of: word, in: transcript).contains("understand"), "\(word)")
+    ///
+    /// Asserted on the error rather than on the prose: `notAVerb` and
+    /// `unmatchedSyntax` print the same sentence, so the transcript cannot tell
+    /// "this word heads no row" from "no row fit the line" — and it is the
+    /// first of those that says the fix left this shape alone.
+    @Test func aVerbWhoseRowsAllNeedASecondWordStillDeclines() throws {
+        let (definition, _) = try Bootstrap.build(AuditLab())
+        let parser = StandardParser(
+            vocabulary: definition.vocabulary, syntaxRules: definition.syntaxRules)
+
+        for word in ["peer", "point", "say", "speak", "step"] {
+            #expect(parser.parse(word, scope: Scope(visibleItems: [])) == .failure(.notAVerb(word)), "\(word)")
+        }
+    }
+
+    /// And the class this PR fixes really is the near miss, not some other
+    /// error that happens to print the same words.
+    @Test func aBareVerbFailsAsAMissingObject() throws {
+        let (definition, _) = try Bootstrap.build(AuditLab())
+        let parser = StandardParser(
+            vocabulary: definition.vocabulary, syntaxRules: definition.syntaxRules)
+
+        for verb in Self.barePatterns {
+            #expect(
+                parser.parse(verb, scope: Scope(visibleItems: []))
+                    == .failure(.missingObject(verb: verb, prefix: [verb])), "\(verb)")
         }
     }
 }

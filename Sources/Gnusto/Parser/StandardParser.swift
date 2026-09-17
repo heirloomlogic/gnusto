@@ -974,9 +974,14 @@ struct StandardParser {
     ///
     /// Only reached where the direction genuinely ends the pattern. A row that
     /// puts something behind it has more missing than one question can name, so
-    /// `fit`'s `shortOfTheSlot` declines that shape instead. A line with
-    /// *nothing* after the verb never arrives either: `fit` asks that question
-    /// for every shape at once, before the slot is measured.
+    /// `fit`'s `shortOfTheSlot` declines that shape instead.
+    ///
+    /// A line with nothing after the verb reaches this only from a row whose
+    /// slot here is the **second** object — `[.word, .indirectObject,
+    /// .direction]`, which validation permits and no shipped row uses. `fit`
+    /// answers the direct-slot case for every shape at once, before the slot is
+    /// measured, so that one never arrives. This one declines: what to ask for
+    /// a second object with no first is not a question the table has posed.
     private func missingHalfOfANounAndADirection(
         displayVerb: String, tokens: [String], cursor: Int,
         scope: Scope, distant: Set<EntityID>
