@@ -279,12 +279,12 @@ struct Zork1ProseTests {
     }
 
     /// The same class again, in the house (#514). `SANDWICH-BAG`, `BOTTLE`,
-    /// `ROPE`, `KNIFE` and `SWORD` carry an `FDESC` and `LUNCH` an `LDESC`; all
-    /// six were declared as the examine text, so the Kitchen, the Living Room
-    /// and the Attic listed their contents in the engine's stock words while
-    /// `x sack` answered, from the player's own hand, with a sentence about a
-    /// table two rooms away. No Zork 1 object has a `TEXT` property, so the
-    /// examine channel is the stock line.
+    /// `ROPE`, `KNIFE` and `SWORD` carry an `FDESC`; all five were declared as
+    /// the examine text, so the Kitchen, the Living Room and the Attic listed
+    /// their contents in the engine's stock words while `x sack` answered, from
+    /// the player's own hand, with a sentence about a table two rooms away. No
+    /// Zork 1 object has a `TEXT` property, so the examine channel is the stock
+    /// line.
     @Test func theHousesListingLinesListAndExamineFallsThrough() async throws {
         let transcript = try await play(
             Zork1(),
@@ -303,7 +303,6 @@ struct Zork1ProseTests {
         let kitchen = turnOutput(of: "west", in: transcript)
         #expect(kitchen.contains("On the table is an elongated brown sack, smelling of hot peppers."))
         #expect(kitchen.contains("A bottle is sitting on the table."))
-        #expect(kitchen.contains("A hot pepper sandwich is here."))
 
         let attic = turnOutput(of: "up", in: transcript)
         #expect(attic.contains("A large coil of rope is lying in the corner."))
@@ -317,12 +316,61 @@ struct Zork1ProseTests {
             ("x rope", "coil of rope", "in the corner"),
             ("x knife", "nasty knife", "On a table is"),
             ("x sword", "elvish sword", "Above the trophy case"),
-            ("x lunch", "lunch", "sandwich is here"),
         ] {
             let answer = turnOutput(of: command, in: transcript)
             #expect(answer.contains("There's nothing special about the \(noun)."))
             #expect(!answer.contains(listing))
         }
+    }
+
+    /// Each of those listing lines names where the thing stands, so the world
+    /// has to put it there and the noun has to answer. The sack and the bottle
+    /// stand on `KITCHEN-TABLE` and the knife on `ATTIC-TABLE`, as in the
+    /// source; before this the three sat on the floor, and the Attic had no
+    /// table at all, so `x table` there answered "You can't see any such
+    /// thing." while the room had just said the knife was on one. (#514)
+    @Test func theHousesTablesHoldWhatTheListingLinesSayTheyHold() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // → Kitchen
+                "x table", "take sack", "look",
+                "up",  // → Attic
+                "x table", "take knife", "look",
+            ])
+
+        #expect(
+            turnOutput(of: "x table", in: transcript)
+                .contains("The table is a sturdy one, dusted with flour and scored with knife marks."))
+        #expect(
+            turnOutput(ofLast: "x table", in: transcript)
+                .contains("The table is a plain one, and thick with the dust of the attic."))
+        #expect(!transcript.contains("You can't see any such thing."))
+
+        // Lifted off the table, each is listed by the engine's stock words and
+        // no longer by a line about a table it is not on.
+        let kitchenFloor = turnOutput(of: "look", in: transcript)
+        #expect(!kitchenFloor.contains("On the table is an elongated brown sack"))
+        let atticFloor = turnOutput(ofLast: "look", in: transcript)
+        #expect(!atticFloor.contains("On a table is a nasty-looking knife."))
+    }
+
+    /// `LUNCH`'s one sentence is an `LDESC`, and the sandwich rides inside the
+    /// sack on the kitchen table — a level below anything a room description
+    /// walks — so the line would print on no turn of any playthrough. It is
+    /// withdrawn rather than kept as a constant nothing reads, exactly as
+    /// Dungeon's was (#205); the sandwich is found by looking in the sack.
+    @Test func theLunchHasNoListingLineItCouldNotPrint() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // → Kitchen
+                "look in sack", "x lunch",
+            ])
+
+        #expect(!transcript.contains("A hot pepper sandwich is here."))
+        #expect(turnOutput(of: "look in sack", in: transcript).contains("lunch"))
+        #expect(turnOutput(of: "x lunch", in: transcript).contains("There's nothing special about the lunch."))
     }
 
     /// The two treasures of the same class (#514). `PAINTING` and `SCEPTRE` each

@@ -80,9 +80,11 @@ struct ZorkHouse: GameContent {
         description(Prose.garlic)
     }
 
+    /// No listing line. `LUNCH`'s only sentence is an `LDESC`, and the sandwich
+    /// sits inside the sack on the kitchen table — a level below anything a room
+    /// description walks — so the line could print on no turn. See `FIDELITY.md`.
     let lunch = Item {
         name("lunch")
-        firstSight(Prose.lunchFirstSight)
     }
 
     let bottle = Item {
@@ -137,6 +139,13 @@ struct ZorkHouse: GameContent {
 
     /// (#407) Named by `Prose.attic`.
     let atticStairway = Item.scenery("stairway", description: Prose.atticStairway)
+
+    /// `ATTIC-TABLE`. The room description does not name it — the source marks
+    /// it `NDESCBIT` — but the knife's listing line does, so the noun has to
+    /// answer. The knife stands on it, which is what makes that line true.
+    let atticTable = Item.scenery("table", description: Prose.atticTable) {
+        surface
+    }
 
     /// (#407) Named by `Prose.cellar`.
     let cellarPassageway = Item.scenery(
@@ -288,10 +297,10 @@ struct ZorkHouse: GameContent {
         // The cellar's north passage into the Troll Room crosses into
         // ZorkCellar's territory, so the host wires it (Zork1.map).
 
-        sack.starts(in: kitchen)
+        sack.starts(on: kitchenTable)
         garlic.starts(inside: sack)
         lunch.starts(inside: sack)
-        bottle.starts(in: kitchen)
+        bottle.starts(on: kitchenTable)
         water.starts(inside: bottle)
         kitchenTable.starts(in: kitchen)
         kitchenStaircase.starts(in: kitchen)
@@ -301,6 +310,7 @@ struct ZorkHouse: GameContent {
         livingRoomDoor.starts(in: livingRoom)
         gothicLettering.starts(in: livingRoom)
         atticStairway.starts(in: attic)
+        atticTable.starts(in: attic)
         cellarPassageway.starts(in: cellar)
         cellarCrawlway.starts(in: cellar)
         cellarRamp.starts(in: cellar)
@@ -312,7 +322,7 @@ struct ZorkHouse: GameContent {
         trophyCase.starts(in: livingRoom)
 
         rope.starts(in: attic)
-        knife.starts(in: attic)
+        knife.starts(on: atticTable)
 
         // The canary rides sealed inside the egg, but the egg lives in
         // ``ZorkAboveGround``, so the host places the canary inside it

@@ -87,12 +87,6 @@ struct Zork1Tests {
         #expect(!turnOutput(of: "x window", in: transcript).contains("not enough to allow entry"))
     }
 
-    /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
-    /// lit, the trap door's slam is an inconvenience, not a prison. The full
-    /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the
-    /// chimney into the Kitchen — runs by lantern light, exercising the
-    /// reveal-on-descent, the lit `dark`-trait rooms, and the one-way
-    /// chimney in a single walk.
     /// Into the house, lantern lit, down the trap door and round to the Gallery.
     /// Shared with `Zork1ProseTests`, which asserts the painting's two channels
     /// from the same frame.
@@ -103,6 +97,12 @@ struct Zork1Tests {
         "south", "east",
     ]
 
+    /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
+    /// lit, the trap door's slam is an inconvenience, not a prison. The full
+    /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the
+    /// chimney into the Kitchen — runs by lantern light, exercising the
+    /// reveal-on-descent, the lit `dark`-trait rooms, and the one-way
+    /// chimney in a single walk.
     @Test func cellarLoopByLanternLight() async throws {
         let transcript = try await play(
             Zork1(),

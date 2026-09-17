@@ -39,11 +39,6 @@ extension Prose {
 
     static let garlic = "A single clove of garlic, papery and pungent."
 
-    /// `LUNCH`'s `LDESC`, the only line the source gives the sandwich. It
-    /// prints from inside the sack, which the room listing reaches because
-    /// this game's sack starts on the kitchen floor rather than on the table.
-    static let lunchFirstSight = "A hot pepper sandwich is here."
-
     /// `BOTTLE`'s `FDESC`. (#514)
     static let bottleFirstSight = "A bottle is sitting on the table."
 
@@ -149,6 +144,12 @@ extension Prose {
     static let gothicLettering = """
         The lettering is in no language you know. It is very old, and it was
         cut with great care.
+        """
+
+    /// Written fresh: `ATTIC-TABLE` has no `TEXT`, and the room prose never
+    /// names it, so the source gives the port no sentence to reproduce.
+    static let atticTable = """
+        The table is a plain one, and thick with the dust of the attic.
         """
 
     static let atticStairway = """
