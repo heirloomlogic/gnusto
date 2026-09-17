@@ -21,10 +21,18 @@ struct UnconsciousActorTests {
     ///
     /// The third turn is the seam between the two plugins, and this test pins
     /// which way it falls. Melee's daemon spends that turn getting him up and
-    /// clears the flag as it goes; the theft daemon is named later, fires later
-    /// in the same tick, and reads a man already on his feet. So he skips one
-    /// counter-attack more than he skips thefts. `MeleeCombat.Ledger` records
-    /// the same gap from the other side. (#508)
+    /// clears the flag as it goes; the theft daemon reads a man already on his
+    /// feet, so he skips one counter-attack more than he skips thefts.
+    /// `MeleeCombat.Ledger` records the same gap from the other side. (#508)
+    ///
+    /// That order is not a guarantee either plugin makes. Daemons fire in name
+    /// order — `GameWorld` sorts the active set — and this fixture happens to
+    /// name them `melee.cutpurse` and `melee.cutpurse.steals`, so melee's runs
+    /// first and clears the flag before the theft daemon reads it. Rename
+    /// either one across the other and the theft daemon reads the flag while
+    /// it is still set, so the wake turn carries no theft and he resumes a turn
+    /// later. What this test pins is this fixture's daemon names, not a
+    /// promise either plugin makes.
     @Test func theKnockedOutVillainLiftsNothingWhileHeIsDown() async throws {
         let transcript = try await play(
             CutpurseGame(),

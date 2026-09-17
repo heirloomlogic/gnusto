@@ -504,7 +504,8 @@ struct CutpurseGame: Game {
 ///
 /// `check` is the probe. It is an ordinary custom verb, so it costs a turn and
 /// the daemon ticks behind it — which is the point, since the turns being
-/// counted are daemon ticks.
+/// counted are daemon ticks. `mesmerize` is the second knockout route: the game
+/// setting `Actor.isUnconscious` itself, with no melee ledger entry behind it.
 struct StunLabGame: Game {
     let title = "Stun Lab"
     let intro = "A chalk circle, a clay golem, and an iron bar."
@@ -538,6 +539,7 @@ struct StunLabGame: Game {
 
     var verbs: [SyntaxRule] {
         SyntaxRule("check", intent: Intent("check"))
+        SyntaxRule("mesmerize", intent: Intent("mesmerize"))
     }
 
     var rules: Rules {
@@ -550,6 +552,14 @@ struct StunLabGame: Game {
                 death: "The golem comes apart into wet shards."))
         world.before(Intent("check")) {
             try reply("Out cold: \(golem.isUnconscious).")
+        }
+        // A knockout the game takes by its own means, which is what
+        // `Actor.isUnconscious` invites. It writes the flag and nothing else,
+        // so the melee ledger has no entry for this golem and no countdown to
+        // run — the game owns clearing it.
+        world.before(Intent("mesmerize")) {
+            golem.isUnconscious = true
+            try reply("The golem's eyes go dull and it sags.")
         }
     }
 

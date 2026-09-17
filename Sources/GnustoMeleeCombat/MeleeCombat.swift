@@ -150,6 +150,13 @@ public struct MeleeCombat: GameContent {
     /// for the last of those turns. `Actor.isUnconscious` is the same fact
     /// where other plugins can see it; `stun(_:key:turnsLeft:)` writes both.
     ///
+    /// The flag can also be set without the counter, by a game knocking an
+    /// actor down by its own means — which is what its documentation asks for.
+    /// Both readers here take either half: `villain`'s finishing blow lands
+    /// clean on a man the game put on the floor, and `aggression` abstains
+    /// while he is there. What a game-set flag does not come with is a
+    /// countdown, so the game that set it is the only thing that clears it.
+    ///
     /// The two are the same fact but not quite the same *span*, and the gap is
     /// one tick wide. `aggression`'s daemon spends the last of those turns
     /// getting the villain off the floor, and clears both halves as it does —
@@ -290,9 +297,11 @@ public struct MeleeCombat: GameContent {
     /// vanishes), and the actor is removed from play.
     ///
     /// One roll per swing against a per-weapon table (see
-    /// `outcomeCutpoints(weaponStrength:)`). A villain whose
-    /// `Actor.isUnconscious` is set doesn't roll — the blow lands clean, on
-    /// every turn he is down, the one he spends coming round included.
+    /// `outcomeCutpoints(weaponStrength:)`). A villain on the floor doesn't
+    /// roll — the blow lands clean, on every turn he is down, the one he spends
+    /// coming round included. Down means either half: a stun this plugin took,
+    /// or `Actor.isUnconscious` set by a game that knocked him out by its own
+    /// means and keeps no ledger entry here.
     ///
     /// A knockout also sets `Actor.isUnconscious` — see `stun(_:key:turnsLeft:)`.
     /// It is cleared again by the villain's own
@@ -359,9 +368,13 @@ public struct MeleeCombat: GameContent {
             // Membership, not the count. The countdown rests at zero for the
             // last of the turns he is down, so `> 0` let the finishing blow
             // roll the ordinary table on that turn — see `stun(_:key:turnsLeft:)`.
-            // `stunned[key] != nil` is the condition `Actor.isUnconscious` is
-            // written from, so the two cannot disagree. (#508)
-            if ledger.stunned[key] != nil {
+            //
+            // The flag is asked as well as the ledger, because a knockout does
+            // not have to be this plugin's: `Actor.isUnconscious` invites a game
+            // to put an actor down by its own means, and then there is no ledger
+            // entry to find. Either way he is on the floor and the blow lands
+            // clean. (#508)
+            if ledger.stunned[key] != nil || actor.isUnconscious {
                 // Finishing the unconscious: no roll, the blow lands clean.
                 stun(actor, key: key, turnsLeft: nil)
                 health = 0
@@ -402,11 +415,18 @@ public struct MeleeCombat: GameContent {
     /// The villain's own turn: while he is alive, conscious, in the player's
     /// room, and *in a fight*, each end-of-turn tick rolls once — miss ≤ 50,
     /// wound ≤ 85, an outright kill above. `playerStrength` hits end the
-    /// player; wounds don't heal this phase. A stunned villain spends his turn
-    /// coming to instead (no roll) — on every turn the ledger holds him,
-    /// including the last one, where he gets up. So a knockout taken with
+    /// player; wounds don't heal this phase.
+    ///
+    /// A villain on the floor spends his turn coming to instead, and that is
+    /// the whole of his tick: it ends after the countdown, so the `when:` gate
+    /// is not asked, the `strikesFirst` roll that would start a fight is not
+    /// made, and no blow is rolled. He is down for every turn the ledger holds
+    /// him, the last one included, where he gets up — so a knockout taken with
     /// `turnsLeft: 2` buys three ticks without a counter-attack: the tick that
-    /// knocked him down and the two he spends on the floor.
+    /// knocked him down and the two he spends on the floor. A game that sets
+    /// `Actor.isUnconscious` by its own means buys the same silence, for as
+    /// long as it leaves the flag set; there is no countdown behind that one,
+    /// so the game clearing it is what ends it.
     ///
     /// *In a fight* is the source's `FIGHTBIT`. `I-FIGHT` (`1actions.zil:3810`)
     /// has a villain strike only once the player has engaged him or once his own
@@ -499,6 +519,11 @@ public struct MeleeCombat: GameContent {
                 stun(actor, key: key, turnsLeft: stunTurns == 0 ? nil : stunTurns - 1)
                 return
             }
+            // And a knockout the game took by its own means, which has no
+            // ledger entry behind it and so no countdown to run. There is
+            // nothing to do but abstain; the game that set the flag clears it
+            // when it means him to get up. (#508)
+            guard !actor.isUnconscious else { return }
             // The host's gate: a false gate is a quiet turn, no draw.
             guard condition() else { return }
             guard together else { return }
