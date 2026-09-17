@@ -47,6 +47,18 @@ Then the turn counter advances by one and the turn commits.
 
 `before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
 
+### Which room a turn's location rules belong to
+
+The world rules run first. The engine then selects the player's current room for its `beforeEachTurn` pass. That selected list runs once: if a rule moves the player, the destination does not get a second upkeep pass.
+
+After location upkeep, the engine reads the player's room again for ordinary location `before` and `after` rules. A move during world rules or location upkeep therefore redirects those rules. A move during ordinary location or item `before` rules, or during the default action, leaves that selection unchanged: an ordinary `go north` runs the departed room's `after` rules. Calling ``proceed()`` during world rules or location upkeep runs the default action before the reading, so a walk there selects the destination instead.
+
+For an addressed order, ordinary location `before` rules use the addressee's standing room, read after the player's location upkeep. If the addressee is no longer standing in a room, the engine gives the stock unhandled-order response and rolls the turn back; it does not substitute the player's room. Each-turn upkeep still belongs to the player.
+
+Stage 6 selects the player's room when that stage starts for ``Location/afterEachTurn(perform:)``. The subsequent world rules and timers can still move the player, so this need not be the room where the turn ends.
+
+A multi-object command checks its group before upkeep; an initially empty group gives a free reply without running rules. Otherwise, world and location `beforeEachTurn` run once, then the group is expanded against the resulting state. `all` uses the current reachable objects or inventory; `them` filters its remembered group by current visibility; an explicit list keeps the objects the player named. Exclusions and the PUT destination are removed from the resulting group. If upkeep leaves no eligible objects, the engine explains that and finishes the turn, including its clock tick and UNDO snapshot. The resulting object list stays fixed through the loop, and each object's ordinary world `before` rules run before that object's location reading. Those per-object rules cannot redirect the earlier upkeep pass or change which objects the command selected.
+
 ## Stopping the turn: refuse, reply, and end
 
 A rule body is ordinary Swift, but three helpers change the flow of the turn by throwing an interrupt the engine catches:

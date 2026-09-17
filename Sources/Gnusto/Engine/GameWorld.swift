@@ -625,9 +625,91 @@ public actor GameWorld {
             return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
+        // Reject an initially empty group without running rules or spending a
+        // turn. A nonempty group is expanded again after upkeep has run.
+        var objects: [EntityID]
+        switch expandGroup(parsed, multiple, in: state) {
+        case .objects(let expanded):
+            objects = expanded
+        case .empty(let message):
+            return freeReply(message)
+        }
+
+        // Every early return above was a free reply; from here the turn
+        // really runs, so it becomes the thing UNDO reverses.
+        undoSnapshot = snapshot
+
+        // The upkeep pass runs before any object's command exists, but its
+        // rules are rule bodies and may ask `command.intent`. What the player
+        // typed was the group's intent, so that is what they are handed — no
+        // object, because none has been named yet.
+        let frame = TurnFrame(
+            definition: definition, state: state, command: command(from: parsed))
+        Ctx.$frame.withValue(frame) {
+            do {
+                try runUpkeepBefore(intent, frame: frame)
+                let currentState = frame.with { $0.state }
+                switch expandGroup(parsed, multiple, in: currentState) {
+                case .objects(let expanded):
+                    objects = expanded
+                case .empty(let message):
+                    // Upkeep already happened: keep its state and finish this
+                    // turn, even though there are now no objects to act on.
+                    throw TurnInterrupt.replied(message: message)
+                }
+                for id in objects {
+                    guard frame.with({ $0.state.status }) == .playing else { break }
+                    guard let item = definition.registry.items[id] else { continue }
+                    let command = command(from: parsed, overridingDirectObject: item)
+                    // `unhandled` is not reset alongside `defaultRan`: every
+                    // intent in `multiObjectIntents` is a core verb with a
+                    // handler, so stage 4 always answers here and the flag
+                    // can never be set part-way through the loop.
+                    frame.with { scratch in
+                        scratch.command = command
+                        scratch.defaultRan = false
+                        // Each object of the group is named in its turn, and
+                        // naming binds "it" here exactly as it does for a
+                        // single-object command — so `take all` leaves "it" on
+                        // the last thing the loop ran on rather than on
+                        // whatever the player named before the group. (#445)
+                        scratch.state.pronounIt = id
+                        bindGenderedPronoun(naming: id, in: &scratch.state)
+                    }
+                    let start = frame.with { $0.output.count }
+                    performStages(command, frame: frame, upkeep: false)
+                    label(outputFrom: start, as: displayName(of: id), frame: frame)
+                }
+            } catch let interrupt as TurnInterrupt {
+                // Upkeep refused: the whole command is off.
+                handle(interrupt, frame: frame)
+            } catch {
+                frame.say("\(error)")
+            }
+            // Even interrupted upkeep names a group. Keep the initial set
+            // on that path, or the refreshed set when expansion succeeded.
+            // Bind only after expansion so THEM can use its original referents.
+            frame.with { $0.state.pronounThem = objects }
+            finishTurn(intent: intent, frame: frame)
+        }
+        return commit(frame)
+    }
+
+    private enum MultiObjectExpansion {
+        case objects([EntityID])
+        case empty(String)
+    }
+
+    /// Resolve a group against an explicit state so the eligibility check and
+    /// the post-upkeep expansion use the same rules without sharing a stale set.
+    private func expandGroup(
+        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject, in snapshot: WorldState
+    ) -> MultiObjectExpansion {
+        var state = snapshot
         // The index is built inside each keyword case rather than out here:
         // a list the player wrote out is already resolved, and a room sweep
         // for it would be for nothing.
+        let intent = parsed.intent
         var objects: [EntityID]
         switch multiple {
         case .all where intent == .take:
@@ -659,7 +741,7 @@ public actor GameWorld {
             objects = inDisplayOrder(state.containment().held[.player] ?? [])
         case .them:
             guard !state.pronounThem.isEmpty else {
-                return freeReply(definition.text.noReferent("them"))
+                return .empty(definition.text.noReferent("them"))
             }
             // Visible, not reachable: "them" is a pronoun recalling the group
             // the player just named, and a member that has since gone behind
@@ -670,7 +752,7 @@ public actor GameWorld {
                 index: state.containment())
             objects = inDisplayOrder(state.pronounThem.filter { visible.contains($0) })
             guard !objects.isEmpty else {
-                return freeReply(definition.text.cantSeeAnySuchThing())
+                return .empty(definition.text.cantSeeAnySuchThing())
             }
         case .list(let named):
             // Already resolved, so no set to sweep and no order to invent: the
@@ -697,61 +779,15 @@ public actor GameWorld {
         if !objects.isEmpty, !subtract.isEmpty {
             objects.removeAll(where: subtract.contains)
             guard !objects.isEmpty else {
-                return freeReply(definition.text.nothingLeftOfTheGroup())
+                return .empty(definition.text.nothingLeftOfTheGroup())
             }
         }
         guard !objects.isEmpty else {
-            return freeReply(
+            return .empty(
                 intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
         }
 
-        // Every early return above was a free reply; from here the turn
-        // really runs, so it becomes the thing UNDO reverses.
-        undoSnapshot = snapshot
-
-        state.pronounThem = objects
-
-        // The upkeep pass runs before any object's command exists, but its
-        // rules are rule bodies and may ask `command.intent`. What the player
-        // typed was the group's intent, so that is what they are handed — no
-        // object, because none has been named yet.
-        let frame = TurnFrame(
-            definition: definition, state: state, command: command(from: parsed))
-        Ctx.$frame.withValue(frame) {
-            do {
-                try runUpkeepBefore(intent, frame: frame)
-                for id in objects {
-                    guard frame.with({ $0.state.status }) == .playing else { break }
-                    guard let item = definition.registry.items[id] else { continue }
-                    let command = command(from: parsed, overridingDirectObject: item)
-                    // `unhandled` is not reset alongside `defaultRan`: every
-                    // intent in `multiObjectIntents` is a core verb with a
-                    // handler, so stage 4 always answers here and the flag
-                    // can never be set part-way through the loop.
-                    frame.with { scratch in
-                        scratch.command = command
-                        scratch.defaultRan = false
-                        // Each object of the group is named in its turn, and
-                        // naming binds "it" here exactly as it does for a
-                        // single-object command — so `take all` leaves "it" on
-                        // the last thing the loop ran on rather than on
-                        // whatever the player named before the group. (#445)
-                        scratch.state.pronounIt = id
-                        bindGenderedPronoun(naming: id, in: &scratch.state)
-                    }
-                    let start = frame.with { $0.output.count }
-                    performStages(command, frame: frame, upkeep: false)
-                    label(outputFrom: start, as: displayName(of: id), frame: frame)
-                }
-            } catch let interrupt as TurnInterrupt {
-                // Upkeep refused: the whole command is off.
-                handle(interrupt, frame: frame)
-            } catch {
-                frame.say("\(error)")
-            }
-            finishTurn(intent: intent, frame: frame)
-        }
-        return commit(frame)
+        return .objects(objects)
     }
 
     /// A keyword stands for a set, which has no order of its own, so it gets a
@@ -823,12 +859,88 @@ public actor GameWorld {
     private func runUpkeepBefore(_ intent: Intent, frame: TurnFrame) throws {
         frame.with { $0.inBeforeRule = true }
         defer { frame.with { $0.inBeforeRule = false } }
-        let here = frame.with { $0.state.playerLocation }
         try runBefore(
             definition.rules.worldBefore.filter { $0.phase == .beforeEachTurn },
             matching: intent, frame: frame)
+        // World upkeep may move the player. Select location upkeep afterward.
+        // Ordinary world `before` rules run later, once per object, so their
+        // moves affect that object's dispatch but cannot redirect this pass.
+        let here = frame.with { $0.state.playerLocation }
         try runBefore(
             definition.rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+    }
+
+    /// Stages 1–3 for one command. World rules run first, then the current
+    /// room's upkeep. Read the room again before ordinary location rules:
+    /// either upkeep pass may have moved the player or the addressee (#523).
+    /// The selected upkeep list runs once; moving does not start another pass.
+    ///
+    /// Return the player's room at that boundary for stage 5's location
+    /// `after` rules. Later ordinary before rules and the default action do
+    /// not change that selection, so walking runs the departed room's `after`.
+    /// `proceed()` during world rules or location upkeep runs the action
+    /// before the reading, so its destination is selected instead.
+    /// An addressed order uses the addressee's current standing room for
+    /// ordinary location `before` rules; no standing room means no dispatch.
+    /// Stage 6 selects its own room before running end-of-turn rules and timers.
+    /// Meta intents return nil and skip these phases and stage 5.
+    ///
+    /// `inBeforeRule` is set for the span of these stages so `proceed()` can
+    /// recognize a legal call site; a rule that calls it runs stage 4 early and
+    /// flips `defaultRan`. Once that flag is set, `runBefore` skips every
+    /// remaining before-phase for the rest of this sequence — `proceed()` means
+    /// "run the default now", so later before-guards for this command are moot
+    /// and must not run. Stage 4's own call site checks the same flag to avoid
+    /// running the default a second time.
+    private func runBeforeStages(
+        _ command: Command, frame: TurnFrame, upkeep: Bool
+    ) throws -> EntityID? {
+        let intent = command.intent
+        guard !intent.isMeta else { return nil }
+        let rules = definition.rules
+        frame.with { $0.inBeforeRule = true }
+        defer { frame.with { $0.inBeforeRule = false } }
+
+        // Stage 1: the world's rules — its `beforeEachTurn` upkeep among them
+        // on a single-command turn, interleaved in declaration order.
+        try runBefore(
+            upkeep ? rules.worldBefore : rules.worldBefore.filter { $0.phase == .before },
+            matching: intent, frame: frame)
+
+        // Stage 2: run the player's current room's upkeep once, then read
+        // both participants again before selecting ordinary location rules.
+        if upkeep {
+            let upkeepRoom = frame.with { $0.state.playerLocation }
+            try runBefore(rules.locationBeforeEachTurn[upkeepRoom] ?? [], matching: intent, frame: frame)
+        }
+        let here = frame.with { $0.state.playerLocation }
+        let agent = command.actor?.id
+        let stage: EntityID
+        if let actor = command.actor, let agent {
+            guard let room = frame.with({ Visibility.standing(agent, in: $0.state) }) else {
+                throw TurnInterrupt.unhandled(
+                    message: definition.text.doesNotKnowHow(actor.definiteNoun))
+            }
+            stage = room
+        } else {
+            stage = here
+        }
+        try runBefore(rules.locationBefore[stage] ?? [], matching: intent, frame: frame)
+
+        // Stage 3: the objects' rules. The one told is told first — before the
+        // thing they were told about — so `robot.before(.go)` can answer an
+        // order that names no object at all. Skipped when they *are* one of the
+        // objects, so nobody's rules run twice.
+        if let agent, agent != command.directObject?.id, agent != command.indirectObject?.id {
+            try runBefore(rules.itemBefore[agent] ?? [], matching: intent, frame: frame)
+        }
+        if let indirect = command.indirectObject {
+            try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
+        }
+        if let direct = command.directObject {
+            try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
+        }
+        return here
     }
 
     /// Stages 1–5 for one command. With `upkeep` the each-turn `before`
@@ -837,55 +949,14 @@ public actor GameWorld {
     private func performStages(_ command: Command, frame: TurnFrame, upkeep: Bool) {
         let intent = command.intent
         let rules = definition.rules
-        // Who is carrying this out, and where. The player, in their own room,
-        // unless somebody was told to do it — then it is the person told and
-        // the room *they* are standing in.
-        let agent = command.actor?.id
-        let here = frame.with { $0.state.playerLocation }
-        let stage = agent.flatMap { id in frame.with { Visibility.standing(id, in: $0.state) } } ?? here
 
         do {
             // Stage 0: the objects' `reach { … }` rules, which have to be
             // settled ahead of the rules that could pre-empt stage 4.
             try DefaultActions.requireReachRules(for: command, frame: frame)
 
-            // Stages 1–3: world, location, and item `before` rules.
-            // Meta intents talk to the game program; no rules see them.
-            // `inBeforeRule` is set for the span of these stages so
-            // `proceed()` can recognize a legal call site; a rule that
-            // calls it runs stage 4 early and flips `defaultRan`. Once
-            // that flag is set, `run` (below) skips every remaining
-            // before-phase for the rest of this sequence — `proceed()`
-            // means "run the default now", so later before-guards for
-            // this command are moot and must not run. Stage 4's own
-            // call site (further down) checks the same flag to avoid
-            // running the default a second time.
-            if !intent.isMeta {
-                frame.with { $0.inBeforeRule = true }
-                defer { frame.with { $0.inBeforeRule = false } }
-                let worldBefore =
-                    upkeep
-                    ? rules.worldBefore
-                    : rules.worldBefore.filter { $0.phase == .before }
-                try runBefore(worldBefore, matching: intent, frame: frame)
-                if upkeep {
-                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
-                }
-                try runBefore(rules.locationBefore[stage] ?? [], matching: intent, frame: frame)
-                // The one told is told first — before the thing they were told
-                // about — so `robot.before(.go)` can answer an order that names
-                // no object at all. Skipped when they *are* one of the objects,
-                // so nobody's rules run twice.
-                if let agent, agent != command.directObject?.id, agent != command.indirectObject?.id {
-                    try runBefore(rules.itemBefore[agent] ?? [], matching: intent, frame: frame)
-                }
-                if let indirect = command.indirectObject {
-                    try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
-                }
-                if let direct = command.directObject {
-                    try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
-                }
-            }
+            // Stages 1–3, and with them the room this turn belongs to.
+            let here = try runBeforeStages(command, frame: frame, upkeep: upkeep)
 
             // Stage 4: the default action — skipped if a `before` rule
             // already ran it early via `proceed()`.
@@ -893,8 +964,9 @@ public actor GameWorld {
                 try DefaultActions.run(command, frame: frame)
             }
 
-            // Stage 5: item and location `after` rules.
-            if !intent.isMeta {
+            // Stage 5: item and location `after` rules. A meta intent has no
+            // room of record, and runs none of them.
+            if let here {
                 if let direct = command.directObject {
                     try run(rules.itemAfter[direct.id] ?? [], matching: intent)
                 }

@@ -313,6 +313,193 @@ struct OrderProbeGame: Game {
     }
 }
 
+/// A `world.beforeEachTurn` rule that carries the player out of the room they
+/// typed in, so the turn's location rules have to be looked up against where
+/// they are standing now rather than where they started. Every marker names
+/// its own room, so a transcript says which room's rules the turn ran.
+struct DriftProbeGame: Game {
+    let title = "Drift"
+    let intro = "Drift."
+
+    let dock = Location {
+        name("Dock")
+        description("A wooden dock.")
+    }
+
+    let raft = Location {
+        name("Raft")
+        description("A raft on the current.")
+    }
+
+    let crate = Item { name("crate") }
+    let rope = Item { name("rope") }
+
+    /// The current takes the player once, on the first turn of the game.
+    @Latch var drifted
+
+    var map: WorldMap {
+        player.starts(in: dock)
+        crate.starts(in: dock)
+        rope.starts(in: dock)
+    }
+
+    var rules: Rules {
+        world.beforeEachTurn {
+            guard $drifted.trips() else { return }
+            say("[current]")
+            arrive(at: raft)
+        }
+
+        dock.beforeEachTurn { say("[dock-each-before]") }
+        dock.before(.look) { say("[dock-before]") }
+        dock.after(.look) { say("[dock-after]") }
+
+        raft.beforeEachTurn { say("[raft-each-before]") }
+        raft.before(.look) { say("[raft-before]") }
+        raft.after(.look) { say("[raft-after]") }
+    }
+}
+
+/// The sibling of `DriftProbeGame` on the other stage-1 phase: a `world.before`
+/// rule moves the player instead of a `world.beforeEachTurn` one. It walks with
+/// `enter(_:)` rather than `arrive(at:)`, so the `onEnter` rules a walk runs are
+/// in the probe too.
+struct WorldBeforeDriftProbeGame: Game {
+    let title = "Sluice"
+    let intro = "Sluice."
+
+    let quay = Location {
+        name("Quay")
+        description("A stone quay.")
+    }
+
+    let barge = Location {
+        name("Barge")
+        description("A barge on the sluice.")
+    }
+
+    let barrel = Item { name("barrel") }
+    let sack = Item { name("sack") }
+
+    /// The sluice takes the player once, on the first turn that asks for it.
+    @Latch var sluiced
+
+    var map: WorldMap {
+        player.starts(in: quay)
+        barrel.starts(in: quay)
+        sack.starts(in: quay)
+        quay.north(barge)
+    }
+
+    var rules: Rules {
+        world.before(.look, .take) {
+            guard $sluiced.trips() else { return }
+            say("[sluice]")
+            try enter(barge)
+        }
+
+        barge.onEnter { say("[barge-enter]") }
+
+        quay.beforeEachTurn { say("[quay-each-before]") }
+        quay.before(.look) { say("[quay-before]") }
+        quay.after(.look) { say("[quay-after]") }
+
+        barge.beforeEachTurn { say("[barge-each-before]") }
+        barge.before(.look) { say("[barge-before]") }
+        barge.after(.look) { say("[barge-after]") }
+    }
+}
+
+/// A `world.before` rule that wraps the default action in `proceed()`. The walk
+/// stage 4 then makes happens *inside* stage 1, which is the one way the room
+/// the turn's `after` rules belong to can be the room the player walked into.
+/// The second `go north` is the control: nothing wraps it, so stage 4's own
+/// walk leaves the reading where it was.
+struct ProceedWalkProbeGame: Game {
+    let title = "Towpath"
+    let intro = "Towpath."
+
+    let lock = Location {
+        name("Lock")
+        description("A lock.")
+    }
+
+    let pound = Location {
+        name("Pound")
+        description("A pound.")
+    }
+
+    let basin = Location {
+        name("Basin")
+        description("A basin.")
+    }
+
+    /// Only the first walk is wrapped.
+    @Latch var wrapped
+
+    var map: WorldMap {
+        player.starts(in: lock)
+        lock.north(pound)
+        pound.north(basin)
+    }
+
+    var rules: Rules {
+        world.before(.go) {
+            guard $wrapped.trips() else { return }
+            say("[wrap-in]")
+            try proceed()
+            say("[wrap-out]")
+        }
+
+        lock.after(.go) { say("[lock-after]") }
+        pound.after(.go) { say("[pound-after]") }
+        basin.after(.go) { say("[basin-after]") }
+    }
+}
+
+/// A `world.before` rule that walks the *addressee* out of the room the order
+/// was given in, so stage 2's location `before` lookup is keyed on where the
+/// robot stands once stage 1 has run rather than where it stood when the player
+/// typed.
+struct OrderDriftProbeGame: Game {
+    let title = "Gantry"
+    let intro = "Gantry."
+
+    let gantry = Location {
+        name("Gantry")
+        description("A gantry.")
+    }
+
+    let pit = Location {
+        name("Pit")
+        description("A pit.")
+    }
+
+    let robot = Actor {
+        name("robot")
+        description("A dented robot.")
+        takesOrders
+    }
+
+    var map: WorldMap {
+        player.starts(in: gantry)
+        robot.starts(in: gantry)
+    }
+
+    var rules: Rules {
+        world.before(.wait) {
+            guard robot.isIn(gantry) else { return }
+            say("[shunt]")
+            robot.move(to: pit)
+        }
+
+        gantry.before(.wait) { say("[gantry-before]") }
+        pit.before(.wait) { say("[pit-before]") }
+
+        robot.before(.wait) { try reply("[robot-waits]") }
+    }
+}
+
 /// Rules that read and write every kind of live state, reporting through the
 /// transcript: proxies, description overrides, @Global persistence, and
 /// player score/location.
