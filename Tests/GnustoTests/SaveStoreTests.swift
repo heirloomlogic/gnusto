@@ -179,6 +179,116 @@ struct SaveStoreTests {
         #expect(one != two)
     }
 
+    // MARK: saves written under the old rule
+
+    /// The byte bound is new, so a save the old rule wrote under a name longer
+    /// than it is a file the new rule would never name. It still has to be
+    /// listed, and typing its name back still has to reach it — otherwise the
+    /// player's save is invisible and unreachable, and the next save sharing its
+    /// first 200 bytes overwrites a different slot.
+    @Test func aSaveWrittenBeforeTheByteBoundIsListedAndReached() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "a", count: 210)
+        let legacy = dir.appendingPathComponent("\(long).gnusto")
+        try Data().write(to: legacy)
+
+        #expect(SaveStore.existingSaveNames(in: dir) == [long])
+        // The URL comes off the directory, whose path may be the resolved one,
+        // so it is the filename that has to match and the file that has to be
+        // there.
+        let located = try #require(SaveStore.locate(long, in: dir))
+        #expect(located.lastPathComponent == legacy.lastPathComponent)
+        #expect(FileManager.default.fileExists(atPath: located.path))
+        let forWrite = try #require(try SaveStore.resolveForWrite(long, in: dir))
+        #expect(forWrite.lastPathComponent == legacy.lastPathComponent)
+    }
+
+    /// A slot that is genuinely absent still fails at the path it was asked for,
+    /// rather than reaching some other file or refusing the name outright.
+    @Test func anAbsentLongNameStillResolvesToItsComputedPath() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "b", count: 210)
+        let url = try #require(SaveStore.locate(long, in: dir))
+        #expect(url.lastPathComponent == String(repeating: "b", count: 200) + ".gnusto")
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
+    /// A saves directory copied off HFS+ holds decomposed filenames. The listing
+    /// shows the composed name, because that is the name; the URL it hands back
+    /// has to be the directory's own entry, or the restore reads a path that
+    /// does not exist on a volume that compares filenames byte for byte.
+    @Test func aDecomposedFilenameIsListedComposedAndReachedByItsOwnBytes() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Swift compares strings by canonical equivalence, so the whole of this
+        // is about bytes: the two spell one name and are two filenames.
+        let decomposed = "cafe\u{301}"
+        let composed = "caf\u{e9}"
+        #expect(Array(decomposed.utf8) != Array(composed.utf8))
+        let onDisk = dir.appendingPathComponent("\(decomposed).gnusto")
+        try Data().write(to: onDisk)
+
+        #expect(SaveStore.existingSaveNames(in: dir) == [composed])
+        let entry = try #require(SaveStore.existingSaves(in: dir).first).url
+        // APFS and ext4 both store the bytes they were given, so the scenario is
+        // the real one. The assertion below is the weaker of the two platforms
+        // on macOS, where Foundation decomposes a file URL's path and the two
+        // spellings coincide anyway; on Linux nothing normalizes and it is the
+        // real check. CI runs the suite there.
+        #expect(
+            Array(entry.lastPathComponent.utf8) == Array("\(decomposed).gnusto".utf8))
+        let located = try #require(SaveStore.locate(composed, in: dir))
+        #expect(Array(located.lastPathComponent.utf8) == Array(entry.lastPathComponent.utf8))
+        #expect(FileManager.default.fileExists(atPath: located.path))
+    }
+
+    /// A `.gnusto` dropped in by hand under a name the prompt would rewrite is
+    /// still left out: listing it offers a slot that cannot then be restored.
+    @Test func aBasenameThePromptWouldRewriteIsNotListed() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data().write(to: dir.appendingPathComponent("two words.gnusto"))
+        try Data().write(to: dir.appendingPathComponent("ok.gnusto"))
+        #expect(SaveStore.existingSaveNames(in: dir) == ["ok"])
+    }
+
+    // MARK: the per-game folder
+
+    /// A title with a non-ASCII letter names a different folder than it used to.
+    /// A player whose saves are in the old one keeps them: the old folder stays
+    /// the live one until a new one exists.
+    @Test func aNonASCIITitleKeepsUsingTheFolderItsSavesAreAlreadyIn() throws {
+        let root = tempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let old = root.appendingPathComponent("Caf-Noir", isDirectory: true)
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+
+        #expect(
+            SaveStore.savesDirectory(forGameTitled: "Café Noir", under: root).lastPathComponent
+                == "Caf-Noir")
+
+        // Once the new folder exists it wins, so a game that has never run under
+        // the old rule never sees the old name.
+        let new = root.appendingPathComponent("Caf\u{e9}-Noir", isDirectory: true)
+        try FileManager.default.createDirectory(at: new, withIntermediateDirectories: true)
+        #expect(
+            SaveStore.savesDirectory(forGameTitled: "Café Noir", under: root).lastPathComponent
+                == "Caf\u{e9}-Noir")
+    }
+
+    /// An ASCII title names what it always named, with no `stat` deciding it.
+    @Test func anASCIITitleNamesTheSameFolderItAlwaysDid() {
+        let root = tempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for title in ["Zork I: The Great Underground Empire", "The Kindly Deep", "Dungeon"] {
+            #expect(
+                SaveStore.savesDirectory(forGameTitled: title, under: root).lastPathComponent
+                    == FilesystemName.component(title))
+        }
+    }
+
     // MARK: directoryIsInjected
 
     /// `GNUSTO_SAVE_DIR` set to a non-empty value is what makes a session

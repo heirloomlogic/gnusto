@@ -352,6 +352,51 @@ struct SaveRestoreTests {
         #expect(turnOutput(of: "look", in: transcript).contains("Anteroom"))
     }
 
+    /// A save written before the byte bound existed has a basename longer than
+    /// the rule now produces. It still has to be listed and still has to
+    /// restore: dropping it would make a player's save invisible, and resolving
+    /// the typed name to the truncated path would let the next long save
+    /// overwrite a different slot.
+    @Test func aSaveWrittenUnderTheOldUnboundedRuleStillRestores() async throws {
+        let dir = temporarySaveDirectory("legacy-long")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "a", count: 210)
+        _ = try await play(
+            StrongboxGame(), ["take coin", "save", "seed"], saveDirectory: dir)
+        // What the old rule, which had no bound, would have named that file.
+        try FileManager.default.moveItem(
+            at: dir.appendingPathComponent("seed.gnusto"),
+            to: dir.appendingPathComponent("\(long).gnusto"))
+
+        #expect(SaveStore.existingSaveNames(in: dir) == [long])
+        let transcript = try await play(
+            StrongboxGame(), ["restore", long, "inventory"], saveDirectory: dir)
+        #expect(transcript.contains("Restored."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// A saves directory carried off an HFS+ volume holds decomposed filenames.
+    /// The prompt lists the composed name, because that is the name — and the
+    /// restore has to read the directory's own entry, or on a volume that
+    /// compares filenames byte for byte it reads a path that is not there. On
+    /// macOS this passes either way — Foundation decomposes a file URL's path,
+    /// and APFS compares names normalization-insensitively. Linux does neither,
+    /// which is where this test earns its place; CI runs the suite there.
+    @Test func aDecomposedSaveFilenameRestoresByItsComposedName() async throws {
+        let dir = temporarySaveDirectory("decomposed")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await play(
+            StrongboxGame(), ["take coin", "save", "seed"], saveDirectory: dir)
+        try FileManager.default.moveItem(
+            at: dir.appendingPathComponent("seed.gnusto"),
+            to: dir.appendingPathComponent("cafe\u{301}.gnusto"))
+
+        let transcript = try await play(
+            StrongboxGame(), ["restore", "caf\u{e9}", "inventory"], saveDirectory: dir)
+        #expect(transcript.contains("Restored."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
     /// A name far longer than a filesystem component still saves and restores:
     /// the sanitizer bounds it in bytes, and the same typing finds it again.
     @Test func aVeryLongSlotNameSavesAndRestores() async throws {

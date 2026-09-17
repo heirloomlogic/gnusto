@@ -451,7 +451,7 @@ actor PlaytestSessions {
     /// - Throws: ``PlaytestError`` when the source holds no slots.
     /// - Returns: what was copied and what was already there.
     static func stageSlots(from source: URL, into destination: URL) throws -> StagedSlots {
-        let slots = SaveStore.existingSaveNames(in: source)
+        let slots = SaveStore.existingSaves(in: source)
         guard !slots.isEmpty else {
             throw PlaytestError(
                 """
@@ -472,19 +472,23 @@ actor PlaytestSessions {
         let already = Set(SaveStore.existingSaveNames(in: destination))
         var copied: [String] = []
         var restorable: [String] = []
-        for slot in slots {
+        for (slot, from) in slots {
             if already.contains(slot) {
                 restorable.append(slot)
                 continue
             }
-            // `existingSaveNames` lists only names the save prompt resolves back
-            // to themselves, so neither of these is nil. A slot that somehow was
-            // stays out of *both* lists rather than only out of `copied`, which
-            // is what keeps `restorable`'s promise true by construction: nothing
-            // is reported restorable that was not staged.
-            guard let from = SaveStore.resolve(slot, in: source),
-                let to = try SaveStore.resolveForWrite(slot, in: destination)
-            else { continue }
+            // The source URL is the directory entry `existingSaves` read, not a
+            // path recomputed from the name: a saves directory copied off HFS+
+            // holds decomposed filenames, and the recomputed composed path is
+            // not a file there. `resolveForWrite` returns non-nil for any name
+            // that listing produced, so the fallback is unreachable rather than
+            // silent — and it stages the slot under the name the restore prompt
+            // will be given.
+            let to =
+                try SaveStore.resolveForWrite(slot, in: destination)
+                ?? destination
+                .appendingPathComponent(slot)
+                .appendingPathExtension(SaveStore.fileExtension)
             try FileManager.default.copyItem(at: from, to: to)
             copied.append(slot)
             restorable.append(slot)

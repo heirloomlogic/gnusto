@@ -37,12 +37,18 @@ enum SaveStore {
     ///   ``FilesystemName/component(_:)``. That keeps Unicode letters and
     ///   numbers, so two Japanese slot names are two files, and it neutralizes
     ///   path tricks like `..`, so a slot name can never escape `directory`.
-    /// - A bare name with **nothing usable in it** — all punctuation, or all
-    ///   dots — is `nil`. It used to become the literal slot `save`, which
-    ///   meant two names that shared nothing but being unusable overwrote each
-    ///   other in silence. The caller has a player in front of it and refuses.
+    /// - A bare name with **nothing usable in it** — no letter, no number and
+    ///   no underscore anywhere in it — is `nil`. It used to become the literal
+    ///   slot `save`, which meant two names that shared nothing but being
+    ///   unusable overwrote each other in silence. The caller has a player in
+    ///   front of it and refuses.
     /// - An **explicit path** (contains `/`, or starts with `~`) is expanded and
     ///   returned as-is, unchanged from the classic behavior.
+    ///
+    /// The path this returns is the one a *new* save takes. To reach a file that
+    /// already exists, use ``locate(_:in:)`` — a file written before the byte
+    /// bound existed, or written on a volume that stores a decomposed name, is
+    /// not at the path this computes.
     ///
     /// - Parameters:
     ///   - answer: the raw line the player typed at the prompt.
@@ -76,7 +82,7 @@ enum SaveStore {
         // Resolved first, so an unusable name provisions nothing: a refused
         // save leaves no empty directory behind.
         let trimmed = answer.trimmingCharacters(in: .whitespaces)
-        guard let url = resolve(trimmed, in: directory) else { return nil }
+        guard resolve(trimmed, in: directory) != nil else { return nil }
         if !isExplicitPath(trimmed) {
             // Owner-only (0700): a saves directory holds a player's whole
             // progress and has no reason to be group- or world-readable.
@@ -84,7 +90,51 @@ enum SaveStore {
                 at: directory, withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
         }
-        return url
+        // Through `locate`, so saving over a slot the restore prompt listed
+        // writes the file that prompt would read. A slot whose file predates
+        // the byte bound, or whose name the volume stores decomposed, is at a
+        // path `resolve` alone does not compute, and writing the computed path
+        // would leave the player two files and show them one.
+        return locate(trimmed, in: directory)
+    }
+
+    /// The file `answer` names *on disk*: ``resolve(_:in:)``'s path when it
+    /// exists or when nothing else matches, and otherwise the directory entry
+    /// that spells the same name.
+    ///
+    /// Unlike ``resolve(_:in:)`` this reads the directory, which is what lets
+    /// it answer two cases the pure computation cannot:
+    ///
+    /// - **A name longer than ``FilesystemName/maximumBytes``.** The old rule
+    ///   had no bound, so a long name names a file of its full length. The
+    ///   computed path is the truncated one and no such file exists; the entry
+    ///   matching the *unbounded* form is the player's save.
+    /// - **A decomposed name on a byte-exact volume.** A saves directory copied
+    ///   from HFS+ onto ext4 holds NFD filenames. The computed path is NFC and
+    ///   does not exist, while the entry NFC-equal to it is the same name and
+    ///   the same save.
+    ///
+    /// The directory is consulted *before* the computed path, not after, so the
+    /// answer does not depend on how the volume compares filenames: a
+    /// case-insensitive, normalization-insensitive APFS volume says the composed
+    /// path exists when the decomposed file is what is there, and taking that
+    /// answer would hand back a URL whose bytes are not the file's. Reading the
+    /// entry gives the same URL on every volume. It costs one `readdir` on a
+    /// path a player reaches by typing at a prompt.
+    ///
+    /// Falling back to the computed path rather than to `nil` keeps a genuinely
+    /// missing slot failing where it always did, with the path it was asked for.
+    ///
+    /// - Parameters:
+    ///   - answer: the raw line the player typed at the prompt.
+    ///   - directory: the saves directory bare names resolve under.
+    /// - Returns: the file URL, or `nil` when the answer names no usable slot.
+    static func locate(_ answer: String, in directory: URL) -> URL? {
+        let trimmed = answer.trimmingCharacters(in: .whitespaces)
+        guard let computed = resolve(trimmed, in: directory) else { return nil }
+        if isExplicitPath(trimmed) { return computed }
+        guard let wanted = FilesystemName.unbounded(trimmed) else { return computed }
+        return existingSaves(in: directory).first { $0.name == wanted }?.url ?? computed
     }
 
     /// Whether `answer` names an explicit filesystem path — it contains a `/`
@@ -115,25 +165,49 @@ enum SaveStore {
     ///
     /// The comparison is against the name's **NFC form**, not its bytes,
     /// because a volume may hand a filename back decomposed even though it was
-    /// written composed. The two spell the same name and reach the same file,
-    /// and dropping a player's save from the listing over that would be the
-    /// same disappearance this listing is here to prevent.
+    /// written composed. The two spell the same name, and dropping a player's
+    /// save from the listing over that would be the same disappearance this
+    /// listing is here to prevent. They do not reach the same *path* on a
+    /// byte-exact volume, which is why the URL travels with the name: see
+    /// ``existingSaves(in:)``.
     ///
     /// - Parameter directory: the saves directory to scan.
     /// - Returns: the sorted slot names.
     static func existingSaveNames(in directory: URL) -> [String] {
+        existingSaves(in: directory).map(\.name)
+    }
+
+    /// The saves already in `directory`, sorted by name: each listed slot name
+    /// paired with the file that name came from.
+    ///
+    /// The pairing is the point. The name is the NFC form, which is what a
+    /// player is shown and what they type back; the URL is the directory entry
+    /// itself, which on a byte-exact volume may be decomposed, and which for a
+    /// save written before the byte bound is longer than the rule now produces.
+    /// Re-deriving the path from the displayed name would miss both, and the
+    /// prompt would offer a slot that then failed to restore.
+    ///
+    /// A basename is kept when ``FilesystemName/unbounded(_:)`` returns that
+    /// same name — the rule the prompt applies, minus the bound, so a save
+    /// written under either rule qualifies. What it excludes is a `.gnusto`
+    /// dropped in the directory by hand under a name the prompt would rewrite.
+    ///
+    /// - Parameter directory: the saves directory to scan.
+    /// - Returns: the slot names and their files, sorted by name.
+    static func existingSaves(in directory: URL) -> [(name: String, url: URL)] {
         let contents =
             (try? FileManager.default.contentsOfDirectory(
                 at: directory, includingPropertiesForKeys: nil)) ?? []
         return
             contents
             .filter { $0.pathExtension == fileExtension }
-            .map { $0.deletingPathExtension().lastPathComponent }
-            .compactMap { basename -> String? in
-                let slot = FilesystemName.component(basename)
-                return slot == basename.precomposedStringWithCanonicalMapping ? slot : nil
+            .compactMap { url -> (name: String, url: URL)? in
+                let basename = url.deletingPathExtension().lastPathComponent
+                let nfc = basename.precomposedStringWithCanonicalMapping
+                guard FilesystemName.unbounded(basename) == nfc else { return nil }
+                return (name: nfc, url: url)
             }
-            .sorted()
+            .sorted { $0.name < $1.name }
     }
 
     /// Whether the given environment injects a saves directory via
@@ -174,12 +248,43 @@ enum SaveStore {
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: false))
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        return
-            base
-            .appendingPathComponent("Gnusto", isDirectory: true)
-            .appendingPathComponent("Saves", isDirectory: true)
-            .appendingPathComponent(
-                FilesystemName.component(title) ?? FilesystemName.untitled,
-                isDirectory: true)
+        return savesDirectory(
+            forGameTitled: title,
+            under:
+                base
+                .appendingPathComponent("Gnusto", isDirectory: true)
+                .appendingPathComponent("Saves", isDirectory: true))
+    }
+
+    /// The per-game folder under a given saves root: the title's component, or
+    /// the folder the *old* rule named when that one exists and the new one does
+    /// not.
+    ///
+    /// The fallback is the whole reason this is a function. The old rule kept
+    /// only ASCII, so `Café Noir` named `Caf-Noir` and now names `Café-Noir`,
+    /// and a player who has saves in the first would open the game to an empty
+    /// slot list. Preferring the new name once it exists means a game that has
+    /// never run under the old rule never pays a `stat`, and a game migrating
+    /// stops consulting the old name the moment it has a new folder of its own.
+    /// Nothing copies or renames: the old folder keeps being the live one until
+    /// a player has a reason to leave it.
+    ///
+    /// - Parameters:
+    ///   - title: the game's title.
+    ///   - root: the `Saves` directory the per-game folders sit in (injectable
+    ///     for tests).
+    /// - Returns: the game's saves directory.
+    static func savesDirectory(forGameTitled title: String, under root: URL) -> URL {
+        let current = root.appendingPathComponent(
+            FilesystemName.component(title) ?? FilesystemName.untitled,
+            isDirectory: true)
+        if FileManager.default.fileExists(atPath: current.path) { return current }
+        // `save` is what the old rule's own empty-result fallback was here.
+        let legacy = root.appendingPathComponent(
+            FilesystemName.legacyComponent(title) ?? "save", isDirectory: true)
+        if legacy != current, FileManager.default.fileExists(atPath: legacy.path) {
+            return legacy
+        }
+        return current
     }
 }

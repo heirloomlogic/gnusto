@@ -126,9 +126,9 @@ struct FilesystemNameTests {
 
     // MARK: No migration break
 
-    /// Existing saves keep their filenames. For a plain ASCII name the new rule
-    /// has to agree character for character with the old one, which kept
-    /// `[A-Za-z0-9_]` and collapsed every other run to a hyphen.
+    /// Existing saves keep their filenames. For a plain ASCII name inside the
+    /// byte bound the new rule has to agree character for character with the old
+    /// one, which kept `[A-Za-z0-9_]` and collapsed every other run to a hyphen.
     @Test func asciiNamesResolveExactlyAsTheOldSanitizerDid() {
         let ascii = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
         func old(_ raw: String) -> String {
@@ -148,5 +148,38 @@ struct FilesystemNameTests {
                 FilesystemName.component(name) == (expected.isEmpty ? nil : expected),
                 "\(name)")
         }
+    }
+
+    /// The bound is the one place the parity stops, and it is where an existing
+    /// save could go missing. The old rule had no bound, so a name over the
+    /// budget names a file of its full length; the new rule cuts it, and
+    /// ``FilesystemName/unbounded(_:)`` is the form that still matches that file.
+    @Test func aNameOverTheBoundIsTheOneCaseTheOldRuleDisagreesWith() throws {
+        let ascii = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+        func old(_ raw: String) -> String {
+            String(raw.map { ascii.contains($0) ? $0 : " " })
+                .split(separator: " ")
+                .joined(separator: "-")
+        }
+        let long = String(repeating: "a", count: 210)
+        #expect(old(long).utf8.count == 210)
+        #expect(FilesystemName.component(long) == String(repeating: "a", count: 200))
+        #expect(FilesystemName.unbounded(long) == old(long))
+
+        // And with the separators the old rule collapsed, so the disagreement is
+        // only ever the cut.
+        let longPhrase = String(repeating: "slot 99! ", count: 40)
+        #expect(FilesystemName.unbounded(longPhrase) == old(longPhrase))
+        let component = try #require(FilesystemName.component(longPhrase))
+        #expect(old(longPhrase).hasPrefix(component))
+    }
+
+    /// The old rule folded no case, and neither does this one. Written down as a
+    /// test because the volume, not this rule, decides whether the two names are
+    /// two files.
+    @Test func caseIsKeptAsTyped() {
+        #expect(FilesystemName.component("Autumn") == "Autumn")
+        #expect(FilesystemName.component("autumn") == "autumn")
+        #expect(FilesystemName.legacyComponent("Autumn") == "Autumn")
     }
 }

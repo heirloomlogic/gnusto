@@ -76,6 +76,13 @@ enum TranscriptStore {
     /// sibling folders alike. Unlike a save slot, which is answered at a prompt
     /// and so can be refused, a transcript name arrives as a `script` argument
     /// on the way into the session; there is no question left open to ask again.
+    ///
+    /// A title with a non-ASCII letter names a **different folder** than the old
+    /// ASCII rule gave it: `Café Noir` was `Caf-Noir` and is now `Café-Noir`.
+    /// Transcripts written before are still in the old folder and still
+    /// readable; nothing looks for them there, and nothing needs to. `SaveStore`
+    /// does keep its old folder live, because a save the game cannot find is a
+    /// player's progress gone, where a transcript is a file they already have.
     private static func sanitize(_ raw: String) -> String {
         FilesystemName.component(raw) ?? FilesystemName.untitled
     }
