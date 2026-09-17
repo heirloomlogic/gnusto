@@ -158,10 +158,21 @@ public struct Scoring: GameContent {
     /// good), and its `.depositValue` follows the trophy case — credited when
     /// the treasure lands inside, debited when it is taken back out, the
     /// original's in-case accounting. Register keys derive from the item's
-    /// entity ID ("take.greenGem") — the property it was declared as — so two
-    /// treasures that share a display name still score separately, and
-    /// rewording a treasure's `name` in a later build does not strand the
-    /// credit a player's save is holding. Splice into the host's rules:
+    /// entity ID ("take.greenGem") — the property it was declared as, dotted
+    /// under its bundle for a treasure a `GameContent` declares
+    /// ("take.AtticContent.greenGem") — so two treasures that share a display
+    /// name still score separately, and rewording a treasure's `name` in a
+    /// later build does not strand the credit a player's save is holding.
+    ///
+    /// A save written before the keys moved carries the old name-derived ones,
+    /// and nothing reads or removes them: they sit in the ledger for the rest
+    /// of that game, and every later save copies them across. Pruning would
+    /// mean deleting keys this build does not recognize, which is the same
+    /// operation as deleting a key another plugin owns, so the dead strings
+    /// stay. `ScoringTests.aLedgerWrittenUnderTheOldKeysNoLongerCounts` is
+    /// what that costs a player.
+    ///
+    /// Splice into the host's rules:
     ///
     /// ```swift
     /// scoring.treasures([painting, egg], into: trophyCase)

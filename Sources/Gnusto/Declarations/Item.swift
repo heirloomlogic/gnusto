@@ -35,8 +35,10 @@ public struct Item: Sendable, Equatable {
         Ctx.current.id(for: token, describing: "Item")
     }
 
-    /// Binds the frame once per access. `id` resolution itself takes the
-    /// frame lock, so it must never be evaluated inside a `with` closure.
+    /// Binds the frame once per access. Reaching the frame at all takes the
+    /// frame lock — `Ctx.current` reads `isAlive` through it, where the
+    /// registry lookup that follows is a plain dictionary read — so neither
+    /// this nor `id` may be evaluated inside a `with` closure.
     var resolved: (frame: TurnFrame, id: EntityID) {
         let frame = Ctx.current
         return (frame, frame.id(for: token, describing: "Item"))
