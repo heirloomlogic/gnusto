@@ -734,7 +734,7 @@ public actor GameWorld {
                 if let indirect = parsed.indirectObject {
                     index.children(of: indirect)
                 } else {
-                    (index.inRoom[state.playerLocation] ?? []).flatMap {
+                    floorHere(state, index).flatMap {
                         [$0] + (definition.items[$0]?.isSurface == true ? index.onSurface[$0] ?? [] : [])
                     }
                 }
@@ -802,11 +802,55 @@ public actor GameWorld {
             }
         }
         guard !objects.isEmpty else {
-            return .empty(
-                intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
+            return .empty(emptyGroupAnswer(parsed, in: state))
         }
 
         return .objects(objects)
+    }
+
+    /// What to say when the group came out empty. "There is nothing here to
+    /// take" is about the room, and a player who named a container was asking
+    /// about that container: a shut one is shut, and an open one is empty. Both
+    /// lines already exist for the single-object verbs, and a sweep is a good
+    /// deal easier to read when it answers in the same words they do.
+    ///
+    /// A named thing that is neither container nor surface has no inside to
+    /// report on, so it keeps the room's answer rather than being told it is
+    /// empty.
+    private func emptyGroupAnswer(_ parsed: ParsedCommand, in state: WorldState) -> String {
+        guard parsed.intent == .take else { return definition.text.notCarryingAnything() }
+        guard let source = parsed.indirectObject, let item = definition.items[source],
+            item.isContainer || item.isSurface
+        else {
+            return definition.text.nothingToTakeHere()
+        }
+        let noun = GameText.Noun(
+            definition.vocabulary.definiteName(of: source), plural: item.isPlural)
+        // Only an `openable` thing can be shut. A bare surface has no open
+        // state at all, and `Visibility.isOpen` reads it as closed, which would
+        // shut the counter the receipt is lying on.
+        return item.isOpenable && !state.openItems.contains(source)
+            ? definition.text.closedContainer(noun)
+            : definition.text.emptyContainer(noun)
+    }
+
+    /// What "here" holds for the floor sweep: the room the player is standing
+    /// in, plus the hull of the vehicle they are aboard when that vehicle is a
+    /// container. `drop` puts what you let go of into a cargo vehicle rather
+    /// than on the ground sliding past below, so a sweep that read the room
+    /// alone would strand everything `drop all` had just put down (#540). Both,
+    /// not either: reach is room-granular, so the lantern on the quay is as
+    /// much within arm's length of the thwart as the pole in the bottom of the
+    /// boat is.
+    ///
+    /// One level, like every other floor. The hull's own contents come up; what
+    /// is packed inside a hamper standing in the hull does not.
+    private func floorHere(_ state: WorldState, _ index: ContainmentIndex) -> [EntityID] {
+        var floor = index.inRoom[state.playerLocation] ?? []
+        if let vehicle = state.playerVehicle, definition.items[vehicle]?.isContainer == true {
+            floor += index.inContainer[vehicle] ?? []
+        }
+        return floor
     }
 
     /// A keyword stands for a set, which has no order of its own, so it gets a

@@ -201,4 +201,41 @@ struct MultiObjectTests {
         // DROP's own answer for one object and stays the same for a group.
         #expect(dropping.contains("paper receipt: Dropped."))
     }
+
+    /// Aboard a cargo vehicle, `drop` puts things in the hull, so the sweep
+    /// has to read the hull as the floor or `drop all` strands the cargo where
+    /// `take all` cannot see it (#540). The hamper is the packing control: the
+    /// hull is swept one level like any floor, so the hamper comes up and the
+    /// loaf inside it stays put. The lantern is the reach control: the quay is
+    /// still an arm's length away from the thwart.
+    @Test func takeAllAboardAVehicleSweepsTheHullItDroppedInto() async throws {
+        let transcript = try await play(
+            MooringGame(),
+            ["enter punt", "drop all", "take all", "look in hamper"])
+        let dropping = turnOutput(of: "drop all", in: transcript)
+        #expect(dropping.contains("ash pole: Dropped."))
+        #expect(dropping.contains("ship biscuit: Dropped."))
+        let taking = turnOutput(of: "take all", in: transcript)
+        #expect(taking.contains("ash pole: Taken."))
+        #expect(taking.contains("ship biscuit: Taken."))
+        #expect(taking.contains("wicker hamper: Taken."))
+        #expect(taking.contains("dock lantern: Taken."))
+        #expect(!taking.contains("brown loaf"))
+        #expect(turnOutput(of: "look in hamper", in: transcript).contains("brown loaf"))
+    }
+
+    /// An empty sweep answers about the thing the player named. "There is
+    /// nothing here to take" is the room's line and says nothing about the
+    /// showcase; a shut one is shut and an emptied one is empty, in the same
+    /// words the single-object verbs use.
+    @Test func anEmptyFromSweepAnswersAboutTheContainerNamed() async throws {
+        let transcript = try await play(
+            NestedAllGame(),
+            [
+                "take all from showcase", "open showcase", "take all from showcase",
+                "take all from showcase",
+            ])
+        #expect(turnOutput(of: "take all from showcase", in: transcript).contains("The glass showcase is closed."))
+        #expect(turnOutput(ofLast: "take all from showcase", in: transcript).contains("The glass showcase is empty."))
+    }
 }

@@ -190,3 +190,69 @@ struct NestedAllGame: Game {
         receipt.starts(on: counter)
     }
 }
+
+/// The boarded case (#540): a punt you climb into, which is a container, so
+/// `drop` puts what you let go of into the hull rather than on the water
+/// sliding past. A hamper already aboard, with a loaf packed inside it, is the
+/// control for "the hull is a floor, not an unpacking" — and the mooring post
+/// on the quay is the control for the room floor still being in reach from the
+/// thwart.
+struct MooringGame: Game {
+    let title = "Mooring"
+    let intro = "A quay, a punt, and a slack rope."
+
+    let quay = Location {
+        name("Quay")
+        description("Bollards, weed, and water slapping the stones.")
+    }
+
+    /// The vehicle: enterable *and* a container, which is the pair `drop`
+    /// reads.
+    let punt = Item {
+        name("flat punt")
+        adjectives("flat")
+        description("Tarred boards and one pole.")
+        enterable
+        container
+    }
+
+    let pole = Item {
+        name("ash pole")
+        adjectives("ash")
+    }
+
+    let biscuit = Item {
+        name("ship biscuit")
+        adjectives("ship")
+    }
+
+    /// Packed, and aboard: sweeping the hull must take the hamper and leave
+    /// the loaf in it.
+    let hamper = Item {
+        name("wicker hamper")
+        adjectives("wicker")
+        container
+    }
+
+    let loaf = Item {
+        name("brown loaf")
+        adjectives("brown")
+    }
+
+    /// On the quay rather than in the punt: reach is room-granular, so this
+    /// stays on offer from aboard.
+    let lantern = Item {
+        name("dock lantern")
+        adjectives("dock")
+    }
+
+    var map: WorldMap {
+        player.starts(in: quay)
+        punt.starts(in: quay)
+        pole.startsHeld
+        biscuit.startsHeld
+        hamper.starts(inside: punt)
+        loaf.starts(inside: hamper)
+        lantern.starts(in: quay)
+    }
+}
