@@ -335,4 +335,85 @@ struct VehicleTests {
                 "You get out of the red boat.",
             ])
     }
+
+    @Test func lookFromInsideACargoVehicleListsTheHull() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            [
+                "take pebble", "enter boat", "drop pebble",
+                "look", "get out", "look",
+                "quit",
+            ])
+        // Aboard: the hull's cargo is listed, and the boat keeps its own
+        // sentence suppressed because the title already said where you are.
+        let aboard = turnOutput(of: "look", in: transcript)
+        #expect(aboard.contains("Dock, in the red boat"))
+        #expect(aboard.contains("In the red boat is a smooth pebble."))
+        #expect(!aboard.contains("There is a red boat here."))
+        // Ashore: the same sentence about the same cargo, plus the boat's own.
+        let ashore = turnOutput(ofLast: "look", in: transcript)
+        #expect(ashore.contains("There is a red boat here."))
+        #expect(ashore.contains("In the red boat is a smooth pebble."))
+    }
+
+    @Test func anEmptyVehiclePrintsNothingExtra() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter boat", "look", "quit"])
+        let aboard = turnOutput(of: "look", in: transcript)
+        #expect(aboard.contains("Dock, in the red boat"))
+        #expect(!aboard.contains("In the red boat"))
+    }
+
+    @Test func aRiddenActorStillLosesItsOwnParagraph() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["look", "enter mule", "look", "quit"])
+        #expect(turnOutput(of: "look", in: transcript).contains("A gray mule is here."))
+        let aboard = turnOutput(ofLast: "look", in: transcript)
+        #expect(aboard.contains("Dock, in the gray mule"))
+        #expect(!aboard.contains("A gray mule is here."))
+    }
+
+    @Test func aSurfaceVehicleListsWhatRidesWithYou() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["look", "enter raft", "look", "quit"])
+        // The oar's presence line, identical from the dock and from the deck.
+        let ashore = turnOutput(of: "look", in: transcript)
+        #expect(ashore.contains("An oar lies athwart the raft."))
+        let aboard = turnOutput(ofLast: "look", in: transcript)
+        // The title suffix is one line for every vehicle, so a surface one
+        // reads "in" as well — unchanged by this fix, and noted here so the
+        // expectation is not mistaken for a typo.
+        #expect(aboard.contains("Dock, in the log raft"))
+        #expect(aboard.contains("An oar lies athwart the raft."))
+        #expect(!aboard.contains("There is a log raft here."))
+    }
+
+    @Test func aTouchedCargoItemFallsBackToTheStockSentence() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["take oar", "enter raft", "put oar on raft", "look", "quit"])
+        let aboard = turnOutput(of: "look", in: transcript)
+        #expect(aboard.contains("On the log raft is a chipped oar."))
+        #expect(!aboard.contains("An oar lies athwart the raft."))
+    }
+
+    /// A shut opaque hull stays silent, exactly as it does from outside: the
+    /// scope walk does not descend into a closed opaque container either, so
+    /// listing the cargo would print a noun the parser then refuses.
+    @Test func aShutHullListsNothingAndHidesItsCargoFromTheParser() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter pod", "look", "close pod", "look", "examine wrench", "quit"])
+        let open = turnOutput(of: "look", in: transcript)
+        #expect(open.contains("In the diving pod is a rusty wrench."))
+        let shut = turnOutput(ofLast: "look", in: transcript)
+        #expect(shut.contains("Dock, in the diving pod"))
+        #expect(!shut.contains("rusty wrench"))
+        #expect(
+            turnOutput(of: "examine wrench", in: transcript)
+                .contains("You can't see any such thing."))
+    }
 }

@@ -2,8 +2,10 @@ import Gnusto
 
 /// Vehicle fixture: a dock with a red boat (enterable container — the real
 /// vehicle), a pine crate (enterable, for the one-at-a-time refusal), a tin
-/// bucket (carriable enterable), and a pebble for cargo. The boathouse and
-/// the dark cave give the rides somewhere to go.
+/// bucket (carriable enterable), and a pebble for cargo. A log raft and a
+/// diving pod are the surface and the shuttable-hull vehicles, each with a
+/// piece of cargo, for the listing walk. The boathouse and the dark cave give
+/// the rides somewhere to go.
 struct HarborGame: Game {
     let title = "Harbor"
     let intro = "Gulls, rope, and one questionable boat."
@@ -55,6 +57,43 @@ struct HarborGame: Game {
         lightSource
     }
 
+    /// The surface half of the listing walk: a vehicle you ride on, carrying
+    /// an oar.
+    let raft = Item {
+        name("log raft")
+        adjectives("log")
+        enterable
+        surface
+    }
+
+    let oar = Item {
+        name("chipped oar")
+        adjectives("chipped")
+        firstSight("An oar lies athwart the raft.")
+    }
+
+    /// The closed-opaque-hull case: a vehicle with a lid, carrying a wrench.
+    let pod = Item {
+        name("diving pod")
+        adjectives("diving")
+        enterable
+        container
+        openable
+        startsOpen
+    }
+
+    let wrench = Item {
+        name("rusty wrench")
+        adjectives("rusty")
+    }
+
+    /// A rideable actor — the hull that is also somebody.
+    let mule = Actor {
+        name("gray mule")
+        adjectives("gray")
+        enterable
+    }
+
     @Global var chained = false
 
     /// Switches where the dock's east channel comes out, so a boarded vehicle
@@ -76,6 +115,12 @@ struct HarborGame: Game {
         bucket.starts(in: dock)
         pebble.starts(in: dock)
         lantern.starts(in: dock)
+
+        raft.starts(in: dock)
+        oar.starts(on: raft)
+        pod.starts(in: dock)
+        wrench.starts(inside: pod)
+        mule.starts(in: dock)
     }
 
     var verbs: [SyntaxRule] {

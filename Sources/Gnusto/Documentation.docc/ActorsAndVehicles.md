@@ -420,8 +420,10 @@ the player in and out (bare `in`/`out` remain directions). While boarded:
   ```
 
 - The room title reads "Boathouse, in the red boat"
-  (``GameText/locationInVehicle``), and the vehicle is left out of its own
-  room listing.
+  (``GameText/locationInVehicle``), and the vehicle's own listing sentence is
+  left out — the title already said where you are. What it holds is still
+  listed, in the sentences a player standing beside it would read; a closed
+  opaque hull lists nothing, as it would from outside.
 - `drop` lands things in the hull of a cargo vehicle (capacity is not
   enforced on this implicit path — `put in` remains the gate), and `take
   boat` refuses with ``GameText/notWhileInside``.
