@@ -785,6 +785,7 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west",
                 "take all",
+                "take all from sack",
                 "drop all",
                 "take bottle", "open it", "look in it",
                 "west",
@@ -797,10 +798,12 @@ struct Zork1Tests {
                 "Kitchen",
                 // take all: name-sorted, per-object results; the scenery
                 // window is skipped, and so is the water — behind the shut
-                // bottle's glass, it is in view and out of arm's reach.
+                // bottle's glass, it is in view and out of arm's reach. The
+                // sack comes up off the floor packed, so the garlic and the
+                // lunch inside it take a sweep of their own (#510).
                 "brown sack: Taken.",
-                "clove of garlic: Taken.",
                 "glass bottle: Taken.",
+                "clove of garlic: Taken.",
                 "lunch: Taken.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",

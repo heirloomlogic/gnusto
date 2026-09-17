@@ -109,14 +109,17 @@ struct MultiObjectTests {
 
     // MARK: - What `take all` may offer (#267)
 
-    /// The question `TAKE ALL` asks is "what could I pick up off the floor
-    /// here", not "what can I name". The water is in the canteen and the
-    /// canteen is in your hand; the wafer is a level down inside a crate. Both
-    /// are packed, and `all` does not unpack anything (#267, #510).
-    @Test func takeAllSweepsTheFloorAndNotWhatIsPackedOnIt() async throws {
+    /// The question `TAKE ALL` asks is "what is lying about here", not "what
+    /// can I name". The key is on the floor and the receipt on the counter,
+    /// which are both the same answer: in plain sight, not put away. The water
+    /// is in the canteen and the canteen is in your hand, and the wafer is a
+    /// level down inside a crate — both packed, and `all` unpacks nothing
+    /// (#267, #510).
+    @Test func takeAllSweepsTheFloorAndSurfacesAndNotWhatIsPackedAway() async throws {
         let transcript = try await play(NestedAllGame(), ["take all", "look in crate"])
         let taking = turnOutput(of: "take all", in: transcript)
         #expect(taking.contains("brass key: Taken."))
+        #expect(taking.contains("paper receipt: Taken."))
         #expect(taking.contains("wooden crate: Taken."))
         #expect(!taking.contains("dry wafer"))
         #expect(!taking.contains("water"))
@@ -193,5 +196,9 @@ struct MultiObjectTests {
         #expect(!dropping.contains("dry wafer"))
         #expect(turnOutput(of: "look in crate", in: transcript).contains("dry wafer"))
         #expect(turnOutput(of: "look in canteen", in: transcript).contains("quantity of water"))
+        // The one thing the round trip does move: DROP puts things on the
+        // floor, so what was swept off the counter lands beside it. That is
+        // DROP's own answer for one object and stays the same for a group.
+        #expect(dropping.contains("paper receipt: Dropped."))
     }
 }

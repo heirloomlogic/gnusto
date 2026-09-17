@@ -714,14 +714,15 @@ public actor GameWorld {
         switch multiple {
         case .all where intent == .take:
             let index = state.containment()
-            // TAKE ALL sweeps one level, the floor of the room the player is
-            // standing in, because DROP ALL puts things back on that same floor
-            // and the pair has to be a round trip. Sweeping the whole reachable
-            // closure instead took the sack *and* the garlic inside it, and two
-            // commands later the sack was empty and its contents were loose on
-            // the ground — a rearrangement nobody asked for (#510). What sits
-            // inside a container or on a table here is taken by name, or by
-            // `take all from <it>` below.
+            // TAKE ALL sweeps what is lying about: the floor of the room the
+            // player is standing in, and the tops of the tables and shelves
+            // standing on it. What it does **not** do is unpack — sweeping the
+            // whole reachable closure took the sack *and* the garlic inside it,
+            // and two commands later the sack was empty and its contents were
+            // loose on the ground, a rearrangement nobody asked for (#510). A
+            // surface is display and a container is packing, which is the line
+            // the sweep stops at; what is inside something here is taken by
+            // name, or by `take all from <it>` below.
             //
             // `from`/`off`/`out of` names the thing to sweep instead: its
             // surface items and its contents, whether it is standing here or in
@@ -729,11 +730,13 @@ public actor GameWorld {
             // *destination* for `put all in the sack`, which is why the
             // subtraction further down reads it only for `.putIn`/`.putOn`:
             // TAKE's rows spell no destination, so the two never meet.
-            let source =
+            let source: [EntityID] =
                 if let indirect = parsed.indirectObject {
                     index.children(of: indirect)
                 } else {
-                    index.inRoom[state.playerLocation] ?? []
+                    (index.inRoom[state.playerLocation] ?? []).flatMap {
+                        [$0] + (definition.items[$0]?.isSurface == true ? index.onSurface[$0] ?? [] : [])
+                    }
                 }
             // Intersected with the *reachable* set, not the nameable one. On
             // the floor sweep that is the revealed test: a `hidden` item lies

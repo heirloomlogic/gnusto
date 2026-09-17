@@ -165,6 +165,16 @@ struct NestedAllGame: Game {
         adjectives("dry")
     }
 
+    /// The counter the room description names: a surface, so a thing resting on
+    /// it is lying about in plain sight rather than packed away, and `all`
+    /// sweeps it along with the floor.
+    let counter = Item.scenery("counter") { surface }
+
+    let receipt = Item {
+        name("paper receipt")
+        adjectives("paper")
+    }
+
     var map: WorldMap {
         player.starts(in: depot)
         canteen.startsHeld
@@ -176,5 +186,7 @@ struct NestedAllGame: Game {
         key.starts(in: depot)
         crate.starts(in: depot)
         wafer.starts(inside: crate)
+        counter.starts(in: depot)
+        receipt.starts(on: counter)
     }
 }

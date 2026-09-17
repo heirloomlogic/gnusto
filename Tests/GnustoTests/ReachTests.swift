@@ -95,9 +95,9 @@ struct ReachTests {
         #expect(turnOutput(of: "turn on taper", in: transcript).contains("now on"))
     }
 
-    /// `take all` sweeps the room's floor intersected with the *reachable* set,
-    /// and `reachableItems` is containment-only — it never consults a
-    /// `reach { … }` rule. So the chalk
+    /// `take all` sweeps the room's floor and its surfaces, intersected with
+    /// the *reachable* set, and `reachableItems` is containment-only — it never
+    /// consults a `reach { … }` rule. So the chalk
     /// is still offered and still refused by name, one line each, rather than
     /// silently omitted: a rule with something to say gets to say it.
     @Test func takeAllRefusesTheUnreachableOneByName() async throws {
