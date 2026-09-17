@@ -120,9 +120,10 @@ struct ParseLimitTests {
     /// the limit is the recipient-first row, every split of which resolves —
     /// so a line of exactly `tokenLimit` tokens in that shape is the ceiling a
     /// line has to be written to reach, and it is still cheap. The bound is
-    /// the same loose half-second, which is two orders of magnitude above the
-    /// measurement in ``StandardParser/tokenLimit``; this pins the order, not
-    /// the figure.
+    /// the same loose half-second, comfortably above the 9ms measured in
+    /// ``StandardParser/tokenLimit`` — a margin of about fifty times, not the
+    /// thousandfold the lines past the cap get. So this pins the order of the
+    /// cost, not the figure.
     @Test func theWorstLineTheCapAdmitsIsStillCheap() throws {
         let parser = try ParserTests.makeParser()
         let pairs = Array(repeating: "cloak hook", count: (StandardParser.tokenLimit - 2) / 2)
