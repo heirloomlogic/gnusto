@@ -1,6 +1,7 @@
-import Gnusto
 import GnustoTestSupport
 import Testing
+
+@testable import Gnusto
 
 /// `<actor>, <words>` — the one place a comma changes who a sentence is aimed
 /// at. It reads first, ahead of the separator reading `ConjunctionTests` pins.
@@ -108,5 +109,101 @@ struct AddressingTests {
         let transcript = try await play(FollowLab(), ["greet"])
         #expect(transcript.contains("The walker nods, and says nothing."))
         #expect(!transcript.contains("room in general"))
+    }
+
+    // MARK: - A second address on the line
+
+    /// The one shape the greeting probe's narrowed scope answers differently
+    /// from the parser before #497: a line carrying a *second* address — a
+    /// second comma with a name or a pronoun in front of it. A line carrying
+    /// one address is untouched, and every test above is one of those.
+    ///
+    /// A second actor between the address and the greeting used to change who
+    /// got greeted. `clerk, robot, hello` addresses the clerk first; the
+    /// greeting probe's second try used to re-read `robot, hello clerk` in
+    /// the player's own scope, which read `robot` as a nested address of its
+    /// own, found the robot an order-taker, and handed `hello clerk` to
+    /// `order()` — which parsed it as a plain greet naming the clerk and
+    /// stamped the *robot* as its actor. That direct object happened to equal
+    /// the outer addressee, which is exactly what the second try was checking
+    /// for, so the whole line answered GREET CLERK without the robot, an
+    /// order-taker, ever hearing an order. Narrowing the probe's scope to drop
+    /// every actor closes off that nested `order()` reading, so the line now
+    /// falls through to the ordinary check on the clerk, who does not take
+    /// orders.
+    @Test func aSecondActorBetweenTheAddressAndTheGreetingIsAnOrderNotAGreeting() async throws {
+        let transcript = try await play(MachineRoom(), ["clerk, robot, hello"])
+        #expect(transcript.contains("The clerk has no intention of taking orders from you."))
+        #expect(!transcript.contains("The clerk nods, and says nothing."))
+    }
+
+    /// And the second address does not have to be a second *person*: the same
+    /// person addressed twice is the plainer way in, and it needs no
+    /// order-taker at all. `robot, robot, hello` used to re-read `robot,
+    /// hello robot` in the player's own scope, and one level further down
+    /// `hello robot robot` resolved its object to the robot — GREET ROBOT,
+    /// the outer addressee, which the second try accepted. `clerk, clerk,
+    /// hello` did the same through an actor who takes no orders, so the
+    /// exception was never about order-takers.
+    ///
+    /// Neither line is a greeting now. Each falls through to what the words
+    /// after the first comma actually are: an order the clerk declines, and a
+    /// sentence nobody can read for the robot, who would take one.
+    @Test(arguments: [
+        ("robot, robot, hello", "I didn't understand that sentence."),
+        ("clerk, clerk, hello", "The clerk has no intention of taking orders from you."),
+    ])
+    func addressingTheSamePersonTwiceIsNotAGreeting(
+        _ line: String, _ answer: String
+    ) async throws {
+        let transcript = try await play(MachineRoom(), [line])
+        #expect(transcript.contains(answer))
+        #expect(!transcript.contains("nods, and says nothing"))
+    }
+
+    // MARK: - Cost
+
+    /// A line of nothing but repeated address — `usher, usher, usher, …` — used
+    /// to cost Fibonacci time. The greeting probe re-read the words after the
+    /// comma in the player's full scope, so every level found a comma of its
+    /// own and spawned two more levels. Sixteen repetitions took about three
+    /// seconds, twenty-five wedged the session, and the same line wedged an MCP
+    /// play-test server, which has no turn timeout. (#497)
+    ///
+    /// The bound is wall-clock, because the cost is the thing being pinned, but
+    /// it is a loose one: the parser now answers each of these in well under a
+    /// millisecond, so half a second is a thousandfold margin that no loaded
+    /// runner is going to eat. The lengths ascend and the loop stops at the
+    /// first one to bust the bound, so a regression fails here in a couple of
+    /// seconds at sixteen rather than hanging at twenty-five.
+    ///
+    /// The answer is asserted alongside the time: every length must come back
+    /// the same refusal the two-word line does, which is what says the speed
+    /// was not bought by reading the line differently.
+    @Test func aLineOfRepeatedAddressParsesInLinearTime() throws {
+        let (definition, _) = try Bootstrap.build(Antechamber())
+        let parser = StandardParser(
+            vocabulary: definition.vocabulary,
+            syntaxRules: definition.syntaxRules)
+        let scope = Scope(
+            visibleItems: [EntityID("usher"), EntityID("page"), EntityID("lamp")],
+            visibleActors: [EntityID("usher"), EntityID("page")])
+        let bound = Duration.milliseconds(500)
+
+        for repetitions in [2, 16, 18, 25] {
+            let line = Array(repeating: "usher", count: repetitions).joined(separator: ", ")
+            let start = ContinuousClock.now
+            let result = parser.parse(line, scope: scope)
+            let elapsed = ContinuousClock.now - start
+
+            guard case .failure(.notTakingOrders) = result else {
+                Issue.record("\(repetitions) repetitions parsed as \(result)")
+                return
+            }
+            guard elapsed < bound else {
+                Issue.record("\(repetitions) repetitions took \(elapsed), over \(bound)")
+                return
+            }
+        }
     }
 }
