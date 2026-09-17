@@ -157,7 +157,8 @@ private enum Walkthrough {
         "attack thief", "attack thief", "attack thief",
         "take chalice",  // the guard lifts once he is dead (+10)
         "look in egg",  // the egg holds the intact canary — the clean service worked
-        "take all",  // sweep up the hoard
+        "take all",  // sweep up the hoard: what the thief spilled on the floor
+        "take canary",  // by name, because the canary is inside the egg (#510)
         "score",
     ]
 
