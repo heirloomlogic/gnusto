@@ -802,7 +802,7 @@ public actor GameWorld {
             }
         }
         guard !objects.isEmpty else {
-            return .empty(emptyGroupAnswer(parsed, in: state))
+            return .empty(emptyGroupAnswer(parsed, in: &state))
         }
 
         return .objects(objects)
@@ -817,7 +817,7 @@ public actor GameWorld {
     /// A named thing that is neither container nor surface has no inside to
     /// report on, so it keeps the room's answer rather than being told it is
     /// empty.
-    private func emptyGroupAnswer(_ parsed: ParsedCommand, in state: WorldState) -> String {
+    private func emptyGroupAnswer(_ parsed: ParsedCommand, in state: inout WorldState) -> String {
         guard parsed.intent == .take else { return definition.text.notCarryingAnything() }
         guard let source = parsed.indirectObject, let item = definition.items[source],
             item.isContainer || item.isSurface
@@ -829,9 +829,18 @@ public actor GameWorld {
         // Only an `openable` thing can be shut. A bare surface has no open
         // state at all, and `Visibility.isOpen` reads it as closed, which would
         // shut the counter the receipt is lying on.
-        return item.isOpenable && !state.openItems.contains(source)
-            ? definition.text.closedContainer(noun)
-            : definition.text.emptyContainer(noun)
+        if item.isOpenable && !state.openItems.contains(source) {
+            return definition.text.closedContainer(noun)
+        }
+        // "Empty" is a claim about the container, and the filter above dropped
+        // what could not be *taken* rather than what was not there. A cabinet
+        // holding nothing but a scenery mop is not empty, and LOOK IN it the
+        // next turn lists the mop. The room's line says nothing about the
+        // cabinet, which beats saying something false about it.
+        let contents = state.containment().children(of: source)
+            .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
+        guard contents.isEmpty else { return definition.text.nothingToTakeHere() }
+        return definition.text.emptyContainer(noun)
     }
 
     /// What "here" holds for the floor sweep: the room the player is standing

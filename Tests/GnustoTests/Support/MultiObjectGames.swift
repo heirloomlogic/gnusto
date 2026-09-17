@@ -175,8 +175,25 @@ struct NestedAllGame: Game {
         adjectives("paper")
     }
 
+    /// Scenery, and a container: nothing in it can ever be swept, which is not
+    /// the same as nothing being in it.
+    let cabinet = Item {
+        name("oak cabinet")
+        adjectives("oak")
+        container
+        scenery
+    }
+
+    let mop = Item {
+        name("straw mop")
+        adjectives("straw")
+        scenery
+    }
+
     var map: WorldMap {
         player.starts(in: depot)
+        cabinet.starts(in: depot)
+        mop.starts(inside: cabinet)
         canteen.startsHeld
         water.starts(inside: canteen)
         showcase.starts(in: depot)

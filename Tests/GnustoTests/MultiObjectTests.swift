@@ -238,4 +238,16 @@ struct MultiObjectTests {
         #expect(turnOutput(of: "take all from showcase", in: transcript).contains("The glass showcase is closed."))
         #expect(turnOutput(ofLast: "take all from showcase", in: transcript).contains("The glass showcase is empty."))
     }
+
+    /// "Empty" is a claim about the container, not about what the sweep was
+    /// willing to take. The cabinet holds a mop that is scenery and so never on
+    /// offer, and LOOK IN it the next turn says so — calling it empty would be
+    /// two answers that contradict each other one turn apart.
+    @Test func aContainerHoldingOnlyUnsweepableThingsIsNotCalledEmpty() async throws {
+        let transcript = try await play(NestedAllGame(), ["take all from cabinet", "look in cabinet"])
+        let sweep = turnOutput(of: "take all from cabinet", in: transcript)
+        #expect(!sweep.contains("The oak cabinet is empty."))
+        #expect(sweep.contains("There is nothing here to take."))
+        #expect(turnOutput(of: "look in cabinet", in: transcript).contains("straw mop"))
+    }
 }
