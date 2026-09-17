@@ -631,6 +631,24 @@ struct StandardParser {
                 }
 
             case .directObject, .indirectObject:
+                // The line stopped at the verb. Nothing the pattern puts behind
+                // the slot is in question yet, so every shape wants the same
+                // thing and asks for it in the same words — and this is the one
+                // point all of them pass through, ahead of both the split below
+                // and the literal that closes a variable-width slot. A row
+                // ending in the slot asked already; a row with a preposition, a
+                // particle or a direction behind it declined, and bare PUT,
+                // GIVE, LOCK, PICK and their kind fell out of `parse` as a
+                // sentence nobody recognizes. Issue #480.
+                //
+                // Only the *direct* slot. An indirect one left empty asks a
+                // different question — `put the coin in` names the coin and
+                // asks what to put it in — and a line that got as far as the
+                // second slot is not a line that stopped at the verb, so it
+                // never reaches this check.
+                if element == .directObject, cursor == tokens.count {
+                    return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
+                }
                 // Where the phrase ends is arithmetic whenever the rest of the
                 // pattern has a fixed width: it stops that many tokens from the
                 // end of the line. Width 0 is the slot that ends the pattern
@@ -946,8 +964,6 @@ struct StandardParser {
     /// in a direction, so the two slots cannot both be filled. Which half the
     /// player left off decides the answer:
     ///
-    /// - nothing left at all: the same "What do you want to push?" that core's
-    ///   `push <object>` asks, so the shape displaces nothing.
     /// - one token, and it is a direction (`push north`): decline silently, so
     ///   a bare `["push", .direction]` row for the same verb still wins. That
     ///   is what lets the two shapes share an intent.
@@ -958,16 +974,13 @@ struct StandardParser {
     ///
     /// Only reached where the direction genuinely ends the pattern. A row that
     /// puts something behind it has more missing than one question can name, so
-    /// `fit`'s `shortOfTheSlot` declines that shape instead.
+    /// `fit`'s `shortOfTheSlot` declines that shape instead. A line with
+    /// *nothing* after the verb never arrives either: `fit` asks that question
+    /// for every shape at once, before the slot is measured.
     private func missingHalfOfANounAndADirection(
         displayVerb: String, tokens: [String], cursor: Int,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        guard cursor < tokens.count else {
-            // The answer `missingSlotOutcome` gives a final object slot; the
-            // direction half cannot be asked for until there is a noun to name.
-            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
-        }
         if tokens.count - cursor == 1, vocabulary.directions[tokens[cursor]] != nil {
             return .mismatch
         }
@@ -982,17 +995,18 @@ struct StandardParser {
                 verb: displayVerb, objectName: definiteName(of: id), prefix: tokens))
     }
 
-    /// The near-miss for a pattern whose final object slot got no tokens:
-    /// "take" asks for an object; "put cloak on" asks what to put it on.
-    /// Either way the answer belongs after everything already typed.
+    /// The near-miss for a pattern whose final slot got no tokens: "put cloak
+    /// on" asks what to put it on, "think about" asks what about. The answer
+    /// belongs after everything already typed.
+    ///
+    /// A *direct* slot never arrives: nothing before it can have been filled
+    /// either, so `fit` has already asked "What do you want to take?" for every
+    /// shape at once.
     private func missingSlotOutcome(
         _ slot: SyntaxElement, displayVerb: String, tokens: [String],
         directPhrase: [String]?, preposition: String?, lastLiteral: String?,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        if slot == .directObject {
-            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
-        }
         if slot == .topic {
             // A topic row need not have an object at all ("think about"). One
             // that has an object it can't resolve stays quiet and lets the
