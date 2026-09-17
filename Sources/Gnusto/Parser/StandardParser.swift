@@ -191,6 +191,63 @@ struct StandardParser {
             .map(\.element)
     }
 
+    /// The longest line this parser will read, in tokens.
+    ///
+    /// **One bound on the whole parse, rather than one per loop.** Several
+    /// places here walk token positions and none of them is linear:
+    /// ``fitRecipientFirst(_:tokens:from:verbPhrase:rawInput:scope:)`` tries
+    /// every split of the words after the verb and resolves *both* halves,
+    /// ``hasSyntaxTail(afterNounIn:scope:distant:)`` resolves a fresh prefix at
+    /// every syntax word, and ``resolveGroup(_:at:in:scope:distant:)`` offers
+    /// each comma group whole before splitting it. They share one shape — cost
+    /// superlinear in the token count — and they are all reached from here, so
+    /// one guard at the entry bounds every one of them at once and no loop has
+    /// to carry a limit of its own. The two shapes #503 reported, timed over
+    /// the whole process in a debug build — bootstrap costs about 0.05s of
+    /// each figure:
+    ///
+    /// | Line | 500 tokens | 1,000 | 2,000 | 4,000 | 8,000 |
+    /// |---|---|---|---|---|---|
+    /// | `give mailbox leaflet …` (Zork 1) | 0.16s | 0.5s | 1.7s | — | — |
+    /// | `take x x x …` (Cloak of Darkness) | — | 0.6s | 1.4s | 5.3s | 25s |
+    ///
+    /// The game accepts nothing for the duration, and a play-test server over
+    /// JSON-RPC has no turn timeout to cut it short.
+    ///
+    /// **A count and not a budget**, because a deadline or a call counter would
+    /// make the parser's answer depend on how fast the machine is, and this
+    /// engine requires a parse to be a pure function of the line: `GNUSTO_SEED`
+    /// and `play(_:_:seed:)` pin a transcript, and a line that parsed on the
+    /// recording run has to parse on the replay. A count is the bound a replay
+    /// can rely on.
+    ///
+    /// 100 is far past any line a player writes. The longest command typed by
+    /// any test, demo game, walkthrough or committed play-test route in this
+    /// repository is `put the velvet cloak onto the small brass hook` — nine
+    /// words, and seven tokens once ``tokenize(_:)`` has dropped the articles,
+    /// which is what this counts. So the cap stands at fourteen times the
+    /// longest sentence the parser has ever been asked to read here, and a
+    /// line that meets it is a line nobody typed. A longer one is answered
+    /// ``ParseError/unmatchedSyntax`` — `GameText.didntUnderstand`, which a
+    /// game may word for itself — and costs no turn, as every parse failure
+    /// does.
+    ///
+    /// What the cap admits, measured the same way: the worst 100-token line
+    /// found — `give mailbox leaflet mailbox leaflet …` over Zork 1, every
+    /// split of which resolves — costs **9ms**, against under a millisecond for
+    /// an ordinary sentence. That is the ceiling a line has to be written to
+    /// reach, and it is two hundred times cheaper than the shortest line the
+    /// issue reported.
+    ///
+    /// The cap is taken at the two doors that read player words —
+    /// ``parse(tokens:rawInput:scope:)`` and
+    /// ``resolve(_:in:alsoConsidering:)``, the latter for the play-test naming
+    /// seam, which never goes through the former. A *third* door wants the
+    /// bound moved onto the value rather than a third guard added here: a token
+    /// list type whose initializer enforces it, produced by ``tokenize(_:)``
+    /// and consumed by both. Two doors do not pay for that yet.
+    static let tokenLimit = 100
+
     func parse(_ input: String, scope: Scope) -> Result<ParsedCommand, ParseError> {
         parse(tokens: tokenize(input), rawInput: input, scope: scope)
     }
@@ -202,6 +259,11 @@ struct StandardParser {
     ) -> Result<ParsedCommand, ParseError> {
         guard !tokens.isEmpty else {
             return .failure(.empty)
+        }
+        // Ahead of everything, including the address reading: see
+        // ``tokenLimit``. Every loop below is bounded by this one guard.
+        guard tokens.count <= Self.tokenLimit else {
+            return .failure(.unmatchedSyntax)
         }
 
         // "delphine, hello" — addressing somebody. A greeting is the one thing
@@ -816,6 +878,22 @@ struct StandardParser {
     /// being handed one armful, and a list — or an `all` — there names two
     /// places for it.
     ///
+    /// Every split of the remaining words is tried and both halves resolved,
+    /// so the work is superlinear in the line — the cost #503 reported. It is
+    /// bounded by ``tokenLimit`` at the parse entry, which also covers the
+    /// other loops of this shape; a cap written *here* would have left them.
+    ///
+    /// A tighter bound is available and is not taken yet. The longest phrase
+    /// any item answers to is known at bootstrap, so the split count could be
+    /// derived from the vocabulary rather than fixed — except that
+    /// ``ItemLexicon/describes(_:)`` accepts a phrase of any length so long as
+    /// every token is one of that item's words, so `x cloak cloak velvet cloak`
+    /// examines the cloak and no maximum exists to derive. Matching each word
+    /// at most once would give every noun phrase a declared maximum length and
+    /// make this loop run a constant number of times, which is the fix at the
+    /// depth of the defect — and a change to what the parser accepts, so it is
+    /// a sequel and not this. Issue #546.
+    ///
     /// - Parameters:
     ///   - rule: the recipient-first row.
     ///   - tokens: the line as typed.
@@ -1375,6 +1453,16 @@ struct StandardParser {
     func resolve(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
+        // The other door into the parser, and the other one that has to be
+        // bounded: `GameWorld.resolve(_:)` hands this a phrase straight from a
+        // play-test client, which never went through `parse` and so never met
+        // ``tokenLimit``. Nothing a game declares can answer to a phrase that
+        // long, so "you can't see any such thing" is the true answer as well as
+        // the cheap one. No parse reaches this guard — `parse` caps the line
+        // first, and every phrase below it is a slice of that line.
+        guard tokens.count <= Self.tokenLimit else {
+            return .failure(.notInScope)
+        }
         let resolved = resolveNoun(tokens, in: scope, alsoConsidering: distant)
         guard case .failure(.notInScope) = resolved,
             hasSyntaxTail(afterNounIn: tokens, scope: scope, distant: distant)

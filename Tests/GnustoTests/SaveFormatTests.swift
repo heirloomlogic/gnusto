@@ -790,4 +790,46 @@ struct SaveFormatTests {
         let stored = try #require(restored.globals[EntityID("purse")])
         #expect(Purse(stateValue: stored) == Purse(coins: 9))
     }
+
+    @Test("a save whose lastCommand is longer than the parser reads is refused")
+    func aSaveWhoseLastCommandIsLongerThanTheParserReadsIsRefused() throws {
+        // Provenance: `lastCommand` is recorded only after a line parses, and
+        // the parser refuses a line over `tokenLimit`, so no save this engine
+        // wrote can hold a longer one (#503). What refusing it buys is the
+        // array — two million words would otherwise ride in the live state and
+        // be copied by every UNDO snapshot for the rest of the session.
+        let path = Self.temporarySavePath("oversized-again")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
+        state.lastCommand = Array(repeating: "x", count: StandardParser.tokenLimit + 1)
+        try SaveFile.write(state, title: ShopGame().title, to: URL(fileURLWithPath: path))
+
+        do {
+            _ = try SaveFile.read(
+                from: URL(fileURLWithPath: path), matching: definition,
+                pristineState: pristineState)
+            Issue.record("a save carrying a line the parser will not read was accepted")
+        } catch {
+            #expect(error == .inconsistent, "expected .inconsistent, got \(error)")
+        }
+    }
+
+    @Test("a save whose lastCommand is a line the parser reads still restores")
+    func aSaveWhoseLastCommandIsALineTheParserReadsStillRestores() throws {
+        // The positive control: the check is a length check, so a line at the
+        // limit is as welcome as the four-word one a real save carries.
+        let path = Self.temporarySavePath("ordinary-again")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
+        state.lastCommand = Array(repeating: "x", count: StandardParser.tokenLimit)
+        try SaveFile.write(state, title: ShopGame().title, to: URL(fileURLWithPath: path))
+
+        let restored = try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+
+        #expect(restored.lastCommand.count == StandardParser.tokenLimit)
+    }
 }
