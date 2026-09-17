@@ -304,6 +304,30 @@ struct PlaytestSeamTests {
         #expect(!answers[3].known)
     }
 
+    /// A phrase past ``StandardParser/tokenLimit`` is refused without being
+    /// read, and the refusal is `notInScope` whatever the words were — so the
+    /// catch-all below it would report a pasted wall of gibberish as a phrase
+    /// the vocabulary knows. `known` is the ``GameWorld/knows(_:)`` question,
+    /// and that one has an honest answer at any length.
+    @Test func resolvingAnOversizedPhraseStillSaysWhetherTheWordsAreKnown() async throws {
+        let world = try await riverWorld()
+
+        let unknown = Array(repeating: "kayak", count: StandardParser.tokenLimit + 1)
+            .joined(separator: " ")
+        let declared = Array(repeating: "dam", count: StandardParser.tokenLimit + 1)
+            .joined(separator: " ")
+        let answers = await world.resolve([unknown, declared])
+
+        #expect(!answers[0].known)
+        #expect(answers[0].answeredBy == nil)
+
+        // Every word declared, and nothing here answering to the phrase: the
+        // middle state, which is the one this length is actually in.
+        #expect(answers[1].known)
+        #expect(answers[1].answeredBy == nil)
+        #expect(answers[1].ambiguous.isEmpty)
+    }
+
     /// It is the parser that answers, not a copy of it — so the parser's own
     /// rules reach the tool, pronouns included.
     ///
