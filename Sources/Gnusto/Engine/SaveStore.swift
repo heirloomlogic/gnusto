@@ -192,6 +192,13 @@ enum SaveStore {
     /// written under either rule qualifies. What it excludes is a `.gnusto`
     /// dropped in the directory by hand under a name the prompt would rewrite.
     ///
+    /// **One entry per displayed name.** A byte-exact volume can hold a composed
+    /// and a decomposed `café.gnusto` side by side, and both spell the one name
+    /// a player would type. Listing it twice offers a choice the prompt cannot
+    /// take. The winner is the entry whose bytes are the composed name, and
+    /// failing that the byte-wise smallest basename — a rule that does not
+    /// depend on the order the directory happened to be read in.
+    ///
     /// - Parameter directory: the saves directory to scan.
     /// - Returns: the slot names and their files, sorted by name.
     static func existingSaves(in directory: URL) -> [(name: String, url: URL)] {
@@ -207,7 +214,39 @@ enum SaveStore {
                 guard FilesystemName.unbounded(basename) == nfc else { return nil }
                 return (name: nfc, url: url)
             }
+            .reduce(into: [String: URL]()) { winners, entry in
+                guard let held = winners[entry.name] else {
+                    winners[entry.name] = entry.url
+                    return
+                }
+                if preferred(entry.url, over: held, spelling: entry.name) {
+                    winners[entry.name] = entry.url
+                }
+            }
+            .map { (name: $0.key, url: $0.value) }
             .sorted { $0.name < $1.name }
+    }
+
+    /// Which of two directory entries spelling the same name is the one to list.
+    ///
+    /// The composed spelling wins, because it is the name the prompt shows and
+    /// the path the prompt computes. With neither composed, or both, the
+    /// byte-wise smaller basename wins: an arbitrary rule, but a fixed one, so
+    /// the listing does not change with the order the directory was read in.
+    ///
+    /// - Parameters:
+    ///   - candidate: the entry being considered.
+    ///   - held: the entry already chosen for this name.
+    ///   - spelling: the composed name both entries spell.
+    /// - Returns: whether `candidate` should replace `held`.
+    private static func preferred(_ candidate: URL, over held: URL, spelling: String) -> Bool {
+        let composed = Array(spelling.utf8)
+        let candidateBytes = Array(candidate.deletingPathExtension().lastPathComponent.utf8)
+        let heldBytes = Array(held.deletingPathExtension().lastPathComponent.utf8)
+        if (candidateBytes == composed) != (heldBytes == composed) {
+            return candidateBytes == composed
+        }
+        return candidateBytes.lexicographicallyPrecedes(heldBytes)
     }
 
     /// Whether the given environment injects a saves directory via

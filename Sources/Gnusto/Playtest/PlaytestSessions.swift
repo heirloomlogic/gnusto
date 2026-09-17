@@ -489,6 +489,11 @@ actor PlaytestSessions {
                 ?? destination
                 .appendingPathComponent(slot)
                 .appendingPathExtension(SaveStore.fileExtension)
+            // Two source slots longer than the byte bound can share a truncated
+            // destination name. Throwing there would abort the staging with the
+            // earlier copies already on disk; skipping leaves the slot out of
+            // both lists, which is the same promise the guard above keeps.
+            guard !FileManager.default.fileExists(atPath: to.path) else { continue }
             try FileManager.default.copyItem(at: from, to: to)
             copied.append(slot)
             restorable.append(slot)

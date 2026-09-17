@@ -254,6 +254,26 @@ struct SaveStoreTests {
         #expect(SaveStore.existingSaveNames(in: dir) == ["ok"])
     }
 
+    /// A byte-exact volume can hold both spellings of one name. They are one
+    /// slot to a player, so the prompt offers it once, and which file that is
+    /// does not depend on the order the directory was read in.
+    @Test func twoSpellingsOfOneNameAreListedOnce() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data().write(to: dir.appendingPathComponent("cafe\u{301}.gnusto"))
+        try Data().write(to: dir.appendingPathComponent("caf\u{e9}.gnusto"))
+        guard try FileManager.default.contentsOfDirectory(atPath: dir.path).count == 2 else {
+            return  // A normalizing volume never has the two side by side.
+        }
+
+        let saves = SaveStore.existingSaves(in: dir)
+        #expect(saves.count == 1)
+        let winner = try #require(saves.first).url
+        #expect(
+            Array(winner.lastPathComponent.utf8) == Array("caf\u{e9}.gnusto".utf8))
+        #expect(FileManager.default.fileExists(atPath: winner.path))
+    }
+
     // MARK: the per-game folder
 
     /// A title with a non-ASCII letter names a different folder than it used to.
