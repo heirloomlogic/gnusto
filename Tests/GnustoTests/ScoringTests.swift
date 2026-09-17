@@ -155,6 +155,79 @@ struct ScoringTests {
             ])
     }
 
+    /// Two gems named "gem", told apart by an adjective. The register key is
+    /// the entity ID, so each pays its own take value and holds its own
+    /// deposit credit; keyed on the display name, the second of each pair paid
+    /// nothing and the ceiling was unreachable.
+    @Test func twoTreasuresSharingADisplayNameScoreSeparately() async throws {
+        let transcript = try await play(
+            TwinGemsGame(),
+            [
+                "take red gem", "score",
+                "take blue gem", "score",
+                "put red gem in case", "score",
+                "put blue gem in case", "score",
+                "take red gem", "score",
+                "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 5 of a possible 20",
+                "Your score is 10 of a possible 20",
+                "Your score is 15 of a possible 20",
+                "Your score is 20 of a possible 20",
+                "Your score is 15 of a possible 20",
+            ])
+    }
+
+    /// The ledger keys moved, and nothing translates the old ones, so a save
+    /// written by an earlier build pays its treasure twice over.
+    ///
+    /// `LegacyVaultGame` writes that save: the coin taken and sitting in the
+    /// cabinet, the score already holding both its values, and a ledger keyed
+    /// on the display name. The keys survive the file verbatim — a global is
+    /// restored by its declared property name and its value is carried across
+    /// unread — so `BackdatedVaultGame` restores the right score and then
+    /// cannot find the credit behind it. The first costing turn reconciles the
+    /// case, does not see `deposit.coin`, and credits the deposit value a
+    /// second time; taking the coin out pays the take value again on top. The
+    /// score ends past a ceiling it should not be able to reach.
+    ///
+    /// Pinned here because it is the cost of the fix, not because it is wanted.
+    @Test func aLedgerWrittenUnderTheOldKeysNoLongerCounts() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let written = try await play(
+            LegacyVaultGame(),
+            ["backdate", "save", path, "quit"])
+        expectInOrder(written, ["The ledger is written in an older hand.", "Saved."])
+
+        let transcript = try await play(
+            BackdatedVaultGame(),
+            [
+                "score",  // the fresh world, so the restore below is load-bearing
+                "restore", path,
+                "score",  // the old build's total, carried across intact
+                "wait",  // the first costing turn reconciles the case
+                "score",  // deposit credited a second time: 10 + 7, past the ceiling
+                "take coin",  // take value paid again (+3), deposit debited (-7)
+                "score",
+                "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 0 of a possible 10",
+                "Restored.",
+                "Your score is 10 of a possible 10",
+                "Your score is 17 of a possible 10",
+                "Your score is 13 of a possible 10",
+            ])
+    }
+
     @Test func claimedRegistersSurviveSaveAndRestore() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
