@@ -155,7 +155,11 @@ public struct MeleeCombat: GameContent {
     /// Both readers here take either half: `villain`'s finishing blow lands
     /// clean on a man the game put on the floor, and `aggression` abstains
     /// while he is there. What a game-set flag does not come with is a
-    /// countdown, so the game that set it is the only thing that clears it.
+    /// countdown, so nothing here starts one and the game that set it is what
+    /// clears it — unless there is already a melee countdown running under the
+    /// same actor, in which case `stun(_:key:turnsLeft:)` clears the flag when
+    /// that countdown ends, whoever set it last. A game putting a man down for
+    /// its own reasons on top of a knockout gets melee's span, not its own.
     ///
     /// The two are the same fact but not quite the same *span*, and the gap is
     /// one tick wide. `aggression`'s daemon spends the last of those turns
