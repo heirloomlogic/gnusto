@@ -551,6 +551,19 @@ struct DresserGame: Game {
         name("wool sock")
     }
 
+    /// An open container standing on the dresser's top — the surface channel
+    /// carries on past the closed body it rests on.
+    let tin = Item {
+        name("biscuit tin")
+        container
+        openable
+        startsOpen
+    }
+
+    let thimble = Item {
+        name("steel thimble")
+    }
+
     /// Surface + container + openable + transparent, starts closed.
     let cabinet = Item {
         name("glass cabinet")
@@ -593,6 +606,8 @@ struct DresserGame: Game {
         dresser.starts(in: bedroom)
         lamp.starts(on: dresser)
         sock.starts(inside: dresser)
+        tin.starts(on: dresser)
+        thimble.starts(inside: tin)
 
         cabinet.starts(in: bedroom)
         vase.starts(inside: cabinet)

@@ -1025,6 +1025,25 @@ struct ContainerTests {
             ])
     }
 
+    /// The two channels part company mid-walk, not just at the first level. An
+    /// open biscuit tin stands on the closed dresser's top, so the surface
+    /// channel carries straight on into the tin while the dresser's own drawer
+    /// stays shut underneath it.
+    @Test func anOpenContainerOnAClosedSurfaceContainerStillGivesUpItsContents()
+        async throws
+    {
+        let transcript = try await play(
+            DresserGame(), ["search tin", "take thimble", "take sock"])
+
+        expectInOrder(
+            transcript,
+            [
+                "In the biscuit tin is a steel thimble.",
+                "Taken.",
+                "You can't see any such thing.",
+            ])
+    }
+
     /// TAKE ALL reads the reachable set, and a closed drawer keeps its contents
     /// out of it while the top's lamp comes along.
     @Test func takeAllSkipsWhatIsShutInsideASurfaceContainer() async throws {

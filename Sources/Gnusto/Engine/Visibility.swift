@@ -175,7 +175,10 @@ enum Visibility {
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite
         // recursion — the containment graph should never have cycles, but the
-        // walk must not trust that invariant blindly.
+        // walk must not trust that invariant blindly. It holds only the nodes
+        // that can recurse — surfaces and containers, the ones `descend`
+        // admits — because a plain item is never walked twice anyway, and a
+        // cycle must pass through a surface or a container to close.
         var visited: Set<EntityID> = []
 
         /// Adds each perceivable item of `children` to the walk, and descends
