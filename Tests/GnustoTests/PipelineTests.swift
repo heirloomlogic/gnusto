@@ -90,8 +90,7 @@ struct PipelineTests {
             [
                 "[current]",
                 "[raft-each-before]",
-                "crate: You can\'t reach the crate.",
-                "rope: You can\'t reach the rope.",
+                "There is nothing here to take.",
             ])
         #expect(!turn.contains("[dock-each-before]"))
     }
