@@ -28,7 +28,10 @@ public struct Item: Sendable, Equatable {
         lhs.token === rhs.token
     }
 
-    var id: EntityID {
+    /// The item's ``EntityID``. Unique across the world, where ``name`` is
+    /// display text two items may share and an author may reword between
+    /// builds — so this is what persistent per-item state keys on.
+    package var id: EntityID {
         Ctx.current.id(for: token, describing: "Item")
     }
 

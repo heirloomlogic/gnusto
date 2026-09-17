@@ -155,6 +155,66 @@ struct ScoringTests {
             ])
     }
 
+    /// Two gems named "gem", told apart by an adjective. The register key is
+    /// the entity ID, so each pays its own take value and holds its own
+    /// deposit credit; keyed on the display name, the second of each pair paid
+    /// nothing and the ceiling was unreachable.
+    @Test func twoTreasuresSharingADisplayNameScoreSeparately() async throws {
+        let transcript = try await play(
+            TwinGemsGame(),
+            [
+                "take red gem", "score",
+                "take blue gem", "score",
+                "put red gem in case", "score",
+                "put blue gem in case", "score",
+                "take red gem", "score",
+                "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 5 of a possible 20",
+                "Your score is 10 of a possible 20",
+                "Your score is 15 of a possible 20",
+                "Your score is 20 of a possible 20",
+                "Your score is 15 of a possible 20",
+            ])
+    }
+
+    /// The ledger keys moved, and nothing translates the old ones. `backdate`
+    /// writes the keys a build from before this change would have left — and
+    /// they survive the save file verbatim, because a global is restored by
+    /// its declared property name and its value is carried across unread. So
+    /// the restored game looks for `take.coin`, does not find it, and pays the
+    /// take value a second time; the gem already in the case is credited
+    /// again at the next reconcile. Pinned here because it is the cost of the
+    /// fix, not because it is wanted.
+    @Test func aLedgerWrittenUnderTheOldKeysNoLongerCounts() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            BackdatedVaultGame(),
+            [
+                "backdate",
+                "put coin in cabinet",  // the old ledger already claims this one
+                "save", path,
+                "restore", path,
+                "take coin", "score",  // take value paid a second time → 3
+                "put coin in cabinet", "score",  // deposit credited again → 10
+                "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The ledger is written in an older hand.",
+                "Saved.",
+                "Restored.",
+                "Your score is 3 of a possible 10",
+                "Your score is 10 of a possible 10",
+            ])
+    }
+
     @Test func claimedRegistersSurviveSaveAndRestore() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
