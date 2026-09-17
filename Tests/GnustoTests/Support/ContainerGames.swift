@@ -518,3 +518,88 @@ struct NestedListingGame: Game {
         }
     }
 }
+
+/// One item declared both `surface` and `container`: a dresser with a top and
+/// a drawer. A brass lamp rests on the top, a wool sock sits inside, and the
+/// dresser starts closed — so the two channels must answer differently in the
+/// same walk (#513). The glass cabinet is the transparent comparison, and the
+/// open shelf unit the non-`openable` one, which is permanently open.
+struct DresserGame: Game {
+    let title = "Dresser"
+    let intro = ""
+
+    let bedroom = Location {
+        name("Bedroom")
+        description("A cramped bedroom.")
+    }
+
+    /// Surface + container + openable, starts closed.
+    let dresser = Item {
+        name("oak dresser")
+        surface
+        container
+        openable
+    }
+
+    /// On the dresser's top.
+    let lamp = Item {
+        name("brass lamp")
+    }
+
+    /// Inside the dresser's drawer.
+    let sock = Item {
+        name("wool sock")
+    }
+
+    /// Surface + container + openable + transparent, starts closed.
+    let cabinet = Item {
+        name("glass cabinet")
+        surface
+        container
+        openable
+        transparent
+    }
+
+    /// Inside the cabinet, behind its glass.
+    let vase = Item {
+        name("china vase")
+    }
+
+    /// On the cabinet's top, out in the open.
+    let medal = Item {
+        name("silver medal")
+    }
+
+    /// Surface + container with no `openable`, so permanently open.
+    let shelfUnit = Item {
+        name("pine shelf")
+        surface
+        container
+    }
+
+    /// Inside the shelf unit.
+    let book = Item {
+        name("red book")
+    }
+
+    /// On the shelf unit's top.
+    let candle = Item {
+        name("wax candle")
+    }
+
+    var map: WorldMap {
+        player.starts(in: bedroom)
+
+        dresser.starts(in: bedroom)
+        lamp.starts(on: dresser)
+        sock.starts(inside: dresser)
+
+        cabinet.starts(in: bedroom)
+        vase.starts(inside: cabinet)
+        medal.starts(on: cabinet)
+
+        shelfUnit.starts(in: bedroom)
+        book.starts(inside: shelfUnit)
+        candle.starts(on: shelfUnit)
+    }
+}
