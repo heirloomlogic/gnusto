@@ -370,6 +370,11 @@ public struct GameText: Sendable {
     /// plain slot names are allowed — headless runs, the play-test harness.
     public var savePathRefused: Line<Nothing> =
         "Paths aren't allowed here; enter a plain name."
+    /// A save or restore whose answer holds no letter, number or underscore
+    /// anywhere in it: all punctuation, all dots, or nothing but emoji. There
+    /// is no file it could name, so the prompt says so rather than picking one.
+    public var saveNameUnusable: Line<Nothing> =
+        "That name has no letters or numbers in it. Try another."
     /// An empty answer to a filename prompt.
     public var cancelled: Line<Nothing> = "Cancelled."
 
