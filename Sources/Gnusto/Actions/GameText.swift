@@ -967,7 +967,7 @@ extension GameText {
         // MARK: Motion
 
         /// Climbing something unclimbable. The bare `climb` names nothing.
-        public var climb: Line<Noun?> = .naming(orBare: "You can't climb that.") {
+        public var climb: Line<Noun?> = .naming(orBare: "There's nothing here worth climbing.") {
             "You can't climb \($0)."
         }
         /// Jumping, on the spot or over something. The bare `jump` names

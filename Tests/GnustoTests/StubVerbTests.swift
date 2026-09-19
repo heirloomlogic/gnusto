@@ -622,6 +622,9 @@ struct StubVerbTests {
             #expect(turnOutput(of: named, in: transcript).contains(noun), "\(named) discarded \(noun)")
             #expect(!turnOutput(of: bare, in: transcript).contains(noun), "\(bare) named \(noun)")
         }
+        #expect(
+            turnOutput(of: "climb", in: transcript)
+                .contains("There's nothing here worth climbing."))
     }
 
     /// The API claim: one property, either spelling. `kiss` is assigned a bare
