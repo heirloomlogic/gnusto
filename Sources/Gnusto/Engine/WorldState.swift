@@ -467,9 +467,10 @@ extension WorldState {
 extension WorldState {
     /// Whether this state is referentially consistent with `definition` — every
     /// ID it names is declared, every trait-gated set holds only entities with
-    /// the trait, the containment graph is acyclic, and the scalar counters are
-    /// in range. A restored save that fails any check is refused whole rather
-    /// than silently repaired: a crafted or corrupt file must never reach the
+    /// the trait, the containment graph is acyclic, the scalar counters are in
+    /// range, and the line AGAIN would repeat is one the parser would read. A
+    /// restored save that fails any check is refused whole rather than
+    /// silently repaired: a crafted or corrupt file must never reach the
     /// engine, where an unknown EntityID or a mistyped global would trap the
     /// process. Never mutates; `score` and `rngState` are accepted as-is (any
     /// value is legal for both).
@@ -560,6 +561,25 @@ extension WorldState {
 
         // Live fuses count down; a non-positive count would already have fired.
         guard activeFuses.values.allSatisfy({ $0 > 0 }) else { return false }
+
+        // A provenance check, not a cost one. `lastCommand` is recorded only
+        // after a line parses (`GameWorld.run`), and the parser refuses a line
+        // over `tokenLimit`, so this engine cannot have written a save that
+        // holds a longer one — which makes a file claiming otherwise a crafted
+        // file, and every other field in it suspect. That is the question this
+        // whole function asks.
+        //
+        // It is *not* what keeps the AGAIN in #503 cheap: the parse entry does
+        // that, and would answer an oversized line in microseconds even if this
+        // guard were gone. What refusing the file buys is the array itself —
+        // two million words would otherwise ride in the live state, and be
+        // copied again by every UNDO snapshot, for the rest of the session.
+        //
+        // One consequence to know before lowering `tokenLimit`: the constant is
+        // part of the save-compatibility surface from here on, so a save
+        // written under a higher limit is refused whole by a build with a lower
+        // one.
+        guard lastCommand.count <= StandardParser.tokenLimit else { return false }
 
         // A save is taken mid-play, with a non-negative move count.
         guard status == .playing else { return false }
