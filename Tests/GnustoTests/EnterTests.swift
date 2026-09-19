@@ -53,6 +53,18 @@ struct EnterTests {
         #expect(occurrences(of: "Level ground above black water.", in: redirected) == 1)
     }
 
+    @Test func nestedOnEnterWalkReturningToOuterRoomDescribesItOnce() async throws {
+        let transcript = try await play(StepGame(), ["down", "quit"])
+        let redirected = turnOutput(of: "down", in: transcript)
+
+        expectInOrder(
+            redirected,
+            ["Echo Chamber", "Every footfall comes back twice.", "The porch boards settle."])
+        #expect(occurrences(of: "Echo Chamber", in: redirected) == 1)
+        #expect(occurrences(of: "Every footfall comes back twice.", in: redirected) == 1)
+        #expect(!redirected.contains("Echo Passage"))
+    }
+
     @Test func onEnterFiresOnEveryEntryNotOnlyTheFirst() async throws {
         // Once by rule, once by fuse, and the vault counts both.
         let transcript = try await play(

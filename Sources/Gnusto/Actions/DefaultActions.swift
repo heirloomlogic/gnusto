@@ -587,7 +587,10 @@ enum DefaultActions {
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
-            if frame.with({ $0.state.playerLocation == destination }) {
+            if frame.with({
+                $0.state.playerLocation == destination
+                    && $0.describedAtOccupancyCount != $0.roomsOccupied.count
+            }) {
                 RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
             }
         }

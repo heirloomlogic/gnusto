@@ -75,6 +75,12 @@ struct Scratch: Sendable {
     /// session already reads.
     var roomsOccupied: [EntityID] = []
 
+    /// The `roomsOccupied` count at the last room description. A nested move
+    /// may return the player to an outer `enter(_:)` destination after already
+    /// describing it; matching this marker means that latest move needs no
+    /// second description.
+    var describedAtOccupancyCount: Int?
+
     /// The player walks into `room` — ``WorldState/setPlayerLocation(walkingTo:)``,
     /// with the occupancy noted.
     ///
