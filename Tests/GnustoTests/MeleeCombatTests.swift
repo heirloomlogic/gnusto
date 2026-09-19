@@ -223,6 +223,137 @@ struct MeleeCombatTests {
         #expect(extract(afterSave).contains { $0.contains("Defeated: true.") })
     }
 
+    /// The other half of the ledger a save has to carry: a villain saved
+    /// mid-knockout. `theLedgerSurvivesSaveAndRestore` pins a wounded one, and
+    /// a wound is a single number — a stun is a countdown in the plugin's
+    /// ledger and a flag in the engine's `unconsciousActors`, and the two have
+    /// to come back together or the golem wakes on the wrong turn. Saving costs
+    /// no turn, so the countdown does not move across either command. (#508)
+    @Test func aStunSurvivesSaveAndRestoreWithItsCountdown() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-melee-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            StunLabGame(),
+            [
+                "take bar", "attack golem",
+                "save", path,
+                "check", "check", "check",
+                "restore", path,
+                "check", "check", "check",
+                "quit",
+            ],
+            seed: 0)
+        let outCold: (String) -> [String] = { segment in
+            segment.components(separatedBy: "\n").filter { $0.contains("Out cold:") }
+        }
+        let afterSave = transcript.components(separatedBy: "Saved.")[1]
+            .components(separatedBy: "> restore")[0]
+        let afterRestore = transcript.components(separatedBy: "Restored.")[1]
+            .components(separatedBy: "> quit")[0]
+        // Down for two probed turns and up on the third, both times over.
+        #expect(outCold(afterSave) == outCold(afterRestore))
+        #expect(outCold(afterRestore).count == 3)
+        #expect(outCold(afterRestore).last?.contains("Out cold: false.") == true)
+        #expect(outCold(afterRestore).first?.contains("Out cold: true.") == true)
+    }
+
+    /// The knockout's whole span (#508). The countdown rests at zero for the
+    /// last turn the villain is down, so both halves of "he is out cold" have
+    /// to be read off the ledger entry's *presence* and never its count.
+    ///
+    /// Seed 0 in `StunLabGame`: the golem strikes first on the bare `take bar`
+    /// turn — that line is the control, and it says this golem strikes whenever
+    /// he is able — then the first swing knocks him down. The three ticks that
+    /// follow are his, and he spends every one of them on the floor.
+    @Test func anUnconsciousVillainLandsNoBlowOnAnyTurnHeIsDown() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "attack golem", "check", "check", "check", "quit"],
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                // He is willing and able before the knockout...
+                "The golem swipes and catches nothing.",
+                "The golem drops to its knees and stays there.",
+                // ...and unconscious for two probed turns after it.
+                "Out cold: true.",
+                "Out cold: true.",
+                "Out cold: false.",
+            ])
+
+        // Everything from the knockout up to the turn he is first seen back on
+        // his feet: three daemon ticks, and not one of them is a blow.
+        let whileDown = output(
+            before: "Out cold: false.",
+            in: output(after: "stays there", in: transcript))
+        #expect(!whileDown.contains("swipes and catches nothing"))
+        #expect(!whileDown.contains("rakes your forearm"))
+        #expect(!whileDown.contains("brings both fists down"))
+
+        // And the daemon is asleep, not dead: the first tick after he is up
+        // strikes again.
+        let afterWaking = output(after: "Out cold: false.", in: transcript)
+        #expect(afterWaking.contains("The golem swipes and catches nothing."))
+    }
+
+    /// The finishing blow on the turn the stun clears — the turn the player
+    /// spent the knockout to buy. Seed 0 again, one probe turn further in, so
+    /// the swing lands with the countdown resting at zero: `stunned[key] != nil`
+    /// is still true, the table is not rolled, and the blow kills outright.
+    @Test func theFinishingBlowLandsCleanOnTheTurnTheStunClears() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "attack golem", "check", "attack golem", "quit"],
+            seed: 0)
+        let finish = turnOutput(ofLast: "attack golem", in: transcript)
+        #expect(finish.contains("The golem comes apart into wet shards."))
+        // Not a rolled outcome: neither of the table's other survivable lines.
+        #expect(!finish.contains("A flake of clay spins away."))
+        #expect(!finish.contains("The bar rings off the floor."))
+    }
+
+    /// A knockout the game took by its own means. `Actor.isUnconscious` is the
+    /// engine's flag and its documentation invites a game to set it, so melee
+    /// reads the flag as well as its own ledger: a golem the game has put on
+    /// the floor takes the finishing blow clean, exactly as one melee knocked
+    /// down does. (#508)
+    @Test func aGameSetKnockoutEarnsTheCleanKillToo() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "mesmerize", "attack golem", "quit"],
+            seed: 0)
+        let finish = turnOutput(of: "attack golem", in: transcript)
+        #expect(finish.contains("The golem comes apart into wet shards."))
+        // Not a rolled outcome: none of the table's survivable lines.
+        #expect(!finish.contains("A flake of clay spins away."))
+        #expect(!finish.contains("The bar rings off the floor."))
+        #expect(!finish.contains("The golem drops to its knees and stays there."))
+    }
+
+    /// The other half of the same promise: a villain the game has knocked down
+    /// does not counter-attack either. The first `check` is the control — this
+    /// golem strikes on every tick he is able to — and the ticks after the game
+    /// sets the flag are silent, with no countdown to end them. (#508)
+    @Test func aGameSetKnockoutSilencesTheCounterAttack() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["check", "mesmerize", "check", "check", "quit"],
+            seed: 0)
+
+        // Willing and able before the game puts him down.
+        #expect(
+            turnOutput(of: "check", in: transcript)
+                .contains("The golem swipes and catches nothing."))
+
+        let whileDown = output(after: "eyes go dull", in: transcript)
+        #expect(whileDown.contains("Out cold: true."))
+        #expect(!whileDown.contains("swipes and catches nothing"))
+        #expect(!whileDown.contains("rakes your forearm"))
+        #expect(!whileDown.contains("brings both fists down"))
+    }
+
     /// The two rows the plugin adds beyond the engine's `attack` stubs. Worth a
     /// test of its own because the failure mode is silent: drop them and `stab`
     /// falls back to "I don't know the word" with nothing red anywhere else —

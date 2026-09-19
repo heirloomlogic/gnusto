@@ -14,32 +14,37 @@ import Testing
 struct UnconsciousActorTests {
     // MARK: - The reported bug
 
-    /// The bug from the field: battered senseless on one line, lifting the
-    /// chalice out of your hand on the next. He is down for exactly the two
-    /// turns his counter-attack skips, and lifts nothing in either of them.
-    @Test func theKnockedOutVillainLiftsNothingWhileHeIsDown() async throws {
+    /// Recovery consumes the third tick for both plugins, in either daemon order.
+    @Test(arguments: [false, true])
+    func recoveryConsumesTheWholeTurn(behaviorFirst: Bool) async throws {
         let transcript = try await play(
-            CutpurseGame(),
-            ["attack cutpurse", "check", "wait", "check"],
+            fresh: CutpurseGame(behaviorFirst: behaviorFirst),
+            ["attack cutpurse", "check", "wait", "check"], seed: 4)
+
+        #expect(transcript.contains("The cutpurse folds up and lies still."))
+        for command in ["attack cutpurse", "check", "wait"] {
+            let turn = turnOutput(of: command, in: transcript)
+            #expect(!turn.contains("He lifts the"))
+            #expect(!turn.contains("He jabs"))
+            #expect(!turn.contains("He catches you"))
+            #expect(!turn.contains("He finishes"))
+        }
+        let awake = output(after: "Out cold: false.", in: transcript)
+        #expect(awake.contains("He lifts the"))
+        #expect(awake.contains("He jabs") || awake.contains("He catches you"))
+    }
+
+    @Test(arguments: [false, true], ["roam", "follow"])
+    func recoveryPreventsAutonomousMovement(behaviorFirst: Bool, movement: String) async throws {
+        let transcript = try await play(
+            fresh: CutpurseGame(behaviorFirst: behaviorFirst, movement: movement),
+            ["attack cutpurse", movement == "follow" ? "north" : "check", "wait", "look"],
             seed: 4)
-
-        expectInOrder(
-            transcript,
-            [
-                "The cutpurse folds up and lies still.",
-                "Out cold: true.",  // still down a turn later
-                "Out cold: false.",  // and up on the turn after that
-            ])
-
-        // The two turns he spends on the floor: the knockout turn and the one
-        // after it. Neither carries a theft line.
-        let knockdown = turnOutput(of: "attack cutpurse", in: transcript)
-        #expect(!knockdown.contains("He lifts the"))
-        let whileDown = turnOutput(of: "check", in: transcript)
-        #expect(!whileDown.contains("He lifts the"))
-
-        // And he does resume — the guard suppresses theft, it doesn't end it.
-        #expect(turnOutput(of: "wait", in: transcript).contains("He lifts the"))
+        #expect(transcript.contains("The cutpurse folds up and lies still."))
+        let announcement = movement == "follow" ? "He follows you." : "He walks away."
+        let down = output(before: "> look", in: transcript)
+        #expect(!down.contains(announcement))
+        #expect(turnOutput(of: "look", in: transcript).contains(announcement))
     }
 
     /// Coming round is not an aggressive act, so it happens ahead of the host's
@@ -91,6 +96,28 @@ struct UnconsciousActorTests {
                 "Restored.",
                 "Out cold: true.",
             ])
+    }
+
+    @Test func undoRestoresTheRecoveryTurn() async throws {
+        let transcript = try await play(
+            CutpurseGame(),
+            ["attack cutpurse", "check", "wait", "undo", "check", "check"], seed: 4)
+        let replayed = turnOutput(of: "check", in: output(after: "Previous turn undone.", in: transcript))
+        #expect(!turnOutput(of: "wait", in: transcript).contains("He lifts the"))
+        expectInOrder(transcript, ["Out cold: true.", "Previous turn undone.", "Out cold: true.", "Out cold: false."])
+        #expect(!replayed.contains("He lifts the"))
+    }
+
+    @Test func deferredRecoveryKeepsTheFlagUntilCommit() async throws {
+        let transcript = try await play(ActorRecoveryGame(), ["swoon", "recover", "check"])
+        #expect(turnOutput(of: "recover", in: transcript).contains("Tick asleep: true."))
+        #expect(turnOutput(of: "check", in: transcript).contains("Out cold: false."))
+    }
+
+    @Test(arguments: ["renew", "abandon"])
+    func canceledRecoveryLeavesTheActorUnconscious(command: String) async throws {
+        let transcript = try await play(ActorRecoveryGame(), ["swoon", command, "check"])
+        #expect(turnOutput(of: "check", in: transcript).contains("Out cold: true."))
     }
 
     // MARK: - The flag on its own, with no combat plugin in the game

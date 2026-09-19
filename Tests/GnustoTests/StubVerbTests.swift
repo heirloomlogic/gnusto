@@ -127,6 +127,26 @@ struct StubVerbTests {
         #expect(!turn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(command)")
     }
 
+    /// A two-object stub must answer the command the player actually gave, rather than using a one-object line that implies the second object was absent. Each literal independently pins which noun fills which role.
+    @Test(arguments: [
+        ("burn rod with flask", "You can't set fire to the brass rod with the glass flask."),
+        ("dig bench with rod", "You can't dig the long bench with the brass rod."),
+        ("fill flask with rod", "You can't fill the glass flask with the brass rod."),
+        ("tie rod to bench", "You can't tie the brass rod to the long bench."),
+    ])
+    func anInstrumentedStubNamesBothObjects(_ command: String, _ expected: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
+        #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// DIG is the only one of these verbs with a genuinely bare row. Giving its two-object half a richer subject must not invent a noun for that row.
+    @Test func bareDigStaysObjectless() async throws {
+        let turn = turnOutput(of: "dig", in: try await play(StubLab(), ["dig"]))
+        #expect(turn.contains("You have nothing to dig with."))
+        #expect(!turn.contains("brass rod"))
+        #expect(!turn.contains("long bench"))
+    }
+
     /// Acceptance, from the issue: the thirteen turns that opened it. Every one
     /// of these used to say `I don't know the word`.
     @Test func theOpeningComplaintIsAnswered() async throws {
@@ -185,6 +205,17 @@ struct StubVerbTests {
     func aStubThatNeedsReachRefusesThroughTheGlass(_ command: String) async throws {
         let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
         #expect(turn.contains("You can't reach the gold coin."), "\(command): \(turn)")
+    }
+
+    /// The richer renderer still sits behind the direct-object reach guard. A named instrument must not make the stock line run for an unreachable object.
+    @Test(arguments: [
+        "burn coin with rod", "dig coin with rod", "fill coin with rod", "tie coin to rod",
+    ])
+    func anInstrumentedStubStillChecksReachFirst(_ command: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
+        #expect(turn.contains("You can't reach the gold coin."), "\(command): \(turn)")
+        #expect(!turn.contains("with the brass rod"), "\(command): \(turn)")
+        #expect(!turn.contains("to the brass rod"), "\(command): \(turn)")
     }
 
     /// And the other half of the set, which a blanket guard would have broken:
@@ -466,6 +497,19 @@ struct StubVerbTests {
         #expect(!turn.contains("I didn't understand"), "\(command): \(turn)")
     }
 
+    /// Adding an indirect object must not bypass the direct-player cascade. DIG keeps the nameless half it used before; the always-named lines keep the shared refusal.
+    @Test func instrumentedStubsKeepTheirPlayerGuards() async throws {
+        let transcript = try await play(
+            StubLab(), ["burn me with rod", "dig me with rod", "fill me with rod", "tie me to rod"])
+        for command in ["burn me with rod", "fill me with rod", "tie me to rod"] {
+            #expect(
+                turnOutput(of: command, in: transcript).contains("Best leave yourself out of it."),
+                "\(command): \(transcript)")
+        }
+        #expect(
+            turnOutput(of: "dig me with rod", in: transcript).contains("You have nothing to dig with."))
+    }
+
     /// But a stub whose line owns a nameless half takes that half instead, and
     /// keeps its own answer rather than the generic deferral. `taste` is here
     /// rather than above because since #245 it is one of these too — the line
@@ -512,8 +556,8 @@ struct StubVerbTests {
 
     /// The twelve stubs that carried a `.directObject` slot for a year with no
     /// way to name what filled it: they shipped as `plain`, which hands the
-    /// line nothing at all. Moving them to `optionallyNamed` gives a game the
-    /// name, and hands the engine's own wording an argument it ignores.
+    /// line nothing at all. Moving them to `optionallyNamed` gives the game
+    /// and its default reply the name.
     ///
     /// Every probe below is a turn whose output must not move, and they are
     /// grouped by the three roads `optionallyNamed` splits and `plain` did
@@ -530,8 +574,8 @@ struct StubVerbTests {
         ("drink flask", "There's nothing here worth drinking."),
         ("kiss rod", "That would be presumptuous."),
         ("point at rod", "Pointing at things accomplishes little."),
-        ("jump over bench", "You jump on the spot. Nothing is achieved."),
-        ("sit on bench", "There's nothing comfortable to sit on."),
+        ("jump over bench", "You can't jump over the long bench."),
+        ("sit on bench", "There's nothing comfortable to sit on the long bench."),
         ("count rod", "You lose count."),
         ("buy rod", "Nothing here is for sale."),
         ("sell rod", "Nobody here is buying."),
@@ -547,8 +591,8 @@ struct StubVerbTests {
         ("drink rat", "There's nothing here worth drinking."),
         ("kiss rat", "That would be presumptuous."),
         ("point at rat", "Pointing at things accomplishes little."),
-        ("jump over rat", "You jump on the spot. Nothing is achieved."),
-        ("sit on rat", "There's nothing comfortable to sit on."),
+        ("jump over rat", "You can't jump over the grey rat."),
+        ("sit on rat", "There's nothing comfortable to sit on the grey rat."),
         ("count rat", "You lose count."),
         ("buy rat", "Nothing here is for sale."),
         ("sell rat", "Nobody here is buying."),
@@ -577,7 +621,7 @@ struct StubVerbTests {
     ]
 
     @Test(arguments: StubVerbTests.theTwelveThatLearnedToName)
-    func theEngineDefaultIsUnchangedForEveryRewiredStub(
+    func everyRewiredStubHasItsExpectedDefaultReply(
         _ command: String, _ expected: String
     ) async throws {
         let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
@@ -604,6 +648,27 @@ struct StubVerbTests {
                 stub.namesObject,
                 "`\(stub.intent.raw)` takes a direct object its line can't name")
         }
+    }
+
+    /// An optional name reaches a stub line only when the engine's wording uses
+    /// it. These pairs execute the parser rows that opened #529, rather than
+    /// checking `namesObject`, which only describes the capability.
+    @Test func motionStubsDistinguishNamedAndBareDefaults() async throws {
+        let transcript = try await play(
+            StubLab(), ["climb bench", "climb", "jump over bench", "jump", "sit on bench", "sit"])
+        let pairs = [
+            ("climb bench", "climb", "long bench"),
+            ("jump over bench", "jump", "long bench"),
+            ("sit on bench", "sit", "long bench"),
+        ]
+
+        for (named, bare, noun) in pairs {
+            #expect(turnOutput(of: named, in: transcript).contains(noun), "\(named) discarded \(noun)")
+            #expect(!turnOutput(of: bare, in: transcript).contains(noun), "\(bare) named \(noun)")
+        }
+        #expect(
+            turnOutput(of: "climb", in: transcript)
+                .contains("There's nothing here worth climbing."))
     }
 
     /// The API claim: one property, either spelling. `kiss` is assigned a bare

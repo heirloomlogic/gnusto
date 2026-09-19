@@ -563,9 +563,10 @@ enum DefaultActions {
         }
     }
 
-    /// Moves the player into `destination`, running its onEnter rules and then
-    /// describing the room. Shared by every passable exit kind. A boarded
-    /// vehicle rides along in the same mutation — and its cargo with it,
+    /// Moves the player into `destination`, runs its onEnter rules, and describes
+    /// it if those rules leave the player there. A rule that moves onward owns
+    /// the final room's description. Shared by every passable exit kind. A
+    /// boarded vehicle rides along in the same mutation — and its cargo with it,
     /// since cargo placements (`.inside(vehicle)`) never mention the room.
     ///
     /// `aside` lands ahead of the onEnter rules and the room description,
@@ -586,7 +587,12 @@ enum DefaultActions {
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
-            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            if frame.with({
+                $0.state.playerLocation == destination
+                    && $0.describedAtOccupancyCount != $0.roomsOccupied.count
+            }) {
+                RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            }
         }
     }
 
@@ -712,8 +718,8 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isEnterable == true else {
             try refuse(frame.definition.text.cantEnterThat(item.definiteNoun))
         }
-        let (currentVehicle, placement) = frame.with {
-            ($0.state.playerVehicle, $0.state.placements[id])
+        let (currentVehicle, carried) = frame.with {
+            ($0.state.playerVehicle, $0.state.isPossession(id, of: .player))
         }
         if currentVehicle == id {
             try refuse(frame.definition.text.alreadyInVehicle(item.definiteNoun))
@@ -721,10 +727,10 @@ enum DefaultActions {
         if let currentVehicle {
             try refuse(frame.definition.text.mustExitFirst(frame.definiteNoun(of: currentVehicle)))
         }
-        if placement == .heldBy(.player) {
+        if carried {
             try refuse(frame.definition.text.cantEnterCarried())
         }
-        guard placement == .room(here) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
         frame.with { scratch in
@@ -843,19 +849,23 @@ enum DefaultActions {
     static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
             let containment = scratch.state.containment()
+            func visibleNouns(_ ids: [EntityID]?) -> [GameText.Noun] {
+                (ids ?? [])
+                    .filter {
+                        Visibility.isPerceivable(
+                            $0, definition: frame.definition, state: scratch.state)
+                    }
+                    .map(frame.indefiniteNoun(of:))
+            }
             return (containment.held[.player] ?? [])
                 .map { id in
                     GameText.Carried.Entry(
                         noun: frame.indefiniteNoun(of: id),
-                        contents: Visibility.contentsVisible(
+                        insideContents: Visibility.contentsVisible(
                             id, definition: frame.definition, state: scratch.state)
-                            ? (containment.inContainer[id] ?? [])
-                                .filter {
-                                    Visibility.isPerceivable(
-                                        $0, definition: frame.definition, state: scratch.state)
-                                }
-                                .map(frame.indefiniteNoun(of:))
+                            ? visibleNouns(containment.inContainer[id])
                             : [],
+                        surfaceContents: visibleNouns(containment.onSurface[id]),
                         isWorn: scratch.state.wornItems.contains(id)
                     )
                 }

@@ -70,7 +70,7 @@ public struct Actor: Sendable, Equatable {
         self.traits = item.traits
     }
 
-    var id: EntityID {
+    package var id: EntityID {
         asItem.id
     }
 
@@ -126,13 +126,13 @@ public struct Actor: Sendable, Equatable {
     /// True while the actor is out cold — set by whatever knocked them down
     /// and cleared when they come round.
     ///
-    /// The engine reads it nowhere. It exists so that two plugins with no
+    /// It exists so that two plugins with no
     /// knowledge of each other can agree on one fact about a person: a villain
     /// `GnustoMeleeCombat` has just battered into unconsciousness stops taking
     /// his own turn under `GnustoActors` — no roaming, no picking pockets —
     /// until he wakes. A game that knocks an actor down by its own means
     /// should set and clear it too; anything consulting the flag will then
-    /// behave.
+    /// behave. Setting it clears any pending ``recoverAfterTurn()`` request.
     public var isUnconscious: Bool {
         get {
             let (frame, id) = asItem.resolved
@@ -141,11 +141,28 @@ public struct Actor: Sendable, Equatable {
         nonmutating set {
             let (frame, id) = asItem.resolved
             frame.with { scratch in
+                scratch.recoveringActors.remove(id)
                 if newValue {
                     scratch.state.unconsciousActors.insert(id)
                 } else {
                     scratch.state.unconsciousActors.remove(id)
                 }
+            }
+        }
+    }
+
+    /// Keeps the actor unconscious for the rest of this turn, then clears
+    /// ``isUnconscious`` when the turn commits. Behaviors resume next turn,
+    /// regardless of daemon order. Does nothing if the actor is conscious.
+    ///
+    /// A later assignment to ``isUnconscious`` cancels this request, so a new
+    /// knockout is not cleared by an earlier recovery. A rolled-back turn
+    /// discards the request with its other mutations.
+    public func recoverAfterTurn() {
+        let (frame, id) = asItem.resolved
+        frame.with { scratch in
+            if scratch.state.unconsciousActors.contains(id) {
+                scratch.recoveringActors.insert(id)
             }
         }
     }

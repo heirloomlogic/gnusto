@@ -600,12 +600,12 @@ actor PlaytestSession {
     /// - Throws: ``PlaytestError`` when the route ends somewhere else.
     func verifyLanding(against route: PlaytestRoute) async throws {
         _ = try await liveWorld()
-        guard let declared = route.landingRoom, declared != ledger.currentRoom else { return }
+        guard let declared = route.landingRoom, declared != ledger.currentRoom.name else { return }
         throw PlaytestError(
             """
             Route "\(route.name)" is stale: its manifest says it lands in \(declared), and \
             replaying its \(route.commands.count) commands at seed \(seed) now ends in \
-            \(ledger.currentRoom). The route now ends in a different room, so a session \
+            \(ledger.currentRoom.name). The route now ends in a different room, so a session \
             started from \
             it would be somewhere nobody meant. Nothing was opened. Re-cut the route, or fix \
             the landing its manifest declares.
@@ -753,8 +753,10 @@ actor PlaytestSession {
         let open: Int
         /// How many have been closed.
         let closed: Int
-        /// The room the status line last named, so the caller can see why the
-        /// ranking put what it did on top.
+        /// The room the tester is standing in, under the label an item id
+        /// uses for it, so the caller can see why the ranking put what it did
+        /// on top — and can tell whether an item's room is this one. See
+        /// ``CoverageLedger/currentRoomLabel``.
         let room: String
         /// The ranked items.
         let items: [CoverageItem]
@@ -782,7 +784,7 @@ actor PlaytestSession {
         return Coverage(
             open: ledger.openCount,
             closed: ledger.items.count - ledger.openCount,
-            room: ledger.currentRoom,
+            room: ledger.currentRoomLabel,
             items: ledger.queue(limit: limit),
             hint: ledger.frontierHint(),
             note: ledger.signals().note)
@@ -852,7 +854,7 @@ actor PlaytestSession {
         persistCommands()
         return """
             \(block)[playtest] session=\(id) noted at line \(index), \
-            room=\(ledger.currentRoom), moves=\(lastMoves) — no turn passed.
+            room=\(ledger.currentRoomLabel), moves=\(lastMoves) — no turn passed.
             """
     }
 
@@ -900,12 +902,12 @@ actor PlaytestSession {
         /// numerator built from these can reach that denominator. The name is
         /// what a report says out loud, and looking it up costs a round nothing
         /// if it travels alongside.
-        struct VisitedRoom: Sendable, Equatable {
-            /// The declared ID, as `Location`'s property name gave it.
-            let id: EntityID
-            /// The display name the status line printed for it.
-            let name: String
-        }
+        /// One room, as an id and the name printed for it.
+        ///
+        /// ``LedgerRoom`` under another name, because the ledger and the
+        /// closing record want the same pair for the same reason and one
+        /// subsystem does not need two spellings of it.
+        typealias VisitedRoom = LedgerRoom
 
         /// Always true. `finish` reports; it does not refuse.
         let accepted = true
@@ -1017,13 +1019,9 @@ actor PlaytestSession {
         /// record claims, finds nothing, and concludes the record is lying, is
         /// instead told where to look.
         ///
-        /// Decided by *name*, because the ledger this is checked against holds
-        /// display names — a room string there is an item identity and a
-        /// transcript-heading matcher, not a coverage key, and it stays that
-        /// way. The cost is that where two rooms share a name, standing in one
-        /// of them canonically suppresses the hint for the other. That is a
-        /// pointer to where the evidence lives, so a missed hint costs a reader
-        /// one `grep`; nothing is counted off it.
+        /// Decided by id, against the ids the ledger visited. It used to be
+        /// decided by name, which cost the hint for either of two rooms that
+        /// printed alike: standing in one suppressed it for the other (#504).
         let roomsOnlyInBranches: [EntityID]
 
         /// Every timer whose body ran in this session, by name, and how often —
@@ -1112,7 +1110,7 @@ actor PlaytestSession {
 
         let items = ledger.queue(limit: limit)
         let open = ledger.openCount
-        let ledgerRooms = Set(ledger.roomsVisited)
+        let ledgerRooms = ledger.roomsVisited
         var message =
             open == 0
             ? "Noted. Nothing was left open when you stopped."
@@ -1144,7 +1142,7 @@ actor PlaytestSession {
             roomsVisited: roomsEverVisited,
             roomsWorked: roomsWorkedEver,
             roomsOnlyInBranches: roomsEverVisited.compactMap {
-                ledgerRooms.contains($0.name) || roomsPassedThrough.contains($0.id)
+                ledgerRooms.contains($0.id) || roomsPassedThrough.contains($0.id)
                     ? nil : $0.id
             },
             firedTimers: firedTimersEver,
@@ -1364,15 +1362,15 @@ actor PlaytestSession {
         let line = turns.count
         let existing = checkpoints[trimmed]
         checkpoints[trimmed] = Checkpoint(
-            line: line, room: ledger.currentRoom, moves: lastMoves)
+            line: line, room: ledger.currentRoom.name, moves: lastMoves)
         return Marked(
             name: trimmed,
             line: line,
-            room: ledger.currentRoom,
+            room: ledger.currentRoomLabel,
             moves: lastMoves,
             message: """
                 \(existing == nil ? "Marked" : "Moved") `\(trimmed)` to line \(line) \
-                (\(ledger.currentRoom), moves=\(lastMoves)). Call restore with that name to \
+                (\(ledger.currentRoomLabel), moves=\(lastMoves)). Call restore with that name to \
                 come back; the turns after it are written off to a branch file and dropped \
                 from the command list, so what you file afterwards still replays from line \
                 one.
@@ -1535,13 +1533,13 @@ actor PlaytestSession {
         return Rewound(
             name: name,
             line: target,
-            room: ledger.currentRoom,
+            room: ledger.currentRoomLabel,
             moves: lastMoves,
             discarded: dropped.count,
             branch: branch?.path,
             status: statusLine,
             message: """
-                Back at line \(target) — \(ledger.currentRoom), moves=\(lastMoves)\
+                Back at line \(target) — \(ledger.currentRoomLabel), moves=\(lastMoves)\
                 \(name.map { ", the checkpoint you called `\($0)`" } ?? "").
                 \(dropped.count) line\(dropped.count == 1 ? "" : "s") dropped from the \
                 command list\(branch.map { ", kept as evidence at \($0.path)" } ?? "").
@@ -1617,8 +1615,7 @@ actor PlaytestSession {
     /// line counts — see ``Closing/roomsWorked`` for the rule and for what the
     /// rule cannot see. Kept beside ``visit(_:)`` and out of the ledger for the
     /// same reason ``roomsEverVisited`` is: a rewind must not be able to take
-    /// it back, and the ledger's rooms are display names, which cannot key a
-    /// coverage answer.
+    /// it back, and this answer has to survive one.
     ///
     /// - Parameter audit: what the parser made of the line.
     private func work(_ audit: TurnAudit) {
@@ -1867,7 +1864,7 @@ actor PlaytestSession {
         // The ledger reads the rendered text for the same reason the `opening`
         // field does: `<br>` is a marker, not a word, and a queue item named
         // after one would be an obligation to examine punctuation.
-        ledger.observeOpening(output: openingOutput, room: result.status.locationName)
+        ledger.observeOpening(output: openingOutput, room: LedgerRoom(result.status))
         visit(result.status)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
@@ -1938,7 +1935,7 @@ actor PlaytestSession {
             command: line,
             audit: audit,
             output: plain,
-            room: result.status.locationName,
+            room: LedgerRoom(result.status),
             moves: result.status.moves,
             line: index,
             turnCost: turnCost)

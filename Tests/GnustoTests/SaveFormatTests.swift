@@ -458,7 +458,8 @@ struct SaveFormatTests {
     /// `unconsciousActors` (`ad2f340`, 2026-08-06) and `metActors` (`666f738`,
     /// 2026-08-28) were added to `WorldState`: both keys are absent, exactly as
     /// they were on disk. Frozen on purpose — regenerating it would defeat the
-    /// test, which is that a file written by an *older build* still reads.
+    /// test, which is that a file written before the conversation-memory key
+    /// change is refused before its state reaches the running game.
     ///
     /// `playerVehicle` is absent rather than `null`, which is the *other* thing
     /// this fixture is pinning and the only place the two dialects differ in
@@ -511,20 +512,21 @@ struct SaveFormatTests {
         }
         """
 
-    @Test("a format-1 save missing the later fields still restores")
-    func aFormatOneSaveMissingTheLaterFieldsStillRestores() async throws {
+    @Test("a format-1 save is rejected before it changes the running game")
+    func aFormatOneSaveIsRejectedBeforeItChangesTheRunningGame() async throws {
         let path = Self.temporarySavePath("format1")
         defer { try? FileManager.default.removeItem(atPath: path) }
         try Data(Self.formatOneSave.utf8).write(to: URL(fileURLWithPath: path))
 
-        let transcript = try await play(LedgerGame(), ["restore", path, "look", "inventory"])
+        let transcript = try await play(
+            LedgerGame(), ["take coin", "restore", path, "look", "inventory"])
 
-        #expect(transcript.contains("Restored."))
-        // Where the save says, not where the game starts.
-        #expect(turnOutput(of: "look", in: transcript).contains("Strongroom"))
+        #expect(transcript.contains(GameText().saveVersionMismatch()))
+        #expect(!transcript.contains("Restored."))
+        // The current game stays in the office with the coin still held. The
+        // rejected save says the player is in the strongroom.
+        #expect(turnOutput(of: "look", in: transcript).contains("Office"))
         #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
-        // The absent properties came back as their declared defaults rather
-        // than refusing the file.
         #expect(!transcript.contains("Restore failed."))
     }
 

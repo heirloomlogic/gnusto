@@ -100,7 +100,7 @@ extension Prose {
         stubs.smash = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) made of sterner stuff."
         }
-        stubs.burn = .naming { "You have nothing to set \($0) alight with." }
+        stubs.burn = .naming { "You have nothing to set \($0.object) alight with." }
         stubs.cut = .naming { "You have nothing that would cut \($0)." }
         // `V-DIG` (`gverbs.zil:405`) answers for the tool, not the ground. The
         // one place in the game where digging is the puzzle is the sand, and
@@ -264,7 +264,7 @@ extension Prose {
         stubs.fill = .init(Prose.cantFillThat)
         stubs.pour = .init(Prose.cantPourThat)
         stubs.empty = .naming { "\($0.sentenceCased) has nothing in it to empty." }
-        stubs.tie = .naming { "You cannot tie \($0) to anything." }
+        stubs.tie = .naming { "You cannot tie \($0.object) to anything." }
         stubs.untie = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not tied to anything."
         }

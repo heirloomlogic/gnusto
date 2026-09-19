@@ -82,6 +82,16 @@ struct NamedCastGame: Game {
         openable
     }
 
+    let plinth = Item {
+        name("plinth")
+        surface
+    }
+
+    let grail = Item {
+        name("Grail")
+        properName
+    }
+
     var content: GameContents { talk }
 
     var rules: Rules {
@@ -107,6 +117,8 @@ struct NamedCastGame: Game {
         woodenSword.starts(in: hall)
         chest.starts(in: hall)
         excalibur.starts(inside: chest)
+        plinth.startsHeld
+        grail.starts(on: plinth)
     }
 }
 

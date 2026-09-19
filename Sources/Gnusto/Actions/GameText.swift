@@ -27,10 +27,7 @@
 ///   parser row behind it carries an object or `Line<Noun?>` where the verb
 ///   also answers bare. A game writes it as a plain string literal or as
 ///   ``Line/naming(_:)``, and which of the two is the game's business.
-/// - **A line about *two* things is a `Line` over a role struct** —
-///   ``Holding``, ``Gift``, ``Aboard``. The roles are a type rather than a
-///   pair so that the API can answer the question an author actually asks:
-///   `\($0.holder)` says which one is the container where `\($1)` does not.
+/// - **A line about *two* things is a `Line` over a role struct** — ``Holding``, ``Gift``, ``InstrumentUse``, ``Aboard``. The roles are a type rather than a pair so that the API can answer the question an author actually asks: `\($0.holder)` says which one is the container where `\($1)` does not.
 /// - **A line about *several* things is a line about one.** ``Noun/list(_:)``
 ///   joins them and carries the number the whole phrase has, so "In the hamper
 ///   are some scales" is written the same way "In the box is a coin" is, and the
@@ -538,18 +535,30 @@ public struct GameText: Sendable {
     }
 
     /// The `inventory` listing, as one sentence ("You are carrying a brass
-    /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
-    /// already articled, since only the caller knows which are proper names.
-    /// Only called with at least one item; `emptyHanded` covers the rest.
+    /// lantern, a tray (with a cup on it), and a velvet cloak (being worn).").
+    /// The names arrive already articled, since only the caller knows which
+    /// are proper names. Only called with at least one item; `emptyHanded`
+    /// covers the rest.
     ///
     /// The one line about several things that does **not** take them as a single
     /// ``Noun/list(_:)``: it has something to say about each of them, so
     /// ``Carried`` keeps them apart until the game has had its say.
     public var inventorySentence: Line<Carried> = .naming {
         let phrases = $0.entries.map {
-            $0.noun.phrase
+            let placement =
+                switch ($0.insideContents.isEmpty, $0.surfaceContents.isEmpty) {
+                case (true, true):
+                    ""
+                case (false, true):
+                    " (containing \(GameText.list($0.insideContents.map(\.phrase))))"
+                case (true, false):
+                    " (with \(GameText.list($0.surfaceContents.map(\.phrase))) on it)"
+                case (false, false):
+                    " (containing \(GameText.list($0.insideContents.map(\.phrase))), with \(GameText.list($0.surfaceContents.map(\.phrase))) on top)"
+                }
+            return $0.noun.phrase
                 + ($0.isWorn ? " (being worn)" : "")
-                + ($0.contents.isEmpty ? "" : " (containing \(GameText.list($0.contents.map(\.phrase))))")
+                + placement
         }
         return "You are carrying \(GameText.list(phrases))."
     }
@@ -793,11 +802,7 @@ extension GameText {
     /// A line with an object to name is a ``GameText/Line``, which takes a bare
     /// string as readily as a naming closure — so whether a stub says what the
     /// player was pointing at is the game's call rather than a shape the engine
-    /// picked. `Line<Noun>` where every row carries an object, `Line<Noun?>`
-    /// where the line owns a nameless half as well, `Line<Nothing>` for a verb with
-    /// no object slot on any row — that last one has no name to be handed, but
-    /// it still prints in a turn, so ``GameText/Line/live(_:)`` is open to it
-    /// like any other line.
+    /// picked. `Line<Noun>` where every row carries one object, `Line<Noun?>` where the line owns a nameless half as well, `Line<InstrumentUse>` where it may receive an indirect object too, and `Line<Nothing>` for a verb with no object slot on any row — that last one has no name to be handed, but it still prints in a turn, so ``GameText/Line/live(_:)`` is open to it like any other line.
     ///
     /// A `Line` is handed a ``GameText/Noun`` and never a bare name, so a line
     /// whose verb agrees with the object can conjugate for itself. A template
@@ -807,7 +812,7 @@ extension GameText {
     /// a stub line scan. See the `plural` trait. Interpolating a `Noun` prints
     /// its phrase, so a line with no verb to agree pays nothing for this.
     ///
-    /// ``give`` is the one line about *two* objects, and takes a ``Gift``.
+    /// ``give`` and the instrument-taking stubs are lines about *two* objects, and take ``Gift`` and ``InstrumentUse`` respectively.
     public struct StubReplies: Sendable {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.
@@ -844,16 +849,22 @@ extension GameText {
         public var smash: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) sturdier than that."
         }
-        /// Setting fire to something.
-        public var burn: Line<Noun> = .naming {
-            "You have no way to set fire to \($0)."
+        /// Setting fire to something, optionally with an instrument.
+        public var burn: Line<InstrumentUse> = .naming {
+            guard let instrument = $0.instrument else {
+                return "You have no way to set fire to \($0.object)."
+            }
+            return "You can't set fire to \($0.object) with \(instrument)."
         }
         /// Cutting or slicing something.
         public var cut: Line<Noun> = .naming {
             "You have nothing to cut \($0) with."
         }
         /// Digging, with or without a tool. The bare `dig` names nothing.
-        public var dig: Line<Noun?> = "You have nothing to dig with."
+        public var dig: Line<InstrumentUse?> = .naming(orBare: "You have nothing to dig with.") {
+            guard let instrument = $0.instrument else { return "You have nothing to dig with." }
+            return "You can't dig \($0.object) with \(instrument)."
+        }
         /// Pulling or dragging something.
         public var pull: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) budge."
@@ -955,10 +966,14 @@ extension GameText {
         // MARK: Motion
 
         /// Climbing something unclimbable. The bare `climb` names nothing.
-        public var climb: Line<Noun?> = "You can't climb that."
+        public var climb: Line<Noun?> = .naming(orBare: "There's nothing here worth climbing.") {
+            "You can't climb \($0)."
+        }
         /// Jumping, on the spot or over something. The bare `jump` names
         /// nothing.
-        public var jump: Line<Noun?> = "You jump on the spot. Nothing is achieved."
+        public var jump: Line<Noun?> = .naming(orBare: "You jump on the spot. Nothing is achieved.") {
+            "You can't jump over \($0)."
+        }
         /// Swimming with no water to swim in.
         public var swim: Line<Nothing> = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
@@ -968,13 +983,11 @@ extension GameText {
         public var stand: Line<Noun?> = .naming(orBare: "You're already standing.") {
             "You can't stand on \($0)."
         }
-        /// Sitting with nowhere to sit. The one posture of the three whose
-        /// sentence answers both halves, which is why it stays a single line
-        /// where ``stand`` and ``lie`` are written with ``Line/naming(orBare:_:)``:
-        /// "There's nothing comfortable to sit on." is as true of `sit on the
-        /// bench` as of bare `sit`, where "You're already standing." answers
-        /// `stand on the bench` by claiming you are doing it.
-        public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
+        /// Sitting with nowhere to sit. The bare `sit` names nothing; `sit on`
+        /// and `sit in` name the object.
+        public var sit: Line<Noun?> = .naming(orBare: "There's nothing comfortable to sit on.") {
+            "There's nothing comfortable to sit on \($0)."
+        }
         /// Lying down, on the floor or on something. The bare `lie` and `lie
         /// down` name nothing.
         public var lie: Line<Noun?> = .naming(orBare: "The floor doesn't look inviting.") {
@@ -985,9 +998,12 @@ extension GameText {
 
         // MARK: Liquids and containers
 
-        /// Filling something with nothing to fill it from.
-        public var fill: Line<Noun> = .naming {
-            "There's nothing here to fill \($0) from."
+        /// Filling something, optionally from a named source.
+        public var fill: Line<InstrumentUse> = .naming {
+            guard let instrument = $0.instrument else {
+                return "There's nothing here to fill \($0.object) from."
+            }
+            return "You can't fill \($0.object) with \(instrument)."
         }
         /// Pouring something that holds nothing.
         public var pour: Line<Noun> = .naming {
@@ -997,9 +1013,12 @@ extension GameText {
         public var empty: Line<Noun> = .naming {
             "There's nothing in \($0) to empty out."
         }
-        /// Tying something with nothing to tie it to.
-        public var tie: Line<Noun> = .naming {
-            "There's nothing here to tie \($0) to."
+        /// Tying something, optionally to a named counterpart.
+        public var tie: Line<InstrumentUse> = .naming {
+            guard let instrument = $0.instrument else {
+                return "There's nothing here to tie \($0.object) to."
+            }
+            return "You can't tie \($0.object) to \(instrument)."
         }
         /// Untying something that isn't tied.
         public var untie: Line<Noun> = .naming {

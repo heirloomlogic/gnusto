@@ -28,7 +28,7 @@ public struct Item: Sendable, Equatable {
         lhs.token === rhs.token
     }
 
-    var id: EntityID {
+    package var id: EntityID {
         Ctx.current.id(for: token, describing: "Item")
     }
 

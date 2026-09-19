@@ -273,7 +273,7 @@ public func action(
 ///
 /// `ring` and `ring the bell` are one intent, and one declaration answers both:
 /// the nameless command takes `bare`, the named one takes the closure. Both
-/// halves are required for the reason ``GameText/Line/naming(orBare:_:)`` gives
+/// halves are required for the reason ``GameText/Line/naming(orBare:_:)-(_,(GameText.Noun)->String)`` gives
 /// — a game that wrote only the naming half would leave the other command
 /// answered by somebody else's words.
 ///

@@ -125,11 +125,48 @@ struct StepGame: Game {
         dark
     }
 
+    let crackedLedge = Location {
+        name("Cracked Ledge")
+        description("The ledge has not finished falling.")
+    }
+
+    let waterCave = Location {
+        name("Cave")
+        description("Water runs over the cave floor.")
+        alwaysDescribed
+    }
+
+    let upperChute = Location {
+        name("Upper Chute")
+        description("The walls are too smooth to stop on.")
+    }
+
+    let sump = Location {
+        name("Sump")
+        description("Level ground above black water.")
+        alwaysDescribed
+    }
+
+    let echoChamber = Location {
+        name("Echo Chamber")
+        description("Every footfall comes back twice.")
+        alwaysDescribed
+    }
+
+    let echoPassage = Location {
+        name("Echo Passage")
+        description("A turn in the passage doubles back.")
+    }
+
     let lamp = Item { name("brass lamp") }
 
     /// Counts the vault's `onEnter` firings, so a test can prove it runs on
     /// *every* entry rather than only the first.
     @Global var bells = 0
+
+    /// Lets the two echo rooms send the player A→B→A once, rather than forming
+    /// the runaway cycle guarded by `Reentry.walk`.
+    @Global var echoRedirects = 0
 
     var verbs: [SyntaxRule] {
         SyntaxRule("step", intent: Intent("step"))
@@ -209,10 +246,37 @@ struct StepGame: Game {
         pit.onEnter { try die("The floor was a courtesy.") }
 
         sill.onEnter { try refuse("The draught pushes you back.") }
+
+        crackedLedge.onEnter {
+            say("The ledge gives way.")
+            arrive(at: waterCave)
+        }
+
+        upperChute.onEnter {
+            say("The chute pitches downward.")
+            try enter(sump)
+        }
+
+        echoChamber.onEnter {
+            guard echoRedirects == 0 else { return }
+            echoRedirects = 1
+            try enter(echoPassage)
+        }
+
+        echoPassage.onEnter {
+            guard echoRedirects == 1 else { return }
+            echoRedirects = 2
+            try enter(echoChamber)
+        }
+
+        porch.after(.go) { say("The porch boards settle.") }
     }
 
     var map: WorldMap {
         porch.north(vault)
+        porch.east(crackedLedge)
+        porch.west(upperChute)
+        porch.down(echoChamber)
         vault.south(porch)
         player.starts(in: porch)
         lamp.starts(in: vault)
