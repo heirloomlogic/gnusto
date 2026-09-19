@@ -364,7 +364,8 @@ final class TurnFrame: Sendable {
             // seam: the closure runs from inside the call that is producing the
             // text, so `describeSurroundings()`, `arrive(at:)` and a plain read
             // of `description` all land back on this line. See `Reentry`.
-            return nested(.liveText, within: id) { dynamic() }
+            let text = nested(.liveText, within: id) { dynamic() }
+            return validatedLiveText(text, from: "describe", for: id)
         }
         return definition.items[id]?.description
             ?? definition.locations[id]?.description
@@ -385,9 +386,28 @@ final class TurnFrame: Sendable {
             let dynamic = definition.rules.itemPresence[id]
         {
             // The same seam as `describedText`, for the same reason.
-            return nested(.liveText, within: id) { dynamic() }
+            let text = nested(.liveText, within: id) { dynamic() }
+            return validatedLiveText(text, from: "presence", for: id)
         }
         return definition.items[id]?.firstSight
+    }
+
+    /// A live prose rule is author code, so its value cannot be checked until
+    /// the engine asks for it. Keep the trap at that one evaluation seam and
+    /// name the declaration that must be fixed.
+    private func validatedLiveText(_ text: String, from rule: String, for id: EntityID) -> String {
+        guard let kind = text.blankTextKind else { return text }
+        let noun =
+            if definition.items[id]?.isActor == true {
+                "actor"
+            } else if definition.items[id] != nil {
+                "item"
+            } else {
+                "location"
+            }
+        fatalError(
+            "Gnusto: \(noun) \"\(id)\"'s \(rule) { … } rule returned \(kind) text. "
+                + "Return prose containing at least one non-whitespace character.")
     }
 
     var command: Command {

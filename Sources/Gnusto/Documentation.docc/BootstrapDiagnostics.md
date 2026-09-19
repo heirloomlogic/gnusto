@@ -77,11 +77,13 @@ the table renders.
 | `entity "coin" is declared by both MyGame and Attic.` | Two declarations minted the same `EntityID`. Rename one, or namespace the bundle. |
 | `"a" and "b" are the same Location value; each location must be its own declaration.` | One `Location` (or `Item`, or `Actor`) value assigned to two properties. Each entity is its own `let`. |
 | `location "hall" has no name(…) trait.` | Also `item "…"` and `actor "…"`. Every entity needs a `name(…)` trait. |
+| `item "coin" declares an empty description(…) trait.` | Also `location`, `actor`, `firstSight(…)`, `whitespace-only`, and either `text` or `otherwise text` branch of the `when:_:otherwise:` forms. Omit optional text to use stock behavior; explicitly blank text is an author error. |
 | `item "coin" declares name(…) more than once.` | Also `description(…)`, `firstSight(…)`, the two-state description forms, `pronoun(…)`, `capacity(…)`, custom traits, and location names/descriptions/custom traits. These are single-valued declarations; remove the duplicate instead of relying on the later value. `adjectives` and `synonyms` deliberately accumulate. |
 | `the north exit from "hall" references a location that is not a stored property of the game or any of its content bundles.` | Also `… door from "hall" references an item …`. The `map` block named something the reflection walk never saw — usually a computed property or one declared in an extension. If the source is also unresolved, the diagnostic names the direction instead. |
 | `"attic" declares its north exit more than once.` | Two `map` entries claim one direction. |
 | `"coin" declares its placement more than once: first in "hall", then inside "box".` | An item can have one initial position. This applies to every placement spelling: `starts(in:)`, `starts(on:)`, `starts(inside:)`, `startsWorn`, `startsHeld`, and `starts(heldBy:)`, including declarations split between the host map and a content bundle's map. Remove one entry. |
 | `"attic"'s north exit uses "door" as a door, which is not declared openable.` | A door exit needs an ``openable`` item; `go` has no open state to gate on otherwise. |
+| `location "hall" declares an empty blocked north exit message.` | Also `whitespace-only` and `conditional north exit otherwise message`. A refusal that prints nothing still costs a turn, so supply real prose or remove the exit declaration. |
 | `"coin" is placed on "table", which is not declared as a surface.` | Declare ``surface``, or place it `inside`. |
 | `"coin" is placed inside "box", which is not declared as a container.` | Declare ``container``. |
 | `"sword" starts heldBy "troll", which is not an Actor.` | |
