@@ -83,6 +83,8 @@ That second rule is why the helper exists rather than a `[Noun]` parameter. The 
 
 ``GameText/inventorySentence`` is the exception, over ``GameText/Carried``: it has something to say about *each* thing it lists — which of them is being worn — so it cannot have them joined before the game has had its say.
 
+Each ``GameText/Carried/Entry`` also keeps its direct visible ``GameText/Carried/Entry/insideContents`` and ``GameText/Carried/Entry/surfaceContents`` separate. A custom inventory can therefore describe a coin in a box differently from a key on top of it while retaining the engine's articles, proper names, and noun numbers.
+
 A line about **two** things is a `Line` too, over a role struct that names them — ``GameText/Holding`` (a thing and what holds it), ``GameText/Gift``, ``GameText/Aboard``:
 
 ```swift

@@ -406,11 +406,16 @@ extension GameText {
         public struct Entry: Sendable {
             /// What it is.
             public let noun: Noun
-            /// Its direct visible contents, if it is a carried container.
+            /// Its direct visible inside contents, if it is a carried container.
             ///
             /// A game can use this to give its inventory its own layout while
             /// keeping articles and proper names rendered by the engine.
-            public let contents: [Noun]
+            public let insideContents: [Noun]
+            /// Its direct visible surface contents, if it is a carried surface.
+            ///
+            /// Kept separate from ``insideContents`` so a game's inventory
+            /// wording can distinguish "in" from "on".
+            public let surfaceContents: [Noun]
             /// Whether the player is wearing it rather than holding it.
             public let isWorn: Bool
         }
@@ -426,9 +431,14 @@ extension GameText {
                 .init(entries: [
                     .init(
                         noun: Noun.sampleSingular,
-                        contents: [Noun.samplePlural],
+                        insideContents: [Noun.samplePlural],
+                        surfaceContents: [Noun.sampleSingular],
                         isWorn: false),
-                    .init(noun: Noun.samplePlural, contents: [], isWorn: true),
+                    .init(
+                        noun: Noun.samplePlural,
+                        insideContents: [],
+                        surfaceContents: [],
+                        isWorn: true),
                 ])
             ]
         }
