@@ -266,6 +266,8 @@ var rules: Rules {
 
 `presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines. The caveat about never asking for a look from inside the closure applies here unchanged, and for the same reason: the room describer is what calls it.
 
+Every declared description or listing line must contain a non-whitespace character. The bootstrap rejects blank `description(…)`, `firstSight(…)`, and either branch of their `when:otherwise:` forms; a `describe { … }` or `presence { … }` rule that calculates blank text traps when that value is evaluated. Omit optional text to use the engine's stock description or listing. To keep an object out of sight, declare ``hidden`` and reveal it when appropriate; a blank `firstSight` or `presence` result is not a visibility mechanism.
+
 The line is consulted wherever the room *lists* the thing, not only when it is lying on the floor — so an item that starts inside a container or on a surface gets its own paragraph in place of the stock *"In the chest is a tan label."*, and a rule can say which:
 
 ```swift

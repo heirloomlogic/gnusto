@@ -55,11 +55,6 @@ struct ZorkHouse: GameContent {
         adjectives: "kitchen", "narrow"
     ) {
         openable
-        // Empty means "nothing special about the …", which is exactly what
-        // `KITCHEN-WINDOW-F` falls through to once the flag is set: the engine
-        // supplies `text.nothingSpecial` for a description that is "", so the
-        // stock line is not copied here to drift from its template.
-        description(when: \.isOpen, "", otherwise: Prose.kitchenWindow)
     }
 
     let sack = Item {
@@ -328,6 +323,13 @@ struct ZorkHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // `KITCHEN-WINDOW-F` falls through to the stock answer once the window
+        // is open. Return that answer explicitly: blank calculated prose is an
+        // author error, and using `gameText` keeps Zork's override authoritative.
+        window.describe {
+            window.isOpen ? gameText.nothingSpecial(window.definiteNoun) : Prose.kitchenWindow
+        }
+
         // The window is the door on the house's east side, so `isOpen` is the
         // state both its own description and the Kitchen's paragraph are claims
         // about. Behind House's twin of this is the host's, since that room
