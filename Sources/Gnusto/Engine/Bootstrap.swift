@@ -253,6 +253,11 @@ enum Bootstrap {
             diagnostics.append(contentsOf: rule.patternProblems)
         }
 
+        func diagnoseBlank(_ text: String?, on subject: String, as field: String) {
+            guard let blank = text?.blankTextDiagnostic else { return }
+            diagnostics.append("\(subject) declares \(blank) \(field).")
+        }
+
         for (id, definition) in locations.sorted(by: { $0.key < $1.key }) {
             for declaration in duplicateDeclarations[id, default: []] {
                 diagnostics.append("location \"\(id)\" declares \(declaration) more than once.")
@@ -260,6 +265,8 @@ enum Bootstrap {
             if definition.name == nil {
                 diagnostics.append("location \"\(id)\" has no name(…) trait.")
             }
+            diagnoseBlank(
+                definition.description, on: "location \"\(id)\"", as: "description(…) trait")
         }
         for (id, definition) in items.sorted(by: { $0.key < $1.key }) {
             let kind = definition.isActor ? "actor" : "item"
@@ -268,6 +275,23 @@ enum Bootstrap {
             }
             if definition.name == nil {
                 diagnostics.append("\(kind) \"\(id)\" has no name(…) trait.")
+            }
+            let subject = "\(kind) \"\(id)\""
+            diagnoseBlank(definition.description, on: subject, as: "description(…) trait")
+            diagnoseBlank(definition.firstSight, on: subject, as: "firstSight(…) trait")
+            if let pair = definition.twoStateDescription {
+                diagnoseBlank(
+                    pair.text, on: subject, as: "description(when:_:otherwise:) text")
+                diagnoseBlank(
+                    pair.otherwise, on: subject,
+                    as: "description(when:_:otherwise:) otherwise text")
+            }
+            if let pair = definition.twoStateFirstSight {
+                diagnoseBlank(
+                    pair.text, on: subject, as: "firstSight(when:_:otherwise:) text")
+                diagnoseBlank(
+                    pair.otherwise, on: subject,
+                    as: "firstSight(when:_:otherwise:) otherwise text")
             }
         }
         // Phase 2 — evaluate the map block.
@@ -341,6 +365,9 @@ enum Bootstrap {
                 else {
                     continue
                 }
+                diagnoseBlank(
+                    message, on: "location \"\(fromID)\"",
+                    as: "blocked \(direction) exit message")
                 claimExit(.blocked(message), direction, from: fromID)
 
             case .doorExit(let from, let direction, let to, let doorToken):
@@ -369,7 +396,12 @@ enum Bootstrap {
             case .conditionalExit(let from, let direction, let to, let condition, let blocked):
                 guard
                     let fromID = resolveLocation(
-                        from, role: "the source of a conditional \(direction) exit"),
+                        from, role: "the source of a conditional \(direction) exit")
+                else { continue }
+                diagnoseBlank(
+                    blocked, on: "location \"\(fromID)\"",
+                    as: "conditional \(direction) exit otherwise message")
+                guard
                     let toID = resolveLocation(
                         to, role: "the \(direction) exit from \"\(fromID)\"")
                 else { continue }
@@ -1153,8 +1185,7 @@ enum Bootstrap {
         // A two-state trait is lowered into the slot its rule form fills, and
         // nothing downstream can tell the two apart: `describedText` finds the
         // closure where it looks for a `describe { … }`, so the runtime
-        // override still wins, the reentry guard still brackets it, and an
-        // empty text still falls through to `nothingSpecial`. The checks below
+        // override still wins and the reentry guard still brackets it. The checks below
         // — `alwaysDescribed` with nothing to print, a listing line the map
         // buries — read the same slot and so judge the trait for free. After
         // the throw above, so a slot is known empty: the trait beside a rule

@@ -53,8 +53,7 @@ public struct ItemTrait: Sendable {
 /// the one Bool a trait block can name — the block runs in a stored-property
 /// initializer, where no other declaration is in scope yet. The bootstrap
 /// lowers the pair into the same slot a `describe { … }` / `presence { … }`
-/// rule fills, so precedence, the reentry guard and the empty-text fallback
-/// are the rule's, unchanged.
+/// rule fills, so precedence and the reentry guard are the rule's, unchanged.
 struct TwoStateText: Sendable {
     /// Which text the pair supplies. The listing channel is gated on more than
     /// the examine channel is — a held thing is never listed, a touched one

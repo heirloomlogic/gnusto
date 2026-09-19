@@ -51,9 +51,9 @@ struct TwoStateDescriptionTests {
         #expect(turnOutput(of: "x lamp", in: undone).contains(TwoStateGame.lampOff))
     }
 
-    @Test func emptyTextFallsThroughToTheStockLine() async throws {
-        struct BlankGame: Game {
-            let title = "Blank"
+    @Test func omittedTextFallsThroughToTheStockLine() async throws {
+        struct OmittedGame: Game {
+            let title = "Omitted"
             let intro = ""
             let room = Location {
                 name("Room")
@@ -61,16 +61,13 @@ struct TwoStateDescriptionTests {
             }
             let hatch = Item {
                 name("hatch")
-                openable
-                description(when: \.isOpen, "", otherwise: "A hatch, shut.")
             }
             var map: WorldMap {
                 player.starts(in: room)
                 hatch.starts(in: room)
             }
         }
-        let transcript = try await play(BlankGame(), ["x hatch", "open hatch", "examine hatch"])
-        #expect(turnOutput(of: "x hatch", in: transcript).contains("A hatch, shut."))
+        let transcript = try await play(OmittedGame(), ["examine hatch"])
         #expect(
             turnOutput(of: "examine hatch", in: transcript)
                 .contains("You see nothing special about the hatch."))
@@ -328,13 +325,14 @@ struct TwoStateDescriptionTests {
                 firstSight("A lantern lies here.")
                 description(when: \.isLit, "It burns.", otherwise: "A lantern lies here.")
             }
-            // Two empty arms are two fall-throughs to the stock line, not one
-            // sentence shared.
+            // Two distinct pairs share no sentence across their channels.
             let hatch = Item {
                 name("hatch")
                 openable
-                firstSight(when: \.isOpen, "", otherwise: "A hatch is set in the floor.")
-                description(when: \.isOpen, "", otherwise: "A hatch, shut.")
+                firstSight(
+                    when: \.isOpen, "An open hatch is set in the floor.",
+                    otherwise: "A shut hatch is set in the floor.")
+                description(when: \.isOpen, "The hatch is open.", otherwise: "The hatch is shut.")
             }
             var map: WorldMap {
                 player.starts(in: room)

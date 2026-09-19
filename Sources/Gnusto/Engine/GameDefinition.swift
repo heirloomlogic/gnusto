@@ -14,6 +14,20 @@ enum ExitTarget: Sendable {
     case dynamic(destination: @Sendable () -> EntityID)
 }
 
+extension String {
+    /// How an explicitly supplied author-facing text fails to contain prose,
+    /// or `nil` when it contains at least one non-whitespace character.
+    var blankTextKind: String? {
+        if isEmpty { return "empty" }
+        return allSatisfy(\.isWhitespace) ? "whitespace-only" : nil
+    }
+
+    /// The blank kind with the article a diagnostic needs.
+    var blankTextDiagnostic: String? {
+        blankTextKind.map { $0 == "empty" ? "an empty" : "a whitespace-only" }
+    }
+}
+
 /// The immutable, declared facts about a location.
 struct LocationDefinition: Sendable {
     var name: String?
@@ -75,9 +89,7 @@ struct ItemDefinition: Sendable {
 
     /// Every sentence this item's examine channel can print, static or
     /// two-state; empty when it has none. For the one-sentence-on-both-channels
-    /// warning, which is about the words rather than the spelling. An empty
-    /// text is not a sentence — on the examine channel it falls through to
-    /// the stock line — and two of them are not one sentence shared.
+    /// warning, which is about the words rather than the spelling.
     var descriptionTexts: [String] {
         (description.map { [$0] } ?? twoStateDescription.map { [$0.text, $0.otherwise] } ?? [])
             .filter { !$0.isEmpty }
