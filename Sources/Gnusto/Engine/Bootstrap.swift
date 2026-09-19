@@ -1544,8 +1544,8 @@ enum Bootstrap {
             + "against \(path) resolves to nothing. If the two were meant to be one "
             + "bundle, yield the stored property — `var content { \(path) }` — instead of "
             + "constructing a new one. If the game means to have two \(type) bundles, "
-            + "list this one too and override `var namespace` on it, since both default "
-            + "to the same namespace."
+            + "list this one too and override `var namespace` on it, since two \(type) "
+            + "bundles under one namespace collide."
     }
 
     /// The diagnostic for one bundle instance listed more than once in
