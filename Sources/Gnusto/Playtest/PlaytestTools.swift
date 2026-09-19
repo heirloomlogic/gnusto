@@ -1000,7 +1000,15 @@ enum PlaytestTools {
                 "type": "string",
                 "description": "Where and when the game showed you this.",
             ],
-            "room": ["type": "string"],
+            "room": [
+                "type": "string",
+                "description": .string(
+                    "The room this belongs to, named as the item's own id names it. Two "
+                        + "rooms that print one name are told apart by the order you walked "
+                        + "into them, so the second Dead End is `Dead End (2)` here and in "
+                        + "`how`. It matches the `room` of a coverage result, which is where "
+                        + "you are standing."),
+            ],
             "line": ["type": "integer"],
             "closedByLooking": [
                 "type": "boolean",
@@ -1035,7 +1043,13 @@ enum PlaytestTools {
                 "description": "How many items are open. Read it as a countdown.",
             ],
             "closed": ["type": "integer"],
-            "room": ["type": "string"],
+            "room": [
+                "type": "string",
+                "description": .string(
+                    "Where you are standing, under the same label an item's `room` and `id` "
+                        + "use — so an item whose room reads differently is somewhere else, "
+                        + "however alike the two print."),
+            ],
             "items": ["type": "array", "items": queueItemSchema],
             "hint": [
                 "type": "string",

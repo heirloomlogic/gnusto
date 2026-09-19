@@ -234,6 +234,17 @@ struct TwinDeadEndGame: Game {
         description("A rusty hinge.")
     }
 
+    /// A draught the Hall starts printing once the tester has been somewhere
+    /// else, so the twins' session has one probe change that *is* a fuse.
+    /// Without it the two `timer:` assertions below are both negative and a
+    /// session recording no probes at all would pass them.
+    var timers: [TimedEvent] {
+        daemon("draught", autostart: true) {
+            guard player.location == hall, player.moves > 1 else { return }
+            say("A draught moves along the floor.")
+        }
+    }
+
     var map: WorldMap {
         hall.north(deadA)
         hall.south(deadB)

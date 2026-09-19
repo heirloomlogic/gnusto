@@ -753,8 +753,10 @@ actor PlaytestSession {
         let open: Int
         /// How many have been closed.
         let closed: Int
-        /// The room the status line last named, so the caller can see why the
-        /// ranking put what it did on top.
+        /// The room the tester is standing in, under the label an item id
+        /// uses for it, so the caller can see why the ranking put what it did
+        /// on top — and can tell whether an item's room is this one. See
+        /// ``CoverageLedger/currentRoomLabel``.
         let room: String
         /// The ranked items.
         let items: [CoverageItem]
@@ -782,7 +784,7 @@ actor PlaytestSession {
         return Coverage(
             open: ledger.openCount,
             closed: ledger.items.count - ledger.openCount,
-            room: ledger.currentRoom.name,
+            room: ledger.currentRoomLabel,
             items: ledger.queue(limit: limit),
             hint: ledger.frontierHint(),
             note: ledger.signals().note)
@@ -1017,13 +1019,9 @@ actor PlaytestSession {
         /// record claims, finds nothing, and concludes the record is lying, is
         /// instead told where to look.
         ///
-        /// Decided by *name*, because the ledger this is checked against holds
-        /// display names — a room string there is an item identity and a
-        /// transcript-heading matcher, not a coverage key, and it stays that
-        /// way. The cost is that where two rooms share a name, standing in one
-        /// of them canonically suppresses the hint for the other. That is a
-        /// pointer to where the evidence lives, so a missed hint costs a reader
-        /// one `grep`; nothing is counted off it.
+        /// Decided by id, against the ids the ledger visited. It used to be
+        /// decided by name, which cost the hint for either of two rooms that
+        /// printed alike: standing in one suppressed it for the other (#504).
         let roomsOnlyInBranches: [EntityID]
 
         /// Every timer whose body ran in this session, by name, and how often —
@@ -1617,8 +1615,7 @@ actor PlaytestSession {
     /// line counts — see ``Closing/roomsWorked`` for the rule and for what the
     /// rule cannot see. Kept beside ``visit(_:)`` and out of the ledger for the
     /// same reason ``roomsEverVisited`` is: a rewind must not be able to take
-    /// it back, and the ledger's rooms are display names, which cannot key a
-    /// coverage answer.
+    /// it back, and this answer has to survive one.
     ///
     /// - Parameter audit: what the parser made of the line.
     private func work(_ audit: TurnAudit) {

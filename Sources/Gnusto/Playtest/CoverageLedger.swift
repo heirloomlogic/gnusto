@@ -275,7 +275,11 @@ struct CoverageItem: Sendable {
     /// Its ``LedgerRoom/id`` is what the queue's proximity ranking compares
     /// and what the room's item-id label is keyed on; its ``LedgerRoom/name``
     /// is what ``why`` prints.
-    let room: LedgerRoom
+    ///
+    /// A `var` for the same reason ``how`` is: ``CoverageLedger/queue(limit:)``
+    /// rewrites the name to this session's label at the moment the item is
+    /// handed over, so the published field and the id name one room.
+    var room: LedgerRoom
 
     /// The line number of the turn that raised it.
     let line: Int
@@ -628,12 +632,18 @@ struct CoverageLedger: Sendable {
     /// first visited, and an item is only ever raised for a room the tester is
     /// standing in — so an id never changes under one.
     ///
-    /// **The label is for the id and the paste, not for the prose.** An item's
-    /// ``CoverageItem/why`` quotes what the game printed and says `Dead End`,
-    /// because that is what the tester read; its id and the `in <room>:` prefix
-    /// ``how(_:in:)`` puts on a command somewhere else both say `Dead End (2)`,
-    /// because those are the two things the tester acts on and both have to
-    /// name one room.
+    /// **Every field the tester acts on carries the label; the prose quotes
+    /// what was printed.** An item's id, the `in <room>:` prefix
+    /// ``how(_:in:)`` puts on a command somewhere else, and every published
+    /// `room` field — ``queue(limit:)``'s items, ``forks()``, and the coverage
+    /// result's current room — all say `Dead End (2)`, because a tester who
+    /// reads a label in one of them and a bare name in another reads the two
+    /// as one room and types the command in the wrong place. An item's
+    /// ``CoverageItem/why`` says `Dead End`, because that is the name the
+    /// tester read on the status line. The one exception is a `why` that
+    /// *contrasts* two rooms: ``watchForDisplacement(output:room:line:)``
+    /// labels both ends, since "last printed in Dead End and is printed in
+    /// Dead End" is not a sentence anyone can act on.
     private var roomLabels: [EntityID: String] = [:]
 
     /// Every token the game's vocabulary did not know, and how often it was
@@ -655,6 +665,12 @@ struct CoverageLedger: Sendable {
 
     /// The room the last observation ended in.
     private(set) var currentRoom = LedgerRoom.nowhere
+
+    /// What ``currentRoom`` is called in a queue item's id. See ``roomLabels``.
+    ///
+    /// Published rather than the bare name wherever a tester compares the room
+    /// it is standing in against the room an item belongs to.
+    var currentRoomLabel: String { label(of: currentRoom) }
 
     /// Non-comment lines fed.
     private(set) var commands = 0
@@ -909,6 +925,12 @@ struct CoverageLedger: Sendable {
         return ranked.prefix(limit).map { item in
             var rendered = item
             rendered.how = how(item.command, in: item.room)
+            // Published under the session's own label, for the same reason the
+            // id is: a queue whose `how` says `in Dead End (2)` and whose
+            // `room` says `Dead End` tells a tester standing in the first Dead
+            // End that the item is here, and the command it hands over then
+            // answers about nothing.
+            rendered.room = LedgerRoom(id: item.room.id, name: label(of: item.room))
             return rendered
         }
     }
@@ -1192,8 +1214,9 @@ struct CoverageLedger: Sendable {
                     command: "look and see whether \(record.label) is still there",
                     how: "look and see whether \(record.label) is still there",
                     why: """
-                        \(record.label) was last printed in \(elsewhere.name) and is printed \
-                        in \(room.name) at line \(line), and you are not carrying it. Look at \
+                        \(record.label) was last printed in \(label(of: elsewhere)) and is \
+                        printed in \(label(of: room)) at line \(line), and you are not \
+                        carrying it. Look at \
                         both \
                         and write a note quoting what each says
                         """,
@@ -1284,7 +1307,7 @@ struct CoverageLedger: Sendable {
             (
                 id: item.id,
                 command: item.command,
-                room: item.room.name,
+                room: label(of: item.room),
                 taken: item.discharged && !item.abstained
             )
         }

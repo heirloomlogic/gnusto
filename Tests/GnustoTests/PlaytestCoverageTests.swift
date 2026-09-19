@@ -851,7 +851,10 @@ struct PlaytestCoverageTests {
     @Test func twinRoomsKeepTheirOwnExitsAndProbes() async throws {
         let session = try await session(TwinDeadEndGame())
         _ = try await session.move(
-            commands: ["north", "look", "west", "east", "south", "south", "look"],
+            commands: [
+                "look", "north", "look", "west", "east", "south", "south", "look", "north",
+                "look",
+            ],
             allowPrompts: false)
 
         let open = try await ids(session)
@@ -860,12 +863,47 @@ struct PlaytestCoverageTests {
         // queue line.
         #expect(!open.contains("exit:west@Dead End"))
         #expect(open.contains("exit:west@Dead End (2)"))
-        // Neither probe saw the other's output, so no fuse was invented.
+        // Neither probe saw the other's output, so no fuse was invented — and
+        // the Hall's draught is the control that says the probes ran at all.
+        #expect(open.contains("timer:Hall"))
         #expect(!open.contains("timer:Dead End"))
         #expect(!open.contains("timer:Dead End (2)"))
         // And the hinge is queued under the room that printed it.
         #expect(open.contains("noun:hinge@Dead End"))
         #expect(!open.contains("noun:hinge@Dead End (2)"))
+    }
+
+    /// Every room a queue result publishes is the session's own label, so the
+    /// label an id carries can be resolved against where the tester stands.
+    ///
+    /// The other half of #504. Keying the ledger by id split the two Dead Ends
+    /// apart, but the split only reaches the tester if the published rooms
+    /// carry the label too: with `coverage.room` reading `Dead End`, an item in
+    /// the *other* Dead End reading `Dead End`, and only its `how` saying
+    /// which, a tester standing in the second one reads all three as here,
+    /// types the command, and is answered about nothing.
+    @Test func everyPublishedRoomCarriesTheSessionLabel() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: ["north", "look", "west", "east", "south", "south", "look"],
+            allowPrompts: false)
+
+        let coverage = try await session.coverage(limit: 200)
+        // Standing in the second Dead End, which is where the walk ended.
+        #expect(coverage.room == "Dead End (2)")
+
+        let hinge = try #require(coverage.items.first { $0.id == "noun:hinge@Dead End" })
+        #expect(hinge.room.name == "Dead End")
+        #expect(hinge.how == "in Dead End: x hinge")
+
+        let exit = try #require(coverage.items.first { $0.id == "exit:west@Dead End (2)" })
+        #expect(exit.room.name == "Dead End (2)")
+        #expect(exit.how == "west")
+
+        // Nothing published names a room by the id the firewall withholds.
+        for item in coverage.items {
+            #expect(!item.room.name.contains("dead"))
+        }
     }
 
     /// A change the tester's own commands explain is not a timer. Cloak of
