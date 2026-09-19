@@ -1940,7 +1940,7 @@ extension CoverageItem {
             "kind": .string(kind.rawValue),
             "how": .string(how),
             "why": .string(why),
-            "room": .string(room),
+            "room": .string(room.name),
             "line": .integer(line),
             "closedByLooking": .bool(kind.closedByLooking),
             "fork": .bool(fork),

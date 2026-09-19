@@ -839,6 +839,35 @@ struct PlaytestCoverageTests {
         #expect(!(try await ids(session).contains("timer:Yard")))
     }
 
+    /// Two rooms under one display name keep their own exits and their own
+    /// probes.
+    ///
+    /// The whole of #504 in one session. Every ledger key used to be built from
+    /// the status line's display name, so the two Dead Ends were one room:
+    /// walking west out of the first closed the second's untaken west exit, and
+    /// `look` in the second was diffed against `look` in the first, whose rusty
+    /// hinge then read as something a fuse had done. A blind tester was steered
+    /// away from a real unexplored exit and towards a timer that does not exist.
+    @Test func twinRoomsKeepTheirOwnExitsAndProbes() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: ["north", "look", "west", "east", "south", "south", "look"],
+            allowPrompts: false)
+
+        let open = try await ids(session)
+        // The second room called Dead End is `Dead End (2)` — the tester's own
+        // walking order, because the declared id is source and may not reach a
+        // queue line.
+        #expect(!open.contains("exit:west@Dead End"))
+        #expect(open.contains("exit:west@Dead End (2)"))
+        // Neither probe saw the other's output, so no fuse was invented.
+        #expect(!open.contains("timer:Dead End"))
+        #expect(!open.contains("timer:Dead End (2)"))
+        // And the hinge is queued under the room that printed it.
+        #expect(open.contains("noun:hinge@Dead End"))
+        #expect(!open.contains("noun:hinge@Dead End (2)"))
+    }
+
     /// A change the tester's own commands explain is not a timer. Cloak of
     /// Darkness is the case: hanging the cloak lights the bar and changes what a
     /// `look` prints, and every word of the difference is a word the tester
@@ -1079,10 +1108,12 @@ struct PlaytestCoverageTests {
 
         #expect(closing.roomsVisited.map(\.id.raw) == ["upperMine", "lowerMine"])
         #expect(closing.roomsVisited.map(\.name) == ["Coal Mine", "Coal Mine"])
-        // The ledger's own count is the one that collapses them, and it stays
-        // that way on purpose: its room string is an item identity and a
-        // transcript-heading matcher, not a coverage key.
-        #expect(closing.signals.roomsVisited == 1)
+        // The ledger counts them apart too. It used to collapse them, on the
+        // argument that its room was an item identity rather than a coverage
+        // key — but an item identity keyed on a display name is exactly what
+        // merged the two Dead Ends' exits (#504), so the ledger keys on the id
+        // as well and every ratio measured off this count follows.
+        #expect(closing.signals.roomsVisited == 2)
     }
 
     /// The engine's fired-timer tally reaches the closing record.

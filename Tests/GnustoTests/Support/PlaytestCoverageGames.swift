@@ -189,6 +189,66 @@ struct CoalMineGame: Game {
     }
 }
 
+/// Two dead ends under one display name, each with its own unwalked exit.
+///
+/// ``CoalMineGame``'s sibling, and the case the coverage *queue* gets wrong
+/// where that one gets the closing record wrong. Walking west out of one Dead
+/// End used to close the other's west exit, because an exit item's id carried
+/// the display name; and `look` in one was compared against `look` in the
+/// other, so the rusty hinge lying in only one of them read as a fuse firing.
+/// Zork 1 and Dungeon have eight Dead Ends each, which is where coverage is
+/// hardest to come by and a false frontier costs most. (#504)
+struct TwinDeadEndGame: Game {
+    let title = "Twins"
+    let intro = "Two dead ends."
+
+    let hall = Location {
+        name("Hall")
+        description("A plain hall. Ways lead north and south.")
+    }
+
+    let deadA = Location {
+        name("Dead End")
+        description("A blind alley. A narrow crack leads west.")
+    }
+
+    let deadB = Location {
+        name("Dead End")
+        description("A blind alley. A narrow crack leads west.")
+    }
+
+    let closetA = Location {
+        name("Closet A")
+        description("A closet.")
+    }
+
+    let closetB = Location {
+        name("Closet B")
+        description("A closet.")
+    }
+
+    /// In one twin and not the other, so a probe that confuses the two sees a
+    /// sentence appear out of nowhere.
+    let hinge = Item {
+        name("rusty hinge")
+        description("A rusty hinge.")
+    }
+
+    var map: WorldMap {
+        hall.north(deadA)
+        hall.south(deadB)
+        deadA.south(hall)
+        deadB.north(hall)
+        deadA.west(closetA)
+        deadB.west(closetB)
+        closetA.east(deadA)
+        closetB.east(deadB)
+
+        player.starts(in: hall)
+        hinge.starts(in: deadA)
+    }
+}
+
 /// A room reached by a verb rather than by an exit.
 ///
 /// Dungeon has eight of these — the balloon flight, the bank curtain, the river

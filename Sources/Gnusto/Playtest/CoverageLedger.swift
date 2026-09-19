@@ -270,8 +270,12 @@ struct CoverageItem: Sendable {
     /// Where and when the game showed you this, in the session's own terms.
     let why: String
 
-    /// The room this belongs to, as the status line named it.
-    let room: String
+    /// The room this belongs to.
+    ///
+    /// Its ``LedgerRoom/id`` is what the queue's proximity ranking compares
+    /// and what the room's item-id label is keyed on; its ``LedgerRoom/name``
+    /// is what ``why`` prints.
+    let room: LedgerRoom
 
     /// The line number of the turn that raised it.
     let line: Int
@@ -423,6 +427,58 @@ struct PlaytestSignals: Sendable {
     }
 }
 
+// MARK: - Where a thing was seen
+
+/// A room as the ledger holds it: the ``EntityID`` it keys on, and the display
+/// name it prints.
+///
+/// The two are not interchangeable and the split is the whole point. A display
+/// name is prose — Dungeon declares 143 rooms under 126 names, Zork 1 has
+/// seventeen called Maze and eight called Dead End — so keying anything on it
+/// merges rooms that merely read alike. Walking west out of one Dead End used
+/// to close the other's unwalked west exit, and `look` in one was compared
+/// against `look` in the other and the differing item listing reported as a
+/// fuse nobody had fired. The id is what the ledger counts by and compares on;
+/// the name is what a sentence says out loud, and what ``CoverageLedger``'s own
+/// per-session label — the thing an item id is actually built from — is derived
+/// from. See ``CoverageLedger/roomLabels`` for why an item id may not simply be
+/// the id.
+struct LedgerRoom: Hashable, Sendable {
+    /// The declared ID, as `Location`'s property name gave it.
+    let id: EntityID
+
+    /// The display name the status line printed for it.
+    let name: String
+
+    /// No room: a session that has not stood anywhere yet, or a thing whose
+    /// name nothing has printed.
+    static let nowhere = LedgerRoom(id: EntityID(""), name: "")
+
+    /// True for ``nowhere``.
+    var isEmpty: Bool { id.raw.isEmpty }
+
+    /// The room a turn ended in.
+    ///
+    /// Both halves, because the ledger needs both and for opposite reasons: it
+    /// keys every probe, walked exit and room label on the id, and prints the
+    /// name.
+    ///
+    /// - Parameter status: the status line this turn ended on.
+    init(_ status: StatusLine) {
+        self.init(id: status.locationID, name: status.locationName)
+    }
+
+    /// A room from its two halves.
+    ///
+    /// - Parameters:
+    ///   - id: the declared ID.
+    ///   - name: the display name.
+    init(id: EntityID, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
 // MARK: - The ledger
 
 /// The per-session ledger. Fed one observation per recorded line, asked for a
@@ -451,7 +507,7 @@ struct CoverageLedger: Sendable {
     /// because a queue item has to be a command somebody can paste.
     private struct ObjectRecord {
         var label: String
-        var room: String
+        var room: LedgerRoom
         /// Every distinct word the game has printed *about* this thing: the
         /// sentence it was named in, and every examine of it. The interaction
         /// matrix is filtered against this vocabulary and nothing else.
@@ -473,7 +529,7 @@ struct CoverageLedger: Sendable {
         /// `throw` only make sense after that.
         var held = false
         /// Where its name was last printed, for the displacement check.
-        var lastPrintedRoom: String
+        var lastPrintedRoom: LedgerRoom
         /// True once a command named it since the last time it was printed.
         ///
         /// The displacement check's one guard, and it earns its keep on the
@@ -509,19 +565,32 @@ struct CoverageLedger: Sendable {
     /// turns true is the turn every open `burn` cell is promoted.
     private var carryingFlame = false
 
-    /// The last output of each do-nothing probe, by `<room>|look` /
-    /// `<room>|wait`, and the move counter it printed at.
+    /// The last output of each do-nothing probe, by room and intent, and the
+    /// move counter it printed at.
     private struct ProbeRecord {
         var output: String
         var moves: Int
+        /// Words typed since this probe last printed, for the timer check's
+        /// "did the tester cause this?" filter. On the record rather than in a
+        /// second table keyed the same way: the two were written in one
+        /// `defer` and read in one breath, and nothing could keep them apart
+        /// but an oversight.
+        var wordsSince: Set<String> = []
     }
 
-    private var probes: [String: ProbeRecord] = [:]
+    /// One watched probe: the room it was typed in, by id, and which of the two
+    /// do-nothing commands it was.
+    private struct ProbeKey: Hashable {
+        var room: EntityID
+        var intent: Intent
+    }
+
+    private var probes: [ProbeKey: ProbeRecord] = [:]
 
     /// A filed suspicion: the words of the note, and the frame it was filed in.
     private struct Hunch {
         var words: Set<String>
-        var room: String
+        var room: EntityID
         var moves: Int
     }
 
@@ -531,15 +600,41 @@ struct CoverageLedger: Sendable {
     /// queued as unfollowed. Also the interval filter for the timer check.
     private var namedWords: Set<String> = []
 
-    /// Words typed since each probe last printed, for the timer check's "did
-    /// the tester cause this?" filter.
-    private var wordsSinceProbe: [String: Set<String>] = [:]
-
     /// Distinct normalised commands, for the novelty ratio.
     private var distinctCommands: Set<String> = []
 
-    /// Rooms the status line has named, in first-seen order.
-    private(set) var roomsVisited: [String] = []
+    /// Every room the status line has named, by id.
+    ///
+    /// By id and not by name, so a session that walked seven rooms called Coal
+    /// Mine is credited with seven. Everything computed off it is a count or a
+    /// ratio — breadth, dwell — and a name-keyed tally made both wrong in the
+    /// direction that flatters the tester.
+    var roomsVisited: Set<EntityID> { Set(roomLabels.keys) }
+
+    /// What each visited room is called in an item id, by id.
+    ///
+    /// The display name, and the *display* name rather than the ``EntityID``,
+    /// because an item id is read by the tester and an entity id is source —
+    /// `DungeonMaze.deadEnd3` in a queue line tells a blind explorer which
+    /// region it is standing in and that there are at least three dead ends,
+    /// which is exactly the roster the firewall withholds. ``bind(_:label:room:)``
+    /// makes the same argument for an object's id and is why an object is named
+    /// by the word the tester typed.
+    ///
+    /// So a name that two rooms share is disambiguated the way the tester could
+    /// do it themselves: by the order they walked into them. The second room
+    /// called Dead End is `Dead End (2)`. The suffix is a fact about this
+    /// session's own walk and about nothing else, it is fixed when the room is
+    /// first visited, and an item is only ever raised for a room the tester is
+    /// standing in — so an id never changes under one.
+    ///
+    /// **The label is for the id and the paste, not for the prose.** An item's
+    /// ``CoverageItem/why`` quotes what the game printed and says `Dead End`,
+    /// because that is what the tester read; its id and the `in <room>:` prefix
+    /// ``how(_:in:)`` puts on a command somewhere else both say `Dead End (2)`,
+    /// because those are the two things the tester acts on and both have to
+    /// name one room.
+    private var roomLabels: [EntityID: String] = [:]
 
     /// Every token the game's vocabulary did not know, and how often it was
     /// typed.
@@ -556,10 +651,10 @@ struct CoverageLedger: Sendable {
     /// One step of the map the tester has actually walked: room → direction →
     /// where it came out. Purely session-derived, and the reason a queue item
     /// in the next room over can still be a command to paste.
-    private var walked: [String: [Direction: String]] = [:]
+    private var walked: [EntityID: [Direction: EntityID]] = [:]
 
     /// The room the last observation ended in.
-    private(set) var currentRoom = ""
+    private(set) var currentRoom = LedgerRoom.nowhere
 
     /// Non-comment lines fed.
     private(set) var commands = 0
@@ -613,10 +708,10 @@ struct CoverageLedger: Sendable {
     /// - Parameters:
     ///   - output: the opening text, without the status footer.
     ///   - room: the room the status line named.
-    mutating func observeOpening(output: String, room: String) {
+    mutating func observeOpening(output: String, room: LedgerRoom) {
         visit(room)
         harvest(
-            output: Self.roomBlock(in: output, room: room),
+            output: Self.roomBlock(in: output, room: room.name),
             room: room, depth: 1, bornOfExamine: false, line: 0)
     }
 
@@ -670,7 +765,7 @@ struct CoverageLedger: Sendable {
         command: String,
         audit: TurnAudit,
         output: String,
-        room: String,
+        room: LedgerRoom,
         moves: Int,
         line: Int,
         turnCost: Bool
@@ -686,8 +781,8 @@ struct CoverageLedger: Sendable {
 
         let typed = Self.contentWords(in: command)
         namedWords.formUnion(typed)
-        for key in wordsSinceProbe.keys {
-            wordsSinceProbe[key]?.formUnion(typed)
+        for key in probes.keys {
+            probes[key]?.wordsSince.formUnion(typed)
         }
         for word in typed {
             close("\(CoverageItem.Kind.noun.rawValue):\(word)@", prefixed: true)
@@ -701,9 +796,9 @@ struct CoverageLedger: Sendable {
 
         visit(room)
         if let direction = audit.direction, audit.intent == .go, !departed.isEmpty {
-            close("\(CoverageItem.Kind.exit.rawValue):\(direction.rawValue)@\(departed)")
-            if room != departed {
-                walked[departed, default: [:]][direction] = room
+            close(Self.exitID(direction, in: label(of: departed)))
+            if room.id != departed.id {
+                walked[departed.id, default: [:]][direction] = room.id
             }
         }
 
@@ -748,7 +843,7 @@ struct CoverageLedger: Sendable {
     ///   - room: the room the tester is standing in.
     ///   - moves: the move counter.
     ///   - line: the line's index in `commands.txt`.
-    mutating func observeComment(_ text: String, room: String, moves: Int, line: Int) {
+    mutating func observeComment(_ text: String, room: LedgerRoom, moves: Int, line: Int) {
         notes += 1
         for index in items.indices
         where !items[index].discharged && !items[index].kind.closedByLooking
@@ -760,7 +855,7 @@ struct CoverageLedger: Sendable {
         hunchCount += 1
         let id = "\(CoverageItem.Kind.hunch.rawValue):\(hunchCount)"
         hunches[id] = Hunch(
-            words: Set(Self.contentWords(in: text)), room: room, moves: moves)
+            words: Set(Self.contentWords(in: text)), room: room.id, moves: moves)
         raise(
             CoverageItem(
                 id: id,
@@ -768,7 +863,7 @@ struct CoverageLedger: Sendable {
                 command: "probe it again from somewhere else",
                 how: "probe it again from somewhere else",
                 why: """
-                    your own note at line \(line) in \(room): \
+                    your own note at line \(line) in \(room.name): \
                     \(Self.quoted(text)) — a hunch wants a second frame
                     """,
                 room: room,
@@ -803,7 +898,9 @@ struct CoverageLedger: Sendable {
                 let held = (left.fork ? 1 : 0, right.fork ? 1 : 0)
                 if held.0 != held.1 { return held.0 < held.1 }
             }
-            let here = (left.room == currentRoom ? 0 : 1, right.room == currentRoom ? 0 : 1)
+            let here = (
+                left.room.id == currentRoom.id ? 0 : 1, right.room.id == currentRoom.id ? 0 : 1
+            )
             if here.0 != here.1 { return here.0 < here.1 }
             if left.kind.tier != right.kind.tier { return left.kind.tier < right.kind.tier }
             if left.priority != right.priority { return left.priority > right.priority }
@@ -833,7 +930,7 @@ struct CoverageLedger: Sendable {
     func frontierHint() -> String? {
         guard openCount == 0 else { return nil }
         let rooms = Set(
-            items.filter { $0.kind == .exit }.map(\.room))
+            items.filter { $0.kind == .exit }.map(\.room.id))
         guard rooms.isEmpty else {
             return """
                 Nothing is open. \(rooms.count) room\(rooms.count == 1 ? "" : "s") you have \
@@ -884,7 +981,7 @@ struct CoverageLedger: Sendable {
     ///     the only place the meta carve-out and a raw delta can disagree.
     /// - Returns: the depth new nouns from this turn's output belong at.
     private mutating func apply(
-        audit: TurnAudit, command: String, departed: String, line: Int, turnCost: Bool
+        audit: TurnAudit, command: String, departed: LedgerRoom, line: Int, turnCost: Bool
     ) -> Int {
         let labels = Self.labels(in: command)
         var depth = 1
@@ -923,7 +1020,7 @@ struct CoverageLedger: Sendable {
         if intent == .look || intent == .wait {
             for index in items.indices
             where !items[index].discharged && !items[index].kind.closedByLooking
-                && items[index].room == departed
+                && items[index].room.id == departed.id
             {
                 items[index].lookedAgain = true
             }
@@ -940,7 +1037,7 @@ struct CoverageLedger: Sendable {
     /// line that bound something without naming it — `take all`, `take it` — is
     /// simply not the line that introduces it. The next one that says the word
     /// is.
-    private mutating func bind(_ id: EntityID, label: String?, room: String) {
+    private mutating func bind(_ id: EntityID, label: String?, room: LedgerRoom) {
         guard objects[id] == nil else {
             if let label, objects[id]?.label.isEmpty == true {
                 objects[id]?.label = label
@@ -964,7 +1061,7 @@ struct CoverageLedger: Sendable {
 
     /// Re-enqueues `x <object>` after something changed it.
     private mutating func enqueueRestate(
-        _ id: EntityID, room: String, line: Int, verb: String
+        _ id: EntityID, room: LedgerRoom, line: Int, verb: String
     ) {
         guard let record = objects[id] else { return }
         let itemID = "\(CoverageItem.Kind.restate.rawValue):\(record.label)"
@@ -989,20 +1086,24 @@ struct CoverageLedger: Sendable {
 
     /// Reads one block of output for new loose ends.
     private mutating func harvest(
-        output: String, room: String, depth: Int, bornOfExamine: Bool, line: Int
+        output: String, room: LedgerRoom, depth: Int, bornOfExamine: Bool, line: Int
     ) {
         guard !output.isEmpty else { return }
+        let roomLabel = label(of: room)
         for word in Self.words(in: output) {
             guard let direction = Self.directions[word] else { continue }
-            let itemID = "\(CoverageItem.Kind.exit.rawValue):\(direction.rawValue)@\(room)"
-            guard walked[room]?[direction] == nil else { continue }
+            let itemID = Self.exitID(direction, in: roomLabel)
+            guard walked[room.id]?[direction] == nil else { continue }
             raise(
                 CoverageItem(
                     id: itemID,
                     kind: .exit,
                     command: direction.rawValue,
                     how: direction.rawValue,
-                    why: "\(room) named \(direction.rawValue) at line \(line); you have not gone that way",
+                    why: """
+                        \(room.name) named \(direction.rawValue) at line \(line); \
+                        you have not gone that way
+                        """,
                     room: room,
                     line: line,
                     depth: 1,
@@ -1012,7 +1113,7 @@ struct CoverageLedger: Sendable {
         var raised = 0
         for word in Self.nounCandidates(in: output) {
             guard !namedWords.contains(word), raised < Self.nounsPerBlock else { continue }
-            let itemID = "\(CoverageItem.Kind.noun.rawValue):\(word)@\(room)"
+            let itemID = "\(CoverageItem.Kind.noun.rawValue):\(word)@\(roomLabel)"
             guard positions[itemID] == nil else { continue }
             raised += 1
             raise(
@@ -1021,7 +1122,7 @@ struct CoverageLedger: Sendable {
                     kind: .noun,
                     command: "x \(word)",
                     how: "x \(word)",
-                    why: "\"\(word)\" printed in \(room) at line \(line), never named",
+                    why: "\"\(word)\" printed in \(room.name) at line \(line), never named",
                     room: room,
                     line: line,
                     depth: depth,
@@ -1037,18 +1138,15 @@ struct CoverageLedger: Sendable {
     /// the last probe — that is the filter that keeps "the lamp is gone,
     /// because you took it" out of the queue.
     private mutating func watchForTimers(
-        audit: TurnAudit, output: String, room: String, moves: Int, line: Int
+        audit: TurnAudit, output: String, room: LedgerRoom, moves: Int, line: Int
     ) {
         guard audit.intent == .look || audit.intent == .wait else { return }
         guard let intent = audit.intent else { return }
-        let key = "\(room)|\(intent.raw)"
-        defer {
-            probes[key] = ProbeRecord(output: output, moves: moves)
-            wordsSinceProbe[key] = []
-        }
+        let key = ProbeKey(room: room.id, intent: intent)
+        let caused = probes[key]?.wordsSince ?? []
+        defer { probes[key] = ProbeRecord(output: output, moves: moves) }
         guard let previous = probes[key], previous.output != output, previous.moves != moves
         else { return }
-        let caused = wordsSinceProbe[key] ?? []
         let before = Set(Self.sentences(in: previous.output))
         let after = Set(Self.sentences(in: output))
         // Both directions. A sentence that has appeared is a thing that started;
@@ -1063,12 +1161,12 @@ struct CoverageLedger: Sendable {
         guard let evidence = changed.sorted().first else { return }
         raise(
             CoverageItem(
-                id: "\(CoverageItem.Kind.timer.rawValue):\(room)",
+                id: "\(CoverageItem.Kind.timer.rawValue):\(label(of: room))",
                 kind: .timer,
                 command: "look, wait a few turns, look again",
                 how: "look, wait a few turns, look again",
                 why: """
-                    \(intent.raw) in \(room) printed something new at line \(line) that \
+                    \(intent.raw) in \(room.name) printed something new at line \(line) that \
                     nothing you typed explains: \(Self.quoted(evidence)). Look again at a \
                     different moment and write a note quoting the line
                     """,
@@ -1079,12 +1177,12 @@ struct CoverageLedger: Sendable {
     }
 
     /// Looks for something named here that was last named somewhere else.
-    private mutating func watchForDisplacement(output: String, room: String, line: Int) {
+    private mutating func watchForDisplacement(output: String, room: LedgerRoom, line: Int) {
         guard !output.isEmpty else { return }
         let printed = Set(Self.contentWords(in: output))
         for record in objects.values {
             guard printed.contains(record.label), !record.held, !record.namedSinceSeen,
-                !record.lastPrintedRoom.isEmpty, record.lastPrintedRoom != room
+                !record.lastPrintedRoom.isEmpty, record.lastPrintedRoom.id != room.id
             else { continue }
             let elsewhere = record.lastPrintedRoom
             raise(
@@ -1094,8 +1192,9 @@ struct CoverageLedger: Sendable {
                     command: "look and see whether \(record.label) is still there",
                     how: "look and see whether \(record.label) is still there",
                     why: """
-                        \(record.label) was last printed in \(elsewhere) and is printed in \
-                        \(room) at line \(line), and you are not carrying it. Look at both \
+                        \(record.label) was last printed in \(elsewhere.name) and is printed \
+                        in \(room.name) at line \(line), and you are not carrying it. Look at \
+                        both \
                         and write a note quoting what each says
                         """,
                     room: elsewhere,
@@ -1115,11 +1214,11 @@ struct CoverageLedger: Sendable {
     /// same one — the point of a hunch is that a suspicion formed at one moment
     /// has to be checked at another, and typing the same thing again in the
     /// same breath is not that.
-    private mutating func dischargeHunches(with typed: [String], room: String, line: Int) {
+    private mutating func dischargeHunches(with typed: [String], room: LedgerRoom, line: Int) {
         let words = Set(typed)
         for (id, hunch) in hunches
         where !words.isDisjoint(with: hunch.words)
-            && (hunch.room != room || moves >= hunch.moves + 3)
+            && (hunch.room != room.id || moves >= hunch.moves + 3)
         {
             close(id)
             hunches.removeValue(forKey: id)
@@ -1185,7 +1284,7 @@ struct CoverageLedger: Sendable {
             (
                 id: item.id,
                 command: item.command,
-                room: item.room,
+                room: item.room.name,
                 taken: item.discharged && !item.abstained
             )
         }
@@ -1572,10 +1671,37 @@ struct CoverageLedger: Sendable {
     }
 
     /// Notes the room the tester is standing in.
-    private mutating func visit(_ room: String) {
+    private mutating func visit(_ room: LedgerRoom) {
         currentRoom = room
-        guard !room.isEmpty, !roomsVisited.contains(room) else { return }
-        roomsVisited.append(room)
+        guard !room.isEmpty, roomLabels[room.id] == nil else { return }
+        // Counted up against the labels actually handed out rather than
+        // derived from a prefix match, because a prefix match re-merges the
+        // very pair it disambiguates: a room the author called `Dead End (2)`,
+        // met before a room called `Dead End`, would hand the second one its
+        // own label back.
+        let taken = Set(roomLabels.values)
+        var label = room.name
+        var ordinal = 1
+        while taken.contains(label) {
+            ordinal += 1
+            label = "\(room.name) (\(ordinal))"
+        }
+        roomLabels[room.id] = label
+    }
+
+    /// What a room is called in an item id. See ``roomLabels``.
+    ///
+    /// The fallback covers ``LedgerRoom/nowhere`` and nothing else: every
+    /// caller runs after ``visit(_:)`` has labelled the room it is asking
+    /// about.
+    private func label(of room: LedgerRoom) -> String {
+        roomLabels[room.id] ?? room.name
+    }
+
+    /// One exit item's id: the direction, and the room's label, which two
+    /// rooms that print alike do not share.
+    private static func exitID(_ direction: Direction, in roomLabel: String) -> String {
+        "\(CoverageItem.Kind.exit.rawValue):\(direction.rawValue)@\(roomLabel)"
     }
 
     /// A command with the room prefix an item somewhere else needs.
@@ -1584,12 +1710,12 @@ struct CoverageLedger: Sendable {
     /// only where it has walked it: if the tester has gone from here to there
     /// in one move, the item's `how` is a two-command paste. Otherwise it names
     /// the room, which is a fact the status line printed.
-    private func how(_ command: String, in room: String) -> String {
-        if room.isEmpty || room == currentRoom { return command }
-        if let direction = walked[currentRoom]?.first(where: { $0.value == room })?.key {
+    private func how(_ command: String, in room: LedgerRoom) -> String {
+        if room.isEmpty || room.id == currentRoom.id { return command }
+        if let direction = walked[currentRoom.id]?.first(where: { $0.value == room.id })?.key {
             return "\(direction.rawValue), then: \(command)"
         }
-        return "in \(room): \(command)"
+        return "in \(label(of: room)): \(command)"
     }
 
     // MARK: - Reading text
