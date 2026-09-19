@@ -43,8 +43,10 @@ public struct StatusFooter: Sendable {
 
     private let request: Request
 
-    /// The values that mean yes.
-    private static let onWords: Set<String> = ["1", "on", "true", "yes"]
+    /// The values that mean yes. Shared with ``TranscriptRequest``, whose
+    /// `GNUSTO_TRANSCRIPT` also treats a bare flag as "on" rather than a slot
+    /// name — one spelling of "yes" for both variables.
+    static let onWords: Set<String> = ["1", "on", "true", "yes"]
 
     /// The values that mean no — spelled out rather than folded into "anything
     /// else", so that `GNUSTO_STATUS=0` is an answer and `GNUSTO_STATUS=of` is
