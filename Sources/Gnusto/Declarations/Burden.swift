@@ -49,18 +49,26 @@ public struct Burden: GameContent {
 }
 
 extension Item {
-    /// The item's own ``TraitKey/weight`` plus that of everything inside it, all
-    /// the way down — a full sack weighs its own 5 plus the garlic and the
-    /// lunch.
+    /// The item's own ``TraitKey/weight`` plus that of everything inside it, all the way down — a full sack weighs its own 5 plus the garlic and the lunch. Each item contributes once if malformed runtime state contains a placement cycle.
     public var burden: Int {
-        contents.reduce(self[default: .weight]) { $0 + $1.burden }
+        Self.totalBurden(of: [self])
+    }
+
+    /// Sums every item reachable below `roots` once. The containment index's closure carries the cycle guard for this downward walk.
+    fileprivate static func totalBurden(of roots: [Item]) -> Int {
+        let frame = Ctx.current
+        let rootIDs = roots.map(\.id)
+        let reachable = frame.with { scratch in
+            scratch.state.containment().closure(under: rootIDs)
+        }
+        return reachable.compactMap { frame.definition.registry.items[$0] }
+            .reduce(0) { $0 + $1[default: .weight] }
     }
 }
 
 extension Player {
-    /// Everything in the player's hands, weighed the way ``Burden`` weighs it:
-    /// contents included, all the way down.
+    /// Everything in the player's hands, weighed the way ``Burden`` weighs it: contents included, all the way down, with each reachable item counted once.
     public var burden: Int {
-        inventory.reduce(0) { $0 + $1.burden }
+        Item.totalBurden(of: inventory)
     }
 }
