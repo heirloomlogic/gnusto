@@ -66,20 +66,25 @@ enum TranscriptStore {
             .appendingPathExtension(fileExtension)
     }
 
-    /// The characters kept verbatim in a slot name; every other run collapses to
-    /// a single hyphen. Matches `SaveStore`'s sanitizer so both stores neutralize
-    /// path tricks identically.
-    private static let nameCharacters = Set(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
-
-    /// Reduces a name or title to one safe path component: alphanumerics and
-    /// underscores survive; every other run (spaces, hyphens, `..`) collapses to
-    /// a single hyphen. An all-punctuation name becomes `transcript`.
+    /// One safe path component, by ``FilesystemName/component(_:)`` — the same
+    /// rule `SaveStore` names a slot by, so a title names its transcripts folder
+    /// and its saves folder identically and neither store mangles a name the
+    /// other keeps.
+    ///
+    /// A name with nothing usable in it becomes ``FilesystemName/untitled`` —
+    /// the same literal `SaveStore` falls back to, so a title names its two
+    /// sibling folders alike. Unlike a save slot, which is answered at a prompt
+    /// and so can be refused, a transcript name arrives as a `script` argument
+    /// on the way into the session; there is no question left open to ask again.
+    ///
+    /// A title with a non-ASCII letter names a **different folder** than the old
+    /// ASCII rule gave it: `Café Noir` was `Caf-Noir` and is now `Café-Noir`.
+    /// Transcripts written before are still in the old folder and still
+    /// readable; nothing looks for them there, and nothing needs to. `SaveStore`
+    /// does keep its old folder live, because a save the game cannot find is a
+    /// player's progress gone, where a transcript is a file they already have.
     private static func sanitize(_ raw: String) -> String {
-        let squeezed = String(raw.map { nameCharacters.contains($0) ? $0 : " " })
-            .split(separator: " ")
-            .joined(separator: "-")
-        return squeezed.isEmpty ? "transcript" : squeezed
+        FilesystemName.component(raw) ?? FilesystemName.untitled
     }
 
     /// A sortable `yyyymmdd-hhmmss` stamp for the default filename. Built from
