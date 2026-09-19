@@ -4,6 +4,14 @@ import Testing
 @testable import Gnusto
 
 struct DescriptionTests {
+    @Test("empty and whitespace-only location names are fatal")
+    func blankLocationNamesAreFatal() throws {
+        let diagnostics = try blankProseDiagnostics(BlankLocationNameGame())
+
+        #expect(diagnostics.contains(#"location "emptyName" declares an empty name(…) trait."#))
+        #expect(diagnostics.contains(#"location "whitespaceName" declares a whitespace-only name(…) trait."#))
+    }
+
     @Test("empty and whitespace-only static descriptions are fatal")
     func blankStaticDescriptionsAreFatal() throws {
         let diagnostics = try blankProseDiagnostics(BlankStaticProseGame())
@@ -11,6 +19,7 @@ struct DescriptionTests {
         for expected in [
             #"location "emptyRoom" declares an empty description(…) trait."#,
             #"location "whitespaceRoom" declares a whitespace-only description(…) trait."#,
+            #"location "emptyAlwaysDescribedRoom" declares an empty description(…) trait."#,
             #"item "emptyDescription" declares an empty description(…) trait."#,
             #"item "whitespaceDescription" declares a whitespace-only description(…) trait."#,
             #"item "emptyFirstSight" declares an empty firstSight(…) trait."#,
