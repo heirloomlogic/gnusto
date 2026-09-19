@@ -287,6 +287,8 @@ struct TimerTests {
 
     @Test("an invalid runtime fuse override names the declared-fuse rule", arguments: InvalidFuseOverride.allCases)
     func invalidRuntimeFuseOverrideNamesTheDeclaredFuseRule(_ misuse: InvalidFuseOverride) async throws {
+        let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
+        #expect(parser.tokenize(misuse.command) == [misuse.command])
         let result = await #expect(
             processExitsWith: .failure, observing: [\.standardErrorContent]
         ) {

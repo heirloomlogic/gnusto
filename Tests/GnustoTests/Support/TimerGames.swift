@@ -208,7 +208,12 @@ enum InvalidFuseOverride: Int, CaseIterable, Codable, Sendable {
     case zero = 0
     case negative = -5
 
-    var command: String { "invalidfuse\(rawValue)" }
+    var command: String {
+        switch self {
+        case .zero: "invalidfusezero"
+        case .negative: "invalidfusenegative"
+        }
+    }
 
     var call: String { #"startFuse("bomb", after: \#(rawValue))"# }
 }
