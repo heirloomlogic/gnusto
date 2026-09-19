@@ -273,8 +273,9 @@ struct CoverageItem: Sendable {
     /// The room this belongs to.
     ///
     /// Its ``LedgerRoom/id`` is what the queue's proximity ranking compares
-    /// and what the room's item-id label is keyed on; its ``LedgerRoom/name``
-    /// is what ``why`` prints.
+    /// and what the room's item-id label is keyed on. ``why`` is written at
+    /// the moment the item is raised and keeps whatever bare name the game
+    /// printed then — it does not track this field.
     ///
     /// A `var` for the same reason ``how`` is: ``CoverageLedger/queue(limit:)``
     /// rewrites the name to this session's label at the moment the item is

@@ -234,10 +234,21 @@ struct TwinDeadEndGame: Game {
         description("A rusty hinge.")
     }
 
+    /// Edible, so examining it raises `object:berries:eat` — an
+    /// always-committing fork. In `deadB` deliberately, so the fork's room is
+    /// the second Dead End the session meets, which reads `Dead End (2)`. See
+    /// ``CoverageLedger/forks()`` and the room-label test in
+    /// PlaytestCoverageTests.swift.
+    let berries = Item {
+        name("berries")
+        description("A cluster of dark berries.")
+    }
+
     /// A draught the Hall starts printing once the tester has been somewhere
     /// else, so the twins' session has one probe change that *is* a fuse.
-    /// Without it the two `timer:` assertions below are both negative and a
-    /// session recording no probes at all would pass them.
+    /// Without it the two `timer:` assertions in PlaytestCoverageTests.swift
+    /// are both negative and a session recording no probes at all would pass
+    /// them.
     var timers: [TimedEvent] {
         daemon("draught", autostart: true) {
             guard player.location == hall, player.moves > 1 else { return }
@@ -257,6 +268,7 @@ struct TwinDeadEndGame: Game {
 
         player.starts(in: hall)
         hinge.starts(in: deadA)
+        berries.starts(in: deadB)
     }
 }
 

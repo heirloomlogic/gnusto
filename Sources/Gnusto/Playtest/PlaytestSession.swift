@@ -854,7 +854,7 @@ actor PlaytestSession {
         persistCommands()
         return """
             \(block)[playtest] session=\(id) noted at line \(index), \
-            room=\(ledger.currentRoom.name), moves=\(lastMoves) — no turn passed.
+            room=\(ledger.currentRoomLabel), moves=\(lastMoves) — no turn passed.
             """
     }
 
@@ -1366,11 +1366,11 @@ actor PlaytestSession {
         return Marked(
             name: trimmed,
             line: line,
-            room: ledger.currentRoom.name,
+            room: ledger.currentRoomLabel,
             moves: lastMoves,
             message: """
                 \(existing == nil ? "Marked" : "Moved") `\(trimmed)` to line \(line) \
-                (\(ledger.currentRoom.name), moves=\(lastMoves)). Call restore with that name to \
+                (\(ledger.currentRoomLabel), moves=\(lastMoves)). Call restore with that name to \
                 come back; the turns after it are written off to a branch file and dropped \
                 from the command list, so what you file afterwards still replays from line \
                 one.
@@ -1533,13 +1533,13 @@ actor PlaytestSession {
         return Rewound(
             name: name,
             line: target,
-            room: ledger.currentRoom.name,
+            room: ledger.currentRoomLabel,
             moves: lastMoves,
             discarded: dropped.count,
             branch: branch?.path,
             status: statusLine,
             message: """
-                Back at line \(target) — \(ledger.currentRoom.name), moves=\(lastMoves)\
+                Back at line \(target) — \(ledger.currentRoomLabel), moves=\(lastMoves)\
                 \(name.map { ", the checkpoint you called `\($0)`" } ?? "").
                 \(dropped.count) line\(dropped.count == 1 ? "" : "s") dropped from the \
                 command list\(branch.map { ", kept as evidence at \($0.path)" } ?? "").

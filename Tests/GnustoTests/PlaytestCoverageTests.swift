@@ -904,6 +904,38 @@ struct PlaytestCoverageTests {
         for item in coverage.items {
             #expect(!item.room.name.contains("dead"))
         }
+
+        // Checkpoint and rewind publish a room too, from the same standing
+        // spot, and both must say which Dead End rather than the bare name
+        // the two share.
+        let marked = try await session.checkpoint("second dead end")
+        #expect(marked.room == "Dead End (2)")
+
+        _ = try await session.move(commands: ["north"], allowPrompts: false)
+        let restored = try await session.restore(checkpoint: "second dead end")
+        #expect(restored.room == "Dead End (2)")
+
+        let rewound = try await session.rewind(turns: 1)
+        #expect(rewound.room == "Dead End (2)")
+    }
+
+    /// ``CoverageLedger/forks()`` labels its room too, not just the queue.
+    ///
+    /// Every other fork test runs in a room with no twin, so its label and its
+    /// bare name are the same string and a rewrite bug would not show. The
+    /// berries sit in the second Dead End the session meets, so a fork raised
+    /// there has to say `Dead End (2)` and not the bare `Dead End` the two
+    /// rooms share.
+    @Test func forksCarryTheSessionLabelToo() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: ["north", "look", "west", "east", "south", "south", "x berries"],
+            allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "left the berries alone", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:berries:eat" })
+        #expect(fork.room == "Dead End (2)")
     }
 
     /// A change the tester's own commands explain is not a timer. Cloak of
