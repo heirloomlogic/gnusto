@@ -9,10 +9,10 @@ struct BurdenCycleTests {
         #expect(turnOutput(of: "weigh", in: transcript).contains("The boxes weigh 18."))
     }
 
-    @Test func burdenGatedTakeTerminatesOnCyclicContents() async throws {
+    @Test func burdenGatedTakeDefersToReachabilityOnCyclicContents() async throws {
         let transcript = try await play(BurdenCycleGame(), ["take outer box"])
         #expect(
             turnOutput(of: "take outer box", in: transcript)
-                .contains("You're carrying too much already."))
+                .contains("You can't reach the outer box."))
     }
 }
