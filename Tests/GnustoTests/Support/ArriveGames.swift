@@ -125,6 +125,28 @@ struct StepGame: Game {
         dark
     }
 
+    let crackedLedge = Location {
+        name("Cracked Ledge")
+        description("The ledge has not finished falling.")
+    }
+
+    let waterCave = Location {
+        name("Cave")
+        description("Water runs over the cave floor.")
+        alwaysDescribed
+    }
+
+    let upperChute = Location {
+        name("Upper Chute")
+        description("The walls are too smooth to stop on.")
+    }
+
+    let sump = Location {
+        name("Sump")
+        description("Level ground above black water.")
+        alwaysDescribed
+    }
+
     let lamp = Item { name("brass lamp") }
 
     /// Counts the vault's `onEnter` firings, so a test can prove it runs on
@@ -209,10 +231,24 @@ struct StepGame: Game {
         pit.onEnter { try die("The floor was a courtesy.") }
 
         sill.onEnter { try refuse("The draught pushes you back.") }
+
+        crackedLedge.onEnter {
+            say("The ledge gives way.")
+            arrive(at: waterCave)
+        }
+
+        upperChute.onEnter {
+            say("The chute pitches downward.")
+            try enter(sump)
+        }
+
+        porch.after(.go) { say("The porch boards settle.") }
     }
 
     var map: WorldMap {
         porch.north(vault)
+        porch.east(crackedLedge)
+        porch.west(upperChute)
         vault.south(porch)
         player.starts(in: porch)
         lamp.starts(in: vault)

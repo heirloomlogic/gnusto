@@ -563,9 +563,10 @@ enum DefaultActions {
         }
     }
 
-    /// Moves the player into `destination`, running its onEnter rules and then
-    /// describing the room. Shared by every passable exit kind. A boarded
-    /// vehicle rides along in the same mutation — and its cargo with it,
+    /// Moves the player into `destination`, runs its onEnter rules, and describes
+    /// it if those rules leave the player there. A rule that moves onward owns
+    /// the final room's description. Shared by every passable exit kind. A
+    /// boarded vehicle rides along in the same mutation — and its cargo with it,
     /// since cargo placements (`.inside(vehicle)`) never mention the room.
     ///
     /// `aside` lands ahead of the onEnter rules and the room description,
@@ -586,7 +587,9 @@ enum DefaultActions {
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
-            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            if frame.with({ $0.state.playerLocation == destination }) {
+                RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            }
         }
     }
 
