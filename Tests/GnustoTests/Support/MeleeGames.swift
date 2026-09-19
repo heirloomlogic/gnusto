@@ -389,6 +389,14 @@ struct GatedArenaGame: Game {
 /// baubles so he never runs out of things to lift. His counter-attack is gated
 /// on `truce`, which lets a test shut the gate and prove he still wakes up.
 struct CutpurseGame: Game {
+    var behaviorFirst = false
+    var movement: String? = nil
+
+    let passage = Location {
+        name("Passage")
+        description("A passage beyond the vault.")
+    }
+
     let title = "Cutpurse"
     let intro = "A vault, a bully, and four things worth taking."
 
@@ -439,6 +447,8 @@ struct CutpurseGame: Game {
     }
 
     var map: WorldMap {
+        vault.north(passage)
+        passage.south(vault)
         player.starts(in: vault)
         cutpurse.starts(in: vault)
         cudgel.startsHeld
@@ -481,12 +491,23 @@ struct CutpurseGame: Game {
                 miss: ["He jabs and misses."],
                 wound: ["He catches you a glancing one."],
                 playerDeath: "He finishes what he started."))
-        behaviors.steals(
-            cutpurse,
-            named: "melee.cutpurse.steals",
-            candidates: [chalice, pearl, comb, seal],
-            chancePerTurn: 100,
-            announcement: .naming { "He lifts \($0) clean out of your hand." })
+        if movement == "roam" {
+            behaviors.roams(
+                cutpurse, named: behaviorFirst ? "a.roams" : "z.roams",
+                rooms: [vault, passage], chancePerTurn: 100,
+                departure: "He walks away.")
+        } else if movement == "follow" {
+            behaviors.follows(
+                cutpurse, named: behaviorFirst ? "a.follows" : "z.follows",
+                arrivals: ["He follows you."])
+        } else {
+            behaviors.steals(
+                cutpurse,
+                named: behaviorFirst ? "a.steals" : "z.steals",
+                candidates: [chalice, pearl, comb, seal],
+                chancePerTurn: 100,
+                announcement: .naming { "He lifts \($0) clean out of your hand." })
+        }
     }
 }
 

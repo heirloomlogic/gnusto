@@ -145,31 +145,18 @@ public struct MeleeCombat: GameContent {
     /// currently in a fight, keyed by registration key, plus the player's own
     /// hits. Health seeds lazily from each villain's declared strength.
     ///
-    /// `stunned` is the countdown, and a villain has an entry in it for exactly
-    /// as long as he is unconscious — counting down to zero and resting there
-    /// for the last of those turns. `Actor.isUnconscious` is the same fact
-    /// where other plugins can see it; `stun(_:key:turnsLeft:)` writes both.
+    /// `stunned` counts down to zero, which reserves the final recovery turn.
+    /// `stun(_:key:turnsLeft:)` sets `Actor.isUnconscious` as well, so other
+    /// plugins suppress their behaviors throughout the knockout. On recovery,
+    /// the daemon removes the ledger entry and asks the engine to clear the
+    /// flag at commit. Every daemon sees an unconscious actor for that whole
+    /// turn, regardless of execution order.
     ///
-    /// The flag can also be set without the counter, by a game knocking an
-    /// actor down by its own means — which is what its documentation asks for.
-    /// Both readers here take either half: `villain`'s finishing blow lands
-    /// clean on a man the game put on the floor, and `aggression` abstains
-    /// while he is there. What a game-set flag does not come with is a
-    /// countdown, so nothing here starts one and the game that set it is what
-    /// clears it — unless there is already a melee countdown running under the
-    /// same actor, in which case `stun(_:key:turnsLeft:)` clears the flag when
-    /// that countdown ends, whoever set it last. A game putting a man down for
-    /// its own reasons on top of a knockout gets melee's span, not its own.
-    ///
-    /// The two are the same fact but not quite the same *span*, and the gap is
-    /// one tick wide. `aggression`'s daemon spends the last of those turns
-    /// getting the villain off the floor, and clears both halves as it does —
-    /// so a plugin whose own daemon is named later in the tick (daemons fire in
-    /// name order) reads `Actor.isUnconscious` as false on a turn melee still
-    /// counts as spent. `GnustoActors`' theft daemon is the live instance:
-    /// `Tests/GnustoTests/UnconsciousActorTests.swift` pins a cutpurse who
-    /// lifts a purse on the turn he gets up. Nothing here decides which span is
-    /// right; it is written down so the difference isn't read as an accident.
+    /// A game can set the flag without a countdown. Both the finishing-blow
+    /// rule and aggression honor that flag; the game is responsible for
+    /// clearing it. If a melee countdown is already running, that countdown
+    /// still schedules recovery. A later assignment to the flag cancels the
+    /// pending recovery, as documented by `Actor.recoverAfterTurn()`.
     ///
     /// `engaged` is the source's `FIGHTBIT`: a villain is in it from the blow
     /// that starts the fight — the player's, or his own — until the two of them
@@ -427,8 +414,10 @@ public struct MeleeCombat: GameContent {
     /// made, and no blow is rolled. He is down for every turn the ledger holds
     /// him, the last one included, where he gets up — so a knockout taken with
     /// `turnsLeft: 2` buys three ticks without a counter-attack: the tick that
-    /// knocked him down and the two he spends on the floor. A game that sets
-    /// `Actor.isUnconscious` by its own means buys the same silence, for as
+    /// knocked him down and the two he spends on the floor. The unconscious
+    /// flag clears at commit, so theft and movement also wait until next turn.
+    /// A game that sets `Actor.isUnconscious` by its own means buys the same
+    /// silence, for as
     /// long as it leaves the flag set; there is no countdown behind that one,
     /// so the game clearing it is what ends it.
     ///
@@ -506,21 +495,15 @@ public struct MeleeCombat: GameContent {
             // never wake at all. It draws no randomness, so nothing seeded
             // moves by being here.
             //
-            // An entry at all means he is down, and every turn he is down is a
-            // turn spent on the floor — so this returns whichever way the
-            // ternary goes. Zero is the last of those turns: the counter rests
-            // there rather than clearing, which is what keeps a villain from
-            // waking halfway through it and picking a pocket on the way up, one
-            // daemon over. The zero arm used to clear the stun and then fall
-            // through to the blow, which let him wake and counter-attack in a
-            // single tick — the tick the player spent the knockout to buy.
-            // (#508)
-            //
-            // So this daemon abstains for one tick more than
-            // `Actor.isUnconscious` is set for, since it clears the flag on the
-            // way out of the tick it is still spending. See ``Ledger``.
+            // Recovery consumes this whole tick for every behavior. Keep the
+            // shared flag set until commit, so later daemons also abstain.
             if let stunTurns = ledgered.stunned[key] {
-                stun(actor, key: key, turnsLeft: stunTurns == 0 ? nil : stunTurns - 1)
+                if stunTurns == 0 {
+                    ledger.stunned[key] = nil
+                    actor.recoverAfterTurn()
+                } else {
+                    stun(actor, key: key, turnsLeft: stunTurns - 1)
+                }
                 return
             }
             // And a knockout the game took by its own means, which has no

@@ -1417,6 +1417,9 @@ public actor GameWorld {
     func commit(_ frame: TurnFrame, restoring: WorldState? = nil) -> TurnResult {
         let scratch = frame.retire()
         state = restoring ?? scratch.state
+        if restoring == nil {
+            state.unconsciousActors.subtract(scratch.recoveringActors)
+        }
         // Whoever the player can see has now been met. This is the only place
         // it is sampled, and it is enough: `commit` is the single exit of
         // every turn, so `begin()` records the opening room before the first
