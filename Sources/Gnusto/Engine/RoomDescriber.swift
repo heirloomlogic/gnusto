@@ -88,14 +88,12 @@ enum RoomDescriber {
         // Item paragraphs: firstSight text until touched (even for scenery),
         // then a standard mention for non-scenery items. Actors are held
         // back for their own paragraphs below — people close the scene. The
-        // boarded vehicle is skipped entirely: its presence is the title
-        // suffix, and "There is a red boat here." under "…, in the red
-        // boat" is noise (its cargo answers to `look in`, not the room).
+        // boarded vehicle loses its *own* sentence and nothing else: its
+        // presence is the title suffix, and "There is a red boat here."
+        // under "…, in the red boat" is noise. What it holds is listed from
+        // the seat exactly as it is from outside (#525).
         let present = (index.inRoom[locationID] ?? [])
-            .filter {
-                $0 != vehicle
-                    && Visibility.isPerceivable($0, definition: definition, state: state)
-            }
+            .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
         let roomItems = present.filter { definition.items[$0]?.isActor != true }
 
         // The one line any listed thing earns, wherever it is standing: its
@@ -112,13 +110,20 @@ enum RoomDescriber {
         //
         // `alwaysListed` is the opt-out of the touch gate, for a mobile thing
         // whose paragraph is its state — see the trait. An actor needs no such
-        // flag; the loop below never gates one.
+        // flag: neither gate applies to one, here or in the actor loop below,
+        // because an actor is always listed where they are. The actor loop
+        // reads the room's own contents, so a person one level down — inside a
+        // container, on a surface — arrives here instead. No author API places
+        // an actor there today (`Actor.move(to:)` takes a location), so this
+        // arm is a guard on the rule rather than a path with a test behind
+        // it.
         func sayListing(of id: EntityID, stock: () -> String) {
             let item = definition.items[id]
-            let stillNews = !touched.contains(id) || item?.isAlwaysListed == true
+            let isActor = item?.isActor == true
+            let stillNews = isActor || !touched.contains(id) || item?.isAlwaysListed == true
             if stillNews, let presence = frame.presenceText(of: id) {
                 frame.say(presence)
-            } else if item?.isScenery != true {
+            } else if isActor || item?.isScenery != true {
                 frame.say(stock())
             }
         }
@@ -144,7 +149,11 @@ enum RoomDescriber {
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteNoun(of: itemID)) }
+            if itemID != vehicle {
+                sayListing(of: itemID) {
+                    definition.text.itemHere(frame.indefiniteNoun(of: itemID))
+                }
+            }
 
             // "On the X is a Y." for a surface standing in the room.
             if item.isSurface {
@@ -154,7 +163,9 @@ enum RoomDescriber {
             // "In the X is a Y." for a container whose contents are visible —
             // an open one, or a closed transparent one. A closed opaque
             // container stays silent, so its contents never leak into the room
-            // description.
+            // description — a boarded vehicle included, which is also what
+            // keeps the listing and the parser's scope agreeing about a shut
+            // hull.
             if Visibility.contentsVisible(itemID, definition: definition, state: state) {
                 listContents(
                     index.inContainer[itemID], of: itemID, as: definition.text.itemInContainer)
@@ -166,7 +177,10 @@ enum RoomDescriber {
         // time, not gated on `touched` the way an item's is (people aren't
         // props; handling them doesn't wear off their entrance). What an
         // actor carries is not listed.
-        for actorID in present where definition.items[actorID]?.isActor == true {
+        // An `enterable` actor can be boarded too, and loses its paragraph
+        // while ridden for the same reason an inanimate hull does.
+        for actorID in present
+        where actorID != vehicle && definition.items[actorID]?.isActor == true {
             if let presence = frame.presenceText(of: actorID) {
                 frame.say(presence)
             } else {
