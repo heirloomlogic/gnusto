@@ -59,31 +59,26 @@ enum Bootstrap {
         let listedModules = game.content.modules
         let listedNamespaces = Set(listedModules.map(\.namespace))
 
-        // A bundle is a `Sendable` struct, so it has no identity of its own —
-        // but every `Location`, `Item`, `Actor` and `@Global` it stores minted
-        // a `RefToken`, a class instance, when it was constructed. Two bundles
-        // built by separate calls to the same initializer therefore carry
-        // wholly disjoint token sets, while one bundle yielded twice carries
-        // the same set both times. That set is the identity the checks below
-        // compare, and it is exact wherever it is non-empty.
-        //
-        // Own properties only, never the bundles a bundle itself stores: a
-        // recursive fingerprint would contain its nested bundles' tokens and
-        // make a holder indistinguishable from the thing it holds.
+        // The identity of each listed bundle: the reference tokens its own
+        // declarations minted. See ``declarationTokens(of:)`` for why that is
+        // the only identity a `GameContent` value has.
         let listedFingerprints = listedModules.map(Self.declarationTokens(of:))
+        let registeredFingerprints = Set(listedFingerprints)
 
         // Group the listing by namespace, then by identity, and the three ways
         // one namespace comes to hold more than one listing separate cleanly.
         // Each was previously reported as the third.
-        let byNamespace = Dictionary(
-            grouping: listedModules.indices, by: { listedModules[$0].namespace })
         var duplicatedListings: Set<Int> = []
+        let byNamespace =
+            listedNamespaces.count < listedModules.count
+            ? Dictionary(grouping: listedModules.indices, by: { listedModules[$0].namespace })
+            : [:]
         for (namespace, indices) in byNamespace.sorted(by: { $0.key < $1.key })
         where indices.count > 1 {
             // One entry per distinct instance, in listing order. Two entries of
             // the same type whose fingerprints are both empty cannot be told
             // apart at all, so they fold together and are flagged as such.
-            var instances: [(type: String, fingerprint: Set<ObjectIdentifier>, listings: [Int], undecidable: Bool)] = []
+            var instances: [(type: String, fingerprint: Set<ObjectIdentifier>, listings: [Int])] = []
             for index in indices {
                 let owner = "\(type(of: listedModules[index]))"
                 let fingerprint = listedFingerprints[index]
@@ -91,14 +86,15 @@ enum Bootstrap {
                     $0.type == owner && $0.fingerprint == fingerprint
                 }) {
                     instances[existing].listings.append(index)
-                    if fingerprint.isEmpty { instances[existing].undecidable = true }
                 } else {
-                    instances.append((owner, fingerprint, [index], false))
+                    instances.append((owner, fingerprint, [index]))
                 }
             }
             for instance in instances where instance.listings.count > 1 {
+                // Folded entries with no fingerprint were folded on the type
+                // name alone, which is the one case identity cannot settle.
                 diagnostics.append(
-                    instance.undecidable
+                    instance.fingerprint.isEmpty
                         ? Self.undecidableListing(
                             instance.type, namespace, instance.listings.count)
                         : Self.duplicateListing(instance.type, instance.listings.count))
@@ -124,24 +120,22 @@ enum Bootstrap {
 
         // What the rest of the bootstrap registers: the listing with any proven
         // repeat of one instance removed.
-        let modules = listedModules.indices.filter { !duplicatedListings.contains($0) }
-            .map { listedModules[$0] }
+        let modules =
+            duplicatedListings.isEmpty
+            ? listedModules
+            : listedModules.indices.filter { !duplicatedListings.contains($0) }
+                .map { listedModules[$0] }
 
-        // A bundle that is stored but never registered contributes nothing: its
-        // rooms, items, `@Global`s, rules, verbs and timers all go quietly
-        // missing, and the author's first symptom is a region that is not
-        // there. Two ways to arrive there, and they want different cures — the
-        // bundle was left out of `content` altogether, or `content` constructed
-        // a fresh one of the same type instead of yielding the stored instance,
-        // in which case the namespace is registered and the tokens the game's
-        // own map and rules reference are not.
-        //
-        // The walk descends: a bundle stored by a bundle is not registered by
-        // registering its holder, so it needs its own listing (`outer.sub`) and
-        // is otherwise as silently absent as a top-level one. Recursion is safe
-        // because a `GameContent` is a struct and cannot hold itself.
-        func checkStoredBundles(of subject: Any, at path: String?, heldBy holder: String?) {
-            for child in Mirror(reflecting: subject).children {
+        // A bundle that is stored but never registered contributes nothing, and
+        // the author's first symptom is a region that is not there. The two
+        // ways to arrive at that want different cures; ``unlistedBundle`` and
+        // ``freshInstanceBundle`` say which is which. The walk descends because
+        // registering a holder does not register what it holds, and recursion
+        // terminates because a `GameContent` is a struct and cannot hold itself.
+        func checkStoredBundles(
+            _ children: [Mirror.Child], at path: String?, heldBy holder: String?
+        ) {
+            for child in children {
                 guard let label = child.label, let bundle = child.value as? any GameContent
                 else { continue }
                 let bundlePath = path.map { "\($0).\(label)" } ?? label
@@ -153,18 +147,21 @@ enum Bootstrap {
                 let isRegistered =
                     fingerprint.isEmpty
                     ? listedNamespaces.contains(bundle.namespace)
-                    : listedFingerprints.contains(fingerprint)
+                    : registeredFingerprints.contains(fingerprint)
                 if !isRegistered {
                     diagnostics.append(
                         listedNamespaces.contains(bundle.namespace)
                             ? Self.freshInstanceBundle(bundlePath, owner, heldBy: holder)
                             : Self.unlistedBundle(bundlePath, owner, heldBy: holder))
                 }
-                checkStoredBundles(of: bundle, at: bundlePath, heldBy: owner)
+                checkStoredBundles(
+                    Array(Mirror(reflecting: bundle).children),
+                    at: bundlePath, heldBy: owner)
             }
         }
+        // Reflected once and shared: the plugin walk below reads the same list.
         let gameChildren = Array(Mirror(reflecting: game).children)
-        checkStoredBundles(of: game, at: nil, heldBy: nil)
+        checkStoredBundles(gameChildren, at: nil, heldBy: nil)
 
         // A logic-only plugin is stored so the host can splice its factories,
         // but its declarations have no namespace and are never registered.
@@ -380,9 +377,7 @@ enum Bootstrap {
         func resolveLocation(_ token: RefToken, role: String) -> EntityID? {
             guard let id = registry.id(for: token), registry.locations[id] != nil else {
                 diagnostics.append(
-                    "\(role) references a location the bootstrap never registered; it "
-                        + "must be a stored property of the game, or of a content bundle "
-                        + "the game both stores and lists in `var content`.")
+                    Self.unregistered("\(role) references a location"))
                 return nil
             }
             return id
@@ -391,9 +386,7 @@ enum Bootstrap {
         func resolveItem(_ token: RefToken, role: String) -> EntityID? {
             guard let id = registry.id(for: token), registry.items[id] != nil else {
                 diagnostics.append(
-                    "\(role) references an item the bootstrap never registered; it "
-                        + "must be a stored property of the game, or of a content bundle "
-                        + "the game both stores and lists in `var content`.")
+                    Self.unregistered("\(role) references an item"))
                 return nil
             }
             return id
@@ -1139,10 +1132,7 @@ enum Bootstrap {
             case .item(let token):
                 guard let id = registry.id(for: token), registry.items[id] != nil else {
                     ruleDiagnostics.append(
-                        "\(ruleDescriptor) is attached to an item the bootstrap never "
-                            + "registered; it must be a stored property of the game, or of "
-                            + "a content bundle the game both stores and lists in "
-                            + "`var content`.")
+                        Self.unregistered("\(ruleDescriptor) is attached to an item"))
                     continue
                 }
                 switch rule.phase {
@@ -1180,8 +1170,7 @@ enum Bootstrap {
             case .location(let token):
                 guard let id = registry.id(for: token), registry.locations[id] != nil else {
                     ruleDiagnostics.append(
-                        "\(ruleDescriptor) is attached to a location that is not a stored "
-                            + "property of the game or any of its content bundles.")
+                        Self.unregistered("\(ruleDescriptor) is attached to a location"))
                     continue
                 }
                 switch rule.phase {
@@ -1454,6 +1443,21 @@ enum Bootstrap {
             + "bundle its own."
     }
 
+    /// The diagnostic for a map entry or rule whose target the reflection walk
+    /// never saw.
+    ///
+    /// One builder for all four sites — two map resolutions and two rule
+    /// scopes — because the sentence has to stay identical across them: the
+    /// only wrong guess it can send an author on is a different one.
+    ///
+    /// - Parameter subject: what named the target, as the opening clause
+    ///   ("the north exit from \"hall\" references a location").
+    /// - Returns: the diagnostic line.
+    private static func unregistered(_ subject: String) -> String {
+        "\(subject) the bootstrap never registered; it must be a stored property of the "
+            + "game, or of a content bundle the game both stores and lists in `var content`."
+    }
+
     /// Every reference token the `Location`s, `Item`s, `Actor`s and `@Global`s
     /// stored directly on `subject` minted when they were constructed.
     ///
@@ -1468,7 +1472,7 @@ enum Bootstrap {
     ///   properties are read; a bundle it stores contributes nothing, so a
     ///   holder's set never subsumes the set of a bundle nested inside it.
     /// - Returns: one identifier per declaration, empty if there are none.
-    static func declarationTokens(of subject: Any) -> Set<ObjectIdentifier> {
+    private static func declarationTokens(of subject: Any) -> Set<ObjectIdentifier> {
         var tokens: Set<ObjectIdentifier> = []
         for child in Mirror(reflecting: subject).children {
             switch child.value {
