@@ -188,7 +188,17 @@ public func handled() throws -> Never {
     throw TurnInterrupt.replied(message: "")
 }
 
-/// Ends the game. The engine prints the final score after the turn's output.
+/// Ends the game. `won` is bookkeeping only: it sets the final
+/// ``GameStatus`` to `.won` or `.lost` and nothing else. The engine prints
+/// no banner for either value — the same score epilogue follows both — so
+/// the game must `say` its own ending line *before* calling `end(won:)`, the
+/// way `die(_:)` is handed the death message it prints. `reply(_:)` cannot do
+/// this: it throws `Never` and ends the turn on its own, so a call to
+/// `end(won:)` after it would never run.
+/// See <doc:DarknessTimeAndDeath> for worked win and loss examples.
+///
+/// Both outcomes are final: the read loop stops here, unlike `die(_:)`,
+/// which keeps the program running at the RESTART/RESTORE/UNDO/QUIT prompt.
 ///
 /// - Parameter won: whether the player won.
 /// - Throws: the turn interrupt the engine catches to end the game.
