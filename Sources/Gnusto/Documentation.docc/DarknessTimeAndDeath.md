@@ -221,7 +221,7 @@ Sunlit Clearing
 Grass, sky, and a second chance.
 ```
 
-No banner, no prompt — the death message prints, the handler's own line follows it, and the very next command (`count`, then `look`) runs as an ordinary turn in the room the handler moved the player to. That is recovery and continued play in one transcript. Nothing here resets the death itself: `deaths` (a `@Global`, so it survives save/restore and undo like any other world state) keeps climbing, and it is the game's own `onDeath()` — not the engine — that decides when a further death stops being survivable. `Sources/Zork1/Zork1.swift`'s `onDeath()` is that decision made concrete: `.consumed` for the first two deaths, `.fallThrough` from the third on, so the third death is the one that is actually final.
+No banner, no prompt — the death message prints, the handler's own line follows it, and the very next command (`count`, then `look`) runs as an ordinary turn in the room the handler moved the player to. That is recovery and continued play in one transcript. Nothing here resets the death itself: `deaths` (a `@Global`, so it survives save/restore like any other world state, and is rewound by an UNDO of the turn that changed it, same as any other world state) keeps climbing, and it is the game's own `onDeath()` — not the engine — that decides when a further death stops being survivable. `Sources/Zork1/Zork1.swift`'s `onDeath()` is that decision made concrete: `.consumed` for the first two deaths, `.fallThrough` from the third on, so the third death is the one that is actually final.
 
 ## The worked examples
 

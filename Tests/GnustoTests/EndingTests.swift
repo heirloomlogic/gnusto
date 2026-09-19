@@ -26,7 +26,7 @@ struct EndingTests {
             turn,
             [
                 "You set down your tools. The vault seals. You have lost.",
-                "Your score is",
+                "Your score is 0, in 1 turn.",
             ])
         // No death banner or prompt — this is not `die(_:)`.
         #expect(!turn.contains("*** You have died ***"))

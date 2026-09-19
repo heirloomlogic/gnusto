@@ -65,7 +65,7 @@ A rule body is ordinary Swift, but three helpers change the flow of the turn by 
 
 - ``refuse(_:)`` — "no, you can't." Prints the message and skips the default action and every remaining `before`/`after` rule. Use it in a `before` rule to veto an action.
 - ``reply(_:)`` — "here's what happens instead." Mechanically identical to `refuse`, but named for the case where you are *handling* the action yourself rather than forbidding it. This is how a custom verb produces its result.
-- ``end(won:)`` — ends the game, won or lost. `won` is bookkeeping only — no banner prints for either value — so `say`/`reply` your own ending line first; the engine prints the final score after the turn's output. See <doc:DarknessTimeAndDeath>.
+- ``end(won:)`` — ends the game, won or lost. `won` is bookkeeping only — no banner prints for either value — so `say` your own ending line first; the engine prints the final score after the turn's output. (`reply(_:)` can't be used for this: it ends the turn itself, so `end(won:)` would never run.) See <doc:DarknessTimeAndDeath>.
 - ``die(_:)`` — kills the player without ending the program: the message, the death banner, the score, and then the interactive RESTART / RESTORE / UNDO / QUIT prompt. Dead is *over but not finished* — each-turn rules and timers stop, yet the loop keeps reading until the player picks an exit. See <doc:DarknessTimeAndDeath>.
 
 All three return `Never`, so they read naturally in a `guard`:
