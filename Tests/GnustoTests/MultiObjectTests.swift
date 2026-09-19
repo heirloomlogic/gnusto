@@ -168,4 +168,37 @@ struct MultiObjectTests {
         #expect(taking.contains("tin canteen: Taken."))
         #expect(taking.contains("quantity of water: Taken."))
     }
+
+    // MARK: - TAKE ALL in the dark (#518)
+
+    /// A dark room's contents are dropped from the reachable set the same way
+    /// the parser's own scope drops them, so the pre-fix answer was "There is
+    /// nothing here to take" in a cellar holding a rock in plain (if
+    /// unlit) view — a claim the player has no way to tell from a genuinely
+    /// empty room. `examine` already has its own way of saying "I can't tell
+    /// you" instead of asserting a look that could not have happened; TAKE ALL
+    /// now says its room's version of the same thing.
+    @Test func takeAllInTheDarkReportsTheDarknessInsteadOfClaimingTheRoomIsEmpty() async throws {
+        let transcript = try await play(CaveGame(), ["take rock", "north", "drop rock", "take all"])
+        let taking = turnOutput(of: "take all", in: transcript)
+        #expect(taking.contains("It is pitch black. You can't see a thing."))
+        #expect(!taking.contains("nothing here"))
+    }
+
+    /// The ordinary lit-room answer is unchanged: a truly empty *lit* room
+    /// still gets "There is nothing here to take", not the dark line.
+    @Test func takeAllInAnEmptyLitRoomStillSaysNothingHere() async throws {
+        let transcript = try await play(EternalFlameGame(), ["take brazier", "take all"])
+        #expect(turnOutput(of: "take all", in: transcript).contains("There is nothing here to take."))
+    }
+
+    /// A carried *lit* light source means the room is not dark, so TAKE ALL
+    /// sees the room exactly as it would with the sun still up.
+    @Test func aCarriedLitLightSourceMeansTakeAllSeesTheRoom() async throws {
+        let transcript = try await play(
+            CaveGame(), ["take rock", "north", "drop rock", "south", "take torch", "north", "take all"])
+        let taking = turnOutput(of: "take all", in: transcript)
+        #expect(taking.contains("gray rock: Taken."))
+        #expect(!taking.contains("pitch black"))
+    }
 }

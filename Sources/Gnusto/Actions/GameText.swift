@@ -697,7 +697,9 @@ public struct GameText: Sendable {
 
     /// "all"/"them" in the indirect slot, where only one object fits.
     public var multipleNotAllowedThere: Line<Nothing> = "You can't use multiple objects there."
-    /// "take all" with nothing eligible to take.
+    /// "take all" with nothing eligible to take. Not said in the dark, where
+    /// ``pitchBlack`` answers instead — a player who cannot see the room
+    /// cannot be told it is empty (#518).
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."

@@ -783,6 +783,21 @@ public actor GameWorld {
             }
         }
         guard !objects.isEmpty else {
+            // TAKE ALL's reachable set is dark-gated (`Visibility.reachableItems`
+            // drops the room's contents, same as the parser's own scope), so an
+            // empty result in the dark is never "nothing here" — the player
+            // cannot tell that from a room that genuinely has nothing in it.
+            // This is the same question LOOK already answers in the dark
+            // (`RoomDescriber` prints `pitchBlack` in place of a description it
+            // cannot give), so TAKE ALL reaches for that same room-level line
+            // rather than inventing another one. DROP ALL needs no such check:
+            // it answers from what the player is already holding, which
+            // darkness never hides from them.
+            if intent == .take,
+                Visibility.isDark(at: state.playerLocation, definition: definition, state: state)
+            {
+                return .empty(definition.text.pitchBlack())
+            }
             return .empty(
                 intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
         }
