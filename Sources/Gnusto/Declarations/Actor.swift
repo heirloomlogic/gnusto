@@ -70,7 +70,7 @@ public struct Actor: Sendable, Equatable {
         self.traits = item.traits
     }
 
-    var id: EntityID {
+    package var id: EntityID {
         asItem.id
     }
 
