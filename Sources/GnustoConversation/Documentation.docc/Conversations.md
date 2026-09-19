@@ -187,16 +187,7 @@ demonstrably has an answer should not sound blank about the subject. Gating
 composes at no cost: a lie and the confession that replaces it are separate rows
 with separate keys, tracked apart. A repeat costs a turn, like any other answer.
 
-A row's key in the heard set is derived from its content — keywords, intents,
-gate facts — rather than its position, because the two fail in opposite
-directions. A position key shifts when an author inserts a row above it and makes
-a never-before-seen answer come out as *I have answered that*: content lost, no
-diagnostic. A content key changes when an author edits a keyword, which makes the
-row look unheard, so the line plays once more — which is what it did before the
-feature existed. Give a row an `id:` when its keywords or gates are likely to be
-edited after release, when its actor shares a display name with another, when two
-rows should retire together, or when two rows differ only in which `when:`
-closure they carry: the key records that a row *has* one, not which one.
+A row's key in the heard set is derived from its content — keywords, intents, gate facts — rather than its position, because the two fail in opposite directions. A position key shifts when an author inserts a row above it and makes a never-before-seen answer come out as *I have answered that*: content lost, no diagnostic. A content key changes when an author edits a keyword, which makes the row look unheard, so the line plays once more — which is what it did before the feature existed. Give a row an `id:` when its keywords or gates are likely to be edited after release, when two rows should retire together, or when two rows differ only in which `when:` closure they carry: the key records that a row *has* one, not which one.
 
 An `id:` is also the only handle on a row from outside the table.
 
