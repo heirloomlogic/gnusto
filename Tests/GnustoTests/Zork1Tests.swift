@@ -252,6 +252,27 @@ struct Zork1Tests {
         expectInOrder(looks[3], ["lurking grue", "deserve another", "Forest"])
     }
 
+    /// TAKE ALL in the unlit cellar answers with the dark line, and Zork's
+    /// dark line is its grue's warning, so the daemon's own claim on that
+    /// sentence has to be deduped away exactly as the room describer's is —
+    /// once per turn, not twice. The turn is charged either way, which is why
+    /// the third one is fatal. (#518)
+    @Test func takeAllInTheDarkCellarSaysTheGrueLineOnceAndStillCostsTheTurn() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "down",
+                "take all", "take all", "quit",
+            ],
+            seed: 0)
+        let grue = "It is pitch black. You are likely to be eaten by a grue."
+        let grace = turnOutput(of: "take all", in: transcript)
+        #expect(occurrences(of: grue, in: grace) == 1)
+        #expect(!grace.contains("lurking grue"))
+        #expect(turnOutput(ofLast: "take all", in: transcript).contains("lurking grue"))
+    }
+
     /// Carried light holds the grue off completely: the lantern-lit cellar
     /// loop with extra loitering never draws the warning.
     @Test func theLanternKeepsTheGrueAway() async throws {

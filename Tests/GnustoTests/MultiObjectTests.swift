@@ -201,4 +201,30 @@ struct MultiObjectTests {
         #expect(taking.contains("gray rock: Taken."))
         #expect(!taking.contains("pitch black"))
     }
+
+    /// The lit empty answer is a remark about the phrase and stays free
+    /// (`takeAllWithNothingLeftIsFreeAndExplains`). The dark one is a remark
+    /// about the room, the same one LOOK makes, so it is charged the same way
+    /// LOOK is: four typed commands, four turns.
+    @Test func takeAllInTheDarkCostsATurn() async throws {
+        let transcript = try await play(
+            CaveGame(), ["take rock", "north", "drop rock", "take all", "score"])
+        #expect(turnOutput(of: "score", in: transcript).contains("in 4 turns"))
+    }
+
+    /// And because the turn is charged, its timers tick. `NightfallGame` warns
+    /// on the first dark turn, spares the second and kills on the third, so a
+    /// player who answers the dark with TAKE ALL is eaten on schedule instead
+    /// of standing in a grue's larder for free.
+    @Test func takeAllInTheDarkLetsTheTimersRun() async throws {
+        let transcript = try await play(
+            NightfallGame(), ["north", "take all", "take all", "quit"])
+        #expect(!turnOutput(of: "take all", in: transcript).contains("finds you"))
+        expectInOrder(
+            turnOutput(ofLast: "take all", in: transcript),
+            [
+                "Something in the dark finds you before you find it.",
+                "*** You have died ***",
+            ])
+    }
 }

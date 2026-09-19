@@ -627,12 +627,16 @@ public actor GameWorld {
 
         // Reject an initially empty group without running rules or spending a
         // turn. A nonempty group is expanded again after upkeep has run.
-        var objects: [EntityID]
+        var objects: [EntityID] = []
         switch expandGroup(parsed, multiple, in: state) {
         case .objects(let expanded):
             objects = expanded
         case .empty(let message):
             return freeReply(message)
+        case .dark:
+            // Falls through into the turn below rather than replying for
+            // free: see `MultiObjectExpansion.dark`.
+            break
         }
 
         // Every early return above was a free reply; from here the turn
@@ -656,6 +660,16 @@ public actor GameWorld {
                     // Upkeep already happened: keep its state and finish this
                     // turn, even though there are now no objects to act on.
                     throw TurnInterrupt.replied(message: message)
+                case .dark:
+                    // Said here rather than thrown, because the dark line is
+                    // the one sentence another emitter is most likely to have
+                    // a claim on — in Zork the room's dark line *is* the
+                    // grue's threat — and `sayOnceThisTurn` is how the engine
+                    // keeps the two from doubling up. The throw that follows
+                    // carries no text: it ends the turn, leaving `finishTurn`
+                    // to charge it and tick the timers.
+                    frame.sayOnceThisTurn(definition.text.pitchBlack())
+                    throw TurnInterrupt.replied(message: "")
                 }
                 for id in objects {
                     guard frame.with({ $0.state.status }) == .playing else { break }
@@ -697,7 +711,22 @@ public actor GameWorld {
 
     private enum MultiObjectExpansion {
         case objects([EntityID])
+
+        /// No objects, and nothing to run: the group's own phrase answered
+        /// itself, so the reply is free the way a parse failure is.
         case empty(String)
+
+        /// No objects because the room is dark. The answer is about the
+        /// world rather than about the phrase — the same answer LOOK gives —
+        /// so the turn runs, is charged, and ticks the timers, which is what
+        /// keeps a dark room dangerous while the player types TAKE ALL.
+        ///
+        /// It carries no text, deliberately. ``GameText/pitchBlack`` is the
+        /// line most likely to be ``Line/live(_:)``, and a live line reads the
+        /// world through `Ctx.current`; `expandGroup` runs once before the
+        /// frame exists, where that read traps. The wording is left to the
+        /// caller, which speaks from inside the frame.
+        case dark
     }
 
     /// Resolve a group against an explicit state so the eligibility check and
@@ -783,20 +812,19 @@ public actor GameWorld {
             }
         }
         guard !objects.isEmpty else {
-            // TAKE ALL's reachable set is dark-gated (`Visibility.reachableItems`
-            // drops the room's contents, same as the parser's own scope), so an
-            // empty result in the dark is never "nothing here" — the player
-            // cannot tell that from a room that genuinely has nothing in it.
-            // This is the same question LOOK already answers in the dark
-            // (`RoomDescriber` prints `pitchBlack` in place of a description it
-            // cannot give), so TAKE ALL reaches for that same room-level line
-            // rather than inventing another one. DROP ALL needs no such check:
-            // it answers from what the player is already holding, which
-            // darkness never hides from them.
+            // TAKE ALL's reachable set is dark-gated, so an empty result in
+            // the dark is never "nothing here" — the player cannot tell that
+            // from a room that genuinely has nothing in it. LOOK answers the
+            // same question with `pitchBlack`, so TAKE ALL borrows the line
+            // rather than inventing one. Only `.all`/`.take` can arrive here
+            // in the dark: DROP ALL reads the player's own hands, which
+            // darkness does not hide; `.them` has already refused above
+            // against the visible set; and `.list` was resolved by a parser
+            // walking the same gate.
             if intent == .take,
                 Visibility.isDark(at: state.playerLocation, definition: definition, state: state)
             {
-                return .empty(definition.text.pitchBlack())
+                return .dark
             }
             return .empty(
                 intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
