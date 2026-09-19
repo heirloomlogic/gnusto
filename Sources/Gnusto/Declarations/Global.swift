@@ -39,6 +39,20 @@ struct GlobalDefinition: Sendable {
     let accepts: @Sendable (StateValue) -> Bool
 }
 
+extension StateValue {
+    /// Refuses a floating-point value that JSON cannot carry in a save file.
+    ///
+    /// Validation lives at the `StateValue` boundary rather than in `Double`'s
+    /// `GlobalValue` conformance because the registered global ID is available
+    /// here. That turns an arithmetic mistake into a diagnostic naming the
+    /// declaration and value that caused it.
+    func validated(forGlobal id: EntityID) -> Self {
+        guard case .double(let value) = self, !value.isFinite else { return self }
+        fatalError(
+            "Gnusto: @Global \"\(id)\" cannot store non-finite Double value \(value).")
+    }
+}
+
 /// Custom game state with the same ergonomics as built-in state:
 ///
 /// ```swift
@@ -92,7 +106,7 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
         nonmutating set {
             let frame = Ctx.current
             let id = frame.id(for: token, describing: "@Global")
-            frame.with { $0.state.globals[id] = newValue.stateValue }
+            frame.with { $0.state.globals[id] = newValue.stateValue.validated(forGlobal: id) }
         }
     }
 }

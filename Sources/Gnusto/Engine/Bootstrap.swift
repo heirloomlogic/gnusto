@@ -215,7 +215,8 @@ enum Bootstrap {
                     guard claim(id) else { continue }
                     registry.ids[ObjectIdentifier(global.token)] = id
                     globals[id] = GlobalDefinition(
-                        defaultValue: global.defaultStateValue, accepts: global.accepts)
+                        defaultValue: global.defaultStateValue.validated(forGlobal: id),
+                        accepts: global.accepts)
 
                 default:
                     continue
