@@ -322,7 +322,11 @@ extension WorldState {
     mutating func place(_ id: EntityID, _ placement: Placement) {
         placements[id] = placement
         containmentCache = nil
-        if id == playerVehicle { strandIfSeparated() }
+        if id == playerVehicle, placement != .room(playerLocation) {
+            disembark()
+        } else {
+            strandIfSeparated()
+        }
     }
 
     /// The player walks into `room`, and a boarded vehicle rides along — cargo
@@ -345,9 +349,9 @@ extension WorldState {
         strandIfSeparated()
     }
 
-    /// Records that the player has boarded `vehicle`. A vehicle that isn't
-    /// underfoot doesn't take, so the invariant holds on this writer too and
-    /// no caller can seed a boarding the funnels could never settle.
+    /// Records that the player has boarded `vehicle`. A vehicle whose
+    /// containment chain reaches the player or a different room does not take, so
+    /// the invariant holds on this writer too.
     mutating func board(_ vehicle: EntityID) {
         playerVehicle = vehicle
         strandIfSeparated()
@@ -372,7 +376,7 @@ extension WorldState {
     /// settles the boarding once on the way in.
     mutating func strandIfSeparated() {
         guard let vehicle = playerVehicle,
-            placements[vehicle] != .room(playerLocation)
+            isPossession(vehicle, of: .player) || room(of: vehicle) != playerLocation
         else { return }
         disembark()
     }
