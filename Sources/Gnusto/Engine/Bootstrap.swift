@@ -265,6 +265,7 @@ enum Bootstrap {
             if definition.name == nil {
                 diagnostics.append("location \"\(id)\" has no name(…) trait.")
             }
+            diagnoseBlank(definition.name, on: "location \"\(id)\"", as: "name(…) trait")
             diagnoseBlank(
                 definition.description, on: "location \"\(id)\"", as: "description(…) trait")
         }
