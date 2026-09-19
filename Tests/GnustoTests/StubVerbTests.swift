@@ -127,6 +127,26 @@ struct StubVerbTests {
         #expect(!turn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(command)")
     }
 
+    /// A two-object stub must answer the command the player actually gave, rather than using a one-object line that implies the second object was absent. Each literal independently pins which noun fills which role.
+    @Test(arguments: [
+        ("burn rod with flask", "You can't set fire to the brass rod with the glass flask."),
+        ("dig bench with rod", "You can't dig the long bench with the brass rod."),
+        ("fill flask with rod", "You can't fill the glass flask with the brass rod."),
+        ("tie rod to bench", "You can't tie the brass rod to the long bench."),
+    ])
+    func anInstrumentedStubNamesBothObjects(_ command: String, _ expected: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
+        #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// DIG is the only one of these verbs with a genuinely bare row. Giving its two-object half a richer subject must not invent a noun for that row.
+    @Test func bareDigStaysObjectless() async throws {
+        let turn = turnOutput(of: "dig", in: try await play(StubLab(), ["dig"]))
+        #expect(turn.contains("You have nothing to dig with."))
+        #expect(!turn.contains("brass rod"))
+        #expect(!turn.contains("long bench"))
+    }
+
     /// Acceptance, from the issue: the thirteen turns that opened it. Every one
     /// of these used to say `I don't know the word`.
     @Test func theOpeningComplaintIsAnswered() async throws {
@@ -185,6 +205,17 @@ struct StubVerbTests {
     func aStubThatNeedsReachRefusesThroughTheGlass(_ command: String) async throws {
         let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
         #expect(turn.contains("You can't reach the gold coin."), "\(command): \(turn)")
+    }
+
+    /// The richer renderer still sits behind the direct-object reach guard. A named instrument must not make the stock line run for an unreachable object.
+    @Test(arguments: [
+        "burn coin with rod", "dig coin with rod", "fill coin with rod", "tie coin to rod",
+    ])
+    func anInstrumentedStubStillChecksReachFirst(_ command: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
+        #expect(turn.contains("You can't reach the gold coin."), "\(command): \(turn)")
+        #expect(!turn.contains("with the brass rod"), "\(command): \(turn)")
+        #expect(!turn.contains("to the brass rod"), "\(command): \(turn)")
     }
 
     /// And the other half of the set, which a blanket guard would have broken:
@@ -464,6 +495,19 @@ struct StubVerbTests {
         let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
         #expect(!turn.lowercased().contains("the yourself"), "\(command): \(turn)")
         #expect(!turn.contains("I didn't understand"), "\(command): \(turn)")
+    }
+
+    /// Adding an indirect object must not bypass the direct-player cascade. DIG keeps the nameless half it used before; the always-named lines keep the shared refusal.
+    @Test func instrumentedStubsKeepTheirPlayerGuards() async throws {
+        let transcript = try await play(
+            StubLab(), ["burn me with rod", "dig me with rod", "fill me with rod", "tie me to rod"])
+        for command in ["burn me with rod", "fill me with rod", "tie me to rod"] {
+            #expect(
+                turnOutput(of: command, in: transcript).contains("Best leave yourself out of it."),
+                "\(command): \(transcript)")
+        }
+        #expect(
+            turnOutput(of: "dig me with rod", in: transcript).contains("You have nothing to dig with."))
     }
 
     /// But a stub whose line owns a nameless half takes that half instead, and

@@ -107,7 +107,7 @@ extension Prose {
         // route to (`gsyntax.zil:163`).
         stubs.smash = "Nice try."
         // `V-BURN`'s last branch (`gverbs.zil:274`).
-        stubs.burn = .naming { "You can't burn \($0)." }
+        stubs.burn = .naming { "You can't burn \($0.object)." }
         // `V-CUT`'s last branch (`gverbs.zil:400`). The four dots are the
         // source's.
         stubs.cut = .naming { "Strange concept, cutting \($0)...." }
@@ -294,7 +294,7 @@ extension Prose {
         stubs.empty = .naming { "You'd have to put something in \($0) first." }
         // `V-TIE`'s general branch (`gverbs.zil:1469`). The rope in the dome
         // claims `tie` where tying is the puzzle.
-        stubs.tie = .naming { "You can't tie \($0) to that." }
+        stubs.tie = .naming { "You can't tie \($0.object) to that." }
         // `V-UNTIE` (`gverbs.zil:1512`).
         stubs.untie = "This cannot be tied, so it cannot be untied!"
 
