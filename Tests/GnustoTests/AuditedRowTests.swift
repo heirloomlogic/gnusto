@@ -51,7 +51,7 @@ struct AuditedRowTests {
             ["sit in sack", "stand on bench", "lie on bench", "lie down on bench"])
         #expect(
             turnOutput(of: "sit in sack", in: transcript)
-                .contains("There's nothing comfortable to sit on."))
+                .contains("There's nothing comfortable to sit on the canvas sack."))
         #expect(
             turnOutput(of: "stand on bench", in: transcript)
                 .contains("You can't stand on the long bench."))
@@ -94,7 +94,7 @@ struct AuditedRowTests {
     @Test func bareClimbStillReachesTheStubVerb() async throws {
         let transcript = try await play(AuditLab(), ["climb", "climb bench"])
         #expect(turnOutput(of: "climb", in: transcript).contains("You can't climb that."))
-        #expect(turnOutput(of: "climb bench", in: transcript).contains("You can't climb that."))
+        #expect(turnOutput(of: "climb bench", in: transcript).contains("You can't climb the long bench."))
         #expect(!transcript.contains("Which way?"))
     }
 

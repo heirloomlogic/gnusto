@@ -967,10 +967,14 @@ extension GameText {
         // MARK: Motion
 
         /// Climbing something unclimbable. The bare `climb` names nothing.
-        public var climb: Line<Noun?> = "You can't climb that."
+        public var climb: Line<Noun?> = .naming(orBare: "You can't climb that.") {
+            "You can't climb \($0)."
+        }
         /// Jumping, on the spot or over something. The bare `jump` names
         /// nothing.
-        public var jump: Line<Noun?> = "You jump on the spot. Nothing is achieved."
+        public var jump: Line<Noun?> = .naming(orBare: "You jump on the spot. Nothing is achieved.") {
+            "You can't jump over \($0)."
+        }
         /// Swimming with no water to swim in.
         public var swim: Line<Nothing> = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
@@ -980,13 +984,11 @@ extension GameText {
         public var stand: Line<Noun?> = .naming(orBare: "You're already standing.") {
             "You can't stand on \($0)."
         }
-        /// Sitting with nowhere to sit. The one posture of the three whose
-        /// sentence answers both halves, which is why it stays a single line
-        /// where ``stand`` and ``lie`` are written with ``Line/naming(orBare:_:)``:
-        /// "There's nothing comfortable to sit on." is as true of `sit on the
-        /// bench` as of bare `sit`, where "You're already standing." answers
-        /// `stand on the bench` by claiming you are doing it.
-        public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
+        /// Sitting with nowhere to sit. The bare `sit` names nothing; `sit on`
+        /// and `sit in` name the object.
+        public var sit: Line<Noun?> = .naming(orBare: "There's nothing comfortable to sit on.") {
+            "There's nothing comfortable to sit on \($0)."
+        }
         /// Lying down, on the floor or on something. The bare `lie` and `lie
         /// down` name nothing.
         public var lie: Line<Noun?> = .naming(orBare: "The floor doesn't look inviting.") {

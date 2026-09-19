@@ -512,8 +512,8 @@ struct StubVerbTests {
 
     /// The twelve stubs that carried a `.directObject` slot for a year with no
     /// way to name what filled it: they shipped as `plain`, which hands the
-    /// line nothing at all. Moving them to `optionallyNamed` gives a game the
-    /// name, and hands the engine's own wording an argument it ignores.
+    /// line nothing at all. Moving them to `optionallyNamed` gives the game
+    /// and its default reply the name.
     ///
     /// Every probe below is a turn whose output must not move, and they are
     /// grouped by the three roads `optionallyNamed` splits and `plain` did
@@ -530,8 +530,8 @@ struct StubVerbTests {
         ("drink flask", "There's nothing here worth drinking."),
         ("kiss rod", "That would be presumptuous."),
         ("point at rod", "Pointing at things accomplishes little."),
-        ("jump over bench", "You jump on the spot. Nothing is achieved."),
-        ("sit on bench", "There's nothing comfortable to sit on."),
+        ("jump over bench", "You can't jump over the long bench."),
+        ("sit on bench", "There's nothing comfortable to sit on the long bench."),
         ("count rod", "You lose count."),
         ("buy rod", "Nothing here is for sale."),
         ("sell rod", "Nobody here is buying."),
@@ -547,8 +547,8 @@ struct StubVerbTests {
         ("drink rat", "There's nothing here worth drinking."),
         ("kiss rat", "That would be presumptuous."),
         ("point at rat", "Pointing at things accomplishes little."),
-        ("jump over rat", "You jump on the spot. Nothing is achieved."),
-        ("sit on rat", "There's nothing comfortable to sit on."),
+        ("jump over rat", "You can't jump over the grey rat."),
+        ("sit on rat", "There's nothing comfortable to sit on the grey rat."),
         ("count rat", "You lose count."),
         ("buy rat", "Nothing here is for sale."),
         ("sell rat", "Nobody here is buying."),
@@ -577,7 +577,7 @@ struct StubVerbTests {
     ]
 
     @Test(arguments: StubVerbTests.theTwelveThatLearnedToName)
-    func theEngineDefaultIsUnchangedForEveryRewiredStub(
+    func everyRewiredStubHasItsExpectedDefaultReply(
         _ command: String, _ expected: String
     ) async throws {
         let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
@@ -603,6 +603,24 @@ struct StubVerbTests {
             #expect(
                 stub.namesObject,
                 "`\(stub.intent.raw)` takes a direct object its line can't name")
+        }
+    }
+
+    /// An optional name reaches a stub line only when the engine's wording uses
+    /// it. These pairs execute the parser rows that opened #529, rather than
+    /// checking `namesObject`, which only describes the capability.
+    @Test func motionStubsDistinguishNamedAndBareDefaults() async throws {
+        let transcript = try await play(
+            StubLab(), ["climb bench", "climb", "jump over bench", "jump", "sit on bench", "sit"])
+        let pairs = [
+            ("climb bench", "climb", "long bench"),
+            ("jump over bench", "jump", "long bench"),
+            ("sit on bench", "sit", "long bench"),
+        ]
+
+        for (named, bare, noun) in pairs {
+            #expect(turnOutput(of: named, in: transcript).contains(noun), "\(named) discarded \(noun)")
+            #expect(!turnOutput(of: bare, in: transcript).contains(noun), "\(bare) named \(noun)")
         }
     }
 
