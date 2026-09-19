@@ -538,18 +538,30 @@ public struct GameText: Sendable {
     }
 
     /// The `inventory` listing, as one sentence ("You are carrying a brass
-    /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
-    /// already articled, since only the caller knows which are proper names.
-    /// Only called with at least one item; `emptyHanded` covers the rest.
+    /// lantern, a tray (with a cup on it), and a velvet cloak (being worn).").
+    /// The names arrive already articled, since only the caller knows which
+    /// are proper names. Only called with at least one item; `emptyHanded`
+    /// covers the rest.
     ///
     /// The one line about several things that does **not** take them as a single
     /// ``Noun/list(_:)``: it has something to say about each of them, so
     /// ``Carried`` keeps them apart until the game has had its say.
     public var inventorySentence: Line<Carried> = .naming {
         let phrases = $0.entries.map {
-            $0.noun.phrase
+            let placement =
+                switch ($0.insideContents.isEmpty, $0.surfaceContents.isEmpty) {
+                case (true, true):
+                    ""
+                case (false, true):
+                    " (containing \(GameText.list($0.insideContents.map(\.phrase))))"
+                case (true, false):
+                    " (with \(GameText.list($0.surfaceContents.map(\.phrase))) on it)"
+                case (false, false):
+                    " (containing \(GameText.list($0.insideContents.map(\.phrase))), with \(GameText.list($0.surfaceContents.map(\.phrase))) on top)"
+                }
+            return $0.noun.phrase
                 + ($0.isWorn ? " (being worn)" : "")
-                + ($0.contents.isEmpty ? "" : " (containing \(GameText.list($0.contents.map(\.phrase))))")
+                + placement
         }
         return "You are carrying \(GameText.list(phrases))."
     }
