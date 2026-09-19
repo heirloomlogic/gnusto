@@ -140,7 +140,7 @@ struct BootstrapTests {
         } throws: { error in
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
-            return text.contains("not a stored property")  // inline exit target
+            return text.contains("the bootstrap never registered")  // inline exit target
                 && text.contains("not declared as a surface")  // pebble on nameless
                 && text.contains("player.starts(in:)")  // missing start
                 && text.contains("no name(…) trait")  // nameless item
@@ -335,7 +335,7 @@ struct BootstrapTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("the source of a north exit")  // the direction anchor
-                && text.contains("not a stored property")
+                && text.contains("the bootstrap never registered")
         }
     }
 
@@ -421,7 +421,7 @@ struct BootstrapTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("before rule")  // the phase anchor
-                && text.contains("is attached to an item that is not a stored property")
+                && text.contains("is attached to an item the bootstrap never registered")
         }
     }
 

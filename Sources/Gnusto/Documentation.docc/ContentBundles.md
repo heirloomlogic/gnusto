@@ -62,6 +62,35 @@ Each ``Location``/``Item``/``Global`` mints a reference token when it's created,
 
 A bundle the game stores but never lists is registered by nothing: its rooms, items, `@Global`s, rules, verbs, and timers all go quietly missing, and the first symptom is a region that isn't there. That is a fatal bootstrap diagnostic too, naming the property it found and the bundle's type.
 
+Both mistakes are caught by **identity rather than by namespace**. A bundle is a `Sendable` struct with nothing to compare, but every ``Location``/``Item``/``Actor``/``Global`` it stores minted a reference token when it was constructed, and that set of tokens tells one instance from another exactly. So `var content { Attic() }` beside `let attic = Attic()` is reported as what it is — the content block yields a different `Attic` — instead of passing because the namespace matched and failing later at the map. The one case identity cannot settle is a bundle that declares **no** entity at all: it mints no tokens, so two listings of that type are reported with both readings and both cures.
+
+## A nested bundle is listed like any other
+
+A bundle may store another bundle, and registering the holder does **not** register what it holds. `content` is the game's block, so the game lists the nested bundle too, under the path that reaches it:
+
+```swift
+struct Dungeon: GameContent {
+    let cells = Cells()                       // a bundle inside a bundle
+    let gatehouse = Location { name("Gatehouse") }
+}
+
+struct Castle: Game {
+    let dungeon = Dungeon()
+
+    var content: GameContents {
+        dungeon
+        dungeon.cells                         // and the one it holds
+    }
+
+    var map: WorldMap {
+        dungeon.gatehouse.down(dungeon.cells.corridor)
+        player.starts(in: dungeon.gatehouse)
+    }
+}
+```
+
+Omitting `dungeon.cells` is fatal, and the diagnostic names the holding type, the path (`"dungeon.cells"`) and that same path as the cure. The walk goes all the way down, so a bundle three deep is caught as readily as one. Registration is never automatic, so a holder cannot quietly pull a region into a game that did not ask for it, and a nested bundle namespaces under **its own** type — `Cells.corridor`, not `Dungeon.Cells.corridor`.
+
 ## EntityIDs are namespaced by the bundle
 
 A bundle's entities are namespaced by the bundle, while the game's own entities stay bare. `attic.landing` becomes ``EntityID`` `"Attic.landing"`; the game's `foyer` stays `"foyer"`. The namespace defaults to the bundle's **type name**, so each distinct bundle type gets a distinct prefix automatically and a reusable bundle dropped into any host can't clash — even if the host and the bundle both declare a `landing`, they resolve to `"landing"` and `"Attic.landing"`. References at the authoring site are token-based (`attic.landing`), so the namespace is invisible there; it only shows up in the raw ID string, which is internal (display and parsing use each entity's `name(_:)`).

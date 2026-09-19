@@ -109,7 +109,7 @@ struct ContainerTests {
             _ = try Bootstrap.build(GhostLockGame())
             Issue.record("expected BootstrapError")
         } catch let error as BootstrapError {
-            #expect(error.diagnostics.contains { $0.contains("not a stored property") })
+            #expect(error.diagnostics.contains { $0.contains("the bootstrap never registered") })
         } catch {
             Issue.record("expected a BootstrapError, got \(error)")
         }
