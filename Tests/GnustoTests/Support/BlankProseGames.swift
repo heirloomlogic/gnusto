@@ -1,5 +1,18 @@
 import Gnusto
 
+struct BlankLocationNameGame: Game {
+    let title = "Blank location names"
+    let intro = ""
+
+    let emptyName = Location { name("") }
+    let whitespaceName = Location { name(" \n\t") }
+    let validName = Location { name("Valid Name") }
+
+    var map: WorldMap {
+        player.starts(in: validName)
+    }
+}
+
 struct BlankStaticProseGame: Game {
     let title = "Blank static prose"
     let intro = ""
@@ -12,6 +25,12 @@ struct BlankStaticProseGame: Game {
     let whitespaceRoom = Location {
         name("Whitespace Room")
         description(" \n\t")
+    }
+
+    let emptyAlwaysDescribedRoom = Location {
+        name("Empty always described room")
+        alwaysDescribed
+        description("")
     }
 
     let emptyDescription = Item {
