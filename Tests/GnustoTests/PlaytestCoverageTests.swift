@@ -839,6 +839,105 @@ struct PlaytestCoverageTests {
         #expect(!(try await ids(session).contains("timer:Yard")))
     }
 
+    /// Two rooms under one display name keep their own exits and their own
+    /// probes.
+    ///
+    /// The whole of #504 in one session. Every ledger key used to be built from
+    /// the status line's display name, so the two Dead Ends were one room:
+    /// walking west out of the first closed the second's untaken west exit, and
+    /// `look` in the second was diffed against `look` in the first, whose rusty
+    /// hinge then read as something a fuse had done. A blind tester was steered
+    /// away from a real unexplored exit and towards a timer that does not exist.
+    @Test func twinRoomsKeepTheirOwnExitsAndProbes() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: [
+                "look", "north", "look", "west", "east", "south", "south", "look", "north",
+                "look",
+            ],
+            allowPrompts: false)
+
+        let open = try await ids(session)
+        // The second room called Dead End is `Dead End (2)` — the tester's own
+        // walking order, because the declared id is source and may not reach a
+        // queue line.
+        #expect(!open.contains("exit:west@Dead End"))
+        #expect(open.contains("exit:west@Dead End (2)"))
+        // Neither probe saw the other's output, so no fuse was invented — and
+        // the Hall's draught is the control that says the probes ran at all.
+        #expect(open.contains("timer:Hall"))
+        #expect(!open.contains("timer:Dead End"))
+        #expect(!open.contains("timer:Dead End (2)"))
+        // And the hinge is queued under the room that printed it.
+        #expect(open.contains("noun:hinge@Dead End"))
+        #expect(!open.contains("noun:hinge@Dead End (2)"))
+    }
+
+    /// Every room a queue result publishes is the session's own label, so the
+    /// label an id carries can be resolved against where the tester stands.
+    ///
+    /// The other half of #504. Keying the ledger by id split the two Dead Ends
+    /// apart, but the split only reaches the tester if the published rooms
+    /// carry the label too: with `coverage.room` reading `Dead End`, an item in
+    /// the *other* Dead End reading `Dead End`, and only its `how` saying
+    /// which, a tester standing in the second one reads all three as here,
+    /// types the command, and is answered about nothing.
+    @Test func everyPublishedRoomCarriesTheSessionLabel() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: ["north", "look", "west", "east", "south", "south", "look"],
+            allowPrompts: false)
+
+        let coverage = try await session.coverage(limit: 200)
+        // Standing in the second Dead End, which is where the walk ended.
+        #expect(coverage.room == "Dead End (2)")
+
+        let hinge = try #require(coverage.items.first { $0.id == "noun:hinge@Dead End" })
+        #expect(hinge.room.name == "Dead End")
+        #expect(hinge.how == "in Dead End: x hinge")
+
+        let exit = try #require(coverage.items.first { $0.id == "exit:west@Dead End (2)" })
+        #expect(exit.room.name == "Dead End (2)")
+        #expect(exit.how == "west")
+
+        // Nothing published names a room by the id the firewall withholds.
+        for item in coverage.items {
+            #expect(!item.room.name.contains("dead"))
+        }
+
+        // Checkpoint and rewind publish a room too, from the same standing
+        // spot, and both must say which Dead End rather than the bare name
+        // the two share.
+        let marked = try await session.checkpoint("second dead end")
+        #expect(marked.room == "Dead End (2)")
+
+        _ = try await session.move(commands: ["north"], allowPrompts: false)
+        let restored = try await session.restore(checkpoint: "second dead end")
+        #expect(restored.room == "Dead End (2)")
+
+        let rewound = try await session.rewind(turns: 1)
+        #expect(rewound.room == "Dead End (2)")
+    }
+
+    /// ``CoverageLedger/forks()`` labels its room too, not just the queue.
+    ///
+    /// Every other fork test runs in a room with no twin, so its label and its
+    /// bare name are the same string and a rewrite bug would not show. The
+    /// berries sit in the second Dead End the session meets, so a fork raised
+    /// there has to say `Dead End (2)` and not the bare `Dead End` the two
+    /// rooms share.
+    @Test func forksCarryTheSessionLabelToo() async throws {
+        let session = try await session(TwinDeadEndGame())
+        _ = try await session.move(
+            commands: ["north", "look", "west", "east", "south", "south", "x berries"],
+            allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "left the berries alone", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:berries:eat" })
+        #expect(fork.room == "Dead End (2)")
+    }
+
     /// A change the tester's own commands explain is not a timer. Cloak of
     /// Darkness is the case: hanging the cloak lights the bar and changes what a
     /// `look` prints, and every word of the difference is a word the tester
@@ -1079,10 +1178,12 @@ struct PlaytestCoverageTests {
 
         #expect(closing.roomsVisited.map(\.id.raw) == ["upperMine", "lowerMine"])
         #expect(closing.roomsVisited.map(\.name) == ["Coal Mine", "Coal Mine"])
-        // The ledger's own count is the one that collapses them, and it stays
-        // that way on purpose: its room string is an item identity and a
-        // transcript-heading matcher, not a coverage key.
-        #expect(closing.signals.roomsVisited == 1)
+        // The ledger counts them apart too. It used to collapse them, on the
+        // argument that its room was an item identity rather than a coverage
+        // key — but an item identity keyed on a display name is exactly what
+        // merged the two Dead Ends' exits (#504), so the ledger keys on the id
+        // as well and every ratio measured off this count follows.
+        #expect(closing.signals.roomsVisited == 2)
     }
 
     /// The engine's fired-timer tally reaches the closing record.
