@@ -214,10 +214,15 @@ public struct GameText: Sendable {
     }
     /// A bare `go` with no direction.
     public var whichWay: Line<Nothing> = "Which way?"
-    /// Looking around a dark room. The line most likely to want
+    /// A dark room, in answer to anything that would have needed the player to
+    /// see it: LOOK and the room describer, or a TAKE ALL whose group came back
+    /// empty because the dark had emptied it. The line most likely to want
     /// ``Line/live(_:)``: it prints on every dark turn, in every dark room, and
     /// a game whose darkness has anything in it — a companion, a sound, a smell
-    /// — has to check that the thing is still there before saying so.
+    /// — has to check that the thing is still there before saying so. Every
+    /// emitter says it through `sayOnceThisTurn(_:)`, so a game that points a
+    /// second one at these same words (Zork's dark line is its grue's warning)
+    /// still prints them once.
     public var pitchBlack: Line<Nothing> = "It is pitch black. You can't see a thing."
     /// An `inventory` with nothing carried.
     public var emptyHanded: Line<Nothing> = "You are empty-handed."
@@ -702,7 +707,12 @@ public struct GameText: Sendable {
 
     /// "all"/"them" in the indirect slot, where only one object fits.
     public var multipleNotAllowedThere: Line<Nothing> = "You can't use multiple objects there."
-    /// "take all" with nothing eligible to take.
+    /// "take all" with nothing eligible to take, in a room the player can see.
+    /// Free like a parse failure when the group was already empty as the player
+    /// typed it; charged when the turn's own upkeep emptied it, since that
+    /// upkeep has already run. In the dark ``pitchBlack`` answers instead and
+    /// is charged either way, because a player who cannot see the room cannot
+    /// be told it is empty (#518).
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."
