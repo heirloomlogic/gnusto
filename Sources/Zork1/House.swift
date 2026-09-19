@@ -77,17 +77,21 @@ struct ZorkHouse: GameContent {
     let garlic = Item {
         name("clove of garlic")
         adjectives("clove")
+        synonyms("clove")
         description(Prose.garlic)
     }
 
     let lunch = Item {
         name("lunch")
+        adjectives("hot", "pepper")
+        synonyms("food", "sandwich", "dinner")
         description(Prose.lunch)
     }
 
     let bottle = Item {
         name("glass bottle")
-        adjectives("glass")
+        adjectives("glass", "clear")
+        synonyms("container")
         description(Prose.bottle)
         container
         openable
@@ -97,6 +101,7 @@ struct ZorkHouse: GameContent {
     let water = Item {
         name("quantity of water")
         adjectives("quantity")
+        synonyms("quantity", "liquid", "h2o")
         description(Prose.water)
     }
 
