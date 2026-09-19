@@ -718,8 +718,8 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isEnterable == true else {
             try refuse(frame.definition.text.cantEnterThat(item.definiteNoun))
         }
-        let (currentVehicle, placement) = frame.with {
-            ($0.state.playerVehicle, $0.state.placements[id])
+        let (currentVehicle, carried) = frame.with {
+            ($0.state.playerVehicle, $0.state.placements[id] == .heldBy(.player))
         }
         if currentVehicle == id {
             try refuse(frame.definition.text.alreadyInVehicle(item.definiteNoun))
@@ -727,10 +727,10 @@ enum DefaultActions {
         if let currentVehicle {
             try refuse(frame.definition.text.mustExitFirst(frame.definiteNoun(of: currentVehicle)))
         }
-        if placement == .heldBy(.player) {
+        if carried {
             try refuse(frame.definition.text.cantEnterCarried())
         }
-        guard placement == .room(here) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
         frame.with { scratch in

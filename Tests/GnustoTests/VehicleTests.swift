@@ -77,6 +77,21 @@ struct VehicleTests {
             ["Taken.", "You can't get into something you're carrying."])
     }
 
+    @Test func reachableNestedEnterablesCanBeBoarded() async throws {
+        let onSurface = try await play(HarborGame(), ["enter chair", "quit"])
+        let inOpenContainer = try await play(HarborGame(), ["enter stool", "quit"])
+        #expect(turnOutput(of: "enter chair", in: onSurface).contains("You are now in the wicker chair."))
+        #expect(turnOutput(of: "enter stool", in: inOpenContainer).contains("You are now in the pine stool."))
+    }
+
+    @Test func closedContainersAndCustomReachRulesStillRefuseBoarding() async throws {
+        let transcript = try await play(HarborGame(), ["enter cot", "enter bench", "quit"])
+        #expect(turnOutput(of: "enter cot", in: transcript).contains("You can't reach the folding cot."))
+        #expect(turnOutput(of: "enter bench", in: transcript).contains("You can't reach the narrow bench."))
+        #expect(!transcript.contains("You are now in the folding cot."))
+        #expect(!transcript.contains("You are now in the narrow bench."))
+    }
+
     @Test func hostBeforeRulesGateBoarding() async throws {
         let transcript = try await play(
             HarborGame(),
