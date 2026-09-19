@@ -152,6 +152,15 @@ public struct Spellcasting: GameContent {
     ///     (default 12).
     ///   - text: the system-voice lines, if the game re-voices any of them.
     public init(memorySlots: Int = 3, maxMana: Int = 12, text: Text = Text()) {
+        // Same unchecked-sign gap as `SpellCost.energy`: a negative pool or
+        // memory size is nonsense the layer would otherwise silently carry
+        // into every gate that reads it.
+        guard memorySlots >= 0 else {
+            fatalError("GnustoSpellcasting: memorySlots must not be negative; got \(memorySlots).")
+        }
+        guard maxMana >= 0 else {
+            fatalError("GnustoSpellcasting: maxMana must not be negative; got \(maxMana).")
+        }
         self.memorySlots = memorySlots
         self.maxMana = maxMana
         self.text = text
@@ -229,11 +238,29 @@ public struct Spellcasting: GameContent {
         effect: @escaping @Sendable () throws -> Void
     ) -> [IntentAction] {
         let word = GameText.Word(word ?? intent.raw)
+        if case .energy(let amount) = cost {
+            Self.requireNonNegativeEnergyCost(amount, of: word)
+        }
         var built = [castAction(intent, named: word, cost: cost, effect: effect)]
         if case .prepared(let book, let learnVia) = cost {
             built.append(prepareAction(learnVia, spell: word, key: intent.raw, book: book))
         }
         return built
+    }
+
+    /// Rejects a `.energy` cost that would pay the caster back instead of
+    /// draining the pool. Checked once, at registration — a game finds the
+    /// mistake by building rather than by playing to the spell that trips it.
+    /// Unlike `precondition`, `fatalError` keeps its message in a release
+    /// build, which is what a shipped game runs.
+    static func requireNonNegativeEnergyCost(_ amount: Int, of word: GameText.Word) {
+        guard amount >= 0 else {
+            fatalError(
+                "GnustoSpellcasting: \"\(word)\" was registered with cost: .energy(\(amount)) — "
+                    + "a negative amount pays into the mana pool instead of draining it, so "
+                    + "casting the spell would refill the pool past its maximum. Use a "
+                    + "non-negative amount.")
+        }
     }
 
     /// The cast handler: gate on availability, run the effect, then pay.

@@ -10,6 +10,47 @@ import Testing
 /// one casting paradigm's availability, cost, and consumption rules without a
 /// puzzle in the way.
 struct SpellcastingTests {
+    // MARK: - Registration guards
+
+    #if GNUSTO_EXIT_TESTS
+
+    @Test func aNegativeEnergyCostIsRejectedAtRegistration() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            let magic = Spellcasting()
+            _ = magic.spell(.spark, cost: .energy(-3)) {}
+        }
+        expectTrap(result, says: "cost: .energy(-3)")
+    }
+
+    @Test func aNegativeMaxManaIsRejectedAtDeclaration() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = Spellcasting(maxMana: -1)
+        }
+        expectTrap(result, says: "maxMana must not be negative")
+    }
+
+    @Test func aNegativeMemorySlotsIsRejectedAtDeclaration() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = Spellcasting(memorySlots: -1)
+        }
+        expectTrap(result, says: "memorySlots must not be negative")
+    }
+
+    #endif
+
+    @Test func zeroAndPositiveEnergyCostsRegisterWithoutTrapping() {
+        // Zero and positive amounts are unchanged by the negative-amount guard.
+        let magic = Spellcasting()
+        #expect(magic.spell(.spark, cost: .energy(0)) {}.count == 1)
+        #expect(magic.spell(.bolt, cost: .energy(4)) {}.count == 1)
+    }
+
     // MARK: - Cantrip
 
     @Test func aCantripIsFreeAndCastableEveryTurn() async throws {
