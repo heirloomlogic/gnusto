@@ -710,9 +710,12 @@ public actor GameWorld {
             // Even interrupted upkeep names a group. Keep the initial set
             // on that path, or the refreshed set when expansion succeeded.
             // Bind only after expansion so THEM can use its original referents.
-            // The set is empty on exactly one path — the dark one, which never
-            // got as far as naming anything — and there THEM keeps whatever it
-            // already meant, the way LOOK in the dark leaves it alone.
+            // THEM is rebound only when this turn actually produced a group:
+            // the post-upkeep `.dark` and `.holder` cases both throw before
+            // `objects` is reassigned, leaving it at its pre-upkeep value —
+            // empty on every route into this method that reaches either
+            // case — and there THEM keeps whatever it already meant, the way
+            // LOOK in the dark leaves it alone.
             if !objects.isEmpty {
                 frame.with { $0.state.pronounThem = objects }
             }
