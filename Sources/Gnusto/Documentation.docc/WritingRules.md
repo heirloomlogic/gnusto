@@ -246,6 +246,8 @@ stairs.before(.climb) {
 
 So `enter(_:)` `throws`: an `onEnter` rule that ``die(_:)``s or ``refuse(_:)``s ends the turn from inside the move, and the room is then never described.
 
+An `onEnter` rule can move the player onward with either helper. The nested `arrive(at:)` or `enter(_:)` describes the final room, and the engine does not describe the room the player already left. Return normally after that move: `handled()` is unnecessary and would also skip the original `go` action's remaining `after` rules.
+
 Reach for `arrive(at:)` when the game is *putting* the player somewhere — a trapdoor, a spell, a scripted transition — and for `enter(_:)` when the fiction is that they walked. The choice is worth making rather than defaulting: a room that scores, announces or kills on arrival gets that from its `onEnter` rules, so a teleport into it has to repeat the room's own logic, and the two can drift apart.
 
 ## Live room-listing lines with `presence`

@@ -306,6 +306,12 @@ public func arrive(at room: Location, withRoomName: Bool = true) {
 /// order a real `go` uses — so a refusing `onEnter` leaves the player standing
 /// in the room that refused them.
 ///
+/// An `onEnter` rule may move the player onward with ``arrive(at:withRoomName:)``
+/// or another `enter(_:)`. That nested move describes the final room, and this
+/// call does not describe the room the player already left. Let the rule return
+/// normally; `handled()` is unnecessary there and would skip the ordinary
+/// `go` action's remaining `after` rules.
+///
 /// One sharp edge, since the rules are yours: an `onEnter` rule that calls
 /// `enter(_:)` back into its own room re-enters the move that is running it. The
 /// engine counts that nesting and traps a few levels down with a message naming
