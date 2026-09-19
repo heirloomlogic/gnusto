@@ -53,43 +53,118 @@ enum Bootstrap {
         var declaredBy: [EntityID: String] = [:]
         var duplicateDeclarations: [EntityID: [String]] = [:]
 
-        // The game's content bundles, read once so every phase below sees the
-        // same bundle instances — and therefore the same reference tokens the
-        // bundles' own map/rules reference.
-        let modules = game.content.modules
+        // The game's content bundles as written, read once so every phase below
+        // sees the same bundle instances — and therefore the same reference
+        // tokens the bundles' own map/rules reference.
+        let listedModules = game.content.modules
+        let listedNamespaces = Set(listedModules.map(\.namespace))
 
-        // One namespace per bundle, or two bundles mint the same `EntityID` for
-        // every property name they have in common and the later one loses. The
-        // per-entity collisions below do catch that, but they name the namespace
-        // on both sides ("declared by both Attic and Attic"), say nothing about
-        // the cure, and repeat once per shadowed room. Say it once, up front,
-        // with both declaring types and the fix — hence ahead of Phase 1, so it
-        // lands in `diagnostics` before the lines it explains.
-        let listedNamespaces = Set(modules.map(\.namespace))
-        if listedNamespaces.count < modules.count {
-            let byNamespace = Dictionary(grouping: modules, by: \.namespace)
-            for (namespace, owners) in byNamespace.sorted(by: { $0.key < $1.key })
-            where owners.count > 1 {
+        // A bundle is a `Sendable` struct, so it has no identity of its own —
+        // but every `Location`, `Item`, `Actor` and `@Global` it stores minted
+        // a `RefToken`, a class instance, when it was constructed. Two bundles
+        // built by separate calls to the same initializer therefore carry
+        // wholly disjoint token sets, while one bundle yielded twice carries
+        // the same set both times. That set is the identity the checks below
+        // compare, and it is exact wherever it is non-empty.
+        //
+        // Own properties only, never the bundles a bundle itself stores: a
+        // recursive fingerprint would contain its nested bundles' tokens and
+        // make a holder indistinguishable from the thing it holds.
+        let listedFingerprints = listedModules.map(Self.declarationTokens(of:))
+
+        // Group the listing by namespace, then by identity, and the three ways
+        // one namespace comes to hold more than one listing separate cleanly.
+        // Each was previously reported as the third.
+        let byNamespace = Dictionary(
+            grouping: listedModules.indices, by: { listedModules[$0].namespace })
+        var duplicatedListings: Set<Int> = []
+        for (namespace, indices) in byNamespace.sorted(by: { $0.key < $1.key })
+        where indices.count > 1 {
+            // One entry per distinct instance, in listing order. Two entries of
+            // the same type whose fingerprints are both empty cannot be told
+            // apart at all, so they fold together and are flagged as such.
+            var instances: [(type: String, fingerprint: Set<ObjectIdentifier>, listings: [Int], undecidable: Bool)] = []
+            for index in indices {
+                let owner = "\(type(of: listedModules[index]))"
+                let fingerprint = listedFingerprints[index]
+                if let existing = instances.firstIndex(where: {
+                    $0.type == owner && $0.fingerprint == fingerprint
+                }) {
+                    instances[existing].listings.append(index)
+                    if fingerprint.isEmpty { instances[existing].undecidable = true }
+                } else {
+                    instances.append((owner, fingerprint, [index], false))
+                }
+            }
+            for instance in instances where instance.listings.count > 1 {
                 diagnostics.append(
-                    Self.sharedNamespace(namespace, owners.map { "\(type(of: $0))" }))
+                    instance.undecidable
+                        ? Self.undecidableListing(
+                            instance.type, namespace, instance.listings.count)
+                        : Self.duplicateListing(instance.type, instance.listings.count))
+                // Registering the same instance twice would go on to report a
+                // collision for every entity it declares and a repeat of every
+                // placement it makes — all of them describing the one mistake
+                // named above. Drop the repeats and let the rest of the
+                // bootstrap see the bundle once.
+                duplicatedListings.formUnion(instance.listings.dropFirst())
+            }
+            // Two or more genuinely distinct bundles under one namespace: every
+            // property name any two have in common mints one `EntityID` and the
+            // later declaration loses. The per-entity collisions below do catch
+            // that, but they name the namespace on both sides ("declared by
+            // both Attic and Attic"), say nothing about the cure, and repeat
+            // once per shadowed room. Say it once, up front, with both
+            // declaring types and the fix — hence ahead of Phase 1, so it lands
+            // in `diagnostics` before the lines it explains.
+            if instances.count > 1 {
+                diagnostics.append(Self.sharedNamespace(namespace, instances.map(\.type)))
             }
         }
 
-        // A bundle the game stores but never lists in `content` is registered by
-        // nothing: its rooms, items, `@Global`s, rules, verbs and timers all go
-        // quietly missing, and the author's first symptom is a region that is
-        // not there. Matched by namespace rather than by value, because a bundle
-        // is a `Sendable` struct with no identity to compare and its namespace is
-        // exactly what decides whether its declarations were registered. Only the
-        // game is walked: `content` is a `Game`'s block, so a bundle held by
-        // another bundle has no way to be listed and is a deliberate injection.
-        let gameChildren = Array(Mirror(reflecting: game).children)
-        for child in gameChildren {
-            guard let label = child.label, let bundle = child.value as? any GameContent,
-                !listedNamespaces.contains(bundle.namespace)
-            else { continue }
-            diagnostics.append(Self.unlistedBundle(label, "\(type(of: bundle))"))
+        // What the rest of the bootstrap registers: the listing with any proven
+        // repeat of one instance removed.
+        let modules = listedModules.indices.filter { !duplicatedListings.contains($0) }
+            .map { listedModules[$0] }
+
+        // A bundle that is stored but never registered contributes nothing: its
+        // rooms, items, `@Global`s, rules, verbs and timers all go quietly
+        // missing, and the author's first symptom is a region that is not
+        // there. Two ways to arrive there, and they want different cures — the
+        // bundle was left out of `content` altogether, or `content` constructed
+        // a fresh one of the same type instead of yielding the stored instance,
+        // in which case the namespace is registered and the tokens the game's
+        // own map and rules reference are not.
+        //
+        // The walk descends: a bundle stored by a bundle is not registered by
+        // registering its holder, so it needs its own listing (`outer.sub`) and
+        // is otherwise as silently absent as a top-level one. Recursion is safe
+        // because a `GameContent` is a struct and cannot hold itself.
+        func checkStoredBundles(of subject: Any, at path: String?, heldBy holder: String?) {
+            for child in Mirror(reflecting: subject).children {
+                guard let label = child.label, let bundle = child.value as? any GameContent
+                else { continue }
+                let bundlePath = path.map { "\($0).\(label)" } ?? label
+                let owner = "\(type(of: bundle))"
+                let fingerprint = Self.declarationTokens(of: bundle)
+                // A bundle that declares no entity has no fingerprint to match,
+                // so its namespace is all there is to go on — which is what
+                // decides whether its rules, verbs and timers were registered.
+                let isRegistered =
+                    fingerprint.isEmpty
+                    ? listedNamespaces.contains(bundle.namespace)
+                    : listedFingerprints.contains(fingerprint)
+                if !isRegistered {
+                    diagnostics.append(
+                        listedNamespaces.contains(bundle.namespace)
+                            ? Self.freshInstanceBundle(bundlePath, owner, heldBy: holder)
+                            : Self.unlistedBundle(bundlePath, owner, heldBy: holder))
+                }
+                checkStoredBundles(of: bundle, at: bundlePath, heldBy: owner)
+            }
         }
+        let gameChildren = Array(Mirror(reflecting: game).children)
+        checkStoredBundles(of: game, at: nil, heldBy: nil)
 
         // A logic-only plugin is stored so the host can splice its factories,
         // but its declarations have no namespace and are never registered.
@@ -305,8 +380,9 @@ enum Bootstrap {
         func resolveLocation(_ token: RefToken, role: String) -> EntityID? {
             guard let id = registry.id(for: token), registry.locations[id] != nil else {
                 diagnostics.append(
-                    "\(role) references a location that is not a stored property "
-                        + "of the game or any of its content bundles.")
+                    "\(role) references a location the bootstrap never registered; it "
+                        + "must be a stored property of the game, or of a content bundle "
+                        + "the game both stores and lists in `var content`.")
                 return nil
             }
             return id
@@ -315,8 +391,9 @@ enum Bootstrap {
         func resolveItem(_ token: RefToken, role: String) -> EntityID? {
             guard let id = registry.id(for: token), registry.items[id] != nil else {
                 diagnostics.append(
-                    "\(role) references an item that is not a stored property "
-                        + "of the game or any of its content bundles.")
+                    "\(role) references an item the bootstrap never registered; it "
+                        + "must be a stored property of the game, or of a content bundle "
+                        + "the game both stores and lists in `var content`.")
                 return nil
             }
             return id
@@ -1062,8 +1139,10 @@ enum Bootstrap {
             case .item(let token):
                 guard let id = registry.id(for: token), registry.items[id] != nil else {
                     ruleDiagnostics.append(
-                        "\(ruleDescriptor) is attached to an item that is not a stored "
-                            + "property of the game or any of its content bundles.")
+                        "\(ruleDescriptor) is attached to an item the bootstrap never "
+                            + "registered; it must be a stored property of the game, or of "
+                            + "a content bundle the game both stores and lists in "
+                            + "`var content`.")
                     continue
                 }
                 switch rule.phase {
@@ -1375,12 +1454,98 @@ enum Bootstrap {
             + "bundle its own."
     }
 
-    /// The diagnostic for a bundle the game stores but never lists in its
-    /// `content` block, which registers nothing it declares.
-    private static func unlistedBundle(_ label: String, _ type: String) -> String {
-        "the game stores \"\(label)\" (\(type)), a content bundle it never lists in its "
-            + "content block; nothing it declares — rooms, items, globals, rules, verbs, "
-            + "timers — is registered. Add \(label) to `var content`."
+    /// Every reference token the `Location`s, `Item`s, `Actor`s and `@Global`s
+    /// stored directly on `subject` minted when they were constructed.
+    ///
+    /// A token is a class instance handed out once per declaration, so this set
+    /// distinguishes two values of one `GameContent` type built by separate
+    /// initializer calls — which is identity enough to tell a stored bundle
+    /// from a fresh one, and one bundle listed twice from two bundles. It is
+    /// empty for a bundle that declares no entities, and nothing else about a
+    /// struct is comparable, so that case stays undecidable.
+    ///
+    /// - Parameter subject: the value to reflect over. Only its own stored
+    ///   properties are read; a bundle it stores contributes nothing, so a
+    ///   holder's set never subsumes the set of a bundle nested inside it.
+    /// - Returns: one identifier per declaration, empty if there are none.
+    static func declarationTokens(of subject: Any) -> Set<ObjectIdentifier> {
+        var tokens: Set<ObjectIdentifier> = []
+        for child in Mirror(reflecting: subject).children {
+            switch child.value {
+            case let location as Location: tokens.insert(ObjectIdentifier(location.token))
+            case let item as Item: tokens.insert(ObjectIdentifier(item.token))
+            case let actor as Actor: tokens.insert(ObjectIdentifier(actor.token))
+            case let global as AnyGlobal: tokens.insert(ObjectIdentifier(global.token))
+            default: continue
+            }
+        }
+        return tokens
+    }
+
+    /// How a diagnostic about a stored bundle names who is holding it: the
+    /// game for a top-level property, or the containing bundle's type for one
+    /// nested inside another.
+    private static func holderPhrase(_ holder: String?) -> String {
+        holder.map { "the content bundle \($0) stores" } ?? "the game stores"
+    }
+
+    /// The diagnostic for a bundle that is stored — by the game or by another
+    /// bundle — but never listed in the game's `content` block, which registers
+    /// nothing it declares.
+    ///
+    /// - Parameters:
+    ///   - path: how the author reaches the bundle from the game, which is also
+    ///     the expression to add to `content` (`attic`, or `outer.sub`).
+    ///   - type: the bundle's type name.
+    ///   - holder: the type of the bundle holding it, or `nil` at the top level.
+    /// - Returns: the diagnostic line.
+    private static func unlistedBundle(
+        _ path: String, _ type: String, heldBy holder: String?
+    ) -> String {
+        "\(holderPhrase(holder)) \"\(path)\" (\(type)), a content bundle the game never "
+            + "lists in its content block; nothing it declares — rooms, items, globals, "
+            + "rules, verbs, timers — is registered. Add \(path) to `var content`."
+    }
+
+    /// The diagnostic for a bundle whose type is listed in `content` but as a
+    /// freshly constructed value rather than the stored instance.
+    ///
+    /// The namespace matches, so every entity ID the author expects does exist;
+    /// what does not match is the tokens, which is why the failure surfaces at
+    /// the host's own map and rule references rather than here.
+    private static func freshInstanceBundle(
+        _ path: String, _ type: String, heldBy holder: String?
+    ) -> String {
+        "\(holderPhrase(holder)) \"\(path)\" (\(type)) but the game's content block "
+            + "yields a different \(type) instance; each Location, Item, Actor and "
+            + "@Global mints its reference token when it is constructed, so the tokens "
+            + "registered are the fresh instance's and every map entry and rule written "
+            + "against \(path) resolves to nothing. Yield the stored property — "
+            + "`var content { \(path) }` — instead of constructing a new one."
+    }
+
+    /// The diagnostic for one bundle instance listed more than once in
+    /// `content`, which the namespace check used to read as two bundles.
+    private static func duplicateListing(_ type: String, _ count: Int) -> String {
+        "content lists one and the same \(type) instance \(count) times; a bundle is "
+            + "registered once however often it is named. Remove the extra listing."
+    }
+
+    /// The diagnostic for two or more listings of one bundle type that declares
+    /// no entities at all, where the bootstrap cannot tell a repeat from a
+    /// second instance.
+    ///
+    /// Identity comes from the reference tokens a bundle's declarations mint,
+    /// and a bundle with no declarations mints none, so both readings are
+    /// stated with their own cure rather than one being guessed at.
+    private static func undecidableListing(
+        _ type: String, _ namespace: String, _ count: Int
+    ) -> String {
+        "content lists \(count) \(type) bundles under the namespace \"\(namespace)\", and "
+            + "\(type) declares no location, item, actor or global, so the bootstrap "
+            + "cannot tell one instance listed \(count) times from \(count) instances. If "
+            + "it is one, remove the extra listing; if they are separate instances, "
+            + "override `var namespace` to give each its own."
     }
 
     /// One step of a placement chain: how a thing sits in its holder, and

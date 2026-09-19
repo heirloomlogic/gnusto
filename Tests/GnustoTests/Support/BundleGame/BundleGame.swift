@@ -100,3 +100,120 @@ struct UnlistedBundleGame: Game {
         player.starts(in: attic.hall)
     }
 }
+
+/// A small bundle held *inside* another bundle rather than by the game — the
+/// shape ``NestedBundleHost`` uses to prove that registering a holder does not
+/// register what it holds.
+struct BuriedContent: GameContent {
+    let cave = Location {
+        name("Buried Cave")
+        description("A cave under the ledge.")
+    }
+
+    let pebble = Item {
+        name("grey pebble")
+        adjectives("grey")
+        description("A smooth grey pebble.")
+    }
+
+    var map: WorldMap {
+        pebble.starts(in: cave)
+    }
+
+    var rules: Rules {
+        cave.onEnter { say("[buried] The cave swallows the light.") }
+    }
+}
+
+/// A bundle that stores another bundle. Registering this one registers its own
+/// `ledge` and nothing of ``BuriedContent``: `content` is the game's block, so
+/// a nested bundle has to be listed by the game as `<holder>.<property>`.
+struct LedgeContent: GameContent {
+    let buried = BuriedContent()
+
+    let ledge = Location {
+        name("Windy Ledge")
+        description("A ledge above a cave.")
+    }
+}
+
+/// A deliberately invalid game: it lists the holder but not the bundle the
+/// holder stores, so ``BuriedContent``'s room, item, placement and rule would
+/// all silently not exist.
+struct UnlistedNestedBundleGame: Game {
+    let title = "Buried"
+    let intro = "A ledge above a cave nobody registered."
+
+    let outer = LedgeContent()
+
+    var content: GameContents {
+        outer
+    }
+
+    var map: WorldMap {
+        player.starts(in: outer.ledge)
+    }
+}
+
+/// The valid counterpart: the same two bundles, with the nested one listed in
+/// `content` under the path that reaches it. Its entities register, its
+/// placement resolves and its rule fires.
+struct NestedBundleHost: Game {
+    let title = "Buried"
+    let intro = "A ledge above a cave."
+
+    let outer = LedgeContent()
+
+    var content: GameContents {
+        outer
+        outer.buried
+    }
+
+    var map: WorldMap {
+        outer.ledge.down(outer.buried.cave)
+        player.starts(in: outer.ledge)
+    }
+}
+
+/// A deliberately invalid game: it stores ``AtticContent`` and writes its map
+/// against the stored instance, but `content` constructs a fresh one. The
+/// namespace matches, so the old namespace-keyed check passed this and left
+/// the author with a map diagnostic pointing at the wrong thing.
+struct FreshInstanceBundleGame: Game {
+    let title = "Twice Made"
+    let intro = "One attic built twice."
+
+    let attic = AtticContent()
+
+    let hall = Location {
+        name("Host Hall")
+        description("The host's own hall.")
+    }
+
+    var content: GameContents {
+        AtticContent()
+    }
+
+    var map: WorldMap {
+        hall.up(attic.hall)
+        player.starts(in: hall)
+    }
+}
+
+/// A deliberately invalid game: one stored bundle instance, listed twice. The
+/// cure is deleting the second listing, not overriding `namespace`.
+struct DoubleListedBundleGame: Game {
+    let title = "Twice Listed"
+    let intro = "One attic, named twice."
+
+    let attic = AtticContent()
+
+    var content: GameContents {
+        attic
+        attic
+    }
+
+    var map: WorldMap {
+        player.starts(in: attic.hall)
+    }
+}
