@@ -270,4 +270,53 @@ struct Zork1ProseTests {
         #expect(turnOutput(of: "take bottle", in: transcript).contains("Taken."))
         #expect(!transcript.contains("hit your head against the white house"))
     }
+
+    /// #515: `SANDWICH-BAG` and `BOTTLE` are both `(IN KITCHEN-TABLE)`
+    /// (`1dungeon.zil:287`, `:444`) — the sack and the bottle start on the
+    /// kitchen table, not loose on the floor. The Kitchen listing now names
+    /// the table as their holder, `take all` still reaches through the
+    /// surface to both of them, and taking one leaves the other behind.
+    @Test func theSackAndTheBottleStartOnTheKitchenTable() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west",  // → Kitchen
+                "take sack", "take bottle",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Kitchen",
+                "On the kitchen table is a glass bottle.",
+                "On the kitchen table is a brown sack.",
+                "Taken.",
+                "Taken.",
+            ])
+    }
+
+    /// The same starting placement, reached through `take all` rather than by
+    /// name, and undone by `drop all` — the sack and the bottle answer from
+    /// the table either way.
+    @Test func takeAllReachesTheKitchenTable() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west",  // → Kitchen
+                "take all", "drop all",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "brown sack: Taken.",
+                "clove of garlic: Taken.",
+                "glass bottle: Taken.",
+                "lunch: Taken.",
+                "brown sack: Dropped.",
+                "clove of garlic: Dropped.",
+                "glass bottle: Dropped.",
+                "lunch: Dropped.",
+            ])
+    }
 }

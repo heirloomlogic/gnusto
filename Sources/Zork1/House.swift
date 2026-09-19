@@ -288,10 +288,10 @@ struct ZorkHouse: GameContent {
         // The cellar's north passage into the Troll Room crosses into
         // ZorkCellar's territory, so the host wires it (Zork1.map).
 
-        sack.starts(in: kitchen)
+        sack.starts(on: kitchenTable)
         garlic.starts(inside: sack)
         lunch.starts(inside: sack)
-        bottle.starts(in: kitchen)
+        bottle.starts(on: kitchenTable)
         water.starts(inside: bottle)
         kitchenTable.starts(in: kitchen)
         kitchenStaircase.starts(in: kitchen)
