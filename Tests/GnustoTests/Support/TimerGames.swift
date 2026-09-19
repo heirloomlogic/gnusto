@@ -204,6 +204,20 @@ enum TimerMisuse: String, CaseIterable, Codable, Sendable {
     var command: String { rawValue.lowercased() }
 }
 
+enum InvalidFuseOverride: Int, CaseIterable, Codable, Sendable {
+    case zero = 0
+    case negative = -5
+
+    var command: String {
+        switch self {
+        case .zero: "invalidfusezero"
+        case .negative: "invalidfusenegative"
+        }
+    }
+
+    var call: String { #"startFuse("bomb", after: \#(rawValue))"# }
+}
+
 /// Two content bundles that each declare a daemon with the bare name `roam` —
 /// the collision issue #403 exists to allow — plus a host whose own daemon
 /// claims the same bare name. Each bundle starts its own daemon from its own
@@ -345,11 +359,11 @@ struct TimerMisuseGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        for misuse in TimerMisuse.allCases {
+        for command in TimerMisuse.allCases.map(\.command) + InvalidFuseOverride.allCases.map(\.command) {
             // `.word(_:)` rather than the string literal `SyntaxRule("verb", …)`
             // takes: the literal form needs a compile-time string, and this one
             // comes from the case.
-            SyntaxRule(.word(misuse.command), intent: Intent(misuse.command))
+            SyntaxRule(.word(command), intent: Intent(command))
         }
     }
 
@@ -359,6 +373,9 @@ struct TimerMisuseGame: Game {
             // property builds both strings to hand back the third field.
             let commit = misuse.spec.commit
             world.before(Intent(misuse.command)) { commit() }
+        }
+        for misuse in InvalidFuseOverride.allCases {
+            world.before(Intent(misuse.command)) { startFuse("bomb", after: misuse.rawValue) }
         }
     }
 
