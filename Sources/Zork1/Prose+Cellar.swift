@@ -25,13 +25,11 @@ extension Prose {
         north or west exits.
         """
 
+    /// `PAINTING`'s `FDESC`; its `LDESC` is left to the engine's stock listing
+    /// and it has no `TEXT`, so `EXAMINE` is stock too. (#514)
     static let paintingFirstSight = """
         Fortunately, there is still one chance for you to be a vandal, for on
         the far wall is a painting of unparalleled beauty.
-        """
-
-    static let painting = """
-        A painting by a neglected genius is here.
         """
 
     static let studio = """
