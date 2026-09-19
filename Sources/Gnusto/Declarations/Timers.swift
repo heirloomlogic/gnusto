@@ -87,14 +87,17 @@ public func daemon(
 // MARK: - Rule-body helpers
 
 /// Starts (or restarts, resetting the count of) the named fuse. `turns`
-/// overrides the declared count for this run. Naming an undeclared timer, or
-/// a daemon, is a programmer error and traps.
+/// overrides the declared count for this run. Naming an undeclared timer, a
+/// daemon, or an override below one turn is a programmer error and traps.
 ///
 /// - Parameters:
 ///   - name: the fuse to start.
 ///   - turns: overrides the declared count for this run.
 public func startFuse(_ name: String, after turns: Int? = nil) {
     let (frame, key, declared) = declaredFuse(name, in: "startFuse", else: "startDaemon(_:)")
+    if let turns, turns < 1 {
+        fatalError("Gnusto: startFuse(\"\(name)\", after: \(turns)) — a fuse needs at least one turn.")
+    }
     let count = turns ?? declared
     frame.with { $0.state.activeFuses[key] = count }
 }

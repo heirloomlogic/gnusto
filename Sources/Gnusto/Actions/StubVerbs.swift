@@ -159,6 +159,48 @@ extension StubVerb {
         .init(intent, patterns, reach, line: optionalNameCascade(guardsActors: guardsActors, line))
     }
 
+    /// A stub whose direct object is required and whose rows may also name an instrument. It keeps `named`'s player and actor guards, then gives the line both nouns instead of discarding the indirect one.
+    static func instrumented(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        _ line: @escaping @Sendable (GameText, GameText.InstrumentUse) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject else { return text.didntUnderstand() }
+            guard !object.isPlayer else { return text.stubs.yourself() }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
+            return line(
+                text,
+                .init(
+                    object: object.definiteNoun,
+                    instrument: command.indirectObject?.definiteNoun))
+        }
+    }
+
+    /// The instrument-aware form of `optionallyNamed`. A missing direct object and the player both take the line's bare half, while a real object carries its optional instrument. The actor guard remains an explicit per-verb choice, as it is for `optionallyNamed`.
+    static func optionallyInstrumented(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        guardsActors: Bool = false,
+        _ line: @escaping @Sendable (GameText, GameText.InstrumentUse?) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject, !object.isPlayer else {
+                return line(text, nil)
+            }
+            guard !guardsActors || !object.isActor else {
+                return text.stubs.somebodyElse(object.definiteNoun)
+            }
+            return line(
+                text,
+                .init(
+                    object: object.definiteNoun,
+                    instrument: command.indirectObject?.definiteNoun))
+        }
+    }
+
     /// ``named``'s guard cascade, without the rows — the renderer on its own.
     ///
     /// Split out because a *custom* verb wants the identical cascade and has no
@@ -442,7 +484,7 @@ extension DefaultActions {
         // `cantSeeAnySuchThing` about a thing the player was holding — while
         // two games printed *"You have to light them with something that's
         // burning, you know."* and meant it literally.
-        .named(
+        .instrumented(
             .burn,
             [
                 ["burn", .directObject],
@@ -463,7 +505,7 @@ extension DefaultActions {
 
         // `dig <object> with <second object>` is what lets a game gate digging
         // on the right tool with a one-line item rule.
-        .optionallyNamed(
+        .optionallyInstrumented(
             .dig,
             [
                 ["dig"],
@@ -792,7 +834,7 @@ extension DefaultActions {
         // object is the thing in the player's hands, and its refusal is the one
         // that reads right; whether you must also reach what you're tying the
         // rope *to* is a call for the day a game needs it.
-        .named(
+        .instrumented(
             .fill,
             [
                 ["fill", .directObject],
@@ -813,7 +855,7 @@ extension DefaultActions {
 
         .named(.empty, [["empty", .directObject]], reach: .directObject) { $0.stubs.empty($1) },
 
-        .named(
+        .instrumented(
             .tie,
             [
                 ["tie", .directObject],

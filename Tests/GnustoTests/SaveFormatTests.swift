@@ -458,7 +458,8 @@ struct SaveFormatTests {
     /// `unconsciousActors` (`ad2f340`, 2026-08-06) and `metActors` (`666f738`,
     /// 2026-08-28) were added to `WorldState`: both keys are absent, exactly as
     /// they were on disk. Frozen on purpose — regenerating it would defeat the
-    /// test, which is that a file written by an *older build* still reads.
+    /// test, which is that a file written before the conversation-memory key
+    /// change is refused before its state reaches the running game.
     ///
     /// `playerVehicle` is absent rather than `null`, which is the *other* thing
     /// this fixture is pinning and the only place the two dialects differ in
@@ -511,20 +512,21 @@ struct SaveFormatTests {
         }
         """
 
-    @Test("a format-1 save missing the later fields still restores")
-    func aFormatOneSaveMissingTheLaterFieldsStillRestores() async throws {
+    @Test("a format-1 save is rejected before it changes the running game")
+    func aFormatOneSaveIsRejectedBeforeItChangesTheRunningGame() async throws {
         let path = Self.temporarySavePath("format1")
         defer { try? FileManager.default.removeItem(atPath: path) }
         try Data(Self.formatOneSave.utf8).write(to: URL(fileURLWithPath: path))
 
-        let transcript = try await play(LedgerGame(), ["restore", path, "look", "inventory"])
+        let transcript = try await play(
+            LedgerGame(), ["take coin", "restore", path, "look", "inventory"])
 
-        #expect(transcript.contains("Restored."))
-        // Where the save says, not where the game starts.
-        #expect(turnOutput(of: "look", in: transcript).contains("Strongroom"))
+        #expect(transcript.contains(GameText().saveVersionMismatch()))
+        #expect(!transcript.contains("Restored."))
+        // The current game stays in the office with the coin still held. The
+        // rejected save says the player is in the strongroom.
+        #expect(turnOutput(of: "look", in: transcript).contains("Office"))
         #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
-        // The absent properties came back as their declared defaults rather
-        // than refusing the file.
         #expect(!transcript.contains("Restore failed."))
     }
 
@@ -789,5 +791,47 @@ struct SaveFormatTests {
 
         let stored = try #require(restored.globals[EntityID("purse")])
         #expect(Purse(stateValue: stored) == Purse(coins: 9))
+    }
+
+    @Test("a save whose lastCommand is longer than the parser reads is refused")
+    func aSaveWhoseLastCommandIsLongerThanTheParserReadsIsRefused() throws {
+        // Provenance: `lastCommand` is recorded only after a line parses, and
+        // the parser refuses a line over `tokenLimit`, so no save this engine
+        // wrote can hold a longer one (#503). What refusing it buys is the
+        // array — two million words would otherwise ride in the live state and
+        // be copied by every UNDO snapshot for the rest of the session.
+        let path = Self.temporarySavePath("oversized-again")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
+        state.lastCommand = Array(repeating: "x", count: StandardParser.tokenLimit + 1)
+        try SaveFile.write(state, title: ShopGame().title, to: URL(fileURLWithPath: path))
+
+        do {
+            _ = try SaveFile.read(
+                from: URL(fileURLWithPath: path), matching: definition,
+                pristineState: pristineState)
+            Issue.record("a save carrying a line the parser will not read was accepted")
+        } catch {
+            #expect(error == .inconsistent, "expected .inconsistent, got \(error)")
+        }
+    }
+
+    @Test("a save whose lastCommand is a line the parser reads still restores")
+    func aSaveWhoseLastCommandIsALineTheParserReadsStillRestores() throws {
+        // The positive control: the check is a length check, so a line at the
+        // limit is as welcome as the four-word one a real save carries.
+        let path = Self.temporarySavePath("ordinary-again")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var (definition, state) = try Bootstrap.buildCore(ShopGame())
+        let pristineState = state
+        state.lastCommand = Array(repeating: "x", count: StandardParser.tokenLimit)
+        try SaveFile.write(state, title: ShopGame().title, to: URL(fileURLWithPath: path))
+
+        let restored = try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+
+        #expect(restored.lastCommand.count == StandardParser.tokenLimit)
     }
 }

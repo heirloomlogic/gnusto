@@ -188,7 +188,17 @@ public func handled() throws -> Never {
     throw TurnInterrupt.replied(message: "")
 }
 
-/// Ends the game. The engine prints the final score after the turn's output.
+/// Ends the game. `won` is bookkeeping only: it sets the final
+/// ``GameStatus`` to `.won` or `.lost` and nothing else. The engine prints
+/// no banner for either value — the same score epilogue follows both — so
+/// the game must `say` its own ending line *before* calling `end(won:)`, the
+/// way `die(_:)` is handed the death message it prints. `reply(_:)` cannot do
+/// this: it throws `Never` and ends the turn on its own, so a call to
+/// `end(won:)` after it would never run.
+/// See <doc:DarknessTimeAndDeath> for worked win and loss examples.
+///
+/// Both outcomes are final: the read loop stops here, unlike `die(_:)`,
+/// which keeps the program running at the RESTART/RESTORE/UNDO/QUIT prompt.
 ///
 /// - Parameter won: whether the player won.
 /// - Throws: the turn interrupt the engine catches to end the game.
@@ -305,6 +315,12 @@ public func arrive(at room: Location, withRoomName: Bool = true) {
 /// never described. The move itself has already committed by then — the same
 /// order a real `go` uses — so a refusing `onEnter` leaves the player standing
 /// in the room that refused them.
+///
+/// An `onEnter` rule may move the player onward with ``arrive(at:withRoomName:)``
+/// or another `enter(_:)`. That nested move describes the final room, and this
+/// call does not describe the room the player already left. Let the rule return
+/// normally; `handled()` is unnecessary there and would skip the ordinary
+/// `go` action's remaining `after` rules.
 ///
 /// One sharp edge, since the rules are yours: an `onEnter` rule that calls
 /// `enter(_:)` back into its own room re-enters the move that is running it. The

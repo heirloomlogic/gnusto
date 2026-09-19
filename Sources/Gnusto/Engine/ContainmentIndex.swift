@@ -54,6 +54,16 @@ struct ContainmentIndex: Sendable {
     /// contents). Each half is `EntityID`-sorted; the concatenation is not, so
     /// a caller that needs a single sorted listing must sort the result.
     ///
+    /// **Never for a scope, visibility or reach walk.** The concatenation
+    /// erases which channel each ID arrived on, so a caller can no longer gate
+    /// the inside half on open-or-`transparent` while leaving the surface half
+    /// alone — asking one merged list one question is exactly how a shut
+    /// dresser handed out its drawer (#513). Such a walk reads ``onSurface``
+    /// and ``inContainer`` separately; see `Visibility.collect`. What is left
+    /// here is the callers that genuinely want both halves and genuinely want
+    /// to ignore open state: a cycle guard, a raw `contents` accessor, and
+    /// ``closure(under:)``.
+    ///
     /// - Parameter id: the surface/container to read.
     /// - Returns: its surface items followed by its inside items.
     func children(of id: EntityID) -> [EntityID] {

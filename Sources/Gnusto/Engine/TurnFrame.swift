@@ -10,6 +10,8 @@ struct Scratch: Sendable {
     /// rewrites a multi-object run's entries into one joined line, and a
     /// sentence folded into that line would stop being findable.
     var said: Set<String> = []
+    /// Actors whose unconscious flag clears only when this turn commits.
+    var recoveringActors: Set<EntityID> = []
     var command: Command?
     var isLive = true
     /// True while a stage 1–3 `before` rule body is executing — the only
@@ -72,6 +74,12 @@ struct Scratch: Sendable {
     /// the room they stood in throughout; that room is on every status line the
     /// session already reads.
     var roomsOccupied: [EntityID] = []
+
+    /// The `roomsOccupied` count at the last room description. A nested move
+    /// may return the player to an outer `enter(_:)` destination after already
+    /// describing it; matching this marker means that latest move needs no
+    /// second description.
+    var describedAtOccupancyCount: Int?
 
     /// The player walks into `room` — ``WorldState/setPlayerLocation(walkingTo:)``,
     /// with the occupancy noted.
@@ -356,7 +364,8 @@ final class TurnFrame: Sendable {
             // seam: the closure runs from inside the call that is producing the
             // text, so `describeSurroundings()`, `arrive(at:)` and a plain read
             // of `description` all land back on this line. See `Reentry`.
-            return nested(.liveText, within: id) { dynamic() }
+            let text = nested(.liveText, within: id) { dynamic() }
+            return validatedLiveText(text, from: "describe", for: id)
         }
         return definition.items[id]?.description
             ?? definition.locations[id]?.description
@@ -377,9 +386,28 @@ final class TurnFrame: Sendable {
             let dynamic = definition.rules.itemPresence[id]
         {
             // The same seam as `describedText`, for the same reason.
-            return nested(.liveText, within: id) { dynamic() }
+            let text = nested(.liveText, within: id) { dynamic() }
+            return validatedLiveText(text, from: "presence", for: id)
         }
         return definition.items[id]?.firstSight
+    }
+
+    /// A live prose rule is author code, so its value cannot be checked until
+    /// the engine asks for it. Keep the trap at that one evaluation seam and
+    /// name the declaration that must be fixed.
+    private func validatedLiveText(_ text: String, from rule: String, for id: EntityID) -> String {
+        guard let kind = text.blankTextKind else { return text }
+        let noun =
+            if definition.items[id]?.isActor == true {
+                "actor"
+            } else if definition.items[id] != nil {
+                "item"
+            } else {
+                "location"
+            }
+        fatalError(
+            "Gnusto: \(noun) \"\(id)\"'s \(rule) { … } rule returned \(kind) text. "
+                + "Return prose containing at least one non-whitespace character.")
     }
 
     var command: Command {

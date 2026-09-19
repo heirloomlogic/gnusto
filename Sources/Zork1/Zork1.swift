@@ -426,7 +426,6 @@ struct Zork1: Game, GameMain {
             ]
             say(Prose.batGrabsYou)
             arrive(at: drops[random(0...(drops.count - 1))])
-            try handled()
         }
 
         // The machine that makes a diamond. Throw its switch with the screwdriver

@@ -21,9 +21,48 @@ struct EnterTests {
 
     @Test func onEnterRunsBeforeTheRoomIsDescribed() async throws {
         let transcript = try await play(StepGame(), ["step", "quit"])
+        let step = turnOutput(of: "step", in: transcript)
         expectInOrder(
-            turnOutput(of: "step", in: transcript),
+            step,
             ["A bell rings somewhere below.", "Vault", "Cold, and quite empty."])
+        #expect(occurrences(of: "Vault", in: step) == 1)
+        #expect(occurrences(of: "Cold, and quite empty.", in: step) == 1)
+    }
+
+    @Test func onEnterArrivalDescribesOnlyTheFinalRoomAndKeepsAfterRules() async throws {
+        let transcript = try await play(StepGame(), ["east", "quit"])
+        let redirected = turnOutput(of: "east", in: transcript)
+
+        expectInOrder(
+            redirected,
+            ["The ledge gives way.", "Cave", "Water runs over the cave floor.", "The porch boards settle."])
+        #expect(!redirected.contains("Cracked Ledge"))
+        #expect(occurrences(of: "Cave", in: redirected) == 1)
+        #expect(occurrences(of: "Water runs over the cave floor.", in: redirected) == 1)
+    }
+
+    @Test func nestedOnEnterWalkDescribesOnlyTheFinalRoomAndKeepsAfterRules() async throws {
+        let transcript = try await play(StepGame(), ["west", "quit"])
+        let redirected = turnOutput(of: "west", in: transcript)
+
+        expectInOrder(
+            redirected,
+            ["The chute pitches downward.", "Sump", "Level ground above black water.", "The porch boards settle."])
+        #expect(!redirected.contains("Upper Chute"))
+        #expect(occurrences(of: "Sump", in: redirected) == 1)
+        #expect(occurrences(of: "Level ground above black water.", in: redirected) == 1)
+    }
+
+    @Test func nestedOnEnterWalkReturningToOuterRoomDescribesItOnce() async throws {
+        let transcript = try await play(StepGame(), ["down", "quit"])
+        let redirected = turnOutput(of: "down", in: transcript)
+
+        expectInOrder(
+            redirected,
+            ["Echo Chamber", "Every footfall comes back twice.", "The porch boards settle."])
+        #expect(occurrences(of: "Echo Chamber", in: redirected) == 1)
+        #expect(occurrences(of: "Every footfall comes back twice.", in: redirected) == 1)
+        #expect(!redirected.contains("Echo Passage"))
     }
 
     @Test func onEnterFiresOnEveryEntryNotOnlyTheFirst() async throws {

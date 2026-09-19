@@ -115,16 +115,53 @@ Only the *schedule* — which timers are running, and the fuses' remaining count
 
 Four engine-level meta verbs manage the game as a program. Like all meta intents they run no rules and cost no turn — and they are deliberately not overridable through a game's `actions` block.
 
-- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON. A **bare name** like `autumn` is a save *slot*, stored as `autumn.gnusto` in the game's saves directory (`<app support>/Gnusto/Saves/<title>`, or wherever `GNUSTO_SAVE_DIR` points), created owner-only on first write. An answer containing a `/`, or starting with `~`, is an explicit path and is honored verbatim. Slot names are sanitized, so `..` cannot walk out of the directory. An empty answer cancels.
+- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON. A **bare name** like `autumn` is a save *slot*, stored as `autumn.gnusto` in the game's saves directory (`<app support>/Gnusto/Saves/<title>`, or wherever `GNUSTO_SAVE_DIR` points), created owner-only on first write. An answer containing a `/`, or starting with `~`, is an explicit path and is honored verbatim. Slot names are sanitized, so `..` cannot walk out of the directory — Unicode letters and numbers survive, so `セーブ` is a slot of its own, and every other run collapses to a single hyphen. Case is kept as typed and never folded, so whether `Autumn` and `autumn` are one slot or two is the volume's answer: one on a case-insensitive APFS or HFS+ volume, two on ext4. A name with no letter, number or underscore anywhere in it names no file, and the prompt says so rather than picking one. An empty answer cancels.
 - **`restore`** asks the same question and lists the slots it can see — `(saved: autumn, cellar)` — then validates the file (a save from a different game is refused with its own message) and swaps the saved state in. The prompt runs in the filename completion context, so Tab completes against those slot names. Because the random stream rides along, a restored game replays exactly the randomness it would have had.
 - **`undo`** reverses exactly one turn, from a snapshot the engine takes before every turn that actually runs. One level, classic-style; the snapshot lives outside the world state, so undo history never leaks into save files.
 - **`restart`** rewinds to the pristine opening — same seed, so a restarted game is the identical game — and replays the intro.
 
 The filename prompts are round-trips through the normal input loop: the driver (``REPL``/``IOHandler``) never knows a question is open, which also means a ``ScriptedIOHandler`` transcript can script `save`, the path, and the reply like any other lines.
 
+## Winning and losing
+
+``end(won:)`` finishes the game outright. As its doc comment says, `won` is bookkeeping only — say your own ending line before calling it. Two worked examples, neither involving `die(_:)`:
+
+```swift
+world.before(Intent("escape")) {
+    player.score = 1
+    say("The door swings open onto open sky. You have won!")
+    try end(won: true)
+}
+```
+
+```
+> escape
+The door swings open onto open sky. You have won!
+
+Your score is 1 of a possible 1, in 1 turn.
+```
+
+Losing works the same way, and does not require the player to have died — `die(_:)` is a separate mechanic, covered below:
+
+```swift
+world.before(Intent("surrender")) {
+    say("You set down your tools. The vault seals. You have lost.")
+    try end(won: false)
+}
+```
+
+```
+> surrender
+You set down your tools. The vault seals. You have lost.
+
+Your score is 0, in 1 turn.
+```
+
+Both endings are final: the read loop stops there, so a command typed afterward never reaches the game at all. That is the one respect in which winning and losing are *not* like dying — `die(_:)` keeps the program running at a prompt, and can be survived. See `EndingTests` for the tests these transcripts are drawn from, and "Death — and the way back" below for the third case: dying, then coming back.
+
 ## Death — and the way back
 
-``end(won:)`` finishes the game outright. ``die(_:)`` is the other ending: it kills the *player* but keeps the *program* alive.
+``die(_:)`` is the other ending: it kills the *player* but keeps the *program* alive.
 
 ```swift
 poison.before(.take) {
@@ -166,6 +203,25 @@ func onDeath() -> DeathOutcome {
 ``DeathOutcome/consumed`` revives the player: the world stays ``GameStatus/playing``, the turn finishes normally (its fuses and daemons still tick), and no banner or prompt appears. ``DeathOutcome/fallThrough`` — the default — runs the standard death path unchanged, so a game that doesn't implement `onDeath()` dies exactly as before. This is how Zork models canonical resurrection: a toll and a teleport for the first few deaths, then a fall-through once the player has used up their luck.
 
 `UNDO` after a consumed death rewinds the *whole* fatal turn — the death, the resurrection, and everything the handler did — back to where the player stood before it, which is the coherent thing to undo.
+
+`Tests/GnustoTests/Support/ResurrectionGames.swift` has the miniature version of that handler — a `provoke` command that always kills the player, and an `onDeath()` that docks ten points, drops what they were carrying, and sets them down in a different room. `DeathHookTests.aConsumingHandlerResurrectsAndPlayContinues` runs it; this is its transcript, unedited:
+
+```
+> provoke
+The lurking thing strikes you dead.
+
+A cold wind gathers you up and sets you down elsewhere.
+
+> count
+Deaths: 1.
+
+> look
+Sunlit Clearing
+
+Grass, sky, and a second chance.
+```
+
+No banner, no prompt — the death message prints, the handler's own line follows it, and the very next command (`count`, then `look`) runs as an ordinary turn in the room the handler moved the player to. That is recovery and continued play in one transcript. Nothing here resets the death itself: `deaths` (a `@Global`, so it survives save/restore like any other world state, and is rewound by an UNDO of the turn that changed it, same as any other world state) keeps climbing, and it is the game's own `onDeath()` — not the engine — that decides when a further death stops being survivable. `Sources/Zork1/Zork1.swift`'s `onDeath()` is that decision made concrete: `.consumed` for the first two deaths, `.fallThrough` from the third on, so the third death is the one that is actually final.
 
 ## The worked examples
 

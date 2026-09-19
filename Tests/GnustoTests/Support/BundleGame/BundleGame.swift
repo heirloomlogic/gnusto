@@ -100,3 +100,218 @@ struct UnlistedBundleGame: Game {
         player.starts(in: attic.hall)
     }
 }
+
+/// A small bundle held *inside* another bundle rather than by the game — the
+/// shape ``NestedBundleHost`` uses to prove that registering a holder does not
+/// register what it holds.
+struct BuriedContent: GameContent {
+    let cave = Location {
+        name("Buried Cave")
+        description("A cave under the ledge.")
+    }
+
+    let pebble = Item {
+        name("grey pebble")
+        adjectives("grey")
+        description("A smooth grey pebble.")
+    }
+
+    var map: WorldMap {
+        pebble.starts(in: cave)
+    }
+
+    var rules: Rules {
+        cave.onEnter { say("[buried] The cave swallows the light.") }
+    }
+}
+
+/// A bundle that stores another bundle. Registering this one registers its own
+/// `ledge` and nothing of ``BuriedContent``: `content` is the game's block, so
+/// a nested bundle has to be listed by the game as `<holder>.<property>`.
+struct LedgeContent: GameContent {
+    let buried = BuriedContent()
+
+    let ledge = Location {
+        name("Windy Ledge")
+        description("A ledge above a cave.")
+    }
+}
+
+/// A deliberately invalid game: it lists the holder but not the bundle the
+/// holder stores, so ``BuriedContent``'s room, item, placement and rule would
+/// all silently not exist.
+struct UnlistedNestedBundleGame: Game {
+    let title = "Buried"
+    let intro = "A ledge above a cave nobody registered."
+
+    let outer = LedgeContent()
+
+    var content: GameContents {
+        outer
+    }
+
+    var map: WorldMap {
+        player.starts(in: outer.ledge)
+    }
+}
+
+/// The valid counterpart: the same two bundles, with the nested one listed in
+/// `content` under the path that reaches it. Its entities register, its
+/// placement resolves and its rule fires.
+struct NestedBundleHost: Game {
+    let title = "Buried"
+    let intro = "A ledge above a cave."
+
+    let outer = LedgeContent()
+
+    var content: GameContents {
+        outer
+        outer.buried
+    }
+
+    var map: WorldMap {
+        outer.ledge.down(outer.buried.cave)
+        player.starts(in: outer.ledge)
+    }
+}
+
+/// A deliberately invalid game: it stores ``AtticContent`` and writes its map
+/// against the stored instance, but `content` constructs a fresh one. The
+/// namespace matches, so the old namespace-keyed check passed this and left
+/// the author with a map diagnostic pointing at the wrong thing.
+struct FreshInstanceBundleGame: Game {
+    let title = "Twice Made"
+    let intro = "One attic built twice."
+
+    let attic = AtticContent()
+
+    let hall = Location {
+        name("Host Hall")
+        description("The host's own hall.")
+    }
+
+    var content: GameContents {
+        AtticContent()
+    }
+
+    var map: WorldMap {
+        hall.up(attic.hall)
+        player.starts(in: hall)
+    }
+}
+
+/// A deliberately invalid game: one stored bundle instance, listed twice. The
+/// cure is deleting the second listing, not overriding `namespace`.
+struct DoubleListedBundleGame: Game {
+    let title = "Twice Listed"
+    let intro = "One attic, named twice."
+
+    let attic = AtticContent()
+
+    var content: GameContents {
+        attic
+        attic
+    }
+
+    var map: WorldMap {
+        player.starts(in: attic.hall)
+    }
+}
+
+/// A bundle holding the bundle that holds ``BuriedContent``, so a game storing
+/// one of these reaches a third level of nesting.
+struct KeepContent: GameContent {
+    let ledge = LedgeContent()
+
+    let keep = Location {
+        name("Stone Keep")
+        description("A keep above the ledge.")
+    }
+}
+
+/// A deliberately invalid game nesting three deep: the game lists the holder
+/// and the bundle it holds, but not the bundle *that* one holds. The walk has
+/// to descend past the level it was told about to find it.
+struct DeeplyNestedBundleGame: Game {
+    let title = "Three Deep"
+    let intro = "A keep, a ledge, and a cave nobody registered."
+
+    let outer = KeepContent()
+
+    var content: GameContents {
+        outer
+        outer.ledge
+    }
+
+    var map: WorldMap {
+        player.starts(in: outer.keep)
+    }
+}
+
+/// A content bundle that is a class rather than a struct, holding itself. The
+/// protocol requires only `Sendable`, so nothing stops this, and the walk
+/// looking for unregistered bundles has to stop rather than descend forever.
+final class SelfHoldingContent: GameContent, @unchecked Sendable {
+    let crypt = Location {
+        name("Cold Crypt")
+        description("A crypt under the keep.")
+    }
+
+    /// Set after construction, which is the only way a value can hold itself.
+    var itself: SelfHoldingContent?
+
+    init() {}
+}
+
+/// A valid game whose one bundle holds itself. Every declaration registers; the
+/// point is that the bootstrap returns at all.
+struct SelfHoldingBundleGame: Game {
+    let title = "Ouroboros"
+    let intro = "A bundle that holds itself."
+
+    let loop: SelfHoldingContent
+
+    init() {
+        let bundle = SelfHoldingContent()
+        bundle.itself = bundle
+        loop = bundle
+    }
+
+    var content: GameContents {
+        loop
+    }
+
+    var map: WorldMap {
+        player.starts(in: loop.crypt)
+    }
+}
+
+/// A bundle that declares nothing at all, so it mints no reference token and
+/// has no identity beyond its namespace.
+struct WeatherContent: GameContent {
+    var noiseWords: [String] { ["kindly"] }
+}
+
+/// A deliberately invalid game listing a declaration-less bundle twice. One
+/// instance named twice and two instances sharing a namespace look identical
+/// from here, so the bootstrap states both readings.
+struct DoubleListedEmptyBundleGame: Game {
+    let title = "Twice Forecast"
+    let intro = "Weather, twice."
+
+    let weather = WeatherContent()
+
+    let hall = Location {
+        name("Host Hall")
+        description("The host's own hall.")
+    }
+
+    var content: GameContents {
+        weather
+        weather
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+    }
+}
