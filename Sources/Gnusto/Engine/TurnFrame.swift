@@ -10,6 +10,8 @@ struct Scratch: Sendable {
     /// rewrites a multi-object run's entries into one joined line, and a
     /// sentence folded into that line would stop being findable.
     var said: Set<String> = []
+    /// Actors whose unconscious flag clears only when this turn commits.
+    var recoveringActors: Set<EntityID> = []
     var command: Command?
     var isLive = true
     /// True while a stage 1–3 `before` rule body is executing — the only
