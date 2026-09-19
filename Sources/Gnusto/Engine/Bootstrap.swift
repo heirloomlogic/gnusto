@@ -118,8 +118,10 @@ enum Bootstrap {
             }
         }
 
-        // What the rest of the bootstrap registers: the listing with any proven
-        // repeat of one instance removed.
+        // What the rest of the bootstrap registers: the listing with each
+        // folded group's repeats removed — a proven repeat of one instance, or,
+        // where nothing was declared to tell instances apart, the entries the
+        // undecidable line just reported.
         let modules =
             duplicatedListings.isEmpty
             ? listedModules
@@ -130,8 +132,14 @@ enum Bootstrap {
         // the author's first symptom is a region that is not there. The two
         // ways to arrive at that want different cures; ``unlistedBundle`` and
         // ``freshInstanceBundle`` say which is which. The walk descends because
-        // registering a holder does not register what it holds, and recursion
-        // terminates because a `GameContent` is a struct and cannot hold itself.
+        // registering a holder does not register what it holds.
+        //
+        // A `GameContent` is almost always a struct, which cannot hold itself,
+        // but the protocol requires only `Sendable` — so a bundle may be a
+        // class, and a class can hold itself or close a longer loop. Each class
+        // instance is descended into once; the second sighting is still named
+        // at its own path and is not walked again.
+        var descended: Set<ObjectIdentifier> = []
         func checkStoredBundles(
             _ children: [Mirror.Child], at path: String?, heldBy holder: String?
         ) {
@@ -154,9 +162,14 @@ enum Bootstrap {
                             ? Self.freshInstanceBundle(bundlePath, owner, heldBy: holder)
                             : Self.unlistedBundle(bundlePath, owner, heldBy: holder))
                 }
+                let reflection = Mirror(reflecting: bundle)
+                if reflection.displayStyle == .class,
+                    !descended.insert(ObjectIdentifier(bundle as AnyObject)).inserted
+                {
+                    continue
+                }
                 checkStoredBundles(
-                    Array(Mirror(reflecting: bundle).children),
-                    at: bundlePath, heldBy: owner)
+                    Array(reflection.children), at: bundlePath, heldBy: owner)
             }
         }
         // Reflected once and shared: the plugin walk below reads the same list.
@@ -1511,21 +1524,28 @@ enum Bootstrap {
             + "rules, verbs, timers — is registered. Add \(path) to `var content`."
     }
 
-    /// The diagnostic for a bundle whose type is listed in `content` but as a
-    /// freshly constructed value rather than the stored instance.
+    /// The diagnostic for a stored bundle whose type is listed in `content`
+    /// but as some other instance of that type.
     ///
     /// The namespace matches, so every entity ID the author expects does exist;
     /// what does not match is the tokens, which is why the failure surfaces at
-    /// the host's own map and rule references rather than here.
+    /// the host's own map and rule references rather than here. Two authoring
+    /// mistakes land here and the bootstrap cannot tell them apart, so the line
+    /// states both: `content` constructed a fresh value where it meant the
+    /// stored property, or the game means to hold two instances of the type and
+    /// has not given them separate namespaces.
     private static func freshInstanceBundle(
         _ path: String, _ type: String, heldBy holder: String?
     ) -> String {
         "\(holderPhrase(holder)) \"\(path)\" (\(type)) but the game's content block "
             + "yields a different \(type) instance; each Location, Item, Actor and "
             + "@Global mints its reference token when it is constructed, so the tokens "
-            + "registered are the fresh instance's and every map entry and rule written "
-            + "against \(path) resolves to nothing. Yield the stored property — "
-            + "`var content { \(path) }` — instead of constructing a new one."
+            + "registered are the other instance's and every map entry and rule written "
+            + "against \(path) resolves to nothing. If the two were meant to be one "
+            + "bundle, yield the stored property — `var content { \(path) }` — instead of "
+            + "constructing a new one. If the game means to have two \(type) bundles, "
+            + "list this one too and override `var namespace` on it, since both default "
+            + "to the same namespace."
     }
 
     /// The diagnostic for one bundle instance listed more than once in
@@ -1546,7 +1566,7 @@ enum Bootstrap {
         _ type: String, _ namespace: String, _ count: Int
     ) -> String {
         "content lists \(count) \(type) bundles under the namespace \"\(namespace)\", and "
-            + "\(type) declares no location, item, actor or global, so the bootstrap "
+            + "\(type) declares no stored location, item, actor or global, so the bootstrap "
             + "cannot tell one instance listed \(count) times from \(count) instances. If "
             + "it is one, remove the extra listing; if they are separate instances, "
             + "override `var namespace` to give each its own."

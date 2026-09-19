@@ -183,6 +183,58 @@ struct BundleCompositionTests {
             ["[buried] The cave swallows the light.", "A smooth grey pebble."])
     }
 
+    /// The walk does not stop at the level the game listed. Here the game
+    /// lists its holder and the bundle that holder stores, and the bundle
+    /// *that* one stores — three levels down — is still named, with the whole
+    /// path from the game to it.
+    @Test func unlistedBundleThreeLevelsDownIsFatalAndNamesItsFullPath() throws {
+        do {
+            _ = try Bootstrap.build(DeeplyNestedBundleGame())
+            Issue.record("expected a BootstrapError for the bundle three levels down")
+        } catch let error as BootstrapError {
+            let unlisted = error.diagnostics.filter { $0.contains("BuriedContent") }
+            #expect(unlisted.count == 1)
+            #expect(unlisted.first?.contains("the content bundle LedgeContent stores") == true)
+            #expect(unlisted.first?.contains("\"outer.ledge.buried\"") == true)
+            #expect(unlisted.first?.contains("Add outer.ledge.buried to `var content`") == true)
+            // Neither listed level is accused.
+            #expect(!error.diagnostics.contains { $0.contains("KeepContent stores") })
+            #expect(!error.diagnostics.contains { $0.contains("(LedgeContent)") })
+        }
+    }
+
+    /// `GameContent` requires only `Sendable`, so a bundle may be a class, and
+    /// a class can hold itself. The walk remembers the class instances it has
+    /// already descended into, so this bootstraps instead of recursing until
+    /// the stack runs out.
+    @Test func aBundleHoldingItselfTerminatesTheWalk() throws {
+        let (definition, _) = try Bootstrap.build(SelfHoldingBundleGame())
+        #expect(definition.locations[EntityID("SelfHoldingContent.crypt")] != nil)
+    }
+
+    /// A bundle that declares nothing mints no reference token, so one
+    /// instance listed twice and two instances under one namespace are the
+    /// same picture. Say so, with both cures, rather than guessing.
+    @Test func twiceListedBundleWithNoDeclarationsIsReportedAsUndecidable() throws {
+        do {
+            _ = try Bootstrap.build(DoubleListedEmptyBundleGame())
+            Issue.record("expected a BootstrapError for the doubled empty bundle")
+        } catch let error as BootstrapError {
+            let undecidable = error.diagnostics.filter { $0.contains("cannot tell") }
+            #expect(undecidable.count == 1)
+            #expect(
+                undecidable.first?.contains(
+                    "content lists 2 WeatherContent bundles under the namespace "
+                        + "\"WeatherContent\"") == true)
+            #expect(undecidable.first?.contains("remove the extra listing") == true)
+            #expect(undecidable.first?.contains("override `var namespace`") == true)
+            // The two readings are one line, not that line plus the flat
+            // duplicate-listing line and a shared-namespace line as well.
+            #expect(!error.diagnostics.contains { $0.contains("one and the same") })
+            #expect(!error.diagnostics.contains { $0.contains("share the namespace") })
+        }
+    }
+
     /// Issue #478. Identity comes from the reference tokens a bundle's
     /// declarations mint, so a fresh instance of a stored bundle's type is
     /// caught even though its namespace matches — where matching on the
