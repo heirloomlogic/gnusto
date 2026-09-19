@@ -703,7 +703,12 @@ public actor GameWorld {
             // Even interrupted upkeep names a group. Keep the initial set
             // on that path, or the refreshed set when expansion succeeded.
             // Bind only after expansion so THEM can use its original referents.
-            frame.with { $0.state.pronounThem = objects }
+            // The set is empty on exactly one path — the dark one, which never
+            // got as far as naming anything — and there THEM keeps whatever it
+            // already meant, the way LOOK in the dark leaves it alone.
+            if !objects.isEmpty {
+                frame.with { $0.state.pronounThem = objects }
+            }
             finishTurn(intent: intent, frame: frame)
         }
         return commit(frame)

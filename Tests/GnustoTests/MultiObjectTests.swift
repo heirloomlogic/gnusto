@@ -227,4 +227,16 @@ struct MultiObjectTests {
                 "*** You have died ***",
             ])
     }
+
+    /// The dark turn answers about the room, so it names no group — and a
+    /// group it never named is a group it must not rebind. THEM still means
+    /// the two things the player took before walking into the cave. (#518)
+    @Test func takeAllInTheDarkLeavesThemBoundToTheLastGroup() async throws {
+        let transcript = try await play(
+            CaveGame(), ["take lamp and rock", "north", "take all", "south", "drop them"])
+        let dropping = turnOutput(of: "drop them", in: transcript)
+        #expect(dropping.contains("tin lamp: Dropped."))
+        #expect(dropping.contains("gray rock: Dropped."))
+        #expect(!dropping.contains("refers to"))
+    }
 }

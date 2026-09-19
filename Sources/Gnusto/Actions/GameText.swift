@@ -703,9 +703,11 @@ public struct GameText: Sendable {
     /// "all"/"them" in the indirect slot, where only one object fits.
     public var multipleNotAllowedThere: Line<Nothing> = "You can't use multiple objects there."
     /// "take all" with nothing eligible to take, in a room the player can see.
-    /// Free, like a parse failure. In the dark ``pitchBlack`` answers instead
-    /// and the turn is charged, because a player who cannot see the room
-    /// cannot be told it is empty (#518).
+    /// Free like a parse failure when the group was already empty as the player
+    /// typed it; charged when the turn's own upkeep emptied it, since that
+    /// upkeep has already run. In the dark ``pitchBlack`` answers instead and
+    /// is charged either way, because a player who cannot see the room cannot
+    /// be told it is empty (#518).
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."
