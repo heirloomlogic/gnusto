@@ -28,7 +28,10 @@ public enum SpellCost: Sendable {
     case prepared(book: Item?, learnVia: Intent)
 
     /// Draws the given amount from the shared magical-energy pool; refused when
-    /// the pool is too low. `rest` restores the pool to full.
+    /// the pool is too low. `rest` restores the pool to full. The amount must
+    /// not be negative — that would pay the caster back and could refill the
+    /// pool past `maxMana` — and `Spellcasting.spell(_:called:cost:effect:)`
+    /// rejects one with a `fatalError` at registration.
     case energy(Int)
 
     /// Read from the given scroll item, which is consumed when the spell is
