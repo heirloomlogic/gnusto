@@ -618,3 +618,94 @@ struct DresserGame: Game {
         candle.starts(on: shelfUnit)
     }
 }
+
+/// Carried holders covering the inventory listing's inside and surface channels.
+struct InventoryPlacementGame: Game {
+    let title = "Inventory Placement"
+    let intro = ""
+
+    let room = Location {
+        name("Room")
+        description("A room.")
+    }
+
+    let tray = Item {
+        name("tray")
+        surface
+    }
+
+    let cup = Item {
+        name("cup")
+    }
+
+    let bag = Item {
+        name("bag")
+        container
+    }
+
+    let coin = Item {
+        name("coin")
+    }
+
+    let box = Item {
+        name("box")
+        container
+        surface
+    }
+
+    let bead = Item {
+        name("bead")
+    }
+
+    let key = Item {
+        name("key")
+    }
+
+    let chest = Item {
+        name("lacquered chest")
+        container
+        surface
+        openable
+    }
+
+    let note = Item {
+        name("secret note")
+    }
+
+    let bell = Item {
+        name("brass bell")
+    }
+
+    let displayCase = Item {
+        name("glass case")
+        container
+        surface
+        openable
+        transparent
+    }
+
+    let ring = Item {
+        name("silver ring")
+    }
+
+    let medal = Item {
+        name("bronze medal")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        tray.startsHeld
+        cup.starts(on: tray)
+        bag.startsHeld
+        coin.starts(inside: bag)
+        box.startsHeld
+        bead.starts(inside: box)
+        key.starts(on: box)
+        chest.startsHeld
+        note.starts(inside: chest)
+        bell.starts(on: chest)
+        displayCase.startsHeld
+        ring.starts(inside: displayCase)
+        medal.starts(on: displayCase)
+    }
+}

@@ -75,6 +75,8 @@ foyer.north(
 The general form is ``Location/exit(_:blocked:)``. A blocked exit names no
 destination, which has one consequence noted below.
 
+The refusal must contain a non-whitespace character. An empty or whitespace-only `blocked:` value is a fatal bootstrap diagnostic naming the source room and direction; omit the exit when the direction should not exist.
+
 ### Through a door
 
 One ``openable`` item, named on the exit from both sides:
@@ -122,6 +124,8 @@ forks.exit(
 
 The general form is ``Location/exit(_:to:when:otherwise:)``. A conditional exit
 decides *whether* the player moves, never *where* they arrive.
+
+Its `otherwise:` refusal follows the same rule as `blocked:`: explicitly blank text is a fatal author error rather than a silent, turn-costing response.
 
 ### Toward a destination chosen at `go` time
 

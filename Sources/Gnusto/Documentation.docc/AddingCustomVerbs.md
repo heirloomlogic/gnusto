@@ -172,6 +172,8 @@ A **trailing particle** is read as understood when the player leaves it off. `wi
 
 A **topic** is the odd one out, and deliberately so. The object slots resolve against what the player can see, and refuse anything else — which is right for things and wrong for subjects. A topic instead takes the rest of the line as typed, normalized but never looked up, so `ask the monk about zeppelins` reaches the monk's rules and lets him shrug rather than dying in the parser as "You can't see any such thing." It arrives as a ``Topic`` on ``Command/topic``, with the words already lowercased, stripped of punctuation and filler; ``Topic/normalize(_:)`` puts an author's own keyword through the same mill so the two can be compared. The line exactly as typed is still on ``Command/rawInput``.
 
+**A line that stops at the verb asks for the object**, whatever the pattern puts behind the slot — a preposition, a particle, a direction. Bare `put`, `give` and `pick` all answer *"What do you want to put?"*, as `take` always has, and the answer is spliced in and re-read by the ordinary path, so `put` → `the coin` goes on to ask what to put it on. The exception is a row whose **leading words are two words**: `["peer", "through", .directObject]` is not a candidate for a line that says only `peer`, so bare `peer` names no row at all and stays a sentence the parser does not recognize. Give the verb a one-word row if you want it to ask.
+
 When a slot goes unfilled, the question names the verb in the row's own leading words — `["haggle", "over", .directObject]` asks what you want to haggle over. Give `displayVerb:` where those words are an **abbreviation**, which is the one case they are not a word:
 
 ```swift

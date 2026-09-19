@@ -69,12 +69,36 @@ struct VehicleTests {
     }
 
     @Test func aCarriedEnterableRefuses() async throws {
+        let carriedRefusal = "You can't get into something you're carrying."
         let transcript = try await play(
             HarborGame(),
-            ["take bucket", "enter bucket", "quit"])
+            ["take bucket", "enter bucket", "take bin", "enter stool", "exit", "quit"])
         expectInOrder(
             transcript,
-            ["Taken.", "You can't get into something you're carrying."])
+            ["Taken.", carriedRefusal, "Taken.", carriedRefusal, "You aren't in anything."])
+    }
+
+    @Test func worldStateRejectsCarriedBoarding() {
+        let vehicle = EntityID("vehicle")
+        let room = EntityID("room")
+        var state = WorldState(playerLocation: room, placements: [vehicle: .heldBy(.player)])
+        state.board(vehicle)
+        #expect(state.playerVehicle == nil)
+    }
+
+    @Test func reachableNestedEnterablesCanBeBoarded() async throws {
+        let onSurface = try await play(HarborGame(), ["enter chair", "exit", "quit"])
+        let inOpenContainer = try await play(HarborGame(), ["enter stool", "exit", "quit"])
+        expectInOrder(onSurface, ["You are now in the wicker chair.", "You get out of the wicker chair."])
+        expectInOrder(inOpenContainer, ["You are now in the pine stool.", "You get out of the pine stool."])
+    }
+
+    @Test func closedContainersAndCustomReachRulesStillRefuseBoarding() async throws {
+        let transcript = try await play(HarborGame(), ["enter cot", "enter bench", "quit"])
+        #expect(turnOutput(of: "enter cot", in: transcript).contains("You can't reach the folding cot."))
+        #expect(turnOutput(of: "enter bench", in: transcript).contains("You can't reach the narrow bench."))
+        #expect(!transcript.contains("You are now in the folding cot."))
+        #expect(!transcript.contains("You are now in the narrow bench."))
     }
 
     @Test func hostBeforeRulesGateBoarding() async throws {

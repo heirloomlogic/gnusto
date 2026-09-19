@@ -435,6 +435,71 @@ struct ConversationTests {
         expectInOrder(transcript, ["Nothing said yet.", "Two on, four off.", "The watch is spoken for."])
     }
 
+    @Test func sameNamedActorsKeepTopicMemoryAndExplicitHeardChecksSeparate() async throws {
+        let transcript = try await play(
+            TwinGuardroom(),
+            [
+                "ask north guard about the watch",
+                "x north ledger", "x south ledger",
+                "ask south guard about the watch",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The north guard gives the watch report.",
+                "The north ledger says heard.",
+                "The south ledger says unheard.",
+                "The south guard gives the watch report.",
+            ])
+        #expect(!transcript.contains("That guard has already given the report."))
+    }
+
+    @Test func unhearingOneSameNamedActorLeavesTheOthersMemoryIntact() async throws {
+        let transcript = try await play(
+            TwinGuardroom(),
+            [
+                "ask north guard about the watch", "ask south guard about the watch",
+                "take slate",
+                "ask south guard about the watch", "ask north guard about the watch",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The north guard gives the watch report.",
+                "The south guard gives the watch report.",
+                "That guard has already given the report.",
+                "The north guard gives the watch report.",
+            ])
+    }
+
+    @Test func sameNamedActorsAndItemsKeepShowMemorySeparate() async throws {
+        let transcript = try await play(
+            TwinGuardroom(),
+            [
+                "take north badge", "take south badge",
+                "show north badge to north guard",
+                "show south badge to north guard",
+                "show north badge to south guard",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The north guard studies the north badge.",
+                "The north guard studies the south badge.",
+                "The south guard studies the north badge.",
+            ])
+        #expect(!transcript.contains("That guard has already studied that badge."))
+    }
+
+    @Test func sameNamedActorsKeepGreetingMemorySeparate() async throws {
+        let transcript = try await play(
+            TwinGuardroom(), ["greet north guard", "greet south guard"])
+        expectInOrder(
+            transcript,
+            ["The north guard introduces herself.", "The south guard introduces herself."])
+        #expect(!transcript.contains("That guard has already introduced herself."))
+    }
+
     // MARK: - A live condition on the world
 
     /// `when:` is for what is currently true, where `knowing:` is for what the
@@ -704,6 +769,115 @@ struct Guardroom: Game {
         drum.starts(in: post)
         ledger.starts(in: post)
         bell.starts(in: post)
+    }
+}
+
+/// Two actors and two items whose display names collide. Their parser phrases
+/// stay distinct so the transcript can address every declaration directly.
+struct TwinGuardroom: Game {
+    let title = "Twin Guardroom"
+    let intro = "Two guards stand watch."
+
+    let talk = Conversation()
+
+    let post = Location {
+        name("Post")
+        description("Two guards stand watch.")
+    }
+
+    let northGuard = Actor {
+        name("guard")
+        synonyms("north guard")
+        description("The north guard.")
+    }
+
+    let southGuard = Actor {
+        name("guard")
+        synonyms("south guard")
+        description("The south guard.")
+    }
+
+    let northBadge = Item {
+        name("badge")
+        synonyms("north badge")
+        description("The north badge.")
+    }
+
+    let southBadge = Item {
+        name("badge")
+        synonyms("south badge")
+        description("The south badge.")
+    }
+
+    let northLedger = Item {
+        name("north ledger")
+        scenery
+    }
+
+    let southLedger = Item {
+        name("south ledger")
+        scenery
+    }
+
+    let slate = Item {
+        name("slate")
+        description("A slate.")
+    }
+
+    var content: GameContents { talk }
+
+    var rules: Rules {
+        talk.topics(of: northGuard, again: "That guard has already given the report.") {
+            topic("watch", id: "watch", reply: "The north guard gives the watch report.")
+        }
+        talk.topics(of: southGuard, again: "That guard has already given the report.") {
+            topic("watch", id: "watch", reply: "The south guard gives the watch report.")
+        }
+
+        talk.shows(
+            northBadge, to: northGuard,
+            again: "That guard has already studied that badge.",
+            reply: "The north guard studies the north badge.")
+        talk.shows(
+            southBadge, to: northGuard,
+            again: "That guard has already studied that badge.",
+            reply: "The north guard studies the south badge.")
+        talk.shows(
+            northBadge, to: southGuard,
+            again: "That guard has already studied that badge.",
+            reply: "The south guard studies the north badge.")
+
+        talk.greeting(
+            of: northGuard,
+            again: "That guard has already introduced herself.",
+            reply: "The north guard introduces herself.")
+        talk.greeting(
+            of: southGuard,
+            again: "That guard has already introduced herself.",
+            reply: "The south guard introduces herself.")
+
+        northLedger.before(.examine) {
+            try reply(
+                talk.hasHeard("watch", from: northGuard)
+                    ? "The north ledger says heard." : "The north ledger says unheard.")
+        }
+        southLedger.before(.examine) {
+            try reply(
+                talk.hasHeard("watch", from: southGuard)
+                    ? "The south ledger says heard." : "The south ledger says unheard.")
+        }
+        slate.before(.take) { talk.unhearEverything(from: northGuard) }
+    }
+
+    var map: WorldMap {
+        player.starts(in: post)
+        northGuard.starts(in: post)
+        southGuard.starts(in: post)
+        northBadge.starts(in: post)
+        southBadge.starts(in: post)
+        northLedger.starts(in: post)
+        southLedger.starts(in: post)
+        slate.starts(in: post)
     }
 }
 

@@ -684,12 +684,11 @@ struct Dungeon: Game, GameMain {
                 mine.bat.reveal()
                 return
             }
-            // No `describeSurroundings()` here: `onEnter` runs *before* the
-            // arrival description, so moving the player is enough — the engine
-            // then describes wherever the bat put them, in full, once.
+            // The bat's move owns the final description. The outer walk sees
+            // that the player left the Bat Room and does not describe it.
             let drops = mine.batDrops
             say(Prose.batGrabsYou)
-            player.location = drops[random(0...(drops.count - 1))]
+            arrive(at: drops[random(0...(drops.count - 1))])
         }
 
         // The machine's switch, thrown with the screwdriver — a ``DungeonDam``

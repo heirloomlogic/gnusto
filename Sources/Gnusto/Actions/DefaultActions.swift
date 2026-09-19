@@ -65,36 +65,57 @@ enum DefaultActions {
 
     // MARK: - Manipulation
 
-    static func take(_ command: Command, frame: TurnFrame) throws {
-        let item = try requireDirectObject(command)
+    /// The refusal `take` owns for `item`, or `nil` when nothing `take` knows
+    /// about stands in its way.
+    ///
+    /// Split out of ``take(_:frame:)`` so ``Burden`` can read the same ladder.
+    /// The cap is a `world.before(.take)` rule, which is stage 1 and therefore
+    /// ahead of everything here, and "no room in your hands" is the broadest
+    /// answer `take` has — so wherever this returns a line, the cap holds its
+    /// tongue and lets stage 4 print the specific one. One ladder read from
+    /// two places, rather than two that drift apart.
+    static func takeRefusal(for item: Item, frame: TurnFrame) -> String? {
         let id = item.id
+        let text = frame.definition.text
         // People get the person-specific refusal, not scenery's — and the
         // player gets their own, since the stock line is about somebody else.
         if id == .player {
-            try refuse(frame.definition.text.cantTakeSelf())
+            return text.cantTakeSelf()
         }
         if frame.definition.items[id]?.isActor == true {
-            try refuse(frame.definition.text.cantTakeActor(item.definiteNoun))
+            return text.cantTakeActor(item.definiteNoun)
         }
         // The one default that could relocate the thing the player is
         // sitting in.
         let boarded = frame.with { $0.state.playerVehicle }
         if id == boarded {
-            try refuse(frame.definition.text.notWhileInside(item.definiteNoun))
+            return text.notWhileInside(item.definiteNoun)
         }
         if item.isHeld {
-            try refuse(item.isWorn ? frame.definition.text.alreadyWearing() : frame.definition.text.alreadyHave())
+            return item.isWorn ? text.alreadyWearing() : text.alreadyHave()
         }
         guard frame.definition.items[id]?.isTakable == true else {
-            try refuse(frame.definition.text.cantTake())
+            return text.cantTake()
         }
         // The parser's scope is *visible* items, which also admits a closed
         // transparent container's contents (seen through the glass but not
         // touchable) — take needs the stricter reachable set to refuse those.
         // The item resolved, so it's visible: refuse with "can't reach", not
-        // "can't see".
+        // "can't see". Last of the ladder because it is the one entry that
+        // walks the scope set and may consult a `reach { … }` rule.
         guard Visibility.isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.definiteNoun))
+            return text.cantReach(item.definiteNoun)
+        }
+        return nil
+    }
+
+    static func take(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        // Read outside the `frame.with { … }` below: a proxy resolves through
+        // the frame, and the lock is not reentrant.
+        let id = item.id
+        if let refusal = takeRefusal(for: item, frame: frame) {
+            try refuse(refusal)
         }
         frame.with { scratch in
             scratch.state.place(id, .heldBy(.player))
@@ -563,9 +584,10 @@ enum DefaultActions {
         }
     }
 
-    /// Moves the player into `destination`, running its onEnter rules and then
-    /// describing the room. Shared by every passable exit kind. A boarded
-    /// vehicle rides along in the same mutation — and its cargo with it,
+    /// Moves the player into `destination`, runs its onEnter rules, and describes
+    /// it if those rules leave the player there. A rule that moves onward owns
+    /// the final room's description. Shared by every passable exit kind. A
+    /// boarded vehicle rides along in the same mutation — and its cargo with it,
     /// since cargo placements (`.inside(vehicle)`) never mention the room.
     ///
     /// `aside` lands ahead of the onEnter rules and the room description,
@@ -586,7 +608,12 @@ enum DefaultActions {
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
-            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            if frame.with({
+                $0.state.playerLocation == destination
+                    && $0.describedAtOccupancyCount != $0.roomsOccupied.count
+            }) {
+                RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            }
         }
     }
 
@@ -712,8 +739,8 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isEnterable == true else {
             try refuse(frame.definition.text.cantEnterThat(item.definiteNoun))
         }
-        let (currentVehicle, placement) = frame.with {
-            ($0.state.playerVehicle, $0.state.placements[id])
+        let (currentVehicle, carried) = frame.with {
+            ($0.state.playerVehicle, $0.state.isPossession(id, of: .player))
         }
         if currentVehicle == id {
             try refuse(frame.definition.text.alreadyInVehicle(item.definiteNoun))
@@ -721,10 +748,10 @@ enum DefaultActions {
         if let currentVehicle {
             try refuse(frame.definition.text.mustExitFirst(frame.definiteNoun(of: currentVehicle)))
         }
-        if placement == .heldBy(.player) {
+        if carried {
             try refuse(frame.definition.text.cantEnterCarried())
         }
-        guard placement == .room(here) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
         frame.with { scratch in
@@ -843,19 +870,23 @@ enum DefaultActions {
     static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
             let containment = scratch.state.containment()
+            func visibleNouns(_ ids: [EntityID]?) -> [GameText.Noun] {
+                (ids ?? [])
+                    .filter {
+                        Visibility.isPerceivable(
+                            $0, definition: frame.definition, state: scratch.state)
+                    }
+                    .map(frame.indefiniteNoun(of:))
+            }
             return (containment.held[.player] ?? [])
                 .map { id in
                     GameText.Carried.Entry(
                         noun: frame.indefiniteNoun(of: id),
-                        contents: Visibility.contentsVisible(
+                        insideContents: Visibility.contentsVisible(
                             id, definition: frame.definition, state: scratch.state)
-                            ? (containment.inContainer[id] ?? [])
-                                .filter {
-                                    Visibility.isPerceivable(
-                                        $0, definition: frame.definition, state: scratch.state)
-                                }
-                                .map(frame.indefiniteNoun(of:))
+                            ? visibleNouns(containment.inContainer[id])
                             : [],
+                        surfaceContents: visibleNouns(containment.onSurface[id]),
                         isWorn: scratch.state.wornItems.contains(id)
                     )
                 }

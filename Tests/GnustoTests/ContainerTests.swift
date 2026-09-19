@@ -109,7 +109,7 @@ struct ContainerTests {
             _ = try Bootstrap.build(GhostLockGame())
             Issue.record("expected BootstrapError")
         } catch let error as BootstrapError {
-            #expect(error.diagnostics.contains { $0.contains("not a stored property") })
+            #expect(error.diagnostics.contains { $0.contains("the bootstrap never registered") })
         } catch {
             Issue.record("expected a BootstrapError, got \(error)")
         }
@@ -418,6 +418,20 @@ struct ContainerTests {
         let transparent = turnOutput(
             of: "i", in: try await play(PantryGame(), ["take jar", "i"]))
         #expect(transparent.contains("a glass jar (containing a green pickle)"))
+    }
+
+    @Test func inventoryListsInsideAndSurfaceContentsIndependently() async throws {
+        let inventory = turnOutput(
+            of: "i", in: try await play(InventoryPlacementGame(), ["i"]))
+
+        #expect(inventory.contains("a tray (with a cup on it)"))
+        #expect(inventory.contains("a bag (containing a coin)"))
+        #expect(inventory.contains("a box (containing a bead, with a key on top)"))
+        #expect(inventory.contains("a lacquered chest (with a brass bell on it)"))
+        #expect(!inventory.contains("secret note"))
+        #expect(
+            inventory.contains(
+                "a glass case (containing a silver ring, with a bronze medal on top)"))
     }
 
     @Test func inventoryOmitsUnrevealedHiddenContentsUntilTheyAreRevealed() async throws {

@@ -389,6 +389,14 @@ struct GatedArenaGame: Game {
 /// baubles so he never runs out of things to lift. His counter-attack is gated
 /// on `truce`, which lets a test shut the gate and prove he still wakes up.
 struct CutpurseGame: Game {
+    var behaviorFirst = false
+    var movement: String? = nil
+
+    let passage = Location {
+        name("Passage")
+        description("A passage beyond the vault.")
+    }
+
     let title = "Cutpurse"
     let intro = "A vault, a bully, and four things worth taking."
 
@@ -439,6 +447,8 @@ struct CutpurseGame: Game {
     }
 
     var map: WorldMap {
+        vault.north(passage)
+        passage.south(vault)
         player.starts(in: vault)
         cutpurse.starts(in: vault)
         cudgel.startsHeld
@@ -481,11 +491,106 @@ struct CutpurseGame: Game {
                 miss: ["He jabs and misses."],
                 wound: ["He catches you a glancing one."],
                 playerDeath: "He finishes what he started."))
-        behaviors.steals(
-            cutpurse,
-            named: "melee.cutpurse.steals",
-            candidates: [chalice, pearl, comb, seal],
-            chancePerTurn: 100,
-            announcement: .naming { "He lifts \($0) clean out of your hand." })
+        if movement == "roam" {
+            behaviors.roams(
+                cutpurse, named: behaviorFirst ? "a.roams" : "z.roams",
+                rooms: [vault, passage], chancePerTurn: 100,
+                departure: "He walks away.")
+        } else if movement == "follow" {
+            behaviors.follows(
+                cutpurse, named: behaviorFirst ? "a.follows" : "z.follows",
+                arrivals: ["He follows you."])
+        } else {
+            behaviors.steals(
+                cutpurse,
+                named: behaviorFirst ? "a.steals" : "z.steals",
+                candidates: [chalice, pearl, comb, seal],
+                chancePerTurn: 100,
+                announcement: .naming { "He lifts \($0) clean out of your hand." })
+        }
+    }
+}
+
+/// Fixture for the knockout's whole span (#508). One room, a golem with
+/// `strength: 20` so an ordinary wound never finishes him, a baseline weapon,
+/// and `playerStrength: 50` so an ordinary counter-attack never finishes the
+/// player — what is left ending a run early is the outcome table's outright-kill
+/// branch at either end, which is what the pinned seeds are chosen against.
+///
+/// `strikesFirst` stays at the default 100 and the golem is engaged from the
+/// player's first swing, so every tick he is able to strike on is a tick he
+/// does strike on. That is what makes a *quiet* tick evidence: a turn with no
+/// golem line in it is a turn the stun guard held, not a roll that went the
+/// player's way.
+///
+/// `check` is the probe. It is an ordinary custom verb, so it costs a turn and
+/// the daemon ticks behind it — which is the point, since the turns being
+/// counted are daemon ticks. `mesmerize` is the second knockout route: the game
+/// setting `Actor.isUnconscious` itself, with no melee ledger entry behind it.
+struct StunLabGame: Game {
+    let title = "Stun Lab"
+    let intro = "A chalk circle, a clay golem, and an iron bar."
+
+    let lab = Location {
+        name("Lab")
+        description("A chalk circle scuffed down to the floorboards.")
+    }
+
+    let golem = Actor {
+        name("clay golem")
+        adjectives("clay")
+        description("Fired clay, badly, and still upright.")
+    }
+
+    let bar = Item {
+        name("iron bar")
+        adjectives("iron")
+        trait(.weapon, true)
+    }
+
+    let melee = MeleeCombat()
+
+    var content: GameContents { melee }
+
+    var map: WorldMap {
+        player.starts(in: lab)
+        golem.starts(in: lab)
+        bar.starts(in: lab)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("check", intent: Intent("check"))
+        SyntaxRule("mesmerize", intent: Intent("mesmerize"))
+    }
+
+    var rules: Rules {
+        melee.villain(
+            golem, key: "golem", strength: 20,
+            prose: MeleeCombat.VillainProse(
+                miss: ["The bar rings off the floor."],
+                wound: ["A flake of clay spins away."],
+                knockout: "The golem drops to its knees and stays there.",
+                death: "The golem comes apart into wet shards."))
+        world.before(Intent("check")) {
+            try reply("Out cold: \(golem.isUnconscious).")
+        }
+        // A knockout the game takes by its own means, which is what
+        // `Actor.isUnconscious` invites. It writes the flag and nothing else,
+        // so the melee ledger has no entry for this golem and no countdown to
+        // run — the game owns clearing it.
+        world.before(Intent("mesmerize")) {
+            golem.isUnconscious = true
+            try reply("The golem's eyes go dull and it sags.")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        melee.aggression(
+            of: golem, key: "golem", named: "melee.golem",
+            playerStrength: 50,
+            prose: MeleeCombat.AggressionProse(
+                miss: ["The golem swipes and catches nothing."],
+                wound: ["The golem rakes your forearm."],
+                playerDeath: "The golem brings both fists down at once."))
     }
 }
