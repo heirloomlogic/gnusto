@@ -48,7 +48,7 @@ public protocol DroppableSubject: LineSubject {}
 /// The other axis, and almost every subject is on it. The two that are not have
 /// a *better* spelling rather than none: ``GameText/Nothing`` has nothing to
 /// hand a closure, so it takes ``GameText/Line/live(_:)``, and `Noun?` takes
-/// ``GameText/Line/naming(orBare:_:)``, which asks for both halves so a game
+/// ``GameText/Line/naming(orBare:_:)-(_,(GameText.Noun)->String)``, which asks for both halves so a game
 /// cannot re-voice the naming half and leave the bare one in the engine's
 /// words.
 ///
@@ -105,7 +105,7 @@ extension GameText {
     /// `Object` says what the line is about. A line whose every parser row
     /// carries a direct object takes a ``GameText/Noun`` and is written with
     /// ``naming(_:)``. One that also answers a bare command — `smell`, `climb`,
-    /// `wake` — takes `Noun?` and is written with ``naming(orBare:_:)``, which
+    /// `wake` — takes `Noun?` and is written with ``naming(orBare:_:)-(_,(GameText.Noun)->String)``, which
     /// asks for both halves so neither can be left in the engine's voice by
     /// accident. A verb with no object slot at all takes ``Nothing``: there is
     /// no name to hand it, but there is still a *turn* to write it in, which is
@@ -134,7 +134,7 @@ extension GameText {
         /// The private door both `naming` factories come through, so that every
         /// public way to build a line is one a game should be using. A raw
         /// closure taking the object is not among them: the whole point of
-        /// ``naming(orBare:_:)`` is that it will not let you write half a line.
+        /// ``naming(orBare:_:)-(_,(GameText.Noun)->String)`` is that it will not let you write half a line.
         fileprivate init(_ body: @escaping @Sendable (Object) -> String) {
             self.body = body
         }

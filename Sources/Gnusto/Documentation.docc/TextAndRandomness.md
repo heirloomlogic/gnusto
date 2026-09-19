@@ -85,7 +85,7 @@ That second rule is why the helper exists rather than a `[Noun]` parameter. The 
 
 Each ``GameText/Carried/Entry`` also keeps its direct visible ``GameText/Carried/Entry/insideContents`` and ``GameText/Carried/Entry/surfaceContents`` separate. A custom inventory can therefore describe a coin in a box differently from a key on top of it while retaining the engine's articles, proper names, and noun numbers.
 
-A line about **two** things is a `Line` too, over a role struct that names them — ``GameText/Holding`` (a thing and what holds it), ``GameText/Gift``, ``GameText/Aboard``:
+A line about **two** things is a `Line` too, over a role struct that names them — ``GameText/Holding`` (a thing and what holds it), ``GameText/Gift``, ``GameText/InstrumentUse``, ``GameText/Aboard``:
 
 ```swift
 text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
