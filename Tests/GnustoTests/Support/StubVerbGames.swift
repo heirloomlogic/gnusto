@@ -289,7 +289,7 @@ struct EveryNameableStubGame: Game {
         }
         // …and the twelve #245 did.
         text.stubs.dig = .naming(orBare: "You dig at nothing in particular.") {
-            "You dig at \($0)."
+            "You dig at \($0.object)."
         }
         text.stubs.knock = .naming(orBare: "You knock at nothing in particular.") {
             "You knock at \($0)."

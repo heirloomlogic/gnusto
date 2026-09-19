@@ -48,7 +48,7 @@ public protocol DroppableSubject: LineSubject {}
 /// The other axis, and almost every subject is on it. The two that are not have
 /// a *better* spelling rather than none: ``GameText/Nothing`` has nothing to
 /// hand a closure, so it takes ``GameText/Line/live(_:)``, and `Noun?` takes
-/// ``GameText/Line/naming(orBare:_:)``, which asks for both halves so a game
+/// ``GameText/Line/naming(orBare:_:)-(_,(GameText.Noun)->String)``, which asks for both halves so a game
 /// cannot re-voice the naming half and leave the bare one in the engine's
 /// words.
 ///
@@ -90,7 +90,7 @@ extension GameText {
     ///
     /// ```swift
     /// text.stubs.dig = "You have nothing to dig with."
-    /// text.stubs.burn = .naming { "You have no way to set fire to \($0)." }
+    /// text.stubs.burn = .naming { "You have no way to set fire to \($0.object)." }
     /// ```
     ///
     /// The type exists so that those two are the **same slot**. Before it,
@@ -105,7 +105,7 @@ extension GameText {
     /// `Object` says what the line is about. A line whose every parser row
     /// carries a direct object takes a ``GameText/Noun`` and is written with
     /// ``naming(_:)``. One that also answers a bare command — `smell`, `climb`,
-    /// `wake` — takes `Noun?` and is written with ``naming(orBare:_:)``, which
+    /// `wake` — takes `Noun?` and is written with ``naming(orBare:_:)-(_,(GameText.Noun)->String)``, which
     /// asks for both halves so neither can be left in the engine's voice by
     /// accident. A verb with no object slot at all takes ``Nothing``: there is
     /// no name to hand it, but there is still a *turn* to write it in, which is
@@ -134,7 +134,7 @@ extension GameText {
         /// The private door both `naming` factories come through, so that every
         /// public way to build a line is one a game should be using. A raw
         /// closure taking the object is not among them: the whole point of
-        /// ``naming(orBare:_:)`` is that it will not let you write half a line.
+        /// ``naming(orBare:_:)-(_,(GameText.Noun)->String)`` is that it will not let you write half a line.
         fileprivate init(_ body: @escaping @Sendable (Object) -> String) {
             self.body = body
         }
@@ -284,11 +284,12 @@ extension GameText.Noun: DroppableSubject, NamedSubject {
     public static var samples: [Self] { [sampleSingular, samplePlural] }
 }
 
-extension Optional: LineSubject, DroppableSubject where Wrapped == GameText.Noun {
-    /// Both numbers and the bare case, so a game that re-voices the naming half
-    /// and leaves the bare half in the engine's words is caught.
-    public static var samples: [Self] { GameText.Noun.samples + [nil] }
+extension Optional: LineSubject where Wrapped: LineSubject {
+    /// Every wrapped case and the bare case, so a game that re-voices the naming half and leaves the bare half in the engine's words is caught.
+    public static var samples: [Self] { Wrapped.samples.map(Self.some) + [nil] }
 }
+
+extension Optional: DroppableSubject where Wrapped: DroppableSubject {}
 
 extension GameText.Line where Object == GameText.Noun? {
     /// A line for a verb the player may use with an object or without one:
@@ -466,6 +467,32 @@ extension GameText {
         }
     }
 
+    /// A direct object and the optional second object used with it.
+    ///
+    /// Stub verbs use the parser's indirect-object slot for an instrument or counterpart: the match in `burn paper with match`, the shovel in `dig mound with shovel`, the water in `fill bottle with water`, and the hook in `tie rope to hook`. The role is one subject so a game's line can name both nouns without receiving the whole parser command.
+    ///
+    /// ```swift
+    /// stubs.tie = .naming { use in
+    ///     use.instrument.map { "You can't tie \(use.object) to \($0)." }
+    ///         ?? "There's nothing here to tie \(use.object) to."
+    /// }
+    /// ```
+    public struct InstrumentUse: DroppableSubject, NamedSubject {
+        /// What the verb acts on.
+        public let object: Noun
+        /// The instrument or counterpart named in the indirect-object slot.
+        public let instrument: Noun?
+
+        /// Both noun-number arrangements, plus a direct-only use, so stock-line sweeps cover agreement on either noun and the missing instrument.
+        public static var samples: [Self] {
+            [
+                .init(object: Noun.sampleSingular, instrument: Noun.samplePlural),
+                .init(object: Noun.samplePlural, instrument: Noun.sampleSingular),
+                .init(object: Noun.sampleSingular, instrument: nil),
+            ]
+        }
+    }
+
     /// A place, and the thing the player is riding through it.
     ///
     /// The odd one out, and the asymmetry is the point: ``place`` is a plain
@@ -532,6 +559,21 @@ extension GameText.Line where Object == GameText.Gift {
     /// - Returns: the sentence to print.
     public func callAsFunction(_ gift: GameText.Noun, _ recipient: GameText.Noun) -> String {
         self(.init(gift: gift, recipient: recipient))
+    }
+}
+
+extension GameText.Line where Object == GameText.InstrumentUse? {
+    /// A line that can also answer a bare command, used by DIG.
+    ///
+    /// - Parameters:
+    ///   - bare: the sentence for a command that named no direct object.
+    ///   - line: builds the sentence for a direct object and its optional instrument.
+    /// - Returns: the line.
+    public static func naming(
+        orBare bare: String,
+        _ line: @escaping @Sendable (GameText.InstrumentUse) -> String
+    ) -> Self {
+        .init { $0.map(line) ?? bare }
     }
 }
 
