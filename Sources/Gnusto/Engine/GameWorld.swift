@@ -745,6 +745,10 @@ public actor GameWorld {
         // for it would be for nothing.
         let intent = parsed.intent
         var objects: [EntityID]
+        // Set when the player named a holder — `take all from the crate` — so
+        // the empty-group answer at the bottom can be about that thing rather
+        // than about the room.
+        var namedHolder: EntityID?
         switch multiple {
         case .all where intent == .take:
             let index = state.containment()
@@ -762,9 +766,27 @@ public actor GameWorld {
             // bottle is in your hand, and ALL has nothing to add to that.
             // A TAKE ALL policy, not an impossibility — `take water` by name
             // still runs, and is still the game's own business to answer.
-            let carried = index.closure(under: index.held[.player] ?? [])
+            let candidates: [EntityID]
+            let carried: Set<EntityID>
+            if let holder = parsed.indirectObject {
+                // `take all from the sack` is a smaller question than TAKE
+                // ALL: only what that holder has, and only its direct
+                // children, the way DROP ALL empties your hands and not your
+                // sack. Naming the holder is naming the thing, so the depth
+                // subtraction goes with it — a carried sack's garlic is
+                // exactly what the player asked for, and `take garlic` would
+                // have handed it over. What stays subtracted is what is
+                // already in their hands, which nothing can add to. (#507)
+                namedHolder = holder
+                let offered = index.children(of: holder) + (index.held[holder] ?? [])
+                candidates = offered.filter(reachable.contains)
+                carried = Set(index.held[.player] ?? [])
+            } else {
+                candidates = Array(reachable)
+                carried = index.closure(under: index.held[.player] ?? [])
+            }
             objects = inDisplayOrder(
-                reachable.filter {
+                candidates.filter {
                     definition.items[$0]?.isTakable == true && !carried.contains($0)
                 })
         case .all:
@@ -831,11 +853,44 @@ public actor GameWorld {
             {
                 return .dark
             }
+            if let namedHolder {
+                return .empty(nothingToTake(from: namedHolder, in: state))
+            }
             return .empty(
                 intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
         }
 
         return .objects(objects)
+    }
+
+    /// What `take all from X` says when X has nothing for the player.
+    ///
+    /// The two rungs above the floor are `lookIn`'s, because a player who has
+    /// just been told a box is shut should not be told next that it is bare.
+    /// They part company on one case: `lookIn` reads a shut *transparent*
+    /// container and reports what is in it, where this reports it shut, since
+    /// what the group would have taken is behind the glass either way.
+    ///
+    /// Called from inside the empty-group guard rather than beside the set it
+    /// explains, so a line is rendered only on the turn that says one: the
+    /// first expansion runs before the frame exists, where reading a
+    /// ``Line/live(_:)`` line would trap.
+    ///
+    /// - Parameters:
+    ///   - holder: the thing the player named after `from`.
+    ///   - state: the world the group was expanded against.
+    /// - Returns: the rendered refusal.
+    private func nothingToTake(from holder: EntityID, in state: WorldState) -> String {
+        if holder == .player {
+            return definition.text.cantSearchSelf()
+        }
+        if definition.items[holder]?.isActor == true {
+            return definition.text.cantSearchActor(definition.vocabulary.definiteNoun(of: holder))
+        }
+        if definition.items[holder]?.isOpenable == true, !state.openItems.contains(holder) {
+            return definition.text.closedContainer(definition.vocabulary.definiteNoun(of: holder))
+        }
+        return definition.text.nothingToTakeThere()
     }
 
     /// A keyword stands for a set, which has no order of its own, so it gets a

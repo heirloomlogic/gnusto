@@ -423,6 +423,35 @@ extension WorldState {
         return false
     }
 
+    /// Whether `id` sits anywhere under `holder` — on it, inside it, or in its
+    /// hands, to any depth. What the `from` clause of `take X from Y` claims,
+    /// and so what that command has to check.
+    ///
+    /// The same upward walk ``isPossession(_:of:)`` makes, with every kind of
+    /// link counting rather than a pair of hands alone: it costs the depth of
+    /// the nesting rather than the size of the holder's subtree, which for
+    /// `take coin from troll` is one link against everything the troll has.
+    /// Cycle-guarded on the same grounds, and a holder is never under itself.
+    ///
+    /// - Parameters:
+    ///   - id: the item to trace upward.
+    ///   - holder: the entity to look for on the way up.
+    /// - Returns: true when `id` is somewhere below `holder`.
+    func isUnder(_ id: EntityID, _ holder: EntityID) -> Bool {
+        var current = id
+        var visited: Set<EntityID> = []
+        while visited.insert(current).inserted {
+            switch placements[current] {
+            case .heldBy(let parent), .on(let parent), .inside(let parent):
+                if parent == holder { return true }
+                current = parent
+            case .room, .nowhere, nil:
+                return false
+            }
+        }
+        return false
+    }
+
     /// The room `id` is ultimately standing in — the same walk UP as
     /// `isPossession(_:of:)`, run to the top instead of looking for somebody on
     /// the way. A coin inside a sack on a table in the Hall answers Hall, so it

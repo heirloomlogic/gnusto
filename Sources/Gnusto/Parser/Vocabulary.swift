@@ -231,6 +231,18 @@ struct Vocabulary: Sendable {
         GameText.definite(displayName(of: id), proper: properNames.contains(id))
     }
 
+    /// The same phrase carrying its number, for the stock lines whose verb has
+    /// to agree with what they name. Here for ``definiteName(of:)``'s reason:
+    /// the two facts a line needs about an entity's name both live in the
+    /// lexicon, and every caller without a turn frame to ask reads them from
+    /// here — the parser, and the world answering outside a turn.
+    ///
+    /// - Parameter id: the entity to name.
+    /// - Returns: the rendered noun phrase and its number.
+    func definiteNoun(of id: EntityID) -> GameText.Noun {
+        GameText.Noun(definiteName(of: id), plural: plurals.contains(id))
+    }
+
     /// Splits a phrase into words, the one way this engine splits anything:
     /// lowercased, a trailing possessive dropped, every other non-alphanumeric
     /// character a separator. `"Master's Spellbook"` yields

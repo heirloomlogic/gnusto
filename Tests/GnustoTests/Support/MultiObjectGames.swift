@@ -93,8 +93,10 @@ struct VaultGame: Game {
 /// Every nesting `all` has to tell apart, in one room (#267). Three things are
 /// nameable and must **not** be offered by `take all` — what you already carry
 /// one level down, what sits behind glass, and what somebody else is holding —
-/// against two positive controls that must be, one loose on the floor and one
-/// inside an open crate the player is not carrying.
+/// against three positive controls that must be: one loose on the floor, one
+/// inside an open crate the player is not carrying, and one resting on the
+/// counter. Every holder `take X from Y` can name is here too: a container, a
+/// surface, a shut container, a person, and the player's own hands.
 struct NestedAllGame: Game {
     let title = "Depot"
     let intro = "A depot, and rather too many things inside other things."
@@ -165,6 +167,21 @@ struct NestedAllGame: Game {
         adjectives("dry")
     }
 
+    /// The surface the room description has always mentioned, and what sits
+    /// on it: `take X from Y` has to answer for a thing resting on something
+    /// as well as for a thing inside it.
+    let counter = Item {
+        name("long counter")
+        adjectives("long")
+        scenery
+        surface
+    }
+
+    let mug = Item {
+        name("chipped mug")
+        adjectives("chipped")
+    }
+
     var map: WorldMap {
         player.starts(in: depot)
         canteen.startsHeld
@@ -176,5 +193,7 @@ struct NestedAllGame: Game {
         key.starts(in: depot)
         crate.starts(in: depot)
         wafer.starts(inside: crate)
+        counter.starts(in: depot)
+        mug.starts(on: counter)
     }
 }

@@ -14,6 +14,8 @@ For the traits themselves see ``ItemTrait``; for writing the rules that react to
 
 A ``surface`` is something other items can rest **on**; a ``container`` is something they can go **inside**. Declaring the trait is all it takes — the parser then accepts `put book on table` and `put coin in box`, and the items travel with their holder.
 
+The other direction reads the holder too. `take coin from box`, `take book off table` and `take coin out of box` each check that the thing is somewhere under the thing named, on it or inside it or in its hands, to any depth, and answer ``GameText/notFoundThere`` when it isn't. That check runs ahead of the verb's own complaints about the object, so a player who thinks the coin is the troll's hears that it isn't rather than "You already have that" from the coin in their own hand.
+
 ```swift
 let table = Item {
     name("wooden table")

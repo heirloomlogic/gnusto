@@ -1,3 +1,4 @@
+import Foundation
 /// The built-in behavior of each intent, running under the same frame and
 /// with the same helpers as author rules — no privileged path.
 enum DefaultActions {
@@ -81,6 +82,21 @@ enum DefaultActions {
         let boarded = frame.with { $0.state.playerVehicle }
         if id == boarded {
             try refuse(frame.definition.text.notWhileInside(item.definiteNoun))
+        }
+        // `take X from Y` makes a claim about where X is, and the claim is
+        // answered before the verb's own complaints are: a player who thinks
+        // the coin is the troll's is owed that correction rather than "You
+        // already have that" from the coin in their own hand. Anywhere under
+        // the holder counts — on it, inside it, in its hands, to any depth —
+        // because a coin in a box in the sack is in the sack. (#507)
+        if let holder = command.indirectObject {
+            // `holder.id` is read out here rather than inside the closure: an
+            // item proxy reads the live frame, and asking it for anything from
+            // inside `frame.with` re-enters the frame's own lock.
+            let holderID = holder.id
+            guard frame.with({ $0.state.isUnder(id, holderID) }) else {
+                try refuse(frame.definition.text.notFoundThere(item.definiteNoun))
+            }
         }
         if item.isHeld {
             try refuse(item.isWorn ? frame.definition.text.alreadyWearing() : frame.definition.text.alreadyHave())

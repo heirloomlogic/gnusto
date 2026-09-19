@@ -160,6 +160,14 @@ public struct GameText: Sendable {
     }
     /// Dropping (or otherwise handling) something not carried.
     public var notCarrying: Line<Nothing> = "You aren't carrying that."
+    /// `take X from Y` where X is nowhere under Y — not on it, not inside it,
+    /// not in its hands. Names the thing rather than the place, because the
+    /// place is the word the player has just typed; "there" is the container
+    /// they named. Said instead of the verb's own complaints, so a player who
+    /// has the wrong idea about where something is hears that first (#507).
+    public var notFoundThere: Line<Noun> = .naming {
+        "You don't find \($0) there."
+    }
     /// Wearing or placing something not in hand.
     public var notHolding: Line<Nothing> = "You aren't holding that."
     /// Wearing something already worn.
@@ -709,6 +717,13 @@ public struct GameText: Sendable {
     /// is charged either way, because a player who cannot see the room cannot
     /// be told it is empty (#518).
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
+    /// `take all from Y` where Y offers the player nothing: it is empty, or
+    /// holds only what they already carry or cannot pick up, or is not the
+    /// sort of thing anything sits in. A shut Y gets ``closedContainer`` and a
+    /// person gets ``cantSearchActor`` instead, and in the dark ``pitchBlack``
+    /// still answers ahead of all three. Wordless about *why* on purpose: the
+    /// one thing true of every case is that there is nothing to be had (#507).
+    public var nothingToTakeThere: Line<Nothing> = "There is nothing there to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."
     /// The group had things in it and the subtraction emptied it — `take all
