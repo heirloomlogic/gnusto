@@ -719,10 +719,13 @@ public struct GameText: Sendable {
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// `take all from Y` where Y offers the player nothing: it is empty, or
     /// holds only what they already carry or cannot pick up, or is not the
-    /// sort of thing anything sits in. A shut Y gets ``closedContainer`` and a
-    /// person gets ``cantSearchActor`` instead, and in the dark ``pitchBlack``
-    /// still answers ahead of all three. Wordless about *why* on purpose: the
-    /// one thing true of every case is that there is nothing to be had (#507).
+    /// sort of thing anything sits in. Y out of reach gets ``cantReach``, a
+    /// person gets ``cantSearchActor``, a shut container gets
+    /// ``closedContainer``, and in the dark ``pitchBlack`` answers ahead of
+    /// all of them — LOOK IN's ladder in LOOK IN's order. Wordless about *why*
+    /// on purpose: the one thing true of every case is that there is nothing
+    /// to be had. Charged, like the single `take X from Y` refusals it sits
+    /// beside (#507).
     public var nothingToTakeThere: Line<Nothing> = "There is nothing there to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."

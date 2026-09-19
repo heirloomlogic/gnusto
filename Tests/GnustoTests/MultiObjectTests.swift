@@ -310,6 +310,54 @@ struct MultiObjectTests {
                 .contains("There is nothing there to take."))
     }
 
+    /// A holder the player can see is full, and cannot get a hand into, is
+    /// out of reach rather than bare — the answer `take coin from pouch`
+    /// gives about the same pouch in the same hands.
+    @Test func takeAllFromAHolderOutOfReachSaysSo() async throws {
+        let transcript = try await play(
+            NestedAllGame(), ["take all from pouch", "take coin from pouch"])
+        let group = turnOutput(of: "take all from pouch", in: transcript)
+        #expect(group.contains("You can't reach the canvas pouch."))
+        #expect(!group.contains("nothing there"))
+        #expect(
+            turnOutput(of: "take coin from pouch", in: transcript)
+                .contains("You can't reach the copper coin."))
+    }
+
+    /// Shut is only an answer for something things go inside. A shuttered
+    /// opening is openable and no sort of container, so it lands on the floor
+    /// line — the rung LOOK IN takes in the same order.
+    @Test func takeAllFromAShutNonContainerSaysThereIsNothingThere() async throws {
+        let transcript = try await play(
+            NestedAllGame(), ["take all from shutter", "search shutter"])
+        let taking = turnOutput(of: "take all from shutter", in: transcript)
+        #expect(taking.contains("There is nothing there to take."))
+        #expect(!taking.contains("closed"))
+        #expect(
+            turnOutput(of: "search shutter", in: transcript)
+                .contains("You find nothing of interest in the iron shutter."))
+    }
+
+    /// The refusal is rendered from inside the turn, so a game may write it
+    /// as a live line. Rendered during the first expansion — before the frame
+    /// exists — the same line would read the world with no turn to read it
+    /// from, and trap.
+    @Test func takeAllFromAnEmptyHolderRendersALiveLine() async throws {
+        let transcript = try await play(
+            LiveHolderLineGame(), ["take all from crate", "take all from hatch"])
+        #expect(turnOutput(of: "take all from crate", in: transcript).contains("Empty."))
+        #expect(turnOutput(of: "take all from hatch", in: transcript).contains("Empty."))
+    }
+
+    /// A holder that offers nothing is answered from inside the turn, so the
+    /// turn is charged — the same as `take coin from <shut box>`, and the
+    /// same as answering the dark.
+    @Test func takeAllFromAHolderThatOffersNothingCostsATurn() async throws {
+        let transcript = try await play(
+            NestedAllGame(), ["take all from shutter", "take all from clerk", "score"])
+        #expect(turnOutput(of: "score", in: transcript).contains("in 2 turns"))
+    }
+
     /// Asking your own pockets for more of what is in them is SEARCH's
     /// question about yourself, and gets SEARCH's answer.
     @Test func takeAllFromYourselfPatsYouDown() async throws {

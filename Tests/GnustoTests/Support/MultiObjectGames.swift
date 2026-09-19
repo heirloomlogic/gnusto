@@ -182,6 +182,29 @@ struct NestedAllGame: Game {
         adjectives("chipped")
     }
 
+    /// Open, full, and in the clerk's hands: visible, and reachable by
+    /// nobody. A holder the player can see has something in it, so "there is
+    /// nothing there to take" would be a visible lie.
+    let pouch = Item {
+        name("canvas pouch")
+        adjectives("canvas")
+        container
+    }
+
+    let coin = Item {
+        name("copper coin")
+        adjectives("copper")
+    }
+
+    /// Openable and shut without being a container — the window case. Nothing
+    /// is ever inside it, so being shut is not why it has nothing to give.
+    let shutter = Item {
+        name("iron shutter")
+        adjectives("iron")
+        scenery
+        openable
+    }
+
     var map: WorldMap {
         player.starts(in: depot)
         canteen.startsHeld
@@ -195,5 +218,50 @@ struct NestedAllGame: Game {
         wafer.starts(inside: crate)
         counter.starts(in: depot)
         mug.starts(on: counter)
+        pouch.starts(heldBy: clerk)
+        coin.starts(inside: pouch)
+        shutter.starts(in: depot)
+    }
+}
+
+/// A game that writes one of `take all from Y`'s refusals as a live line. The
+/// crate is empty, so the line prints, and it reads the world to do it — which
+/// is only possible from inside a turn frame (#507).
+struct LiveHolderLineGame: Game {
+    let title = "Signal Box"
+    let intro = "A signal box, and an empty crate in it."
+
+    let signalBox = Location {
+        name("Signal Box")
+        description("A signal box with an empty crate and a shuttered window.")
+    }
+
+    let crate = Item {
+        name("wooden crate")
+        adjectives("wooden")
+        container
+    }
+
+    /// Openable, shut, and no sort of container: the rung that separates
+    /// "there is nothing there" from "it is closed".
+    let hatch = Item {
+        name("coal hatch")
+        adjectives("coal")
+        scenery
+        openable
+    }
+
+    var text: GameText {
+        var text = GameText()
+        text.nothingToTakeThere = .live {
+            self.crate.isTouched ? "Empty, the same as last time." : "Empty."
+        }
+        return text
+    }
+
+    var map: WorldMap {
+        player.starts(in: signalBox)
+        crate.starts(in: signalBox)
+        hatch.starts(in: signalBox)
     }
 }

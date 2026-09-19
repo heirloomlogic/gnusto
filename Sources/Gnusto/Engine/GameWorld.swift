@@ -633,9 +633,9 @@ public actor GameWorld {
             objects = expanded
         case .empty(let message):
             return freeReply(message)
-        case .dark:
+        case .dark, .holder:
             // Falls through into the turn below rather than replying for
-            // free: see `MultiObjectExpansion.dark`.
+            // free: see `MultiObjectExpansion.dark` and `.holder`.
             break
         }
 
@@ -670,6 +670,13 @@ public actor GameWorld {
                     // to charge it and tick the timers.
                     frame.sayOnceThisTurn(definition.text.pitchBlack())
                     throw TurnInterrupt.replied(message: "")
+                case .holder(let holder):
+                    // Rendered here for the same reason the dark line is: the
+                    // holder refusals are stock lines a game may have written
+                    // as `Line.live(_:)`, and the first expansion runs before
+                    // the frame those read through exists.
+                    throw TurnInterrupt.replied(
+                        message: nothingToTake(from: holder, in: currentState))
                 }
                 for id in objects {
                     guard frame.with({ $0.state.status }) == .playing else { break }
@@ -732,6 +739,14 @@ public actor GameWorld {
         /// frame exists, where that read traps. The wording is left to the
         /// caller, which speaks from inside the frame.
         case dark
+
+        /// No objects because the holder the player named after `from` has
+        /// none to give. Carries the holder rather than its refusal, for
+        /// ``dark``'s reason: every one of those refusals is a stock line a
+        /// game may have written as ``GameText/Line/live(_:)``, and rendering
+        /// one before the frame exists traps. The turn runs and is charged,
+        /// which is also what `take coin from <shut box>` costs.
+        case holder(EntityID)
     }
 
     /// Resolve a group against an explicit state so the eligibility check and
@@ -854,7 +869,7 @@ public actor GameWorld {
                 return .dark
             }
             if let namedHolder {
-                return .empty(nothingToTake(from: namedHolder, in: state))
+                return .holder(namedHolder)
             }
             return .empty(
                 intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
@@ -865,16 +880,22 @@ public actor GameWorld {
 
     /// What `take all from X` says when X has nothing for the player.
     ///
-    /// The two rungs above the floor are `lookIn`'s, because a player who has
-    /// just been told a box is shut should not be told next that it is bare.
-    /// They part company on one case: `lookIn` reads a shut *transparent*
-    /// container and reports what is in it, where this reports it shut, since
-    /// what the group would have taken is behind the glass either way.
+    /// The rungs are `lookIn`'s, in `lookIn`'s order — yourself, out of reach,
+    /// a person, not a container, shut — because a player who has just been
+    /// told a box is shut should not be told next that it is bare, and one who
+    /// can see the clerk's open pouch is full should not be told there is
+    /// nothing in it. The reach rung is containment-only, which is all a bare
+    /// state snapshot can answer; a `reach { … }` veto is left to the
+    /// per-object runs.
     ///
-    /// Called from inside the empty-group guard rather than beside the set it
-    /// explains, so a line is rendered only on the turn that says one: the
-    /// first expansion runs before the frame exists, where reading a
-    /// ``Line/live(_:)`` line would trap.
+    /// The two ladders part company on one case: `lookIn` reads a shut
+    /// *transparent* container and reports what is in it, where this reports
+    /// it shut, since what the group would have taken is behind the glass
+    /// either way.
+    ///
+    /// Called only from inside the turn, through
+    /// ``MultiObjectExpansion/holder(_:)``, so a line is rendered only where
+    /// a ``GameText/Line/live(_:)`` one can read the world.
     ///
     /// - Parameters:
     ///   - holder: the thing the player named after `from`.
@@ -884,11 +905,24 @@ public actor GameWorld {
         if holder == .player {
             return definition.text.cantSearchSelf()
         }
+        let noun = definition.vocabulary.definiteNoun(of: holder)
+        // `containment()` memoizes into the value it is asked of, so the
+        // snapshot is copied rather than shared.
+        var state = state
+        let reachable = Visibility.reachableItems(
+            at: state.playerLocation, definition: definition, state: state,
+            index: state.containment())
+        guard reachable.contains(holder) else {
+            return definition.text.cantReach(noun)
+        }
         if definition.items[holder]?.isActor == true {
-            return definition.text.cantSearchActor(definition.vocabulary.definiteNoun(of: holder))
+            return definition.text.cantSearchActor(noun)
+        }
+        guard definition.items[holder]?.isContainer == true else {
+            return definition.text.nothingToTakeThere()
         }
         if definition.items[holder]?.isOpenable == true, !state.openItems.contains(holder) {
-            return definition.text.closedContainer(definition.vocabulary.definiteNoun(of: holder))
+            return definition.text.closedContainer(noun)
         }
         return definition.text.nothingToTakeThere()
     }

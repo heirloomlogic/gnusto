@@ -1,4 +1,3 @@
-import Foundation
 /// The built-in behavior of each intent, running under the same frame and
 /// with the same helpers as author rules — no privileged path.
 enum DefaultActions {
@@ -84,9 +83,11 @@ enum DefaultActions {
             try refuse(frame.definition.text.notWhileInside(item.definiteNoun))
         }
         // `take X from Y` makes a claim about where X is, and the claim is
-        // answered before the verb's own complaints are: a player who thinks
-        // the coin is the troll's is owed that correction rather than "You
-        // already have that" from the coin in their own hand. Anywhere under
+        // answered before the verb's complaints about picking the thing up: a
+        // player who thinks the coin is the troll's is owed that correction
+        // rather than "You already have that" from the coin in their own hand.
+        // The three refusals above come first, because those are about what
+        // was named rather than about whether it can be lifted. Anywhere under
         // the holder counts — on it, inside it, in its hands, to any depth —
         // because a coin in a box in the sack is in the sack. (#507)
         if let holder = command.indirectObject {
