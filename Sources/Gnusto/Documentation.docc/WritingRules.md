@@ -324,7 +324,7 @@ Eight free functions are available in any rule body:
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
 - ``require(_:else:)`` — refuse with that message unless the condition holds. The message is an autoclosure, so a call that builds its complaint from live state pays nothing on the passing path.
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
-- ``end(won:)`` — end the game; the engine prints the final score afterward.
+- ``end(won:)`` — end the game; `won` is bookkeeping only, so say your own win/loss line before calling it, then the engine prints the final score afterward.
 
 The three `say`s return normally, and so does ``require(_:else:)`` — it is `throws`, not `Never`, so it is a statement on its own line rather than the body of a `guard … else`. The rest return `Never` and read well after a `guard … else`.
 

@@ -98,7 +98,9 @@ struct MyGame: Game {
         bell.before(.ring) {
             try require(rope.isHeld, else: "You need something to swing the clapper with.")
             scoring.awardOnce("bell")
-            say("You haul on the rope. The great bronze bell peals out over the village!")
+            // `end(won:)` prints no banner of its own — it only records the
+            // outcome — so the win has to be said here, before calling it.
+            say("You haul on the rope. The great bronze bell peals out over the village! You win!")
             try end(won: true)
         }
     }

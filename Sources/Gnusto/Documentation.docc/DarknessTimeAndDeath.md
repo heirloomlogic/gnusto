@@ -122,9 +122,46 @@ Four engine-level meta verbs manage the game as a program. Like all meta intents
 
 The filename prompts are round-trips through the normal input loop: the driver (``REPL``/``IOHandler``) never knows a question is open, which also means a ``ScriptedIOHandler`` transcript can script `save`, the path, and the reply like any other lines.
 
+## Winning and losing
+
+``end(won:)`` finishes the game outright. As its doc comment says, `won` is bookkeeping only — say your own ending line before calling it. Two worked examples, neither involving `die(_:)`:
+
+```swift
+world.before(Intent("escape")) {
+    player.score = 1
+    say("The door swings open onto open sky. You have won!")
+    try end(won: true)
+}
+```
+
+```
+> escape
+The door swings open onto open sky. You have won!
+
+Your score is 1 of a possible 1, in 1 turn.
+```
+
+Losing works the same way, and does not require the player to have died — `die(_:)` is a separate mechanic, covered below:
+
+```swift
+world.before(Intent("surrender")) {
+    say("You set down your tools. The vault seals. You have lost.")
+    try end(won: false)
+}
+```
+
+```
+> surrender
+You set down your tools. The vault seals. You have lost.
+
+Your score is 0, in 1 turn.
+```
+
+Both endings are final: the read loop stops there, so a command typed afterward never reaches the game at all. That is the one respect in which winning and losing are *not* like dying — `die(_:)` keeps the program running at a prompt, and can be survived. See `EndingTests` for the tests these transcripts are drawn from, and "Death — and the way back" below for the third case: dying, then coming back.
+
 ## Death — and the way back
 
-``end(won:)`` finishes the game outright. ``die(_:)`` is the other ending: it kills the *player* but keeps the *program* alive.
+``die(_:)`` is the other ending: it kills the *player* but keeps the *program* alive.
 
 ```swift
 poison.before(.take) {
@@ -166,6 +203,25 @@ func onDeath() -> DeathOutcome {
 ``DeathOutcome/consumed`` revives the player: the world stays ``GameStatus/playing``, the turn finishes normally (its fuses and daemons still tick), and no banner or prompt appears. ``DeathOutcome/fallThrough`` — the default — runs the standard death path unchanged, so a game that doesn't implement `onDeath()` dies exactly as before. This is how Zork models canonical resurrection: a toll and a teleport for the first few deaths, then a fall-through once the player has used up their luck.
 
 `UNDO` after a consumed death rewinds the *whole* fatal turn — the death, the resurrection, and everything the handler did — back to where the player stood before it, which is the coherent thing to undo.
+
+`Tests/GnustoTests/Support/ResurrectionGames.swift` has the miniature version of that handler — a `provoke` command that always kills the player, and an `onDeath()` that docks ten points, drops what they were carrying, and sets them down in a different room. `DeathHookTests.aConsumingHandlerResurrectsAndPlayContinues` runs it; this is its transcript, unedited:
+
+```
+> provoke
+The lurking thing strikes you dead.
+
+A cold wind gathers you up and sets you down elsewhere.
+
+> count
+Deaths: 1.
+
+> look
+Sunlit Clearing
+
+Grass, sky, and a second chance.
+```
+
+No banner, no prompt — the death message prints, the handler's own line follows it, and the very next command (`count`, then `look`) runs as an ordinary turn in the room the handler moved the player to. That is recovery and continued play in one transcript. Nothing here resets the death itself: `deaths` (a `@Global`, so it survives save/restore and undo like any other world state) keeps climbing, and it is the game's own `onDeath()` — not the engine — that decides when a further death stops being survivable. `Sources/Zork1/Zork1.swift`'s `onDeath()` is that decision made concrete: `.consumed` for the first two deaths, `.fallThrough` from the third on, so the third death is the one that is actually final.
 
 ## The worked examples
 
