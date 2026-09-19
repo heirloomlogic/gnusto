@@ -239,7 +239,7 @@ public struct Spellcasting: GameContent {
     ) -> [IntentAction] {
         let word = GameText.Word(word ?? intent.raw)
         if case .energy(let amount) = cost {
-            Self.requireNonNegativeEnergyCost(amount, of: word)
+            Self.requireNonNegativeEnergyCost(amount, of: intent, called: word)
         }
         var built = [castAction(intent, named: word, cost: cost, effect: effect)]
         if case .prepared(let book, let learnVia) = cost {
@@ -249,17 +249,20 @@ public struct Spellcasting: GameContent {
     }
 
     /// Rejects a `.energy` cost that would pay the caster back instead of
-    /// draining the pool. Checked once, at registration — a game finds the
-    /// mistake by building rather than by playing to the spell that trips it.
-    /// Unlike `precondition`, `fatalError` keeps its message in a release
+    /// draining the pool. Checked once, at registration — when bootstrap
+    /// evaluates the game's `actions` and this call runs — so a game finds
+    /// the mistake at startup rather than by playing to the spell that trips
+    /// it. Unlike `precondition`, `fatalError` keeps its message in a release
     /// build, which is what a shipped game runs.
-    static func requireNonNegativeEnergyCost(_ amount: Int, of word: GameText.Word) {
+    static func requireNonNegativeEnergyCost(
+        _ amount: Int, of intent: Intent, called word: GameText.Word
+    ) {
         guard amount >= 0 else {
             fatalError(
-                "GnustoSpellcasting: \"\(word)\" was registered with cost: .energy(\(amount)) — "
-                    + "a negative amount pays into the mana pool instead of draining it, so "
-                    + "casting the spell would refill the pool past its maximum. Use a "
-                    + "non-negative amount.")
+                "GnustoSpellcasting: \(intent.raw) (called \"\(word)\") was registered with "
+                    + "cost: .energy(\(amount)) — a negative amount pays into the mana pool "
+                    + "instead of draining it, so casting the spell would refill the pool past "
+                    + "its maximum. Use a non-negative amount.")
         }
     }
 
