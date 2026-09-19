@@ -69,12 +69,21 @@ struct VehicleTests {
     }
 
     @Test func aCarriedEnterableRefuses() async throws {
+        let carriedRefusal = "You can't get into something you're carrying."
         let transcript = try await play(
             HarborGame(),
-            ["take bucket", "enter bucket", "quit"])
+            ["take bucket", "enter bucket", "take bin", "enter stool", "exit", "quit"])
         expectInOrder(
             transcript,
-            ["Taken.", "You can't get into something you're carrying."])
+            ["Taken.", carriedRefusal, "Taken.", carriedRefusal, "You aren't in anything."])
+    }
+
+    @Test func worldStateRejectsCarriedBoarding() {
+        let vehicle = EntityID("vehicle")
+        let room = EntityID("room")
+        var state = WorldState(playerLocation: room, placements: [vehicle: .heldBy(.player)])
+        state.board(vehicle)
+        #expect(state.playerVehicle == nil)
     }
 
     @Test func reachableNestedEnterablesCanBeBoarded() async throws {

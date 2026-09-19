@@ -350,7 +350,7 @@ extension WorldState {
     }
 
     /// Records that the player has boarded `vehicle`. A vehicle whose
-    /// containment chain does not end in the player's room does not take, so
+    /// containment chain reaches the player or a different room does not take, so
     /// the invariant holds on this writer too.
     mutating func board(_ vehicle: EntityID) {
         playerVehicle = vehicle
@@ -376,7 +376,7 @@ extension WorldState {
     /// settles the boarding once on the way in.
     mutating func strandIfSeparated() {
         guard let vehicle = playerVehicle,
-            room(of: vehicle) != playerLocation
+            isPossession(vehicle, of: .player) || room(of: vehicle) != playerLocation
         else { return }
         disembark()
     }

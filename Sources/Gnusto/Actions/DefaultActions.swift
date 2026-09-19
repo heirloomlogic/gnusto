@@ -719,7 +719,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantEnterThat(item.definiteNoun))
         }
         let (currentVehicle, carried) = frame.with {
-            ($0.state.playerVehicle, $0.state.placements[id] == .heldBy(.player))
+            ($0.state.playerVehicle, $0.state.isPossession(id, of: .player))
         }
         if currentVehicle == id {
             try refuse(frame.definition.text.alreadyInVehicle(item.definiteNoun))
