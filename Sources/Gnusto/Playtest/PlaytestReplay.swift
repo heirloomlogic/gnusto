@@ -138,15 +138,26 @@ enum PlaytestReplay {
                 cut it to the prefix that reaches the line you are checking.
                 """)
         }
-        for (offset, line) in commands.enumerated()
-        where TesterInput.transcriptCommand(line) != nil {
-            throw PlaytestError(
-                """
-                Command \(offset + 1), `\(line)`, is a transcript command, and a replay \
-                refuses those — nothing ran. It would start a second recording in the \
-                game's own transcripts directory, outside this harness entirely. Drop the \
-                line: replay hands you the transcript already.
-                """)
+        for (offset, line) in commands.enumerated() {
+            if TesterInput.transcriptCommand(line) != nil {
+                throw PlaytestError(
+                    """
+                    Command \(offset + 1), `\(line)`, is a transcript command, and a replay \
+                    refuses those — nothing ran. It would start a second recording in the \
+                    game's own transcripts directory, outside this harness entirely. Drop the \
+                    line: replay hands you the transcript already.
+                    """)
+            }
+            if line.contains(where: \.isNewline) {
+                throw PlaytestError(
+                    """
+                    Command \(offset + 1) contains a newline, and a replay refuses those — \
+                    nothing ran. The probe's own `commands.txt` is one command per line, so a \
+                    command holding its own newline would be written as two lines that do not \
+                    reproduce what this single command does when fed to the REPL. Send it as \
+                    separate commands instead.
+                    """)
+            }
         }
 
         // A throwaway save directory, deleted on the way out. A replayed

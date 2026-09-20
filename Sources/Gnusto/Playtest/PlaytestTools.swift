@@ -838,7 +838,8 @@ enum PlaytestTools {
                 the same batch. A long result is trimmed to its most recent \
                 turns with a marker naming the recall range that reads back the \
                 rest. script and unscript are refused: the session is already \
-                recording.
+                recording. So is a command containing a newline — send it as \
+                separate commands instead.
                 """,
             inputSchema: [
                 "type": "object",
@@ -848,7 +849,7 @@ enum PlaytestTools {
                         "type": "array",
                         "items": ["type": "string"],
                         "minItems": 1,
-                        "description": "The lines to type, in order.",
+                        "description": "The lines to type, in order — one command per string.",
                     ],
                     "allowPrompts": [
                         "type": "boolean",
@@ -1469,8 +1470,9 @@ enum PlaytestTools {
                         "type": "array",
                         "items": ["type": "string"],
                         "description": .string(
-                            "The lines to type, in order. Empty replays just the opening. "
-                                + "A line starting // or # is a comment and costs no turn."),
+                            "The lines to type, in order — one command per string. Empty "
+                                + "replays just the opening. A line starting // or # is a "
+                                + "comment and costs no turn."),
                     ],
                     "seed": [
                         "type": "integer",

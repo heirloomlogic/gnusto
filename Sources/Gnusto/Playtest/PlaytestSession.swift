@@ -1243,7 +1243,13 @@ actor PlaytestSession {
         recorder?.close()
         recorder = nil
 
-        let lines = turns.map(\.line)
+        // Read back the file `persistCommands()` just wrote, rather than
+        // trusting `turns.map(\.line)`: the proof this tool sells is that
+        // `commands.txt` itself replays to `transcript.txt`, and a command
+        // holding its own newline is exactly the case where the two disagree
+        // — one `Turn` in memory becomes two lines on disk, and only the
+        // second replays the file actually holds.
+        let lines = Self.commandLines(in: try read(commandsURL))
         let recorded = try read(transcriptURL)
         let replayed = await replay(lines, status: footer)
         let plain = await replay(lines, status: nil)
@@ -2030,7 +2036,8 @@ actor PlaytestSession {
         }
     }
 
-    /// Refuses `script` and `unscript` before anything runs.
+    /// Refuses `script`/`unscript` and any command holding a newline, before
+    /// anything runs.
     ///
     /// A session has been recording since it opened, so a second recorder
     /// pointed at the same session is a trap: the two files interleave
@@ -2040,22 +2047,41 @@ actor PlaytestSession {
     /// shift every subsequent index in `commands.txt` away from what the
     /// tester sent.
     ///
+    /// A command containing `\n` is refused for the same reason: `commands.txt`
+    /// is one command per line, so `persistCommands()` writing an embedded
+    /// newline silently turns one recorded `Turn` into two lines on disk —
+    /// `export`'s replay then runs a different command list than the one that
+    /// produced `transcript.txt`. `note` already collapses a newline in its own
+    /// text to a space; `move` refuses instead, since collapsing a command
+    /// would run something the tester never typed.
+    ///
     /// Checked over the whole batch first, so a refusal runs nothing at all
     /// rather than leaving a half-executed batch behind a failed call.
     ///
     /// - Parameter commands: the batch about to run.
     /// - Throws: ``PlaytestError`` naming the offending line and its position.
     private func refuseTranscriptCommands(in commands: [String]) throws {
-        for (offset, line) in commands.enumerated()
-        where TesterInput.transcriptCommand(line) != nil {
-            throw PlaytestError(
-                """
-                Command \(offset + 1), `\(line)`, is a transcript command, and a session \
-                refuses those — nothing in this batch ran. This session has been recording \
-                since it opened, to \(transcriptURL.path); a second recorder over the same \
-                session would split the evidence in two and leave neither file complete. \
-                Drop the line and use `recall` to read the transcript back.
-                """)
+        for (offset, line) in commands.enumerated() {
+            if TesterInput.transcriptCommand(line) != nil {
+                throw PlaytestError(
+                    """
+                    Command \(offset + 1), `\(line)`, is a transcript command, and a session \
+                    refuses those — nothing in this batch ran. This session has been recording \
+                    since it opened, to \(transcriptURL.path); a second recorder over the same \
+                    session would split the evidence in two and leave neither file complete. \
+                    Drop the line and use `recall` to read the transcript back.
+                    """)
+            }
+            if line.contains(where: \.isNewline) {
+                throw PlaytestError(
+                    """
+                    Command \(offset + 1) contains a newline, and a session refuses those — \
+                    nothing in this batch ran. `commands.txt` is one command per line, so a \
+                    command holding its own newline would become two lines the moment it is \
+                    persisted, and replaying those two lines would not reproduce what this \
+                    command alone would do. Send it as separate commands instead.
+                    """)
+            }
         }
     }
 
@@ -2075,6 +2101,21 @@ actor PlaytestSession {
     private func persistCommands() {
         let text = turns.map(\.line).joined(separator: "\n")
         try? Data("\(text)\n".utf8).write(to: commandsURL, options: .atomic)
+    }
+
+    /// Splits `commands.txt`'s own text back into the lines a replay would
+    /// feed a fresh `REPL` — the inverse of what `persistCommands()` writes.
+    ///
+    /// Internal rather than `private`: it is pure and worth testing directly,
+    /// since a well-formed session can no longer put an embedded newline into
+    /// `turns` to exercise `export`'s use of it any other way.
+    ///
+    /// - Parameter text: the file's contents, one trailing newline included.
+    /// - Returns: the lines, in order, with no trailing empty line.
+    static func commandLines(in text: String) -> [String] {
+        var body = text
+        if body.hasSuffix("\n") { body.removeLast() }
+        return body.isEmpty ? [] : body.components(separatedBy: "\n")
     }
 
     /// Reads one of the session's own files.
