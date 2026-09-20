@@ -132,10 +132,11 @@ struct Zork1Tests {
         #expect(!transcript.contains("It is pitch black."))
     }
 
-    /// (#512) The Attic has no `ONBIT` in the mainframe source, like the
-    /// Cellar it stands beside, so it goes dark too: unlit, `up` reports pitch
-    /// black and neither the room nor the rope on its floor prints; lit, the
-    /// room and its contents read exactly as before.
+    /// (#512) `ATTIC` carries no `ONBIT` in Zork I's own ZIL source, so the
+    /// Attic is dark, as the Cellar below the Living Room already is here:
+    /// unlit, `up` from the Kitchen reports pitch black and neither the room
+    /// nor the rope on its floor prints; lit, the room and its contents read
+    /// exactly as before.
     @Test func theAtticIsDark() async throws {
         let unlit = try await play(
             Zork1(),
@@ -145,6 +146,7 @@ struct Zork1Tests {
         #expect(atticUnlit.contains("It is pitch black. You are likely to be eaten by a grue."))
         #expect(!atticUnlit.contains("Attic"))
         #expect(!atticUnlit.contains("coil of rope"))
+        #expect(!atticUnlit.contains("nasty-looking knife"))
 
         let lit = try await play(
             Zork1(),

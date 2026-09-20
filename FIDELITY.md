@@ -2112,8 +2112,8 @@ the committed document rather than out of `dung.355`.
   the fuse that carries it, are the trilogy's invention.
 - **The river is dark.** The mainframe gives `RLIGHTBIT` to the Rainbow Room and
   the End of Rainbow and to nothing else down here — not the five stretches, not
-  either beach, not the Shore, not Aragain Falls. The Attic set the precedent at
-  milestone 1: where the source withholds the light bit, so does this game.
+  either beach, not the Shore, not Aragain Falls. Where the source withholds the
+  light bit, so does this game.
 - **There is no Sandy Cave and no jewelled scarab.** The shovel lies in the Small
   Cave on the western approach, and what four digs in the beach turn up is a
   **statue**, worth 10 to find and 13 to case. The fifth dig collapses the hole,
