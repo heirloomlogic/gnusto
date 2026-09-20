@@ -576,14 +576,22 @@ struct SaveRestoreTests {
         }
 
         let transcript = try await play(
-            StrongboxGame(), ["restore", path, "ring", "wait", "wait", "wait", "look"])
+            StrongboxGame(), ["restore", path, "ring", "wait", "wait", "wait", "look", "score"])
 
         #expect(transcript.contains("Restored."))
         #expect(!transcript.contains("Restore failed."))
-        // Three turns after winding it, the fuse fired — so the move counter
-        // went on counting from the limit rather than standing still.
         #expect(transcript.contains("The bell rings!"))
         #expect(turnOutput(of: "look", in: transcript).contains("Anteroom"))
+        // The counter itself, read back: five turns cost a move apiece from
+        // the limit, and the score sat on the limit through all of them.
+        // `restore` and `score` are meta and cost nothing. Asking the fuse
+        // instead would prove only that it counted down, which it does
+        // without reading `moves` at all.
+        #expect(
+            turnOutput(of: "score", in: transcript)
+                .contains(
+                    "Your score is \(WorldState.counterLimit), "
+                        + "in \(WorldState.counterLimit + 5) turns."))
     }
 
     @Test func tamperedOverflowingScoreIsRejectedBeforeAnAwardCanTrap() async throws {

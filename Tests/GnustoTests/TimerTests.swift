@@ -9,6 +9,27 @@ private func temporarySavePath(_ label: String) -> String {
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
 }
 
+/// A fuse whose count stands past what a save may carry.
+///
+/// The declaration is ordinary arithmetic and the game would play, but the
+/// count rides in every save it writes and the restore guard refuses it —
+/// so the author would meet a bare "Restore failed." on a file their own
+/// game wrote. Bootstrap says so instead.
+private struct OverlongFuseGame: Game {
+    let title = "Overlong Fuse"
+    let intro = "Should never boot."
+
+    let room = Location { name("Room") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+    }
+
+    var timers: [TimedEvent] {
+        fuse("eon", after: WorldState.counterLimit + 1) {}
+    }
+}
+
 struct TimerTests {
     // MARK: - Fuses
 
@@ -226,6 +247,24 @@ struct TimerTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("dup") && text.contains("zero")
+        }
+    }
+
+    /// A fuse count a restore would refuse is named at bootstrap.
+    ///
+    /// `WorldState.counterLimit` bounds every whole number a save carries,
+    /// and a live fuse's count is one of them. Without this, the game boots,
+    /// plays and saves, and only the restore says anything — and what it says
+    /// is "Restore failed.", which names neither the fuse nor the bound.
+    @Test func aFuseCountPastTheSaveBoundIsRefusedAtBootstrap() {
+        #expect {
+            try Bootstrap.build(OverlongFuseGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("fuse \"eon\"")
+                && text.contains("carried by every save")
+                && text.contains("\(WorldState.counterLimit)")
         }
     }
 

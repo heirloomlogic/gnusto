@@ -1240,6 +1240,17 @@ enum Bootstrap {
                             + "at least one turn.")
                     continue
                 }
+                // A live fuse's count rides in every save, and a restore
+                // refuses a count past `WorldState.counterLimit`. Caught here,
+                // that is a diagnostic naming the fuse; left to run, it is a
+                // bare "Restore failed." on a file the game wrote itself.
+                if case .fuse(let turns) = event.kind, turns > WorldState.counterLimit {
+                    ruleDiagnostics.append(
+                        "fuse \"\(name)\" declares after: \(turns); a fuse's count is "
+                            + "carried by every save and may not exceed "
+                            + "\(WorldState.counterLimit).")
+                    continue
+                }
                 // A bare declaration can land on the key another owner's
                 // namespaced declaration produces (the game names a timer
                 // "Clock.roam" while "roam" is contested) — fatal, because

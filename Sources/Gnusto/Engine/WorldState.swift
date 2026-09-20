@@ -501,17 +501,23 @@ extension WorldState {
     /// a file holding `Int.max` in `moves` restored cleanly and then killed the
     /// process on the next turn's increment, one turn after the player had been
     /// told the restore succeeded (#487). Bounding the value at the door
-    /// answers every arithmetic site at once, including sites in game code this
-    /// engine will never see.
+    /// answers every site that reads one of those scalars back, including
+    /// sites in game code this engine will never see. It does not reach a
+    /// number nested inside a `.data` global, which is the author's own
+    /// `Codable` shape and is checked for shape alone.
     ///
     /// Ten to the twelfth, chosen from both sides:
     ///
-    /// - `Int.max` is more than nine million times it, so a sum of the numbers
-    ///   a save carries — and one of them scaled by a factor a game writes in
-    ///   source, such as a clock's minutes per turn — stays clear of the top.
-    /// - A played game cannot reach it, so no save this engine wrote is ever
-    ///   refused by this guard: a move costs a turn, and an award is worth
-    ///   what an author's table says it is worth.
+    /// - `Int.max` is more than nine million times it, so the numbers a save
+    ///   carries can be added together, and the sum scaled by a modest factor,
+    ///   with room left above them. How much room a particular factor leaves
+    ///   is the game's own question: a clock declared at a million minutes per
+    ///   turn spends most of it.
+    /// - The engine's own move counter cannot reach it in play, because a move
+    ///   costs a turn. What a game puts in `score`, in an `Int` global or in a
+    ///   fuse's count is the game's own arithmetic, and a game that writes a
+    ///   number past the bound finds that save refused the next time it is
+    ///   restored.
     ///
     /// It bounds what a save may *carry*, not what a rule may compute. A game
     /// that runs a number past this bound during play is never stopped
@@ -624,7 +630,10 @@ extension WorldState {
             guard global.accepts(value) else { return false }
             // The magnitude the type check cannot ask about. A rule reads an
             // `Int` global and does arithmetic with it exactly as the engine
-            // does with its own counters, so the same bound applies.
+            // does with its own counters, so the same bound applies. The case
+            // is read from the stored value rather than from the declared
+            // type, so a global of some other type that boxes itself as an
+            // `.int` — `GnustoClock`'s `TimeOfDay` does — is bounded too.
             if case .int(let number) = value, !Self.isInRange(number) { return false }
         }
 
