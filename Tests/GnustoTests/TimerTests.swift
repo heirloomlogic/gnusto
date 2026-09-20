@@ -254,10 +254,11 @@ struct TimerTests {
 
     /// A fuse count a restore would refuse is named at bootstrap.
     ///
-    /// `WorldState.counterLimit` bounds every whole number a save carries,
-    /// and a live fuse's count is one of them. Without this, the game boots,
-    /// plays and saves, and only the restore says anything — and what it says
-    /// is "Restore failed.", which names neither the fuse nor the bound.
+    /// `WorldState.counterLimit` bounds every whole number a save carries, and
+    /// a running fuse's count is one of them. What this proves is that the
+    /// declaration alone is enough: the count is refused where it is written,
+    /// in a diagnostic naming the fuse and the bound, rather than left for a
+    /// "Restore failed." that names neither.
     @Test func aFuseCountPastTheSaveBoundIsRefusedAtBootstrap() {
         #expect {
             try Bootstrap.build(OverlongFuseGame())
