@@ -98,7 +98,9 @@ public struct DangerousDark: GameContent {
     ///
     /// **The death this daemon deals is the lingering one, and the line has to
     /// say so.** The first dark turn only warns, and the dice wait for dark turn
-    /// `graceTurns + 2` — the third dark turn at the default grace of one. So a
+    /// `graceTurns + 2` — the third dark turn at the default grace of one, and
+    /// never earlier than dark turn 2, because dark turn 1 is the warning's own
+    /// arm however low `graceTurns` goes. So a
     /// death here lands on a turn spent lingering in a dark the player has
     /// already been warned about, rather than on the turn they walked into it —
     /// which is the distinction Zork draws with two separate sentences. `V-WALK`
