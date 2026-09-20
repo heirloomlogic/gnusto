@@ -291,6 +291,7 @@ struct Zork1ProseTests {
             [
                 "north", "east", "open window", "west",  // → Kitchen
                 "take sack", "take bottle",
+                "west", "take lantern", "turn on lantern", "east",  // Living Room, lit → Kitchen
                 "up",  // → Attic
                 "take rope", "take knife",
                 "down", "west", "take sword",  // → Kitchen → Living Room
@@ -335,6 +336,7 @@ struct Zork1ProseTests {
             [
                 "north", "east", "open window", "west",  // → Kitchen
                 "x table", "take sack", "look",
+                "west", "take lantern", "turn on lantern", "east",  // Living Room, lit → Kitchen
                 "up",  // → Attic
                 "x table", "take knife", "look",
             ])

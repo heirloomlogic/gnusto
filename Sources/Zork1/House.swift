@@ -37,6 +37,7 @@ struct ZorkHouse: GameContent {
     let attic = Location {
         name("Attic")
         description(Prose.attic)
+        dark
     }
 
     let cellar = Location {

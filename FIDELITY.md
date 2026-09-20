@@ -1742,8 +1742,6 @@ map, taken from `dung.355` and checked room by room against the exit counts in
 - The **Gallery and Studio hang off the crawlway**, so the painting can be had
   without ever meeting the troll — where Zork I puts the Gallery behind him. The
   Studio's doors are north and northwest, not south.
-- The **Attic is dark.** The mainframe gives it no light bit, so the lamp has to go
-  up the stairs.
 - The **trap door bars itself for good** on the first descent, with nobody in the
   story to blame and no negotiating from below ("The door is locked from above").
   Zork I makes it the thief's doing and frees it when he falls. The Studio chimney

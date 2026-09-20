@@ -132,6 +132,33 @@ struct Zork1Tests {
         #expect(!transcript.contains("It is pitch black."))
     }
 
+    /// (#512) The Attic has no `ONBIT` in the mainframe source, like the
+    /// Cellar it stands beside, so it goes dark too: unlit, `up` reports pitch
+    /// black and neither the room nor the rope on its floor prints; lit, the
+    /// room and its contents read exactly as before.
+    @Test func theAtticIsDark() async throws {
+        let unlit = try await play(
+            Zork1(),
+            ["south", "east", "open window", "west", "up"])
+
+        let atticUnlit = turnOutput(ofLast: "up", in: unlit)
+        #expect(atticUnlit.contains("It is pitch black. You are likely to be eaten by a grue."))
+        #expect(!atticUnlit.contains("Attic"))
+        #expect(!atticUnlit.contains("coil of rope"))
+
+        let lit = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west",
+                "west", "take lantern", "turn on lantern", "east",
+                "up",
+            ])
+
+        let atticLit = turnOutput(ofLast: "up", in: lit)
+        #expect(atticLit.contains("Attic"))
+        #expect(atticLit.contains("A large coil of rope is lying in the corner."))
+    }
+
     /// The other way out of the sealed cellar: a lightless dash to the lit
     /// Gallery and up the chimney. The dark rooms stay pitch black; the
     /// exits still work.
@@ -753,7 +780,9 @@ struct Zork1Tests {
                 "east", "south", "east", "south", "southeast", "down", "down",
                 "north", "south", "up", "up", "northwest", "west", "north",
                 "north", "up", "down", "south", "east", "open window", "west",
-                "up", "down", "west", "push rug", "open trap door", "down",
+                "west", "take lantern", "turn on lantern", "east", "up", "down",
+                "turn off lantern",
+                "west", "push rug", "open trap door", "down",
             ])
 
         expectInOrder(
