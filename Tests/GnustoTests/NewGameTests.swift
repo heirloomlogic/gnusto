@@ -472,6 +472,41 @@ struct NewGameTests {
         }
     }
 
+    /// An early match must not close the pipe while the released tool is still
+    /// being written: with pipefail, SIGPIPE looks like missing shim support.
+    @Test func aLargeReleasedToolDoesNotProduceAStalePinWarning() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fakeBin = root.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: fakeBin, withIntermediateDirectories: true)
+        let released = root.appendingPathComponent("released")
+        try ("GNUSTO_PACKAGE_PATH\n" + String(repeating: "# padding\n", count: 100_000))
+            .write(to: released, atomically: true, encoding: .utf8)
+        let git = fakeBin.appendingPathComponent("git")
+        try #"""
+        #!/bin/sh
+        case "$1" in
+          tag) echo 99.0.0 ;;
+          show)
+            case "$2" in
+              *:Package.swift) echo '.trait(name: "Playtest")' ;;
+              *) cat "$GNUSTO_TEST_RELEASED_TOOL" ;;
+            esac ;;
+          *) exit 1 ;;
+        esac
+        """#.write(to: git, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: git.path)
+        let generated = try Self.run(
+            Self.packageRoot.appendingPathComponent("bin/new-game"),
+            ["Zwank", root.appendingPathComponent("Zwank").path],
+            environment: [
+                "PATH": fakeBin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? ""),
+                "GNUSTO_TEST_RELEASED_TOOL": released.path,
+            ])
+        #expect(generated.status == 0, "\(generated.stderr)")
+        #expect(!generated.stdout.contains("predates shim support"), "\(generated.stdout)")
+    }
+
     /// A `--dep-path` at a maintainer's checkout drags the maintainer's dev tooling
     /// into the author's build.
     ///
