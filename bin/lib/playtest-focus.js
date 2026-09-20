@@ -232,9 +232,18 @@ function routePrefix(name, dir) {
   }
 }
 
+/// The scalars Swift's `Character.isNewline` is true for, which is the check
+/// `PlaytestRoute.load` runs on a route's commands. Written out here so the two
+/// readers refuse the same bytes: a narrower class passes a file the engine would
+/// throw on, and a session opened on a route this one blessed would not start.
+/// A CR-LF pair needs no case of its own — its CR matches.
+const NEWLINE = /[\n\u000b\f\r\u0085\u2028\u2029]/
+
 /// One route file, read and checked the way the engine checks it at `open`
-/// (`PlaytestRoute.load`): a whole-number seed of zero or more, and a commands array
-/// with at least one command in it.
+/// (`PlaytestRoute.load`): a whole-number seed of zero or more, then every element of
+/// `"commands"` as written — a string, holding no newline — and then at least one
+/// command left once the blank elements are dropped. Same checks in that order there,
+/// so a file this one blesses is not one a session refuses to start on.
 ///
 /// The one parser, because `bin/playtest-preflight` decides whether a route can be
 /// handed out and `bin/playtest-routes` decides whether it can be replayed, and two
@@ -261,32 +270,42 @@ function loadRoute(name, dir) {
     return { name, error: `${name}.json declares no usable "seed"` }
   }
   const rawCommands = Array.isArray(m.commands) ? m.commands : []
-  // Every element has to be a string before any of them are trimmed or filtered —
-  // coercing a number or an object with `String(c)` would play it as a command
-  // nobody wrote, and dropping it silently would report "declares no commands" for
-  // a file that is not empty. `PlaytestRoute.load` refuses the same way.
-  const badIndex = rawCommands.findIndex((c) => typeof c !== 'string')
-  if (badIndex !== -1) {
-    return {
-      name,
-      error: `${name}.json command ${badIndex + 1} is ${describeNonString(rawCommands[badIndex])}`
-        + ', not a string — every element of "commands" must be a string',
+  // Every element is checked before any of them are trimmed or filtered, and the
+  // index a diagnostic names is the element's place in the manifest. Coercing a
+  // number or an object with `String(c)` would play it as a command nobody wrote,
+  // and dropping it silently would report "declares no commands" for a file that is
+  // not empty.
+  //
+  // The newline check reads the element as written rather than its trimmed
+  // survivor, because `trim()` strips a line terminator and the engine's
+  // `trimmingCharacters(in: .whitespaces)` does not: a route whose command ended in
+  // `\n` passed here and was refused at `open`. `NEWLINE` is Swift's
+  // `Character.isNewline` written out, which is the class that reader tests.
+  //
+  // A newline matters because a route's commands are later written one per line
+  // (`bin/lib/playtest-replay.js` joins them with `\n`), so a command holding its
+  // own newline would become two lines and replay something other than what this
+  // route plays.
+  for (let i = 0; i < rawCommands.length; i += 1) {
+    const written = rawCommands[i]
+    if (typeof written !== 'string') {
+      return {
+        name,
+        error: `${name}.json command ${i + 1} is ${describeNonString(written)}`
+          + ', not a string — every element of "commands" must be a string',
+      }
+    }
+    if (NEWLINE.test(written)) {
+      return {
+        name,
+        error: `${name}.json command ${i + 1} contains a newline — split it into`
+          + ' separate commands instead',
+      }
     }
   }
   const commands = rawCommands.map((c) => c.trim()).filter((c) => c.length > 0)
   if (!commands.length) {
     return { name, error: `${name}.json declares no "commands" array with a command in it` }
-  }
-  // A route's commands are later written one per line (`bin/lib/playtest-replay.js`
-  // joins them with `\n`), so a command holding its own newline would become two
-  // lines and replay something other than what this route plays.
-  const newlineIndex = commands.findIndex((c) => /[\n\r\u2028\u2029]/.test(c))
-  if (newlineIndex !== -1) {
-    return {
-      name,
-      error: `${name}.json command ${newlineIndex + 1} contains a newline — split it into`
-        + ' separate commands instead',
-    }
   }
   return {
     name, commands, seed: m.seed, landing: m.landing || null, derivedFrom: m.derivedFrom,

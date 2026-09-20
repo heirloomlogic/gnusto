@@ -127,20 +127,43 @@ struct PlaytestRoute: Sendable {
                 """)
         }
 
-        // Every element has to be a string before any of them are trimmed or
-        // filtered — `compactMap` over `stringValue` used to drop a number, an
+        // Every element is checked before any of them are trimmed or filtered,
+        // and the index a diagnostic names is the element's place in the
+        // manifest. `compactMap` over `stringValue` used to drop a number, an
         // object or `null` silently, which plays a shortened route without a
         // word and, when every element is non-string, reports "holds no
-        // commands", which is untrue of the file. Checked over the whole array
-        // first, so a bad manifest is refused rather than partially played.
+        // commands", which is untrue of the file.
+        //
+        // The newline check is here, over the element as written, for the same
+        // reason and for one more: `bin/lib/playtest-focus.js` reads these files
+        // too, and a check either reader ran over its own trimmed survivors
+        // would be a check the two disagree about — JavaScript's `trim()` strips
+        // a line terminator and `trimmingCharacters(in: .whitespaces)` does not,
+        // so a trailing newline was refused here and accepted there. Both now
+        // test the raw element, against the same list of scalars.
+        //
+        // A newline matters because a route's commands go straight into a
+        // session's `turns` — see `PlaytestSession.init` — which never passes
+        // through `refuseTranscriptCommands`, the check `move` runs on every
+        // batch. `commands.txt` is one command per line, so a command holding
+        // its own newline becomes two lines the moment it is persisted, and
+        // replaying those two lines would not reproduce what this route plays.
         let raw = manifest["commands"]?.arrayValue ?? []
         for (offset, value) in raw.enumerated() {
-            guard value.stringValue != nil else {
+            guard let written = value.stringValue else {
                 throw PlaytestError(
                     """
                     Route "\(name)" command \(offset + 1) is \(describe(value)), not a \
                     string: \(url.path) needs every element of "commands" to be a string. \
                     Nothing ran.
+                    """)
+            }
+            guard !written.contains(where: \.isNewline) else {
+                throw PlaytestError(
+                    """
+                    Route "\(name)" command \(offset + 1) contains a newline: \(url.path) \
+                    needs one command per element. Nothing ran. Split it into separate \
+                    commands instead.
                     """)
             }
         }
@@ -158,22 +181,6 @@ struct PlaytestRoute: Sendable {
                 """
                 Route "\(name)" holds no commands: \(url.path) needs a "commands" array \
                 with at least one command in it. Nothing ran.
-                """)
-        }
-
-        // A route's commands go straight into a session's `turns` — see
-        // `PlaytestSession.init` — which never passes through
-        // `refuseTranscriptCommands`, the check `move` runs on every batch. A
-        // newline would do here exactly what it does there: `commands.txt` is
-        // one command per line, so a command holding its own newline becomes
-        // two lines the moment it is persisted, and replaying those two lines
-        // would not reproduce what this route plays.
-        for (offset, command) in commands.enumerated() where command.contains(where: \.isNewline) {
-            throw PlaytestError(
-                """
-                Route "\(name)" command \(offset + 1) contains a newline: \(url.path) \
-                needs one command per element. Nothing ran. Split it into separate \
-                commands instead.
                 """)
         }
 

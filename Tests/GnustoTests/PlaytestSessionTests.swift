@@ -1394,6 +1394,57 @@ struct PlaytestSessionTests {
         #expect(opened == 0)
     }
 
+    /// A command that merely *ends* in a newline is refused too, and this is the
+    /// case the two readers used to disagree about: `bin/lib/playtest-focus.js`
+    /// trimmed before it looked, and JavaScript's `trim()` strips a line
+    /// terminator where `trimmingCharacters(in: .whitespaces)` leaves it, so
+    /// `bin/playtest-routes verify` passed a file `open` then threw on. Both now
+    /// read the element as written.
+    @Test func aRouteCommandEndingInANewlineIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "trailing", "{\"seed\":0,\"commands\":[\"west\\n\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "trailing", seed: 0, start: "trailing")
+        }
+        #expect(refusal?.description.contains("command 1 contains a newline") == true)
+    }
+
+    /// The other half of that disagreement: `Character.isNewline` is true for
+    /// U+0085 and U+000B as well as the line feed, and the JavaScript reader was
+    /// testing a narrower class. Both now test this one.
+    @Test func aRouteCommandHoldingAnExoticNewlineIsRefused() async throws {
+        for (label, escape) in [("nel", "\\u0085"), ("vtab", "\\u000b")] {
+            let harness = try Harness(OperaHouse())
+            try harness.writeRawRoute(
+                label,
+                "{\"seed\":0,\"commands\":[\"look\(escape)north\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+            let refusal = await #expect(throws: PlaytestError.self) {
+                try await harness.sessions.open(label: label, seed: 0, start: label)
+            }
+            #expect(refusal?.description.contains("command 1 contains a newline") == true)
+        }
+    }
+
+    /// The index a refusal names counts the manifest's elements, not the ones
+    /// that survive the blank filter — a tester told "command 1" about the
+    /// second element would edit the wrong line. The non-string refusal has
+    /// always counted that way; the newline refusal used to count over the
+    /// filtered list.
+    @Test func aNewlineRefusalCountsTheManifestsOwnElements() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "blankfirst",
+            "{\"seed\":0,\"commands\":[\"\",\"west\\nnorth\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "blankfirst", seed: 0, start: "blankfirst")
+        }
+        #expect(refusal?.description.contains("command 2 contains a newline") == true)
+    }
+
     /// Over the tool table: the receipt names the route and how many lines it
     /// took, because every index this session reports counts from that number
     /// and a tester whose first command comes back numbered 3 has to know why.

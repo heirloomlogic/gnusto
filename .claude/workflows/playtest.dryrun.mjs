@@ -10,11 +10,12 @@
 //
 // Prompts land in /tmp/prompts.txt. Grep them: the firewall is a property of the
 // generated text, and this is the only place it can be asserted cheaply.
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 // The round's own ledger parser, imported rather than re-implemented. Node reads
 // the CommonJS module's static `module.exports` and gives ESM the named binding.
-import { LANDING_PROBE, ledgerScan, routeManifests, routePrefix, routesDir } from '../../bin/lib/playtest-focus.js'
+import { LANDING_PROBE, ledgerScan, loadRoute, routeManifests, routePrefix, routesDir } from '../../bin/lib/playtest-focus.js'
 const src = readFileSync('.claude/workflows/playtest.js', 'utf8').replace('export const meta =', 'const meta =')
 
 const prompts = []
@@ -1138,6 +1139,39 @@ for (const { game, routes } of stores.slice(0, 1)) {
       `routePrefix("${bad}") does not refuse with the directory it looked in: ${JSON.stringify(r)}`
     )
   }
+}
+
+// ---------------------------------------------------------------------------
+// The files this reader has to refuse, because the engine refuses them
+// ---------------------------------------------------------------------------
+//
+// `loadRoute` and `PlaytestRoute.load` read the same manifests, and a file one
+// blesses and the other throws on is a deep start that passes
+// `bin/playtest-routes verify` and then will not open. The two that got past this
+// reader were a command ending in `\n` — `trim()` strips a line terminator and
+// `trimmingCharacters(in: .whitespaces)` does not, so the check ran on a string
+// with no newline left in it — and an interior U+0085, which is a newline to
+// `Character.isNewline` and was not in the class tested here.
+//
+// Hand-written fixtures, unlike the committed store above, because the point is a
+// file no store may contain: a route this bad cannot be committed, so the only way
+// to run the refusal is to write one. `PlaytestSessionTests` holds the matching
+// fixtures for the Swift reader.
+const routeRefusals = [
+  ['a command ending in a newline', { seed: 0, commands: ['north\n'] }, 'command 1 contains a newline'],
+  ['an interior U+0085', { seed: 0, commands: ['look\u0085north'] }, 'command 1 contains a newline'],
+  ['an interior vertical tab', { seed: 0, commands: ['look\u000bnorth'] }, 'command 1 contains a newline'],
+  ['a newline after a blank element', { seed: 0, commands: ['', 'look\nnorth'] }, 'command 2 contains a newline'],
+  ['a number after a blank element', { seed: 0, commands: ['', 99] }, 'command 2 is a number'],
+]
+const refusalDir = mkdtempSync(join(tmpdir(), 'gnusto-routes-'))
+for (const [what, manifest, expected] of routeRefusals) {
+  writeFileSync(join(refusalDir, 'fixture.json'), JSON.stringify(manifest))
+  const read = loadRoute('fixture', refusalDir)
+  check(
+    String(read.error || '').includes(expected),
+    `loadRoute accepts ${what}, which the engine refuses at open: ${JSON.stringify(read)}`
+  )
 }
 
 // ---------------------------------------------------------------------------
