@@ -50,7 +50,9 @@ public typealias TopicBuilder = GnustoBuilder<TopicEntry>
 /// - Parameters:
 ///   - keywords: the subjects this row answers to. Each is normalized exactly
 ///     as the parser normalizes player input, so articles, capitals and
-///     punctuation don't matter.
+///     punctuation don't matter. At least one must normalize to a non-empty
+///     word list, or this traps at declaration time — an empty keyword, or
+///     none at all, would build a row that could never match anything.
 ///   - intents: restrict the row to some of the table's intents — `only:
 ///     [.tell]` for something the player can volunteer but not ask about.
 ///     Defaults to the whole table.
@@ -84,8 +86,10 @@ public func topic(
     id: String? = nil,
     reply line: String
 ) -> TopicEntry {
-    TopicEntry(
-        keywords: keywords.map(Topic.normalize),
+    let normalized = keywords.map(Topic.normalize)
+    TopicEntry.requireUsableKeyword(normalized)
+    return TopicEntry(
+        keywords: normalized,
         intents: intents.map(Set.init),
         required: required,
         barred: barred,
@@ -105,7 +109,9 @@ public func topic(
 /// the turn unless the body says so.
 ///
 /// - Parameters:
-///   - keywords: the subjects this row answers to.
+///   - keywords: the subjects this row answers to. At least one must
+///     normalize to a non-empty word list, or this traps at declaration
+///     time, the same rule the `reply:` form of `topic` enforces.
 ///   - intents: restrict the row to some of the table's intents.
 ///   - required: a fact the player must already have learned.
 ///   - barred: a fact that retires this row once learned.
@@ -130,8 +136,10 @@ public func topic(
     id: String? = nil,
     perform body: @escaping @Sendable () throws -> Void
 ) -> TopicEntry {
-    TopicEntry(
-        keywords: keywords.map(Topic.normalize),
+    let normalized = keywords.map(Topic.normalize)
+    TopicEntry.requireUsableKeyword(normalized)
+    return TopicEntry(
+        keywords: normalized,
         intents: intents.map(Set.init),
         required: required,
         barred: barred,
@@ -144,6 +152,21 @@ public func topic(
 }
 
 extension TopicEntry {
+    /// Traps when none of a row's keywords survive normalization, so
+    /// `topic(reply:)` and `topic("", reply:)` fail loudly at declaration
+    /// time instead of building a row `answers(_:for:knowing:)` can never
+    /// match — a silent no-op that never fires and nothing reports.
+    ///
+    /// - Parameter keywords: the row's keywords, already normalized.
+    static func requireUsableKeyword(_ keywords: [[String]]) {
+        // Unlike precondition, fatalError preserves the diagnostic in Release builds.
+        guard keywords.contains(where: { !$0.isEmpty }) else {
+            fatalError(
+                "GnustoConversation: topic(...) needs at least one keyword that isn't empty after normalization."
+            )
+        }
+    }
+
     /// Whether this row answers `topic` for `intent`, given what the player
     /// knows. Keyword matching is order-insensitive: every word of some
     /// keyword must appear among the words typed.

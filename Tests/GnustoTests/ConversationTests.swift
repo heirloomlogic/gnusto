@@ -568,6 +568,32 @@ struct ConversationTests {
             ])
         #expect(transcript.contains("I was in the pantry all evening, sir."))
     }
+
+    // MARK: - Declaration-time validation
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// `topic(reply:)` with no keywords, `topic("", reply:)` with a blank
+    /// one, and a keyword that normalizes to nothing (#486) would each build
+    /// a row `answers(_:for:knowing:)` can never match — a silent no-op, not
+    /// the catch-all an author reaching for the bare form might expect.
+    @Test(
+        "a topic row with no usable keyword traps at declaration",
+        arguments: InvalidTopicKeywords.allCases)
+    func aTopicRowWithNoUsableKeywordTrapsAtDeclaration(
+        _ invalid: InvalidTopicKeywords
+    ) async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            [invalid = invalid as InvalidTopicKeywords] in
+            invalid.make()
+        }
+        expectTrap(result, says: "topic(...) needs at least one keyword")
+    }
+
+    #endif
 }
 
 /// How many times `needle` appears in `haystack`. The suite has
@@ -575,6 +601,35 @@ struct ConversationTests {
 private func occurrences(of needle: String, in haystack: String) -> Int {
     haystack.components(separatedBy: needle).count - 1
 }
+
+// The platform policy for exit tests is in `Package.swift`.
+#if GNUSTO_EXIT_TESTS
+
+/// The ways a `topic(...)` row can end up with no usable keyword (#486): no
+/// keywords at all, one blank string, and one that is punctuation and
+/// normalizes away entirely. Covers both the `reply:` and `perform:` forms,
+/// since the check runs ahead of the shared construction path.
+enum InvalidTopicKeywords: String, CaseIterable, Codable, Sendable {
+    case none
+    case blank
+    case punctuationOnly
+    case performForm
+
+    func make() {
+        switch self {
+        case .none:
+            _ = topic(reply: "\"The catch-all that never fires.\"")
+        case .blank:
+            _ = topic("", reply: "\"The empty one.\"")
+        case .punctuationOnly:
+            _ = topic("!!!", reply: "\"Punctuation only.\"")
+        case .performForm:
+            _ = topic(perform: {})
+        }
+    }
+}
+
+#endif
 
 // MARK: - Synthetic fixtures
 
