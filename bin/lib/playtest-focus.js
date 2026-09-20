@@ -166,6 +166,18 @@ function routesDir(game) {
 /// asks separately because it is naming a file nothing has read yet.
 const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s) && s.length <= 64
 
+/// A short phrase naming a JSON value's shape, for the same diagnostic
+/// `PlaytestRoute.load`'s `describe(_:)` writes — never called on a string, since
+/// every call site has already ruled that one out.
+function describeNonString(value) {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'an array'
+  if (typeof value === 'object') return 'an object'
+  if (typeof value === 'boolean') return `a boolean (${value})`
+  if (typeof value === 'number') return `a number (${value})`
+  return `a ${typeof value}`
+}
+
 /// The command the harness appends after a route so that whoever reads the
 /// transcript opens on a frame rather than on `Taken.`
 ///
@@ -248,11 +260,33 @@ function loadRoute(name, dir) {
   if (!Number.isInteger(m.seed) || m.seed < 0) {
     return { name, error: `${name}.json declares no usable "seed"` }
   }
-  const commands = Array.isArray(m.commands)
-    ? m.commands.map((c) => String(c).trim()).filter((c) => c.length > 0)
-    : []
+  const rawCommands = Array.isArray(m.commands) ? m.commands : []
+  // Every element has to be a string before any of them are trimmed or filtered —
+  // coercing a number or an object with `String(c)` would play it as a command
+  // nobody wrote, and dropping it silently would report "declares no commands" for
+  // a file that is not empty. `PlaytestRoute.load` refuses the same way.
+  const badIndex = rawCommands.findIndex((c) => typeof c !== 'string')
+  if (badIndex !== -1) {
+    return {
+      name,
+      error: `${name}.json command ${badIndex + 1} is ${describeNonString(rawCommands[badIndex])}`
+        + ', not a string — every element of "commands" must be a string',
+    }
+  }
+  const commands = rawCommands.map((c) => c.trim()).filter((c) => c.length > 0)
   if (!commands.length) {
     return { name, error: `${name}.json declares no "commands" array with a command in it` }
+  }
+  // A route's commands are later written one per line (`bin/lib/playtest-replay.js`
+  // joins them with `\n`), so a command holding its own newline would become two
+  // lines and replay something other than what this route plays.
+  const newlineIndex = commands.findIndex((c) => /[\n\r\u2028\u2029]/.test(c))
+  if (newlineIndex !== -1) {
+    return {
+      name,
+      error: `${name}.json command ${newlineIndex + 1} contains a newline — split it into`
+        + ' separate commands instead',
+    }
   }
   return {
     name, commands, seed: m.seed, landing: m.landing || null, derivedFrom: m.derivedFrom,

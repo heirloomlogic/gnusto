@@ -90,7 +90,9 @@ struct PlaytestRoute: Sendable {
     ///   - environment: the process environment, for `GNUSTO_PLAYTEST_ROUTES`.
     /// - Throws: ``PlaytestError`` naming the directory it looked in and the
     ///   routes that are in it, for a name that isn't there, a file that is
-    ///   unreadable or not JSON, one with no seed, and one with no commands.
+    ///   unreadable or not JSON, one with no seed, one with no commands, one
+    ///   whose `"commands"` array holds something other than a string, and one
+    ///   whose commands hold a newline.
     /// - Returns: the route.
     static func load(
         named name: String, game: String, environment: [String: String]
@@ -125,11 +127,29 @@ struct PlaytestRoute: Sendable {
                 """)
         }
 
+        // Every element has to be a string before any of them are trimmed or
+        // filtered — `compactMap` over `stringValue` used to drop a number, an
+        // object or `null` silently, which plays a shortened route without a
+        // word and, when every element is non-string, reports "holds no
+        // commands", which is untrue of the file. Checked over the whole array
+        // first, so a bad manifest is refused rather than partially played.
+        let raw = manifest["commands"]?.arrayValue ?? []
+        for (offset, value) in raw.enumerated() {
+            guard value.stringValue != nil else {
+                throw PlaytestError(
+                    """
+                    Route "\(name)" command \(offset + 1) is \(describe(value)), not a \
+                    string: \(url.path) needs every element of "commands" to be a string. \
+                    Nothing ran.
+                    """)
+            }
+        }
+
         // Blank lines are dropped; a `//` or `#` line is kept, because the session
         // records it as a comment that costs no turn and it is how a route explains
         // itself in the operator's transcript.
         let commands =
-            (manifest["commands"]?.arrayValue ?? [])
+            raw
             .compactMap { $0.stringValue }
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -141,12 +161,46 @@ struct PlaytestRoute: Sendable {
                 """)
         }
 
+        // A route's commands go straight into a session's `turns` — see
+        // `PlaytestSession.init` — which never passes through
+        // `refuseTranscriptCommands`, the check `move` runs on every batch. A
+        // newline would do here exactly what it does there: `commands.txt` is
+        // one command per line, so a command holding its own newline becomes
+        // two lines the moment it is persisted, and replaying those two lines
+        // would not reproduce what this route plays.
+        for (offset, command) in commands.enumerated() where command.contains(where: \.isNewline) {
+            throw PlaytestError(
+                """
+                Route "\(name)" command \(offset + 1) contains a newline: \(url.path) \
+                needs one command per element. Nothing ran. Split it into separate \
+                commands instead.
+                """)
+        }
+
         return PlaytestRoute(
             name: name,
             commands: commands,
             seed: UInt64(declared),
             derivedFrom: manifest["derivedFrom"]?.stringValue,
             landingRoom: manifest["landing"]?["room"]?.stringValue)
+    }
+
+    /// A short phrase naming a JSON value's shape, for a diagnostic pointing at
+    /// where a route manifest held something other than the string it needed.
+    ///
+    /// - Parameter value: the value found.
+    /// - Returns: a phrase like `"a number (99)"` or `"an object"`, never the
+    ///   string case — every call site has already ruled that one out.
+    private static func describe(_ value: JSONValue) -> String {
+        switch value {
+        case .null: return "null"
+        case .bool(let flag): return "a boolean (\(flag))"
+        case .integer(let whole): return "a number (\(whole))"
+        case .double(let real): return "a number (\(real))"
+        case .string(let text): return "a string (\"\(text)\")"
+        case .array: return "an array"
+        case .object: return "an object"
+        }
     }
 
     /// Where this game's routes live.
