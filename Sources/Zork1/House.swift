@@ -55,11 +55,6 @@ struct ZorkHouse: GameContent {
         adjectives: "kitchen", "narrow"
     ) {
         openable
-        // Empty means "nothing special about the …", which is exactly what
-        // `KITCHEN-WINDOW-F` falls through to once the flag is set: the engine
-        // supplies `text.nothingSpecial` for a description that is "", so the
-        // stock line is not copied here to drift from its template.
-        description(when: \.isOpen, "", otherwise: Prose.kitchenWindow)
     }
 
     let sack = Item {
@@ -68,7 +63,7 @@ struct ZorkHouse: GameContent {
         // (#407) The listing line names hot peppers; the pepper nouns are the
         // sack's smell, not a thing apart.
         synonyms("peppers", "pepper")
-        description(Prose.sack)
+        firstSight(Prose.sackFirstSight)
         container
         openable
         startsOpen
@@ -77,18 +72,24 @@ struct ZorkHouse: GameContent {
     let garlic = Item {
         name("clove of garlic")
         adjectives("clove")
+        synonyms("clove")
         description(Prose.garlic)
     }
 
+    /// No listing line. `LUNCH`'s only sentence is an `LDESC`, and the sandwich
+    /// sits inside the sack on the kitchen table — a level below anything a room
+    /// description walks — so the line could print on no turn. See `FIDELITY.md`.
     let lunch = Item {
         name("lunch")
-        description(Prose.lunch)
+        adjectives("hot", "pepper")
+        synonyms("food", "sandwich", "dinner")
     }
 
     let bottle = Item {
         name("glass bottle")
-        adjectives("glass")
-        description(Prose.bottle)
+        adjectives("glass", "clear")
+        synonyms("container")
+        firstSight(Prose.bottleFirstSight)
         container
         openable
         transparent
@@ -97,6 +98,7 @@ struct ZorkHouse: GameContent {
     let water = Item {
         name("quantity of water")
         adjectives("quantity")
+        synonyms("quantity", "liquid", "h2o")
         description(Prose.water)
     }
 
@@ -137,6 +139,13 @@ struct ZorkHouse: GameContent {
 
     /// (#407) Named by `Prose.attic`.
     let atticStairway = Item.scenery("stairway", description: Prose.atticStairway)
+
+    /// `ATTIC-TABLE`. The room description does not name it — the source marks
+    /// it `NDESCBIT` — but the knife's listing line does, so the noun has to
+    /// answer. The knife stands on it, which is what makes that line true.
+    let atticTable = Item.scenery("table", description: Prose.atticTable) {
+        surface
+    }
 
     /// (#407) Named by `Prose.cellar`.
     let cellarPassageway = Item.scenery(
@@ -179,7 +188,7 @@ struct ZorkHouse: GameContent {
     let sword = Item {
         name("elvish sword")
         adjectives("elvish")
-        description(Prose.sword)
+        firstSight(Prose.swordFirstSight)
         trait(.weapon, true)
         trait(.weaponStrength, 3)  // a keen elvish blade — best of the hero's arms
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
@@ -265,13 +274,13 @@ struct ZorkHouse: GameContent {
     let rope = Item {
         name("coil of rope")
         adjectives("coil")
-        description(Prose.rope)
+        firstSight(Prose.ropeFirstSight)
     }
 
     let knife = Item {
         name("nasty knife")
         adjectives("nasty")
-        description(Prose.knife)
+        firstSight(Prose.knifeFirstSight)
         trait(.weapon, true)
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }
@@ -288,10 +297,10 @@ struct ZorkHouse: GameContent {
         // The cellar's north passage into the Troll Room crosses into
         // ZorkCellar's territory, so the host wires it (Zork1.map).
 
-        sack.starts(in: kitchen)
+        sack.starts(on: kitchenTable)
         garlic.starts(inside: sack)
         lunch.starts(inside: sack)
-        bottle.starts(in: kitchen)
+        bottle.starts(on: kitchenTable)
         water.starts(inside: bottle)
         kitchenTable.starts(in: kitchen)
         kitchenStaircase.starts(in: kitchen)
@@ -301,6 +310,7 @@ struct ZorkHouse: GameContent {
         livingRoomDoor.starts(in: livingRoom)
         gothicLettering.starts(in: livingRoom)
         atticStairway.starts(in: attic)
+        atticTable.starts(in: attic)
         cellarPassageway.starts(in: cellar)
         cellarCrawlway.starts(in: cellar)
         cellarRamp.starts(in: cellar)
@@ -312,7 +322,7 @@ struct ZorkHouse: GameContent {
         trophyCase.starts(in: livingRoom)
 
         rope.starts(in: attic)
-        knife.starts(in: attic)
+        knife.starts(on: atticTable)
 
         // The canary rides sealed inside the egg, but the egg lives in
         // ``ZorkAboveGround``, so the host places the canary inside it
@@ -323,6 +333,13 @@ struct ZorkHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // `KITCHEN-WINDOW-F` falls through to the stock answer once the window
+        // is open. Return that answer explicitly: blank calculated prose is an
+        // author error, and using `gameText` keeps Zork's override authoritative.
+        window.describe {
+            window.isOpen ? gameText.nothingSpecial(window.definiteNoun) : Prose.kitchenWindow
+        }
+
         // The window is the door on the house's east side, so `isOpen` is the
         // state both its own description and the Kitchen's paragraph are claims
         // about. Behind House's twin of this is the host's, since that room

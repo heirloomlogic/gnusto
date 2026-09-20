@@ -232,7 +232,7 @@ struct DoorTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("not declared openable")  // plank
-                && text.contains("not a stored property")  // phantom door
+                && text.contains("the bootstrap never registered")  // phantom door
         }
     }
 

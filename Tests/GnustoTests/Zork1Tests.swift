@@ -87,6 +87,16 @@ struct Zork1Tests {
         #expect(!turnOutput(of: "x window", in: transcript).contains("not enough to allow entry"))
     }
 
+    /// Into the house, lantern lit, down the trap door and round to the Gallery.
+    /// Shared with `Zork1ProseTests`, which asserts the painting's two channels
+    /// from the same frame.
+    static let toGallery: [String] = [
+        "south", "east", "open window", "west", "west",
+        "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down",
+        "south", "east",
+    ]
+
     /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
     /// lit, the trap door's slam is an inconvenience, not a prison. The full
     /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the
@@ -96,12 +106,7 @@ struct Zork1Tests {
     @Test func cellarLoopByLanternLight() async throws {
         let transcript = try await play(
             Zork1(),
-            [
-                "south", "east", "open window", "west", "west",
-                "take lantern", "turn on lantern",
-                "push rug", "open trap door", "down",
-                "south", "east", "take painting", "north", "up",
-            ],
+            Self.toGallery + ["take painting", "north", "up"],
             // Seed 1, recorded: the thief never crosses your path. Taking the
             // painting summons him, and the lantern is as much his to take — one
             // theft and these lit rooms go pitch black. 20 seeds in 5,000.
@@ -250,6 +255,27 @@ struct Zork1Tests {
         let undo = turnOutput(of: "undo", in: transcript)
         expectInOrder(undo, ["Previous turn undone.", "It is pitch black."])
         expectInOrder(looks[3], ["lurking grue", "deserve another", "Forest"])
+    }
+
+    /// TAKE ALL in the unlit cellar answers with the dark line, and Zork's
+    /// dark line is its grue's warning, so the daemon's own claim on that
+    /// sentence has to be deduped away exactly as the room describer's is —
+    /// once per turn, not twice. The turn is charged either way, which is why
+    /// the third one is fatal. (#518)
+    @Test func takeAllInTheDarkCellarSaysTheGrueLineOnceAndStillCostsTheTurn() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "down",
+                "take all", "take all", "quit",
+            ],
+            seed: 0)
+        let grue = "It is pitch black. You are likely to be eaten by a grue."
+        let grace = turnOutput(of: "take all", in: transcript)
+        #expect(occurrences(of: grue, in: grace) == 1)
+        #expect(!grace.contains("lurking grue"))
+        #expect(turnOutput(ofLast: "take all", in: transcript).contains("lurking grue"))
     }
 
     /// Carried light holds the grue off completely: the lantern-lit cellar
@@ -780,6 +806,7 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west",
                 "take all",
+                "take all from sack",
                 "drop all",
                 "take bottle", "open it", "look in it",
                 "west",
@@ -792,10 +819,12 @@ struct Zork1Tests {
                 "Kitchen",
                 // take all: name-sorted, per-object results; the scenery
                 // window is skipped, and so is the water — behind the shut
-                // bottle's glass, it is in view and out of arm's reach.
+                // bottle's glass, it is in view and out of arm's reach. The
+                // sack comes up off the floor packed, so the garlic and the
+                // lunch inside it take a sweep of their own (#510).
                 "brown sack: Taken.",
-                "clove of garlic: Taken.",
                 "glass bottle: Taken.",
+                "clove of garlic: Taken.",
                 "lunch: Taken.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",

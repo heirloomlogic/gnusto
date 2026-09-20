@@ -18,6 +18,51 @@ struct Zork1NounTests {
     /// The walkthrough's own pinned seed.
     static let seed: UInt64 = 0
 
+    /// Every documented ZIL synonym and adjective for the four kitchen items
+    /// must name the same reachable object, whether it appears alone or with
+    /// the modifiers ZIL permits.
+    @Test func kitchenItemsAcceptDocumentedZILVocabulary() async throws {
+        let commands = [
+            "south", "east", "open window", "west",
+            "x lunch", "x food", "x sandwich", "x dinner",
+            "x hot lunch", "x pepper sandwich", "x hot pepper dinner",
+            "x garlic", "x clove", "x clove garlic",
+            "x bottle", "x container", "x clear bottle", "x glass container",
+            "x clear glass bottle",
+            "open bottle",
+            "x water", "x quantity", "x liquid", "x h2o", "x quantity water",
+        ]
+        let transcript = try await play(Zork1(), commands, seed: Self.seed)
+
+        let expectedDescriptions = [
+            (
+                commands: [
+                    "x lunch", "x food", "x sandwich", "x dinner",
+                    "x hot lunch", "x pepper sandwich", "x hot pepper dinner",
+                ],
+                description: "There's nothing special about the lunch."
+            ),
+            (
+                commands: ["x garlic", "x clove", "x clove garlic"],
+                description: "A single clove of garlic, papery and pungent."
+            ),
+            (
+                commands: ["x bottle", "x container", "x clear bottle", "x glass container", "x clear glass bottle"],
+                description: "There's nothing special about the glass bottle."
+            ),
+            (
+                commands: ["x water", "x quantity", "x liquid", "x h2o", "x quantity water"],
+                description: "A quantity of ordinary water."
+            ),
+        ]
+
+        for expected in expectedDescriptions {
+            for command in expected.commands {
+                #expect(turnOutput(of: command, in: transcript).contains(expected.description))
+            }
+        }
+    }
+
     @Test func everyPrintedNounAnswersExamine() async throws {
         let ring = try await play(Zork1(), Self.ring, seed: Self.seed)
         let sweep = try await play(Zork1(), Self.sweep, seed: Self.seed)

@@ -106,7 +106,7 @@ public struct Scoring: GameContent {
 
     /// The register machinery behind ``awardOnce(_:)``, for awards whose value
     /// is declared on an item as a trait rather than in ``awards`` — the
-    /// take/deposit registers ``treasures(_:into:)`` derives from item names.
+    /// take/deposit registers ``treasures(_:into:)`` derives from entity IDs.
     /// Those are already counted by ``declaredMaxScore(items:)`` straight from
     /// the traits, so they never need a table entry.
     ///
@@ -158,8 +158,18 @@ public struct Scoring: GameContent {
     /// good), and its `.depositValue` follows the trophy case — credited when
     /// the treasure lands inside, debited when it is taken back out, the
     /// original's in-case accounting. Register keys derive from the item's
-    /// display name ("take.green gem"), so treasures wired here need unique
-    /// names. Splice into the host's rules:
+    /// entity ID ("take.greenGem") — the property it was declared as, dotted
+    /// under its bundle for a treasure a `GameContent` declares
+    /// ("take.AtticContent.greenGem") — so two treasures that share a display
+    /// name still score separately, and rewording a treasure's `name` in a
+    /// later build does not strand the credit a player's save is holding.
+    ///
+    /// Save format 3 introduced these keys. Older saves are rejected before
+    /// their state is installed, because their name-derived credits would
+    /// otherwise be awarded again. Start a fresh game after that rejection;
+    /// compatible saves retain the entity-ID ledger through restoration.
+    ///
+    /// Splice into the host's rules:
     ///
     /// ```swift
     /// scoring.treasures([painting, egg], into: trophyCase)
@@ -184,7 +194,7 @@ public struct Scoring: GameContent {
     public func treasures(_ items: [Item], into trophyCase: Item) -> Rules {
         for item in items {
             item.after(.take) {
-                payOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
+                payOnce("take.\(item.id)", points: item[.takeValue] ?? 0)
                 reconcileDeposits(of: [item], in: trophyCase)
             }
             // The after-rule fires for *any* container; only the trophy case
@@ -217,7 +227,7 @@ public struct Scoring: GameContent {
         let before = cased
         var ledger = before
         for item in items {
-            let key = "deposit.\(item.name)"
+            let key = "deposit.\(item.id)"
             let inCase = trophyCase.holds(item)
             guard inCase != ledger.names.contains(key) else { continue }
             if inCase {

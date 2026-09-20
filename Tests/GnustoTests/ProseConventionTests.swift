@@ -444,9 +444,11 @@ struct ProseConventionTests {
     private static let phraseSuffixes = ["phrase", "definiteName", "indefiniteName"]
 
     /// The `Noun`-typed fields of the two-thing role structs in
-    /// `GameText+Line.swift` — `Holding`, `Carried`, `Gift` and `Aboard`.
+    /// `GameText+Line.swift` — `Holding`, `Carried`, `Gift`, `InstrumentUse` and `Aboard`.
     /// Deliberately not every field: `Aboard.place` is a `String`.
-    private static let nounFields = ["item", "holder", "noun", "gift", "recipient", "vehicle"]
+    private static let nounFields = [
+        "item", "holder", "noun", "gift", "recipient", "object", "instrument", "vehicle",
+    ]
 
     /// The articles the engine has already supplied.
     private static let articles = ["the", "a", "an"]

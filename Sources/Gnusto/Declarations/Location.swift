@@ -264,12 +264,15 @@ public struct Location: Sendable, Equatable {
     }
 
     /// Runs when the player enters this location, just before the room is
-    /// automatically described.
+    /// automatically described. If the rule moves the player onward with
+    /// ``arrive(at:withRoomName:)`` or ``enter(_:)``, the nested move describes
+    /// the final room and this location is not described.
     ///
     /// Use `say(_:)` to add a line of ambiance and still let the room's name and
     /// description print. Use `reply(_:)`/`refuse(_:)` only to *replace* the
     /// automatic description entirely (a cutscene, blacking out, a room too dark
-    /// to see) — they end the turn before the room is described.
+    /// to see) — they end the turn before the room is described. A move onward
+    /// should return normally so the rest of the ordinary `go` action can run.
     ///
     /// - Parameter body: the rule body.
     /// - Returns: the assembled rule.

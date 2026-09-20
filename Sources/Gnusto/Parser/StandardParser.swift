@@ -191,6 +191,70 @@ struct StandardParser {
             .map(\.element)
     }
 
+    /// The longest line this parser will read, in tokens.
+    ///
+    /// **One bound on the whole parse, rather than one per loop.** Several
+    /// places here walk token positions and none of them is linear:
+    /// ``fitRecipientFirst(_:tokens:from:verbPhrase:rawInput:scope:)`` tries
+    /// every split of the words after the verb and resolves *both* halves,
+    /// ``hasSyntaxTail(afterNounIn:scope:distant:)`` resolves a fresh prefix at
+    /// every syntax word, and ``resolveGroup(_:at:in:scope:distant:)`` offers
+    /// each comma group whole before splitting it. They share one shape — cost
+    /// superlinear in the token count — and they are all reached from here, so
+    /// one guard at the entry bounds every one of them at once and no loop has
+    /// to carry a limit of its own. The two shapes #503 reported, timed over
+    /// the whole process in a debug build — bootstrap costs about 0.05s of
+    /// each figure:
+    ///
+    /// | Line | 500 tokens | 1,000 | 2,000 | 4,000 | 8,000 |
+    /// |---|---|---|---|---|---|
+    /// | `give mailbox leaflet …` (Zork 1) | 0.16s | 0.5s | 1.7s | — | — |
+    /// | `take x x x …` (Cloak of Darkness) | — | 0.6s | 1.4s | 5.3s | 25s |
+    ///
+    /// The game accepts nothing for the duration, and a play-test server over
+    /// JSON-RPC has no turn timeout to cut it short.
+    ///
+    /// **A count and not a budget**, because a deadline or a call counter would
+    /// make the parser's answer depend on how fast the machine is, and this
+    /// engine requires a parse to be a pure function of the line: `GNUSTO_SEED`
+    /// and `play(_:_:seed:)` pin a transcript, and a line that parsed on the
+    /// recording run has to parse on the replay. A count is the bound a replay
+    /// can rely on.
+    ///
+    /// 100 is far past any line a player writes. The longest command typed by
+    /// any test, demo game, walkthrough or committed play-test route in this
+    /// repository is `put the velvet cloak onto the small brass hook` — nine
+    /// words, and seven tokens once ``tokenize(_:)`` has dropped the articles,
+    /// which is what this counts. So the cap stands at fourteen times the
+    /// longest sentence the parser has ever been asked to read here, and a
+    /// line that meets it is a line nobody typed. A longer one is answered
+    /// ``ParseError/unmatchedSyntax`` — `GameText.didntUnderstand`, which a
+    /// game may word for itself — and costs no turn, as every parse failure
+    /// does.
+    ///
+    /// What the cap admits, measured the same way: the worst 100-token line
+    /// found — `give mailbox leaflet mailbox leaflet …` over Zork 1, every
+    /// split of which resolves — costs **9ms**, against under a millisecond for
+    /// an ordinary sentence. That is the ceiling a line has to be written to
+    /// reach, and it is two hundred times cheaper than the shortest line the
+    /// issue reported.
+    ///
+    /// The cap is taken at the two doors that read player words —
+    /// ``parse(tokens:rawInput:scope:)`` and
+    /// ``resolve(_:in:alsoConsidering:)``, the latter for the play-test naming
+    /// seam, which never goes through the former. A *third* door wants the
+    /// bound moved onto the value rather than a third guard added here: a token
+    /// list type whose initializer enforces it, produced by ``tokenize(_:)``
+    /// and consumed by both. Two doors do not pay for that yet.
+    ///
+    /// **Internal, and still a compatibility surface.** No game can read or set
+    /// it, but ``WorldState/isConsistent(with:)`` reads it to refuse a save
+    /// whose `lastCommand` is longer — so lowering the number changes which
+    /// existing save files a build will restore, and raising it changes which
+    /// files a later, lower build will refuse. Changing it is a save-format
+    /// decision, not only a parser one.
+    static let tokenLimit = 100
+
     func parse(_ input: String, scope: Scope) -> Result<ParsedCommand, ParseError> {
         parse(tokens: tokenize(input), rawInput: input, scope: scope)
     }
@@ -202,6 +266,11 @@ struct StandardParser {
     ) -> Result<ParsedCommand, ParseError> {
         guard !tokens.isEmpty else {
             return .failure(.empty)
+        }
+        // Ahead of everything, including the address reading: see
+        // ``tokenLimit``. Every loop below is bounded by this one guard.
+        guard tokens.count <= Self.tokenLimit else {
+            return .failure(.unmatchedSyntax)
         }
 
         // "delphine, hello" — addressing somebody. A greeting is the one thing
@@ -631,6 +700,24 @@ struct StandardParser {
                 }
 
             case .directObject, .indirectObject:
+                // The line stopped at the verb. Nothing the pattern puts behind
+                // the slot is in question yet, so every shape wants the same
+                // thing and asks for it in the same words — and this is the one
+                // point all of them pass through, ahead of both the split below
+                // and the literal that closes a variable-width slot. A row
+                // ending in the slot asked already; a row with a preposition, a
+                // particle or a direction behind it declined, and bare PUT,
+                // GIVE, LOCK, PICK and their kind fell out of `parse` as a
+                // sentence nobody recognizes. Issue #480.
+                //
+                // Only the *direct* slot. An indirect one left empty asks a
+                // different question — `put the coin in` names the coin and
+                // asks what to put it in — and a line that got as far as the
+                // second slot is not a line that stopped at the verb, so it
+                // never reaches this check.
+                if element == .directObject, cursor == tokens.count {
+                    return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
+                }
                 // Where the phrase ends is arithmetic whenever the rest of the
                 // pattern has a fixed width: it stops that many tokens from the
                 // end of the line. Width 0 is the slot that ends the pattern
@@ -798,6 +885,22 @@ struct StandardParser {
     /// being handed one armful, and a list — or an `all` — there names two
     /// places for it.
     ///
+    /// Every split of the remaining words is tried and both halves resolved,
+    /// so the work is superlinear in the line — the cost #503 reported. It is
+    /// bounded by ``tokenLimit`` at the parse entry, which also covers the
+    /// other loops of this shape; a cap written *here* would have left them.
+    ///
+    /// A tighter bound is available and is not taken yet. The longest phrase
+    /// any item answers to is known at bootstrap, so the split count could be
+    /// derived from the vocabulary rather than fixed — except that
+    /// ``ItemLexicon/describes(_:)`` accepts a phrase of any length so long as
+    /// every token is one of that item's words, so `x cloak cloak velvet cloak`
+    /// examines the cloak and no maximum exists to derive. Matching each word
+    /// at most once would give every noun phrase a declared maximum length and
+    /// make this loop run a constant number of times, which is the fix at the
+    /// depth of the defect — and a change to what the parser accepts, so it is
+    /// a sequel and not this. Issue #546.
+    ///
     /// - Parameters:
     ///   - rule: the recipient-first row.
     ///   - tokens: the line as typed.
@@ -946,8 +1049,6 @@ struct StandardParser {
     /// in a direction, so the two slots cannot both be filled. Which half the
     /// player left off decides the answer:
     ///
-    /// - nothing left at all: the same "What do you want to push?" that core's
-    ///   `push <object>` asks, so the shape displaces nothing.
     /// - one token, and it is a direction (`push north`): decline silently, so
     ///   a bare `["push", .direction]` row for the same verb still wins. That
     ///   is what lets the two shapes share an intent.
@@ -959,15 +1060,17 @@ struct StandardParser {
     /// Only reached where the direction genuinely ends the pattern. A row that
     /// puts something behind it has more missing than one question can name, so
     /// `fit`'s `shortOfTheSlot` declines that shape instead.
+    ///
+    /// A line with nothing after the verb reaches this only from a row whose
+    /// slot here is the **second** object — `[.word, .indirectObject,
+    /// .direction]`, which validation permits and no shipped row uses. `fit`
+    /// answers the direct-slot case for every shape at once, before the slot is
+    /// measured, so that one never arrives. This one declines: what to ask for
+    /// a second object with no first is not a question the table has posed.
     private func missingHalfOfANounAndADirection(
         displayVerb: String, tokens: [String], cursor: Int,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        guard cursor < tokens.count else {
-            // The answer `missingSlotOutcome` gives a final object slot; the
-            // direction half cannot be asked for until there is a noun to name.
-            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
-        }
         if tokens.count - cursor == 1, vocabulary.directions[tokens[cursor]] != nil {
             return .mismatch
         }
@@ -982,17 +1085,18 @@ struct StandardParser {
                 verb: displayVerb, objectName: definiteName(of: id), prefix: tokens))
     }
 
-    /// The near-miss for a pattern whose final object slot got no tokens:
-    /// "take" asks for an object; "put cloak on" asks what to put it on.
-    /// Either way the answer belongs after everything already typed.
+    /// The near-miss for a pattern whose final slot got no tokens: "put cloak
+    /// on" asks what to put it on, "think about" asks what about. The answer
+    /// belongs after everything already typed.
+    ///
+    /// A *direct* slot never arrives: nothing before it can have been filled
+    /// either, so `fit` has already asked "What do you want to take?" for every
+    /// shape at once.
     private func missingSlotOutcome(
         _ slot: SyntaxElement, displayVerb: String, tokens: [String],
         directPhrase: [String]?, preposition: String?, lastLiteral: String?,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        if slot == .directObject {
-            return .nearMiss(.missingObject(verb: displayVerb, prefix: tokens))
-        }
         if slot == .topic {
             // A topic row need not have an object at all ("think about"). One
             // that has an object it can't resolve stays quiet and lets the
@@ -1356,6 +1460,16 @@ struct StandardParser {
     func resolve(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
+        // The other door into the parser, and the other one that has to be
+        // bounded: `GameWorld.resolve(_:)` hands this a phrase straight from a
+        // play-test client, which never went through `parse` and so never met
+        // ``tokenLimit``. Nothing a game declares can answer to a phrase that
+        // long, so "you can't see any such thing" is the true answer as well as
+        // the cheap one. No parse reaches this guard — `parse` caps the line
+        // first, and every phrase below it is a slice of that line.
+        guard tokens.count <= Self.tokenLimit else {
+            return .failure(.notInScope)
+        }
         let resolved = resolveNoun(tokens, in: scope, alsoConsidering: distant)
         guard case .failure(.notInScope) = resolved,
             hasSyntaxTail(afterNounIn: tokens, scope: scope, distant: distant)

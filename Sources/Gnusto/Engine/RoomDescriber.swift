@@ -29,6 +29,7 @@ enum RoomDescriber {
             let id = scratch.state.playerLocation
             let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
             let visited = scratch.state.visited.contains(id)
+            scratch.describedAtOccupancyCount = scratch.roomsOccupied.count
             if !dark {
                 scratch.state.visited.insert(id)
             }

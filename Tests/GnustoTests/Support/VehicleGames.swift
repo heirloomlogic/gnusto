@@ -114,6 +114,51 @@ struct HarborGame: Game {
         enterable
     }
 
+    let dais = Item {
+        name("stone dais")
+        adjectives("stone")
+        surface
+        scenery
+    }
+
+    let chair = Item {
+        name("wicker chair")
+        adjectives("wicker")
+        enterable
+    }
+
+    let bin = Item {
+        name("open bin")
+        adjectives("open")
+        container
+    }
+
+    let stool = Item {
+        name("pine stool")
+        adjectives("pine")
+        enterable
+    }
+
+    let locker = Item {
+        name("closed locker")
+        adjectives("closed")
+        container
+        openable
+        transparent
+    }
+
+    let bench = Item {
+        name("narrow bench")
+        adjectives("narrow")
+        enterable
+    }
+
+    let cot = Item {
+        name("folding cot")
+        adjectives("folding")
+        enterable
+    }
+
     @Global var chained = false
 
     /// Switches where the dock's east channel comes out, so a boarded vehicle
@@ -144,6 +189,13 @@ struct HarborGame: Game {
         barge.starts(in: dock)
         sack.starts(inside: barge)
         bell.starts(on: barge)
+        dais.starts(in: dock)
+        chair.starts(on: dais)
+        bin.starts(in: dock)
+        stool.starts(inside: bin)
+        locker.starts(in: dock)
+        cot.starts(inside: locker)
+        bench.starts(in: dock)
     }
 
     var verbs: [SyntaxRule] {
@@ -203,5 +255,6 @@ struct HarborGame: Game {
             describeSurroundings()
             try handled()
         }
+        bench.reach { false }
     }
 }

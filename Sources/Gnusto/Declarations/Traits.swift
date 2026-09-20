@@ -53,8 +53,7 @@ public struct ItemTrait: Sendable {
 /// the one Bool a trait block can name — the block runs in a stored-property
 /// initializer, where no other declaration is in scope yet. The bootstrap
 /// lowers the pair into the same slot a `describe { … }` / `presence { … }`
-/// rule fills, so precedence, the reentry guard and the empty-text fallback
-/// are the rule's, unchanged.
+/// rule fills, so precedence and the reentry guard are the rule's, unchanged.
 struct TwoStateText: Sendable {
     /// Which text the pair supplies. The listing channel is gated on more than
     /// the examine channel is — a held thing is never listed, a touched one
@@ -521,6 +520,11 @@ public let scenery = ItemTrait(kind: .scenery)
 public let alwaysListed = ItemTrait(kind: .alwaysListed)
 
 /// Other items can be put on this item.
+///
+/// An item may be a `surface` and a `container` at once — a dresser with a top
+/// and a drawer — and then the two channels answer independently: what rests on
+/// the top is always on show, while what sits inside obeys the container's own
+/// open/`transparent` rules. Declaring both does not prop the drawer open.
 public let surface = ItemTrait(kind: .surface)
 
 /// Other items can be placed inside this item. A container without `openable`

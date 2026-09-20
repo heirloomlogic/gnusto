@@ -58,29 +58,37 @@ struct ProperNameTests {
 
         #expect(inventory.contains("a chest (containing Excalibur)"))
         #expect(!inventory.contains("an Excalibur"))
+        #expect(inventory.contains("a plinth (with Grail on it)"))
+        #expect(!inventory.contains("a Grail"))
     }
 
-    @Test func aCustomInventorySentenceCanReadAnEntrysContents() {
+    @Test func aCustomInventorySentenceCanReadBothContentChannels() {
         var text = GameText()
         text.inventorySentence = .naming {
-            "Contents: " + GameText.list($0.entries.flatMap(\.contents).map(\.phrase))
+            let inside = GameText.Noun.list($0.entries.flatMap(\.insideContents))
+            let surface = GameText.Noun.list($0.entries.flatMap(\.surfaceContents))
+            return "Inside \(inside.verb("is", "are")) \(inside); on top \(surface.verb("is", "are")) \(surface)."
         }
 
         let entry = GameText.Carried.Entry(
             noun: .init("a velvet pouch"),
-            contents: [.init("a silver key")],
+            insideContents: [.init("Excalibur")],
+            surfaceContents: [.init("some scales", plural: true)],
             isWorn: true)
-        #expect(text.inventorySentence(.init(entries: [entry])) == "Contents: a silver key")
+        #expect(
+            text.inventorySentence(.init(entries: [entry]))
+                == "Inside is Excalibur; on top are some scales.")
     }
 
     @Test func stockInventoryKeepsTheWornAnnotationWithContents() {
         let entry = GameText.Carried.Entry(
             noun: .init("a velvet pouch"),
-            contents: [.init("a silver key")],
+            insideContents: [.init("a silver key")],
+            surfaceContents: [.init("some scales", plural: true)],
             isWorn: true)
         #expect(
             GameText().inventorySentence(.init(entries: [entry]))
-                == "You are carrying a velvet pouch (being worn) (containing a silver key).")
+                == "You are carrying a velvet pouch (being worn) (containing a silver key, with some scales on top).")
     }
 
     // MARK: - The lines that name a person

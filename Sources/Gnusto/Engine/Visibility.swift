@@ -175,38 +175,56 @@ enum Visibility {
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite
         // recursion — the containment graph should never have cycles, but the
-        // walk must not trust that invariant blindly.
+        // walk must not trust that invariant blindly. It holds only the nodes
+        // that can recurse — surfaces and containers, the ones `descend`
+        // admits — because a plain item is never walked twice anyway, and a
+        // cycle must pass through a surface or a container to close.
         var visited: Set<EntityID> = []
 
-        /// Adds `id` and, if it is a surface or a see-through/open container,
-        /// its qualifying descendants.
-        func descend(into id: EntityID) {
-            guard visited.insert(id).inserted else { return }
-            for child in index.children(of: id) where isPerceivable(child, definition: definition, state: state) {
+        /// Adds each perceivable item of `children` to the walk, and descends
+        /// through whatever it in turn exposes.
+        func absorb(_ children: [EntityID]?) {
+            for child in children ?? []
+            where isPerceivable(child, definition: definition, state: state) {
                 result.insert(child)
-                if shouldDescend(into: child) {
-                    descend(into: child)
-                }
+                descend(into: child)
             }
         }
 
-        /// Whether an item exposes its contents to the current walk.
-        func shouldDescend(into id: EntityID) -> Bool {
-            guard let item = definition.items[id] else { return false }
-            if item.isSurface { return true }
-            guard item.isContainer else { return false }
-            if isOpen(id, definition: definition, state: state) { return true }
-            // Closed container: only a transparent one exposes contents, and
-            // only to the visibility walk.
-            return descendClosedTransparent && item.isTransparent
+        /// Adds whatever `id` exposes to this walk. A no-op for a plain item,
+        /// so every caller may hand it anything it has just added.
+        ///
+        /// **The two channels are asked separately.** One item may be both a
+        /// `surface` and a `container` — a dresser with a top and drawers —
+        /// and then what rests on it is on show while what is shut inside it
+        /// is not. Running one merged `children(of:)` list through one
+        /// predicate answered the surface question first and handed out the
+        /// drawers' contents to a closed dresser (#513).
+        func descend(into id: EntityID) {
+            // Only a surface or a container can recurse, so only those enter
+            // `visited` — a room of plain items must not pay a set insert each.
+            guard let item = definition.items[id],
+                item.isSurface || item.isContainer,
+                visited.insert(id).inserted
+            else { return }
+            // What rests on a top is always in view: a surface has nothing to
+            // shut.
+            if item.isSurface { absorb(index.onSurface[id]) }
+            // A closed container exposes its contents only while transparent,
+            // and then only to the visibility walk — seeing into a shut glass
+            // jar is not reaching into it. `contentsVisible` is the same rule
+            // the room listing asks, so the two cannot drift apart.
+            if item.isContainer,
+                descendClosedTransparent
+                    ? contentsVisible(id, definition: definition, state: state)
+                    : isOpen(id, definition: definition, state: state)
+            {
+                absorb(index.inContainer[id])
+            }
         }
 
         // Held items are always perceivable, and we descend into what they hold.
-        for id in index.held[observer] ?? []
-        where isPerceivable(id, definition: definition, state: state) {
-            result.insert(id)
-            if shouldDescend(into: id) { descend(into: id) }
-        }
+        absorb(index.held[observer])
 
         // Darkness gates the player's walk and nobody else's: these sets are
         // also the parser's scope, and you cannot refer to what you cannot see.
@@ -218,10 +236,7 @@ enum Visibility {
             return result
         }
 
-        for id in index.inRoom[location] ?? [] where isPerceivable(id, definition: definition, state: state) {
-            result.insert(id)
-            if shouldDescend(into: id) { descend(into: id) }
-        }
+        absorb(index.inRoom[location])
 
         // What an actor in the room is holding is visible — the player can
         // see the axe in the troll's hands, name it, examine it — but never
@@ -233,11 +248,7 @@ enum Visibility {
                 guard definition.items[holderID]?.isActor == true,
                     isPerceivable(holderID, definition: definition, state: state)
                 else { return }
-                for id in index.held[holderID] ?? []
-                where isPerceivable(id, definition: definition, state: state) {
-                    result.insert(id)
-                    if shouldDescend(into: id) { descend(into: id) }
-                }
+                absorb(index.held[holderID])
             }
             for holderID in index.inRoom[location] ?? [] {
                 absorbWhatIsHeld(by: holderID)

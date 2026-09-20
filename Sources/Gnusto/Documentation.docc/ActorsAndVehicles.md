@@ -13,6 +13,12 @@ compiles down to the same storage as an ``Item``, and a vehicle is one
 trait plus one field of world state. There is no new subsystem here,
 which is why there is so little of it to learn.
 
+## Unconscious actors
+
+``Actor/isUnconscious`` lets combat and autonomous behaviors share the actor's condition. `GnustoActors` suppresses theft, roaming, and following while the flag is set. Games can set it themselves; assigning `false` wakes the actor immediately.
+
+For recovery that consumes the whole turn, call ``Actor/recoverAfterTurn()``. The flag stays set through all remaining rules and timers and clears when the turn commits. A later assignment to `isUnconscious` cancels the request; a rolled-back command discards it. `GnustoMeleeCombat` uses this on its final knockout tick, so attack, theft, and movement resume on the following turn regardless of daemon names. Its knockout still consumes three ticks: the knockdown turn and the next two turns.
+
 ## Declaring an actor
 
 ```swift
@@ -419,11 +425,7 @@ the player in and out (bare `in`/`out` remain directions). While boarded:
   }
   ```
 
-- The room title reads "Boathouse, in the red boat"
-  (``GameText/locationInVehicle``), and the vehicle's own listing sentence is
-  left out — the title already said where you are. What it holds is still
-  listed, in the sentences a player standing beside it would read; a closed
-  opaque hull lists nothing, as it would from outside.
+- The room title reads "Boathouse, in the red boat" (``GameText/locationInVehicle``), and the vehicle's own listing sentence is left out — the title already said where you are. What it holds is still listed, in the sentences a player standing beside it would read; a closed opaque hull lists nothing, as it would from outside.
 - `drop` lands things in the hull of a cargo vehicle (capacity is not
   enforced on this implicit path — `put in` remains the gate), and `take
   boat` refuses with ``GameText/notWhileInside``.
