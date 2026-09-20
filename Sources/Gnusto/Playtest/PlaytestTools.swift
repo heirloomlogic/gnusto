@@ -1470,9 +1470,10 @@ enum PlaytestTools {
                         "type": "array",
                         "items": ["type": "string"],
                         "description": .string(
-                            "The lines to type, in order — one command per string. Empty "
-                                + "replays just the opening. A line starting // or # is a "
-                                + "comment and costs no turn."),
+                            "The lines to type, in order — one command per string; a "
+                                + "string containing a newline is refused. Empty replays "
+                                + "just the opening. A line starting // or # is a comment "
+                                + "and costs no turn."),
                     ],
                     "seed": [
                         "type": "integer",

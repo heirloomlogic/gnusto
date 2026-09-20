@@ -634,9 +634,10 @@ actor PlaytestSession {
     ///   - commands: the lines to feed, in order. A `//` or `#` line is a
     ///     comment: recorded, never performed, no turn and no clock tick.
     ///   - allowPrompts: keep going when a prompt arms mid-batch.
-    /// - Throws: ``PlaytestError`` for an empty batch, a `script`/`unscript`
-    ///   line, or a session whose game has already ended — none of which run
-    ///   anything, so the session is untouched.
+    /// - Throws: ``PlaytestError`` for an empty batch, for a line
+    ///   ``refuseTranscriptCommands(in:)`` turns away, or for a session whose
+    ///   game has already ended — none of which run anything, so the session is
+    ///   untouched.
     /// - Returns: the transcript of the batch, and the trailer.
     func move(commands: [String], allowPrompts: Bool) async throws -> String {
         guard !commands.isEmpty else {
@@ -1247,8 +1248,9 @@ actor PlaytestSession {
         // trusting `turns.map(\.line)`: the proof this tool sells is that
         // `commands.txt` itself replays to `transcript.txt`, and a command
         // holding its own newline is exactly the case where the two disagree
-        // — one `Turn` in memory becomes two lines on disk, and only the
-        // second replays the file actually holds.
+        // — one `Turn` in memory becomes two lines on disk, so the list the
+        // file holds is the two-command one, and that is the list the check
+        // has to run.
         let lines = Self.commandLines(in: try read(commandsURL))
         let recorded = try read(transcriptURL)
         let replayed = await replay(lines, status: footer)
@@ -2053,7 +2055,10 @@ actor PlaytestSession {
     /// `export`'s replay then runs a different command list than the one that
     /// produced `transcript.txt`. `note` already collapses a newline in its own
     /// text to a space; `move` refuses instead, since collapsing a command
-    /// would run something the tester never typed.
+    /// would run something the tester never typed. The test is `isNewline`,
+    /// which is every Unicode line break and not only the `\n` that
+    /// ``commandLines(in:)`` splits on: the narrower set is what breaks the
+    /// file today, and the wider one is what a tester meant as a line break.
     ///
     /// Checked over the whole batch first, so a refusal runs nothing at all
     /// rather than leaving a half-executed batch behind a failed call.
@@ -2107,8 +2112,10 @@ actor PlaytestSession {
     /// feed a fresh `REPL` — the inverse of what `persistCommands()` writes.
     ///
     /// Internal rather than `private`: it is pure and worth testing directly,
-    /// since a well-formed session can no longer put an embedded newline into
-    /// `turns` to exercise `export`'s use of it any other way.
+    /// since commands arriving through `move` are now refused for holding a
+    /// newline, and that is the only way a tester could put one into `turns`
+    /// to exercise `export`'s use of this any other way. A deep start's prefix
+    /// commands do reach `turns` without passing that refusal.
     ///
     /// - Parameter text: the file's contents, one trailing newline included.
     /// - Returns: the lines, in order, with no trailing empty line.

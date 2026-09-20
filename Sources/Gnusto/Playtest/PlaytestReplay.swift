@@ -121,9 +121,9 @@ enum PlaytestReplay {
     ///     label's `saves/`, or a probe's `saves-in/` — or `nil` for a clean
     ///     start. Copied in, never written back — see
     ///     ``PlaytestSessions/stageSlots(from:into:)``.
-    /// - Throws: ``PlaytestError`` for a list that is too long, for one that
-    ///   holds a `script`/`unscript` line — neither of which runs anything —
-    ///   or for a `savesFrom` directory holding no slots.
+    /// - Throws: ``PlaytestError`` for a list that is too long, for one
+    ///   holding a line a replay refuses to type — neither of which runs
+    ///   anything — or for a `savesFrom` directory holding no slots.
     /// - Returns: the transcript, the verdict when one was asked for, where
     ///   the evidence went, and what was staged to get there.
     static func run(
