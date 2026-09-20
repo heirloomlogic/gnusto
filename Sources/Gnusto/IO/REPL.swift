@@ -138,12 +138,23 @@ public struct REPL: Sendable {
 
     /// Starts or stops transcript recording in response to `script`/`unscript`,
     /// reporting the outcome to the player, and returns the recorder now in
-    /// force (a fresh one, or `nil` once stopped or on failure).
+    /// force (a fresh one, the recorder already running, or `nil` once stopped
+    /// or on failure).
     private func toggleTranscript(
         _ command: TranscriptCommand, recorder: TranscriptRecorder?
     ) -> TranscriptRecorder? {
         switch command {
         case .start(let name):
+            // Same guard the save/restore prompts make (`GameWorld+Prompts.swift`):
+            // a restricted session (headless runs, the play-test harness) may
+            // only name a bare slot, never a filesystem path, or `script` would
+            // let an untrusted command line open and truncate any file the
+            // process can write (#481). Refused before the existing recording
+            // (if any) is touched, so a bad `script` line doesn't kill a good one.
+            if let name, world.savePathsRestricted, SaveStore.isExplicitPath(name) {
+                io.write("\(world.definition.text.savePathRefused())\n\n")
+                return recorder
+            }
             recorder?.close()  // a second `script` replaces the active recording
             let url = TranscriptStore.url(forName: name, gameTitled: world.definition.title)
             guard let started = try? TranscriptRecorder(url: url) else {

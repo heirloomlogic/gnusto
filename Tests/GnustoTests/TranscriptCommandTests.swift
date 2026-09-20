@@ -139,4 +139,40 @@ struct TranscriptCommandTests {
         #expect(recorded.contains("> look"))
         #expect(recorded.contains("> quit"))
     }
+
+    /// #481: a save-restricted session (any `saveDirectory` given explicitly, or
+    /// `GNUSTO_SAVE_DIR`) used to let `script <path>` truncate any file the
+    /// process could write, because the REPL's transcript toggle never read
+    /// `savePathsRestricted` — only the save/restore prompts did. Reproduces the
+    /// issue's repro script: a victim file with real contents, a piped session
+    /// that tries to `script` straight over it.
+    @Test func scriptWithAnExplicitPathIsRefusedWhenSavePathsAreRestricted() async throws {
+        let victim = tempDirectory().appendingPathComponent("victim.txt")
+        try FileManager.default.createDirectory(
+            at: victim.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "important data".write(to: victim, atomically: true, encoding: .utf8)
+
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let io = ScriptedIOHandler(lines: ["script \(victim.path)", "look", "unscript", "quit"])
+        await REPL(world: world, io: io).run()
+
+        #expect(io.transcript.contains("Paths aren't allowed here; enter a plain name."))
+        // Refused before the recorder ever opens the file: contents untouched,
+        // not truncated to nothing and not fed the session's own commands.
+        let untouched = try String(contentsOf: victim, encoding: .utf8)
+        #expect(untouched == "important data")
+    }
+
+    /// The companion half of #481: the guard is scoped to explicit paths, so an
+    /// ordinary bare-name `script` still records normally in a restricted
+    /// session — the fix must not have over-refused.
+    @Test func scriptWithABareNameStillWorksWhenSavePathsAreRestricted() async throws {
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let io = ScriptedIOHandler(lines: ["script mysession", "look", "unscript", "quit"])
+        await REPL(world: world, io: io).run()
+
+        #expect(io.transcript.contains("[Recording transcript to "))
+        #expect(io.transcript.contains("[Transcript recording ended: "))
+        #expect(!io.transcript.contains("Paths aren't allowed here"))
+    }
 }
