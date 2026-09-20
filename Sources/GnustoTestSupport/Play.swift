@@ -76,7 +76,8 @@ public func play(
 /// transcript, or immediately after a newline. A command quoted in
 /// CLAUDE.md's two-space form — a sign, a scrap of verse — fails that,
 /// because `TextWrap` keeps a form's indent and the quoted line never
-/// reaches column 0. That indent is the whole of what the anchor buys.
+/// reaches column 0. The indent is one of the two things that keep a
+/// quote off the anchor; prose ahead of it on the folded line is the other.
 /// Prose that renders `> command` alone at column 0 still matches, and
 /// both a `<br>` around the command and a blank line before it render it
 /// that way, so quote a command in the indented form when a test slices

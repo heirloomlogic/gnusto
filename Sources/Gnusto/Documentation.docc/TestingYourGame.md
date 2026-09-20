@@ -60,7 +60,7 @@ let looking = turnOutput(of: "examine hook", in: transcript)
 
 ### Slicing a transcript
 
-`turnOutput(of:in:)` matches the **first** occurrence of a command, so a test that types `look` four times and asks about the third gets the first. `turnOutput(ofLast:in:)` is the last; for anything in between, vary the commands rather than repeating them. The match is a real prompt line — the start of the transcript or right after a newline — so a room description that quotes `> look` on a sign, in the two-space form-text style, is never mistaken for the prompt. Five more helpers cut the transcript other ways:
+`turnOutput(of:in:)` matches the **first** occurrence of a command, so a test that types `look` four times and asks about the third gets the first. `turnOutput(ofLast:in:)` is the last; for anything in between, vary the commands rather than repeating them. The match is a prompt line — the start of the transcript, or right after a newline — so a `> look` a room quotes is skipped when the render leaves it off column 0, which the two-space form-text style does by keeping its indent. The anchor reaches no further than that: a quoted command rendered alone at column 0, which a `<br>` around it or a blank line before it both do, still matches, so use the indented form when a test slices on that turn. Five more helpers cut the transcript other ways:
 
 ```swift
 turnOutput(ofLast: "look", in: transcript)       // the last time the route looked
