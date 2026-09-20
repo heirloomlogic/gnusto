@@ -72,10 +72,18 @@ public func play(
 /// turn gets the first one here; ``turnOutput(ofLast:in:)`` is the slice for
 /// the last.
 ///
-/// The match is anchored to the start of a line — the start of the
-/// transcript, or immediately after a newline — so a `> command` that
-/// appears inside game prose (a sign quoting a command, indented per
-/// CLAUDE.md's two-space form) is never mistaken for a real prompt.
+/// The match is anchored to the start of a line: the start of the
+/// transcript, or immediately after a newline. A command quoted in
+/// CLAUDE.md's two-space form — a sign, a scrap of verse — fails that,
+/// because `TextWrap` keeps a form's indent and the quoted line never
+/// reaches column 0. That indent is the whole of what the anchor buys.
+/// Prose that renders `> command` alone at column 0 still matches, and
+/// both a `<br>` around the command and a blank line before it render it
+/// that way, so quote a command in the indented form when a test slices
+/// on it.
+///
+/// The end boundary is the same rule: the turn ends at the next `"\n> "`,
+/// so any column-0 line opening with `> ` closes the slice, quoted or not.
 ///
 /// - Parameters:
 ///   - command: the command whose turn to extract.
@@ -90,8 +98,9 @@ public func turnOutput(of command: String, in transcript: String) -> String {
 /// "and the second time I looked", where ``turnOutput(of:in:)`` would hand
 /// back the first look.
 ///
-/// The match is anchored the same way ``turnOutput(of:in:)`` is: only a real
-/// prompt line, never a `> command` inside game prose.
+/// The match is anchored the same way ``turnOutput(of:in:)`` is, with the
+/// same limit: a line start only, so a command quoted in the indented
+/// two-space form is skipped and one rendered at column 0 is not.
 ///
 /// - Parameters:
 ///   - command: the command whose last turn to extract.
@@ -104,9 +113,11 @@ public func turnOutput(ofLast command: String, in transcript: String) -> String 
     return output(before: "\n> ", in: String(transcript[start...]))
 }
 
-/// The index just past a real `> command` prompt line — one that opens the
-/// transcript or is preceded by a newline, never one embedded in prose (a
-/// quoted, indented `  > command` on a sign matches neither form).
+/// The index just past a `> command` line that opens the transcript or is
+/// preceded by a newline. A quoted `  > command` on a sign matches neither
+/// form, because the indent `TextWrap` preserves for a form keeps it off
+/// column 0. Prose is not otherwise excluded: a `> command` the renderer
+/// puts at column 0 is indistinguishable from a prompt here.
 ///
 /// - Parameters:
 ///   - command: the command the prompt line must read.
