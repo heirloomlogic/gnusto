@@ -205,6 +205,15 @@ extension GameWorld {
             guard !tokens.isEmpty else {
                 return PlaytestResolution(word: word, known: false)
             }
+            // Past `StandardParser.tokenLimit` the parser refuses the phrase
+            // without reading it, and its refusal is `notInScope` whatever the
+            // words were — so the catch-all below would report a pasted wall of
+            // gibberish as a phrase the vocabulary knows. `known` is the
+            // `knows(_:)` question, and that one has an honest answer at any
+            // length; nothing answers to a phrase this long either way.
+            guard tokens.count <= StandardParser.tokenLimit else {
+                return PlaytestResolution(word: word, known: knows([word])[0].known)
+            }
             switch parser.resolve(tokens, in: scope) {
             case .success(let id):
                 return PlaytestResolution(

@@ -192,19 +192,19 @@ extension TopicEntry {
     /// in which condition they carry would share a flag; give one of them an
     /// `id:`.
     ///
-    /// - Parameter actorName: the display name of the actor whose table this
-    ///   row belongs to.
+    /// - Parameter actorID: the stable ID of the actor whose table this row
+    ///   belongs to.
     /// - Returns: the heard-set key.
-    func key(inTableOf actorName: String) -> String {
+    func key(inTableOf actorID: EntityID) -> String {
         // `\u{1F}`, `\u{1E}` and `\u{1D}` are the unit, record and group
-        // separators — characters `Topic.normalize` strips and a display name
-        // will not contain, so no field can bleed into the next. The keyword
-        // list needs its own separator rather than a space: joining on a space
-        // would make `topic("break in")` and `topic("break", "in")` the same
-        // key, and the first of them heard would retire the other's answer
-        // unspoken.
+        // separators. `EntityID`s come from Swift property labels, and
+        // `Topic.normalize` strips them from keywords, so no field can bleed
+        // into the next. The keyword list needs its own separator rather than
+        // a space: joining on a space would make `topic("break in")` and
+        // `topic("break", "in")` the same key, and the first of them heard
+        // would retire the other's answer unspoken.
         if let identity {
-            return "\(actorName)\u{1F}#\(identity)"
+            return "\(actorID)\u{1F}#\(identity)"
         }
         let subjects = keywords.map { $0.joined(separator: " ") }.sorted()
         let fields = [
@@ -215,6 +215,6 @@ extension TopicEntry {
             taught?.raw ?? "",
             when == nil ? "" : "when",
         ]
-        return "\(actorName)\u{1F}\(fields.joined(separator: "\u{1E}"))"
+        return "\(actorID)\u{1F}\(fields.joined(separator: "\u{1E}"))"
     }
 }

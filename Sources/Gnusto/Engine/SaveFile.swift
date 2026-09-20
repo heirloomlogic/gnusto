@@ -42,7 +42,12 @@ struct SaveFile: Codable {
     /// encoding is read both ways, and the fallbacks stay until the floor
     /// finally rises past them. Both are real options; picking neither and
     /// bumping the number is the one that looks like it worked.
-    static let currentFormat = 1
+    // Format 2 keys persisted conversation memory by entity ID. Format 1 used
+    // display names, so reading it would silently lose what every renamed or
+    // same-named actor had already said.
+    // Format 3 also keys treasure credits by entity ID. Formats 1 and 2
+    // retain name-derived scoring keys and would award those credits again.
+    static let currentFormat = 3
 
     /// The oldest format this build still reads.
     ///
@@ -52,7 +57,7 @@ struct SaveFile: Codable {
     /// and bumping the version to fix a compatibility bug would have voided
     /// every save on disk. Raise this only when a format genuinely can no
     /// longer be read, and expect it to cost players their saves when it moves.
-    static let minimumReadableFormat = 1
+    static let minimumReadableFormat = 3
 
     let format: Int
     let title: String

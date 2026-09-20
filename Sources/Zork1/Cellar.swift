@@ -84,7 +84,6 @@ struct ZorkCellar: GameContent {
         // this one and its stolen fellows.
         synonyms("paintings")
         firstSight(Prose.paintingFirstSight)
-        description(Prose.painting)
         // The original's values: 4 for the find, 6 for the case.
         trait(.takeValue, 4)
         trait(.depositValue, 6)

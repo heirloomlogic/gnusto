@@ -285,5 +285,18 @@ struct TimerTests {
         expectTrap(result, says: spec.namesTheCall, spec.saysUse)
     }
 
+    @Test("an invalid runtime fuse override names the declared-fuse rule", arguments: InvalidFuseOverride.allCases)
+    func invalidRuntimeFuseOverrideNamesTheDeclaredFuseRule(_ misuse: InvalidFuseOverride) async throws {
+        let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
+        #expect(parser.tokenize(misuse.command) == [misuse.command])
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            [misuse = misuse as InvalidFuseOverride] in
+            _ = try await play(TimerMisuseGame(), [misuse.command])
+        }
+        expectTrap(result, says: misuse.call, "a fuse needs at least one turn")
+    }
+
     #endif
 }

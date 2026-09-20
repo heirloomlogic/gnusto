@@ -119,6 +119,13 @@ private func temporarySavePath(_ label: String) -> String {
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
 }
 
+/// A throwaway saves directory for one test. Not created — `resolveForWrite`
+/// provisions it, which is half of what several of these tests are checking.
+private func temporarySaveDirectory(_ label: String) -> URL {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString)", isDirectory: true)
+}
+
 struct SaveRestoreTests {
     @Test func saveAndRestoreRoundTripsTheWorld() async throws {
         let path = temporarySavePath("roundtrip")
@@ -220,8 +227,7 @@ struct SaveRestoreTests {
     }
 
     @Test func aBareNameSavesUnderTheSaveDirectoryAndRestores() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gnusto-slots-\(UUID().uuidString)", isDirectory: true)
+        let dir = temporarySaveDirectory("slots")
         defer { try? FileManager.default.removeItem(at: dir) }
         let transcript = try await play(
             StrongboxGame(),
@@ -241,8 +247,7 @@ struct SaveRestoreTests {
     /// path at either prompt is refused and nothing is written or read there.
     /// (A human running the game themselves keeps the classic path behavior.)
     @Test func anInjectedSaveDirectoryRefusesExplicitPaths() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gnusto-escape-\(UUID().uuidString)", isDirectory: true)
+        let dir = temporarySaveDirectory("escape")
         let outside = temporarySavePath("escape")
         defer {
             try? FileManager.default.removeItem(at: dir)
@@ -285,9 +290,132 @@ struct SaveRestoreTests {
         #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
     }
 
+    /// #488: two Japanese slot names held nothing the old ASCII sanitizer kept,
+    /// so both resolved to `save.gnusto` and the second save silently destroyed
+    /// the first. They are two files now, and each restores its own world.
+    @Test func twoNonASCIISlotNamesAreTwoSavesAndBothRestore() async throws {
+        let dir = temporarySaveDirectory("cjk")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "take coin", "save", "セーブ",  // coin in hand
+                "drop coin", "save", "日本語",  // coin on the floor
+                "restore", "セーブ", "inventory",  // the first save survived
+                "restore", "日本語", "inventory",  // and so did the second
+            ],
+            saveDirectory: dir)
+        #expect(transcript.components(separatedBy: "Saved.").count == 3)
+        #expect(transcript.components(separatedBy: "Restored.").count == 3)
+        for name in ["セーブ", "日本語"] {
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: dir.appendingPathComponent("\(name).gnusto").path),
+                "\(name)")
+        }
+        // The first restore has the coin; the second, taken after the drop,
+        // does not — so the second save did not overwrite the first.
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+        #expect(!turnOutput(ofLast: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// The restore prompt lists the names the player typed, not a mangling of
+    /// them — which is what makes a non-ASCII slot findable again.
+    @Test func theRestorePromptListsNonASCIISlotsAsTyped() async throws {
+        let dir = temporarySaveDirectory("cjk-list")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            ["save", "セーブ", "save", "日本語", "restore", ""],
+            saveDirectory: dir)
+        #expect(transcript.contains("(saved: セーブ, 日本語)"))
+    }
+
+    /// A name with no letter, number or underscore in it names no file. It used
+    /// to become the literal slot `save`, which every other unusable name also
+    /// became — so the prompt refuses instead, and nothing is written.
+    @Test func aNameWithNothingUsableInItIsRefusedAtBothPrompts() async throws {
+        let dir = temporarySaveDirectory("unusable")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            ["save", "!!!", "restore", "...", "save", "keeper", "restore", "keeper", "look"],
+            saveDirectory: dir)
+        #expect(
+            transcript.components(
+                separatedBy: "That name has no letters or numbers in it. Try another."
+            ).count == 3)
+        // Nothing was written under the old stand-in name, or under any other.
+        #expect(SaveStore.existingSaveNames(in: dir) == ["keeper"])
+        // The refusals cost nothing and the usable name still round-trips.
+        expectInOrder(transcript, ["Saved.", "Restored."])
+        #expect(turnOutput(of: "look", in: transcript).contains("Anteroom"))
+    }
+
+    /// A save written before the byte bound existed has a basename longer than
+    /// the rule now produces. It still has to be listed and still has to
+    /// restore: dropping it would make a player's save invisible, and resolving
+    /// the typed name to the truncated path would let the next long save
+    /// overwrite a different slot.
+    @Test func aSaveWrittenUnderTheOldUnboundedRuleStillRestores() async throws {
+        let dir = temporarySaveDirectory("legacy-long")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "a", count: 210)
+        _ = try await play(
+            StrongboxGame(), ["take coin", "save", "seed"], saveDirectory: dir)
+        // What the old rule, which had no bound, would have named that file.
+        try FileManager.default.moveItem(
+            at: dir.appendingPathComponent("seed.gnusto"),
+            to: dir.appendingPathComponent("\(long).gnusto"))
+
+        #expect(SaveStore.existingSaveNames(in: dir) == [long])
+        let transcript = try await play(
+            StrongboxGame(), ["restore", long, "inventory"], saveDirectory: dir)
+        #expect(transcript.contains("Restored."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// A saves directory carried off an HFS+ volume holds decomposed filenames.
+    /// The prompt lists the composed name, because that is the name — and the
+    /// restore has to read the directory's own entry, or on a volume that
+    /// compares filenames byte for byte it reads a path that is not there. On
+    /// macOS this passes either way — Foundation decomposes a file URL's path,
+    /// and APFS compares names normalization-insensitively. Linux does neither,
+    /// which is where this test earns its place; CI runs the suite there.
+    @Test func aDecomposedSaveFilenameRestoresByItsComposedName() async throws {
+        let dir = temporarySaveDirectory("decomposed")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await play(
+            StrongboxGame(), ["take coin", "save", "seed"], saveDirectory: dir)
+        try FileManager.default.moveItem(
+            at: dir.appendingPathComponent("seed.gnusto"),
+            to: dir.appendingPathComponent("cafe\u{301}.gnusto"))
+
+        let transcript = try await play(
+            StrongboxGame(), ["restore", "caf\u{e9}", "inventory"], saveDirectory: dir)
+        #expect(transcript.contains("Restored."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// A name far longer than a filesystem component still saves and restores:
+    /// the sanitizer bounds it in bytes, and the same typing finds it again.
+    @Test func aVeryLongSlotNameSavesAndRestores() async throws {
+        let dir = temporarySaveDirectory("long")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "長", count: 300)
+        let transcript = try await play(
+            StrongboxGame(),
+            ["take coin", "save", long, "drop coin", "restore", long, "inventory"],
+            saveDirectory: dir)
+        expectInOrder(transcript, ["Saved.", "Restored."])
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+        let slots = SaveStore.existingSaveNames(in: dir)
+        #expect(slots.count == 1)
+        #expect(slots[0].utf8.count <= FilesystemName.maximumBytes)
+    }
+
     @Test func theRestorePromptListsExistingSaves() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gnusto-list-\(UUID().uuidString)", isDirectory: true)
+        let dir = temporarySaveDirectory("list")
         defer { try? FileManager.default.removeItem(at: dir) }
         // Make two saves, then open the restore prompt (empty answer cancels).
         let transcript = try await play(

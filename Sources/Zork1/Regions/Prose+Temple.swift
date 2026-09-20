@@ -108,10 +108,6 @@ extension Prose {
         tried to carry it far.
         """
 
-    static let sceptre = """
-        An ornamented sceptre, tapering to a sharp point, is here.
-        """
-
     static let crystalSkull = """
         A skull cut whole from a block of clear crystal, the empty sockets
         catching what little light there is.
@@ -122,6 +118,13 @@ extension Prose {
     // MARK: - First sights
 
     static let coffinFirstSight = "The solid-gold coffin used for the burial of Ramses II is here."
+
+    /// `SCEPTRE`'s `FDESC` — the sceptre as the opened coffin first shows it.
+    /// Its `LDESC` is left to the engine's stock listing. (#514)
+    static let sceptreFirstSight = """
+        A sceptre, possibly that of ancient Egypt itself, is in the coffin. The
+        sceptre is ornamented with colored enamel, and tapers to a sharp point.
+        """
 
     static let crystalSkullFirstSight = """
         Lying in one corner of the room is a beautifully carved crystal skull.

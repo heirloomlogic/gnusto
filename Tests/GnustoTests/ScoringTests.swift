@@ -181,51 +181,29 @@ struct ScoringTests {
             ])
     }
 
-    /// The ledger keys moved, and nothing translates the old ones, so a save
-    /// written by an earlier build pays its treasure twice over.
-    ///
-    /// `LegacyVaultGame` writes that save: the coin taken and sitting in the
-    /// cabinet, the score already holding both its values, and a ledger keyed
-    /// on the display name. The keys survive the file verbatim — a global is
-    /// restored by its declared property name and its value is carried across
-    /// unread — so `BackdatedVaultGame` restores the right score and then
-    /// cannot find the credit behind it. The first costing turn reconciles the
-    /// case, does not see `deposit.coin`, and credits the deposit value a
-    /// second time; taking the coin out pays the take value again on top. The
-    /// score ends past a ceiling it should not be able to reach.
-    ///
-    /// Pinned here because it is the cost of the fix, not because it is wanted.
-    @Test func aLedgerWrittenUnderTheOldKeysNoLongerCounts() async throws {
-        let path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
-        defer { try? FileManager.default.removeItem(atPath: path) }
-
+    /// Old name-keyed ledgers are refused before their score or placements
+    /// replace the running game. The fixture models both historical formats.
+    @Test(arguments: [1, 2])
+    func aLegacyScoringSaveIsRejectedWithoutChangingTheGame(format: Int) async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav")
+        defer { try? FileManager.default.removeItem(at: url) }
         let written = try await play(
-            LegacyVaultGame(),
-            ["backdate", "save", path, "quit"])
-        expectInOrder(written, ["The ledger is written in an older hand.", "Saved."])
+            fresh: LegacyVaultGame(), ["backdate", "save", url.path, "quit"])
+        #expect(written.contains("Saved."))
+        var save = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        save["format"] = format
+        try JSONSerialization.data(withJSONObject: save).write(to: url)
 
         let transcript = try await play(
-            BackdatedVaultGame(),
-            [
-                "score",  // the fresh world, so the restore below is load-bearing
-                "restore", path,
-                "score",  // the old build's total, carried across intact
-                "wait",  // the first costing turn reconciles the case
-                "score",  // deposit credited a second time: 10 + 7, past the ceiling
-                "take coin",  // take value paid again (+3), deposit debited (-7)
-                "score",
-                "quit",
-            ])
-        expectInOrder(
-            transcript,
-            [
-                "Your score is 0 of a possible 10",
-                "Restored.",
-                "Your score is 10 of a possible 10",
-                "Your score is 17 of a possible 10",
-                "Your score is 13 of a possible 10",
-            ])
+            fresh: BackdatedVaultGame(),
+            ["take coin", "restore", url.path, "inventory", "score", "wait", "score", "quit"])
+        #expect(transcript.contains(GameText().saveVersionMismatch()))
+        #expect(!transcript.contains("Restored."))
+        #expect(!transcript.contains("Restore failed."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("silver coin"))
+        #expect(turnOutput(of: "score", in: transcript).contains("Your score is 3 of a possible 10"))
+        #expect(turnOutput(ofLast: "score", in: transcript).contains("Your score is 3 of a possible 10"))
     }
 
     @Test func claimedRegistersSurviveSaveAndRestore() async throws {

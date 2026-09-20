@@ -254,3 +254,46 @@ struct BoxerGame: Game {
         boxer.starts(in: hall)
     }
 }
+
+/// Exercises deferred recovery without a combat countdown.
+struct ActorRecoveryGame: Game {
+    let title = "Recovery"
+    let intro = "A guard rests here."
+    let room = Location { name("Room") }
+    let guardActor = Actor { name("guard") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        guardActor.starts(in: room)
+    }
+
+    var verbs: [SyntaxRule] {
+        ["swoon", "recover", "renew", "abandon", "check"].map {
+            SyntaxRule(.word($0), intent: Intent($0))
+        }
+    }
+
+    var rules: Rules {
+        world.before(Intent("swoon")) {
+            guardActor.isUnconscious = true
+            try handled()
+        }
+        world.before(Intent("recover"), Intent("renew"), Intent("abandon")) {
+            guardActor.recoverAfterTurn()
+            if command.intent == Intent("renew") {
+                guardActor.isUnconscious = true
+            }
+            // No handler: this command must roll its recovery request back.
+            if command.intent != Intent("abandon") { try handled() }
+        }
+        world.before(Intent("check")) {
+            try reply("Out cold: \(guardActor.isUnconscious).")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        daemon("observe", autostart: true) {
+            say("Tick asleep: \(guardActor.isUnconscious).")
+        }
+    }
+}

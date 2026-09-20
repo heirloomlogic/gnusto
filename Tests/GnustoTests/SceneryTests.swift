@@ -40,7 +40,10 @@ struct SceneryTests {
     @Test func sceneryAnswersWithoutBecomingLooseLoot() async throws {
         let transcript = try await play(
             fresh:
-                SceneryGame(compact: true), ["look", "x old brickwork", "take wall", "take all", "i"])
+                SceneryGame(compact: true),
+            // The coin is inside the niche, so `all` leaves it there and
+            // it is taken by name (#510).
+            ["look", "x old brickwork", "take wall", "take all", "take coin", "i"])
         #expect(turnOutput(of: "x old brickwork", in: transcript).contains("Mortar fills the cracks."))
         #expect(!turnOutput(of: "look", in: transcript).contains("There is a stone wall here."))
         #expect(!turnOutput(of: "take wall", in: transcript).contains("Taken."))

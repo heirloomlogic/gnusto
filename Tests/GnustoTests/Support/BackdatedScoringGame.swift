@@ -8,7 +8,7 @@ import Gnusto
 /// display name rather than from `coin`.
 ///
 /// It declares the same world, under the same title, as ``BackdatedVaultGame``,
-/// so the file it writes restores into that game. What it deliberately lacks is
+/// so only the version gate prevents restoring it there. What it deliberately lacks is
 /// the `treasures(_:into:)` splice: the reconcile that comes with it runs at the
 /// end of every costing turn, and would credit the new `deposit.coin` key before
 /// the save was ever written. The old ledger cannot be held still in a world
@@ -17,7 +17,7 @@ import Gnusto
 ///
 /// The score and the two register keys are written by hand, so this is a
 /// stand-in for a pre-change save rather than a file an old build produced:
-/// it asserts what the old keys do to the current build, not that an older
+/// the test assigns an old format and verifies rejection, not that an older
 /// build wrote exactly these.
 ///
 /// `@testable` because ``Scoring/claimed`` and ``Scoring/cased`` are the
@@ -70,8 +70,8 @@ struct LegacyVaultGame: Game {
 }
 
 /// The current build of the same game: one treasure, one cabinet, and the
-/// entity-ID keys. It restores the file ``LegacyVaultGame`` wrote, and what it
-/// then scores is the cost of the change.
+/// entity-ID keys. An old-format file from ``LegacyVaultGame`` must be
+/// rejected before it replaces this game's score or placements.
 ///
 /// Deliberately not a copy of the other vault fixtures — nothing here has to
 /// stay in step with them, and its own numbers say so.

@@ -246,6 +246,8 @@ stairs.before(.climb) {
 
 So `enter(_:)` `throws`: an `onEnter` rule that ``die(_:)``s or ``refuse(_:)``s ends the turn from inside the move, and the room is then never described.
 
+An `onEnter` rule can move the player onward with either helper. The nested `arrive(at:)` or `enter(_:)` describes the final room, and the engine does not describe the room the player already left. Return normally after that move: `handled()` is unnecessary and would also skip the original `go` action's remaining `after` rules.
+
 Reach for `arrive(at:)` when the game is *putting* the player somewhere — a trapdoor, a spell, a scripted transition — and for `enter(_:)` when the fiction is that they walked. The choice is worth making rather than defaulting: a room that scores, announces or kills on arrival gets that from its `onEnter` rules, so a teleport into it has to repeat the room's own logic, and the two can drift apart.
 
 ## Live room-listing lines with `presence`
@@ -263,6 +265,8 @@ var rules: Rules {
 ```
 
 `presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines. The caveat about never asking for a look from inside the closure applies here unchanged, and for the same reason: the room describer is what calls it.
+
+Every declared description or listing line must contain a non-whitespace character. The bootstrap rejects blank `description(…)`, `firstSight(…)`, and either branch of their `when:otherwise:` forms; a `describe { … }` or `presence { … }` rule that calculates blank text traps when that value is evaluated. Omit optional text to use the engine's stock description or listing. To keep an object out of sight, declare ``hidden`` and reveal it when appropriate; a blank `firstSight` or `presence` result is not a visibility mechanism.
 
 The line is consulted wherever the room *lists* the thing, not only when it is lying on the floor — so an item that starts inside a container or on a surface gets its own paragraph in place of the stock *"In the chest is a tan label."*, and a rule can say which:
 
@@ -320,7 +324,7 @@ Eight free functions are available in any rule body:
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
 - ``require(_:else:)`` — refuse with that message unless the condition holds. The message is an autoclosure, so a call that builds its complaint from live state pays nothing on the passing path.
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
-- ``end(won:)`` — end the game; the engine prints the final score afterward.
+- ``end(won:)`` — end the game; `won` is bookkeeping only, so say your own win/loss line before calling it, then the engine prints the final score afterward.
 
 The three `say`s return normally, and so does ``require(_:else:)`` — it is `throws`, not `Never`, so it is a statement on its own line rather than the body of a `guard … else`. The rest return `Never` and read well after a `guard … else`.
 

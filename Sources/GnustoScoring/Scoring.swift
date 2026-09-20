@@ -164,13 +164,10 @@ public struct Scoring: GameContent {
     /// name still score separately, and rewording a treasure's `name` in a
     /// later build does not strand the credit a player's save is holding.
     ///
-    /// A save written before the keys moved carries the old name-derived ones,
-    /// and nothing reads or removes them: they sit in the ledger for the rest
-    /// of that game, and every later save copies them across. Pruning would
-    /// mean deleting keys this build does not recognize, which is the same
-    /// operation as deleting a key another plugin owns, so the dead strings
-    /// stay. `ScoringTests.aLedgerWrittenUnderTheOldKeysNoLongerCounts` is
-    /// what that costs a player.
+    /// Save format 3 introduced these keys. Older saves are rejected before
+    /// their state is installed, because their name-derived credits would
+    /// otherwise be awarded again. Start a fresh game after that rejection;
+    /// compatible saves retain the entity-ID ledger through restoration.
     ///
     /// Splice into the host's rules:
     ///

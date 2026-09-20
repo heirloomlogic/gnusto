@@ -159,7 +159,7 @@ public struct Conversation: GameContent {
     ///   - actor: whose table it is in.
     /// - Returns: whether they have given it.
     public func hasHeard(_ id: String, from actor: Actor) -> Bool {
-        heard.rows.contains(Self.heardKey(id, actorName: actor.name))
+        heard.rows.contains(Self.heardKey(id, actorID: actor.id))
     }
 
     /// Forgets everything an actor has already said, so their whole table
@@ -167,14 +167,14 @@ public struct Conversation: GameContent {
     ///
     /// - Parameter actor: whose memory to clear.
     public func unhearEverything(from actor: Actor) {
-        let prefix = "\(actor.name)\u{1F}"
+        let prefix = "\(actor.id)\u{1F}"
         heard.rows = heard.rows.filter { !$0.hasPrefix(prefix) }
     }
 
     /// The heard-set key for an explicitly identified row. Shares its shape
     /// with `TopicEntry.key(inTableOf:)` so the two cannot drift.
-    private static func heardKey(_ id: String, actorName: String) -> String {
-        "\(actorName)\u{1F}#\(id)"
+    private static func heardKey(_ id: String, actorID: EntityID) -> String {
+        "\(actorID)\u{1F}#\(id)"
     }
 
     // MARK: - Tables
@@ -248,7 +248,7 @@ public struct Conversation: GameContent {
                 if let taught = row.taught { learn(taught) }
                 try sayOnce(
                     row.again ?? (row.inheritsTableAgain ? again : nil),
-                    key: { row.key(inTableOf: actor.name) },
+                    key: { row.key(inTableOf: actor.id) },
                     then: row.body)
             }
         }
@@ -355,7 +355,7 @@ public struct Conversation: GameContent {
     ) -> Rule {
         // `!` rather than the `#` an author-supplied topic `id:` gets, so a row
         // declared `id: "glove"` cannot retire the showing of the glove.
-        let key = "\(actor.name)\u{1F}!shows\u{1F}\(item.name)"
+        let key = "\(actor.id)\u{1F}!shows\u{1F}\(item.id)"
         // Scoped on the actor rather than the item because item `before`
         // rules run indirect-object first, so this fires ahead of any rule
         // the shown item has of its own.
@@ -434,7 +434,7 @@ public struct Conversation: GameContent {
         // either is having said it. `!` rather than the `#` an author-supplied
         // `id:` gets, so a row declared `id: "greeting"` doesn't retire the
         // hello and vice versa.
-        let key = "\(actor.name)\u{1F}!greeting"
+        let key = "\(actor.id)\u{1F}!greeting"
         for intent in intents {
             actor.before(intent) {
                 if let fact { learn(fact) }
