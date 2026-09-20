@@ -58,13 +58,16 @@ extension Item {
     /// about what a treasure is. (#329)
     ///
     /// The optional subscript and `?? 0`, which is what `Scoring` itself uses
-    /// (`Scoring.swift:176`, `:216`). `item[default: .takeValue]` reads as the
-    /// safe spelling and is the opposite: neither key is declared with a
-    /// default, so that form **traps** on any item without the trait — which
-    /// is every item in the game that is not a treasure. The gnome carried
-    /// that expression and never fired it, because the one non-treasure
-    /// anybody hands him is the brick and the brick is refused by name one
-    /// branch earlier.
+    /// every time it reads these two keys — `treasures(_:into:)`,
+    /// `reconcileDeposits(of:in:)` and `declaredMaxScore(items:)`, the last of
+    /// which reads them off *every* item in the assembled world.
+    /// `item[default: .takeValue]` reads as the safe spelling and is the
+    /// opposite: neither key is declared with a default, so that form
+    /// **traps** on any item without the trait — which is every item in the
+    /// game that is not a treasure, and both mechanisms above reach those.
+    /// The Tomb heads' ``DungeonEndgame/robTheAdventurer()`` walks the whole
+    /// inventory and spares the lamp and the sword by arithmetic, so the
+    /// trapping spelling would die on the first ordinary thing you carried.
     var isWorthSomething: Bool {
         (self[.takeValue] ?? 0) + (self[.depositValue] ?? 0) > 0
     }
