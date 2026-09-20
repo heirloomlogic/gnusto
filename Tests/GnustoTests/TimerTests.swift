@@ -9,12 +9,14 @@ private func temporarySavePath(_ label: String) -> String {
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
 }
 
-/// A fuse whose count stands past what a save may carry.
+/// A fuse whose declared count stands past what a save may carry.
 ///
-/// The declaration is ordinary arithmetic and the game would play, but the
-/// count rides in every save it writes and the restore guard refuses it —
-/// so the author would meet a bare "Restore failed." on a file their own
-/// game wrote. Bootstrap says so instead.
+/// The declaration is ordinary arithmetic and the game would play. A running
+/// fuse's count rides in every save, so a declared count this large is either
+/// carried into a save no restore will accept, or overridden at every start
+/// and never used at all. Neither is what the author meant, and the first case
+/// would reach them as a bare "Restore failed." on a file their own game
+/// wrote. Bootstrap says so at the declaration instead.
 private struct OverlongFuseGame: Game {
     let title = "Overlong Fuse"
     let intro = "Should never boot."
