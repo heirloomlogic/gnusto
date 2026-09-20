@@ -1714,6 +1714,6 @@ struct StandardParser {
     /// has to agree with the person it names. The parser's counterpart to
     /// `TurnFrame.definiteNoun(of:)`.
     private func definiteNoun(of id: EntityID) -> GameText.Noun {
-        GameText.Noun(definiteName(of: id), plural: vocabulary.plurals.contains(id))
+        vocabulary.definiteNoun(of: id)
     }
 }

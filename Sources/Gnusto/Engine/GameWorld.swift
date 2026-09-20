@@ -633,9 +633,9 @@ public actor GameWorld {
             objects = expanded
         case .empty(let message):
             return freeReply(message)
-        case .dark:
+        case .dark, .holder:
             // Falls through into the turn below rather than replying for
-            // free: see `MultiObjectExpansion.dark`.
+            // free: see `MultiObjectExpansion.dark` and `.holder`.
             break
         }
 
@@ -670,6 +670,13 @@ public actor GameWorld {
                     // to charge it and tick the timers.
                     frame.sayOnceThisTurn(definition.text.pitchBlack())
                     throw TurnInterrupt.replied(message: "")
+                case .holder(let holder):
+                    // Rendered here for the same reason the dark line is: the
+                    // holder refusals are stock lines a game may have written
+                    // as `Line.live(_:)`, and the first expansion runs before
+                    // the frame those read through exists.
+                    throw TurnInterrupt.replied(
+                        message: nothingToTake(from: holder, in: currentState))
                 }
                 for id in objects {
                     guard frame.with({ $0.state.status }) == .playing else { break }
@@ -700,12 +707,12 @@ public actor GameWorld {
             } catch {
                 frame.say("\(error)")
             }
-            // Even interrupted upkeep names a group. Keep the initial set
-            // on that path, or the refreshed set when expansion succeeded.
-            // Bind only after expansion so THEM can use its original referents.
-            // The set is empty on exactly one path — the dark one, which never
-            // got as far as naming anything — and there THEM keeps whatever it
-            // already meant, the way LOOK in the dark leaves it alone.
+            // If the second expansion refuses or upkeep interrupts, objects
+            // keeps the initial set. Successful expansion replaces that set.
+            // An initially dark or empty holder starts with no objects, so it
+            // preserves THEM unless upkeep makes a group available; a group
+            // found before upkeep still binds even if upkeep later hides it.
+            // Bind here so expanding THEM can read its previous referents.
             if !objects.isEmpty {
                 frame.with { $0.state.pronounThem = objects }
             }
@@ -732,6 +739,14 @@ public actor GameWorld {
         /// frame exists, where that read traps. The wording is left to the
         /// caller, which speaks from inside the frame.
         case dark
+
+        /// No objects because the holder the player named after `from` has
+        /// none to give. Carries the holder rather than its refusal, for
+        /// ``dark``'s reason: every one of those refusals is a stock line a
+        /// game may have written as ``GameText/Line/live(_:)``, and rendering
+        /// one before the frame exists traps. The turn runs and is charged,
+        /// which is also what `take coin from <shut box>` costs.
+        case holder(EntityID)
     }
 
     /// Resolve a group against an explicit state so the eligibility check and
@@ -745,6 +760,10 @@ public actor GameWorld {
         // for it would be for nothing.
         let intent = parsed.intent
         var objects: [EntityID]
+        // Set when the player named a holder — `take all from the crate` — so
+        // the empty-group answer at the bottom can be about that thing rather
+        // than about the room.
+        var namedHolder: EntityID?
         switch multiple {
         case .all where intent == .take:
             let index = state.containment()
@@ -766,7 +785,7 @@ public actor GameWorld {
             // TAKE's rows spell no destination, so the two never meet.
             let source: [EntityID] =
                 if let indirect = parsed.indirectObject {
-                    index.children(of: indirect)
+                    index.children(of: indirect) + (index.held[indirect] ?? [])
                 } else {
                     floorHere(state, index).flatMap {
                         [$0] + (definition.items[$0]?.isSurface == true ? index.onSurface[$0] ?? [] : [])
@@ -782,9 +801,12 @@ public actor GameWorld {
             // it, not to vanish the thing.
             let reachable = Visibility.reachableItems(
                 at: state.playerLocation, definition: definition, state: state, index: index)
+            namedHolder = parsed.indirectObject
+            let held = Set(index.held[.player] ?? [])
             objects = inDisplayOrder(
                 source.filter {
                     reachable.contains($0) && definition.items[$0]?.isTakable == true
+                        && !held.contains($0)
                 })
         case .all:
             // DROP/PUT ALL is the opposite question and keeps the opposite
@@ -850,45 +872,71 @@ public actor GameWorld {
             {
                 return .dark
             }
-            return .empty(emptyGroupAnswer(parsed, in: &state))
+            if let namedHolder {
+                return .holder(namedHolder)
+            }
+            return .empty(
+                intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
         }
 
         return .objects(objects)
     }
 
-    /// What to say when the group came out empty. "There is nothing here to
-    /// take" is about the room, and a player who named a container was asking
-    /// about that container: a shut one is shut, and an open one is empty. Both
-    /// lines already exist for the single-object verbs, and a sweep is a good
-    /// deal easier to read when it answers in the same words they do.
+    /// What `take all from X` says when X has nothing for the player.
     ///
-    /// A named thing that is neither container nor surface has no inside to
-    /// report on, so it keeps the room's answer rather than being told it is
-    /// empty.
-    private func emptyGroupAnswer(_ parsed: ParsedCommand, in state: inout WorldState) -> String {
-        guard parsed.intent == .take else { return definition.text.notCarryingAnything() }
-        guard let source = parsed.indirectObject, let item = definition.items[source],
-            item.isContainer || item.isSurface
-        else {
-            return definition.text.nothingToTakeHere()
+    /// The rungs are `lookIn`'s, in `lookIn`'s order — yourself, out of reach,
+    /// a person, not a container, shut — because a player who has just been
+    /// told a box is shut should not be told next that it is bare, and one who
+    /// can see the clerk's open pouch is full should not be told there is
+    /// nothing in it. The reach rung is containment-only, which is all a bare
+    /// state snapshot can answer; a `reach { … }` veto is left to the
+    /// per-object runs.
+    ///
+    /// The two ladders part company on one case: `lookIn` reads a shut
+    /// *transparent* container and reports what is in it, where this reports
+    /// it shut, since what the group would have taken is behind the glass
+    /// either way.
+    ///
+    /// Called only from inside the turn, through
+    /// ``MultiObjectExpansion/holder(_:)``, so a line is rendered only where
+    /// a ``GameText/Line/live(_:)`` one can read the world.
+    ///
+    /// - Parameters:
+    ///   - holder: the thing the player named after `from`.
+    ///   - state: the world the group was expanded against.
+    /// - Returns: the rendered refusal.
+    private func nothingToTake(from holder: EntityID, in state: WorldState) -> String {
+        if holder == .player {
+            return definition.text.cantSearchSelf()
         }
-        let noun = GameText.Noun(
-            definition.vocabulary.definiteName(of: source), plural: item.isPlural)
-        // Only an `openable` thing can be shut. A bare surface has no open
-        // state at all, and `Visibility.isOpen` reads it as closed, which would
-        // shut the counter the receipt is lying on.
-        if item.isOpenable && !state.openItems.contains(source) {
+        let noun = definition.vocabulary.definiteNoun(of: holder)
+        // `containment()` memoizes into the value it is asked of, so the
+        // snapshot is copied rather than shared.
+        var state = state
+        let reachable = Visibility.reachableItems(
+            at: state.playerLocation, definition: definition, state: state,
+            index: state.containment())
+        guard reachable.contains(holder) else {
+            return definition.text.cantReach(noun)
+        }
+        if definition.items[holder]?.isActor == true {
+            return definition.text.cantSearchActor(noun)
+        }
+        guard
+            definition.items[holder]?.isContainer == true
+                || definition.items[holder]?.isSurface == true
+        else {
+            return definition.text.nothingToTakeThere()
+        }
+        if definition.items[holder]?.isOpenable == true, !state.openItems.contains(holder) {
             return definition.text.closedContainer(noun)
         }
-        // "Empty" is a claim about the container, and the filter above dropped
-        // what could not be *taken* rather than what was not there. A cabinet
-        // holding nothing but a scenery mop is not empty, and LOOK IN it the
-        // next turn lists the mop. The room's line says nothing about the
-        // cabinet, which beats saying something false about it.
-        let contents = state.containment().children(of: source)
+        // A holder is empty only if nothing perceivable remains. Scenery
+        // can make the take set empty without making the holder empty.
+        let contents = state.containment().children(of: holder)
             .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
-        guard contents.isEmpty else { return definition.text.nothingToTakeHere() }
-        return definition.text.emptyContainer(noun)
+        if contents.isEmpty { return definition.text.emptyContainer(noun) }
+        return definition.text.nothingToTakeThere()
     }
 
     /// What "here" holds for the floor sweep: the room the player is standing

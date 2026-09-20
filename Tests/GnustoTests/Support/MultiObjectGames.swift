@@ -93,8 +93,10 @@ struct VaultGame: Game {
 /// Every nesting `all` has to tell apart, in one room (#267). Three things are
 /// nameable and must **not** be offered by `take all` — what you already carry
 /// one level down, what sits behind glass, and what somebody else is holding —
-/// against two positive controls that must be, one loose on the floor and one
-/// inside an open crate the player is not carrying.
+/// against three positive controls that must be: one loose on the floor, one
+/// inside an open crate the player is not carrying, and one resting on the
+/// counter. Every holder `take X from Y` can name is here too: a container, a
+/// surface, a shut container, a person, and the player's own hands.
 struct NestedAllGame: Game {
     let title = "Depot"
     let intro = "A depot, and rather too many things inside other things."
@@ -165,11 +167,6 @@ struct NestedAllGame: Game {
         adjectives("dry")
     }
 
-    /// The counter the room description names: a surface, so a thing resting on
-    /// it is lying about in plain sight rather than packed away, and `all`
-    /// sweeps it along with the floor.
-    let counter = Item.scenery("counter") { surface }
-
     let receipt = Item {
         name("paper receipt")
         adjectives("paper")
@@ -190,10 +187,46 @@ struct NestedAllGame: Game {
         scenery
     }
 
+    /// The surface the room description has always mentioned, and what sits
+    /// on it: `take X from Y` has to answer for a thing resting on something
+    /// as well as for a thing inside it.
+    let counter = Item {
+        name("long counter")
+        adjectives("long")
+        scenery
+        surface
+    }
+
+    let mug = Item {
+        name("chipped mug")
+        adjectives("chipped")
+    }
+
+    /// Open, full, and in the clerk's hands: visible, and reachable by
+    /// nobody. A holder the player can see has something in it, so "there is
+    /// nothing there to take" would be a visible lie.
+    let pouch = Item {
+        name("canvas pouch")
+        adjectives("canvas")
+        container
+    }
+
+    let coin = Item {
+        name("copper coin")
+        adjectives("copper")
+    }
+
+    /// Openable and shut without being a container — the window case. Nothing
+    /// is ever inside it, so being shut is not why it has nothing to give.
+    let shutter = Item {
+        name("iron shutter")
+        adjectives("iron")
+        scenery
+        openable
+    }
+
     var map: WorldMap {
         player.starts(in: depot)
-        cabinet.starts(in: depot)
-        mop.starts(inside: cabinet)
         canteen.startsHeld
         water.starts(inside: canteen)
         showcase.starts(in: depot)
@@ -203,8 +236,59 @@ struct NestedAllGame: Game {
         key.starts(in: depot)
         crate.starts(in: depot)
         wafer.starts(inside: crate)
-        counter.starts(in: depot)
+        cabinet.starts(in: depot)
+        mop.starts(inside: cabinet)
         receipt.starts(on: counter)
+        counter.starts(in: depot)
+        mug.starts(on: counter)
+        pouch.starts(heldBy: clerk)
+        coin.starts(inside: pouch)
+        shutter.starts(in: depot)
+    }
+}
+
+/// A game that writes one of `take all from Y`'s refusals as a live line. The
+/// crate is empty, so the line prints, and it reads the world to do it — which
+/// is only possible from inside a turn frame (#507).
+struct LiveHolderLineGame: Game {
+    let title = "Signal Box"
+    let intro = "A signal box, and an empty crate in it."
+
+    let signalBox = Location {
+        name("Signal Box")
+        description("A signal box with an empty crate and a shuttered window.")
+    }
+
+    let crate = Item {
+        name("wooden crate")
+        adjectives("wooden")
+        container
+    }
+
+    /// Openable, shut, and no sort of container: the rung that separates
+    /// "there is nothing there" from "it is closed".
+    let hatch = Item {
+        name("coal hatch")
+        adjectives("coal")
+        scenery
+        openable
+    }
+
+    var text: GameText {
+        var text = GameText()
+        text.emptyContainer = .naming { _ in
+            self.crate.isTouched ? "Empty, the same as last time." : "Empty."
+        }
+        text.nothingToTakeThere = .live {
+            self.crate.isTouched ? "Empty, the same as last time." : "Empty."
+        }
+        return text
+    }
+
+    var map: WorldMap {
+        player.starts(in: signalBox)
+        crate.starts(in: signalBox)
+        hatch.starts(in: signalBox)
     }
 }
 
@@ -271,5 +355,54 @@ struct MooringGame: Game {
         hamper.starts(inside: punt)
         loaf.starts(inside: hamper)
         lantern.starts(in: quay)
+    }
+}
+
+/// Upkeep can invalidate a group that was nonempty before the turn started.
+struct ChangingHolderGame: Game {
+    let title = "Changing Holder"
+    let intro = ""
+    var darkens = false
+
+    init() {}
+    init(darkens: Bool) { self.darkens = darkens }
+    let room = Location {
+        name("Store")
+        description("A store room.")
+        dark
+    }
+    let lamp = Item {
+        name("lamp")
+        lightSource
+        startsLit
+    }
+    let crate = Item {
+        name("crate")
+        container
+        openable
+        startsOpen
+    }
+    let coin = Item { name("copper coin") }
+    let key = Item { name("brass key") }
+    let token = Item { name("wooden token") }
+    @Global var changed = false
+
+    var map: WorldMap {
+        player.starts(in: room)
+        lamp.startsHeld
+        crate.starts(in: room)
+        coin.starts(inside: crate)
+        key.starts(in: room)
+        token.starts(in: room)
+    }
+
+    var rules: Rules {
+        world.beforeEachTurn {
+            guard command.intent == .take, command.indirectObject == crate,
+                !changed
+            else { return }
+            changed = true
+            if darkens { lamp.isLit = false } else { crate.isOpen = false }
+        }
     }
 }

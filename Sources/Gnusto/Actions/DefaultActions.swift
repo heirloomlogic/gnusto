@@ -91,6 +91,23 @@ enum DefaultActions {
         if id == boarded {
             return text.notWhileInside(item.definiteNoun)
         }
+        // `take X from Y` makes a claim about where X is, and the claim is
+        // answered before the verb's complaints about picking the thing up: a
+        // player who thinks the coin is the troll's is owed that correction
+        // rather than "You already have that" from the coin in their own hand.
+        // The three refusals above come first, because those are about what
+        // was named rather than about whether it can be lifted. Anywhere under
+        // the holder counts — on it, inside it, in its hands, to any depth —
+        // because a coin in a box in the sack is in the sack. (#507)
+        if let holder = frame.with({ $0.command?.indirectObject }) {
+            // `holder.id` is read out here rather than inside the closure: an
+            // item proxy reads the live frame, and asking it for anything from
+            // inside `frame.with` re-enters the frame's own lock.
+            let holderID = holder.id
+            guard frame.with({ $0.state.isUnder(id, holderID) }) else {
+                return text.notFoundThere(item.definiteNoun)
+            }
+        }
         if item.isHeld {
             return item.isWorn ? text.alreadyWearing() : text.alreadyHave()
         }
