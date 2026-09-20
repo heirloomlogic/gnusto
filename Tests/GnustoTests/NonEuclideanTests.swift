@@ -125,4 +125,31 @@ struct NonEuclideanTests {
         #expect(!arrival.contains("Boathouse"))
         #expect(arrival.contains("pitch black"))
     }
+
+    // MARK: - The author's mistake
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// The destination is a closure, so the bootstrap cannot check where it
+    /// leads and running it at launch would not prove the next run. The check
+    /// therefore happens when the closure runs, and what it has to be is
+    /// *findable*: the generic "this Location is not part of the running game"
+    /// names neither the room the author is looking for nor the exit that
+    /// produced it. Issue #492.
+    @Test("a dynamic exit to an inline Location traps, naming the room, direction and destination")
+    func anInlineDynamicDestinationTrapsWithTheExitNamed() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(InlineDestinationGame(), ["north"])
+        }
+        expectTrap(
+            result,
+            says: "the dynamic north exit from \"den\"",
+            "a Location named \"Nowhere\"",
+            "is not part of the running game")
+    }
+
+    #endif
 }

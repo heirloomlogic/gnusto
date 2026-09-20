@@ -168,3 +168,32 @@ struct BankOfZorkGame: Game {
         try handled()
     }
 }
+
+/// An author's mistake, kept as a fixture: the dynamic exit's closure builds
+/// its destination inline instead of returning a stored property, so the
+/// `Location` it hands back has no identity in the world.
+///
+/// Nothing catches this before the exit is taken — that is the whole point of
+/// #492 — so playing it is fatal, and the only test that may touch it is the
+/// exit test in `NonEuclideanTests`.
+struct InlineDestinationGame: Game {
+    let title = "Nowhere In Particular"
+    let intro = "A den, and a door that leads out of the world."
+
+    let den = Location {
+        name("Den")
+        description("A den, with a passage north.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: den)
+        den.exit(
+            .north,
+            toward: {
+                Location {
+                    name("Nowhere")
+                    description("Void.")
+                }
+            })
+    }
+}
