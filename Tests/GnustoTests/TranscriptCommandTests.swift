@@ -167,12 +167,23 @@ struct TranscriptCommandTests {
     /// ordinary bare-name `script` still records normally in a restricted
     /// session — the fix must not have over-refused.
     @Test func scriptWithABareNameStillWorksWhenSavePathsAreRestricted() async throws {
+        // A bare name resolves under the transcripts directory, which is the
+        // developer's real one unless `GNUSTO_TRANSCRIPT_DIR` says otherwise —
+        // so the test hands the REPL its own, the way the rest of this file
+        // hands it its own save directory and transcript file.
+        let transcripts = tempDirectory()
         let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
         let io = ScriptedIOHandler(lines: ["script mysession", "look", "unscript", "quit"])
-        await REPL(world: world, io: io).run()
+        await REPL(
+            world: world, io: io,
+            environment: ["GNUSTO_TRANSCRIPT_DIR": transcripts.path]
+        ).run()
 
         #expect(io.transcript.contains("[Recording transcript to "))
         #expect(io.transcript.contains("[Transcript recording ended: "))
         #expect(!io.transcript.contains("Paths aren't allowed here"))
+        // And it recorded into that directory, nowhere else.
+        let recorded = transcripts.appendingPathComponent("mysession.txt")
+        #expect(try String(contentsOf: recorded, encoding: .utf8).contains("> look"))
     }
 }
