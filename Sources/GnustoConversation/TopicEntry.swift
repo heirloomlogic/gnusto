@@ -73,6 +73,8 @@ public typealias TopicBuilder = GnustoBuilder<TopicEntry>
 ///     a display name with another, or to two rows that should retire
 ///     together. Also the only way to name a row for
 ///     ``Conversation/hasHeard(_:from:)``.
+///   - file: the file this row was declared in, so the keyword trap names it.
+///   - declaredOn: the line this row was declared on, for the same reason.
 ///   - line: what the actor says. Ends the turn.
 /// - Returns: the topic row.
 public func topic(
@@ -84,12 +86,12 @@ public func topic(
     when condition: (@Sendable () -> Bool)? = nil,
     again: String? = nil,
     id: String? = nil,
+    file: StaticString = #fileID,
+    declaredOn: UInt = #line,
     reply line: String
 ) -> TopicEntry {
-    let normalized = keywords.map(Topic.normalize)
-    TopicEntry.requireUsableKeyword(normalized)
-    return TopicEntry(
-        keywords: normalized,
+    TopicEntry(
+        keywords: TopicEntry.normalizedKeywords(keywords, file: file, line: declaredOn),
         intents: intents.map(Set.init),
         required: required,
         barred: barred,
@@ -123,6 +125,8 @@ public func topic(
 ///     be able to change what the world *does*, only what is *said*. Naming a
 ///     line here opts in, and on a repeat the body does not run.
 ///   - id: a stable key for the heard set.
+///   - file: the file this row was declared in, so the keyword trap names it.
+///   - declaredOn: the line this row was declared on, for the same reason.
 ///   - body: what happens.
 /// - Returns: the topic row.
 public func topic(
@@ -134,12 +138,12 @@ public func topic(
     when condition: (@Sendable () -> Bool)? = nil,
     again: String? = nil,
     id: String? = nil,
+    file: StaticString = #fileID,
+    declaredOn: UInt = #line,
     perform body: @escaping @Sendable () throws -> Void
 ) -> TopicEntry {
-    let normalized = keywords.map(Topic.normalize)
-    TopicEntry.requireUsableKeyword(normalized)
-    return TopicEntry(
-        keywords: normalized,
+    TopicEntry(
+        keywords: TopicEntry.normalizedKeywords(keywords, file: file, line: declaredOn),
         intents: intents.map(Set.init),
         required: required,
         barred: barred,
@@ -152,19 +156,36 @@ public func topic(
 }
 
 extension TopicEntry {
-    /// Traps when none of a row's keywords survive normalization, so
+    /// Normalizes a row's keywords, trapping when none of them survive, so
     /// `topic(reply:)` and `topic("", reply:)` fail loudly at declaration
     /// time instead of building a row `answers(_:for:knowing:)` can never
     /// match — a silent no-op that never fires and nothing reports.
     ///
-    /// - Parameter keywords: the row's keywords, already normalized.
-    static func requireUsableKeyword(_ keywords: [[String]]) {
+    /// Both `topic(...)` overloads normalize through here rather than calling
+    /// `Topic.normalize` themselves, so neither can build a row the other
+    /// would have rejected. `file` and `line` come from the caller's defaults,
+    /// so the trap names the author's declaration and not this file.
+    ///
+    /// - Parameters:
+    ///   - keywords: the row's keywords as the author wrote them.
+    ///   - file: the file the `topic(...)` call was written in.
+    ///   - line: the line it was written on.
+    /// - Returns: the normalized keywords.
+    static func normalizedKeywords(
+        _ keywords: [String],
+        file: StaticString,
+        line: UInt
+    ) -> [[String]] {
+        let normalized = keywords.map(Topic.normalize)
         // Unlike precondition, fatalError preserves the diagnostic in Release builds.
-        guard keywords.contains(where: { !$0.isEmpty }) else {
+        guard normalized.contains(where: { !$0.isEmpty }) else {
             fatalError(
-                "GnustoConversation: topic(...) needs at least one keyword that isn't empty after normalization."
+                "GnustoConversation: topic(...) needs at least one keyword that isn't empty after normalization.",
+                file: file,
+                line: line
             )
         }
+        return normalized
     }
 
     /// Whether this row answers `topic` for `intent`, given what the player

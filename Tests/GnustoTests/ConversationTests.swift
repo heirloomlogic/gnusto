@@ -571,24 +571,45 @@ struct ConversationTests {
 
     // MARK: - Declaration-time validation
 
+    /// A blank keyword and a punctuation-only one reach the guard by the same
+    /// road no keywords at all do: normalization empties them (#486). Proving
+    /// that here, at a millisecond, is what leaves the exit tests below at one
+    /// child process per `topic(...)` overload rather than one per input.
+    @Test("a blank or punctuation-only keyword normalizes away")
+    func aBlankOrPunctuationOnlyKeywordNormalizesAway() {
+        #expect(Topic.normalize("").isEmpty)
+        #expect(Topic.normalize("!!!").isEmpty)
+    }
+
     // The platform policy for exit tests is in `Package.swift`.
     #if GNUSTO_EXIT_TESTS
 
-    /// `topic(reply:)` with no keywords, `topic("", reply:)` with a blank
-    /// one, and a keyword that normalizes to nothing (#486) would each build
-    /// a row `answers(_:for:knowing:)` can never match — a silent no-op, not
-    /// the catch-all an author reaching for the bare form might expect.
-    @Test(
-        "a topic row with no usable keyword traps at declaration",
-        arguments: InvalidTopicKeywords.allCases)
-    func aTopicRowWithNoUsableKeywordTrapsAtDeclaration(
-        _ invalid: InvalidTopicKeywords
-    ) async {
+    /// A `reply:` row with no usable keyword would build a row
+    /// `answers(_:for:knowing:)` can never match — a silent no-op, not the
+    /// catch-all an author reaching for the bare form might expect (#486).
+    @Test("the reply form traps on a row with no usable keyword")
+    func theReplyFormTrapsOnARowWithNoUsableKeyword() async {
         let result = await #expect(
             processExitsWith: .failure, observing: [\.standardErrorContent]
         ) {
-            [invalid = invalid as InvalidTopicKeywords] in
-            invalid.make()
+            _ = topic(reply: "\"The catch-all that never fires.\"")
+        }
+        // The file is in the needles because `file:`/`declaredOn:` exist to put
+        // it there: without them `fatalError` reports `TopicEntry.swift`, which
+        // is the one place the author did not write anything.
+        expectTrap(
+            result,
+            says: "topic(...) needs at least one keyword", "ConversationTests.swift")
+    }
+
+    /// The `perform:` overload builds its own row and calls the guard itself,
+    /// so it takes a child process of its own (#486).
+    @Test("the perform form traps on a row with no usable keyword")
+    func thePerformFormTrapsOnARowWithNoUsableKeyword() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = topic(perform: {})
         }
         expectTrap(result, says: "topic(...) needs at least one keyword")
     }
@@ -601,35 +622,6 @@ struct ConversationTests {
 private func occurrences(of needle: String, in haystack: String) -> Int {
     haystack.components(separatedBy: needle).count - 1
 }
-
-// The platform policy for exit tests is in `Package.swift`.
-#if GNUSTO_EXIT_TESTS
-
-/// The ways a `topic(...)` row can end up with no usable keyword (#486): no
-/// keywords at all, one blank string, and one that is punctuation and
-/// normalizes away entirely. Covers both the `reply:` and `perform:` forms,
-/// since the check runs ahead of the shared construction path.
-enum InvalidTopicKeywords: String, CaseIterable, Codable, Sendable {
-    case none
-    case blank
-    case punctuationOnly
-    case performForm
-
-    func make() {
-        switch self {
-        case .none:
-            _ = topic(reply: "\"The catch-all that never fires.\"")
-        case .blank:
-            _ = topic("", reply: "\"The empty one.\"")
-        case .punctuationOnly:
-            _ = topic("!!!", reply: "\"Punctuation only.\"")
-        case .performForm:
-            _ = topic(perform: {})
-        }
-    }
-}
-
-#endif
 
 // MARK: - Synthetic fixtures
 
