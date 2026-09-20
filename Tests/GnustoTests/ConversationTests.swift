@@ -571,10 +571,10 @@ struct ConversationTests {
 
     // MARK: - Declaration-time validation
 
-    /// A blank keyword and a punctuation-only one reach the guard by the same
-    /// road no keywords at all do: normalization empties them (#486). Proving
-    /// that here, at a millisecond, is what leaves the exit tests below at one
-    /// child process per `topic(...)` overload rather than one per input.
+    /// A blank keyword and a punctuation-only one reach the guard the same way
+    /// no keywords at all do: normalization empties them (#486). Asserting that
+    /// in process is what keeps the exit tests below at one child process per
+    /// `topic(...)` overload rather than one per input.
     @Test("a blank or punctuation-only keyword normalizes away")
     func aBlankOrPunctuationOnlyKeywordNormalizesAway() {
         #expect(Topic.normalize("").isEmpty)
