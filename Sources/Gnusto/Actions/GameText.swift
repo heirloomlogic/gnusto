@@ -383,6 +383,11 @@ public struct GameText: Sendable {
     /// plain slot names are allowed — headless runs, the play-test harness.
     public var savePathRefused: Line<Nothing> =
         "Paths aren't allowed here; enter a plain name."
+    /// A save or restore whose answer holds no letter, number or underscore
+    /// anywhere in it: all punctuation, all dots, or nothing but emoji. There
+    /// is no file it could name, so the prompt says so rather than picking one.
+    public var saveNameUnusable: Line<Nothing> =
+        "That name has no letters or numbers in it. Try another."
     /// An empty answer to a filename prompt.
     public var cancelled: Line<Nothing> = "Cancelled."
 
@@ -717,15 +722,12 @@ public struct GameText: Sendable {
     /// is charged either way, because a player who cannot see the room cannot
     /// be told it is empty (#518).
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
-    /// `take all from Y` where Y offers the player nothing: it is empty, or
-    /// holds only what they already carry or cannot pick up, or is not the
-    /// sort of thing anything sits in. Y out of reach gets ``cantReach``, a
-    /// person gets ``cantSearchActor``, a shut container gets
-    /// ``closedContainer``, and in the dark ``pitchBlack`` answers ahead of
-    /// all of them — LOOK IN's ladder in LOOK IN's order. Wordless about *why*
-    /// on purpose: the one thing true of every case is that there is nothing
-    /// to be had. Charged, like the single `take X from Y` refusals it sits
-    /// beside (#507).
+    /// `take all from Y` where Y holds only untakable contents or is not a
+    /// holder. An actually empty holder uses ``emptyContainer``; one out of
+    /// reach uses ``cantReach``, a person ``cantSearchActor``, and a shut
+    /// container ``closedContainer``. If expansion finds no eligible objects
+    /// in the dark, ``pitchBlack`` answers before these holder refusals.
+    /// Charged, like the single `take X from Y` refusals beside it (#507).
     public var nothingToTakeThere: Line<Nothing> = "There is nothing there to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."

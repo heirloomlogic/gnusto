@@ -63,7 +63,7 @@ Seven variables configure a running game, two report on one, and one replaces th
 |---|---|
 | `GNUSTO_PLAIN` | Forces the plain ``ConsoleIOHandler`` even in a terminal. A flag, not a setting: *any* value counts, including an empty one. |
 | `GNUSTO_SEED` | Pins the random stream to a whole number, so the whole session replays identically. Also seeds the test suite's unpinned `play(_:_:)` calls — see <doc:TestingYourGame#Sweep-for-tests-that-pass-by-luck>. |
-| `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. |
+| `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. A path that can't be opened (a directory, an unwritable location) is a complaint on stderr, and the session plays on without recording. |
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
 | `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by ``GameMain`` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |

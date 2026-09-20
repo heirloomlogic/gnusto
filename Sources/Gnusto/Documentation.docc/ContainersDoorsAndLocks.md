@@ -56,6 +56,8 @@ let coffin = Item {
 }
 ```
 
+The cap is asked first — its rule is world scope, so stage 1 — and that is what holds it for a game that replaces the verb with an `action(.take)` of its own, and what stops a `before(.take)` rule that changes the world from committing the change and then being told the player's hands are full. But it answers last: "no room in your hands" is the broadest line `take` has, so the rule reads `take`'s own ladder first and says nothing wherever `take` has a more particular answer — taking yourself, taking a person, taking what you already hold or wear, taking scenery, taking what you can't reach, taking the vehicle you're standing in. A refusal your own `before(.take)` rule writes is stage 3, so it is printed only once the cap has passed; put it in a `reach { … }` rule to have it answer first. Weight already in the player's hands is not weighed twice either: lifting the garlic out of a sack they're carrying changes the load by nothing, so the cap has no opinion about it however full the sack is.
+
 Inside a rule, the live relationships are:
 
 - ``Item/holds(_:)`` — is that item on or inside this one?

@@ -2,8 +2,10 @@ import Gnusto
 
 /// Vehicle fixture: a dock with a red boat (enterable container — the real
 /// vehicle), a pine crate (enterable, for the one-at-a-time refusal), a tin
-/// bucket (carriable enterable), and a pebble for cargo. The boathouse and
-/// the dark cave give the rides somewhere to go.
+/// bucket (carriable enterable), and a pebble for cargo. A log raft and a
+/// diving pod are the surface and the shuttable-hull vehicles, each with a
+/// piece of cargo, for the listing walk; a flat barge is both channels at once.
+/// The boathouse and the dark cave give the rides somewhere to go.
 struct HarborGame: Game {
     let title = "Harbor"
     let intro = "Gulls, rope, and one questionable boat."
@@ -53,6 +55,63 @@ struct HarborGame: Game {
         name("small lantern")
         adjectives("small")
         lightSource
+    }
+
+    /// The surface half of the listing walk: a vehicle you ride on, carrying
+    /// an oar.
+    let raft = Item {
+        name("log raft")
+        adjectives("log")
+        enterable
+        surface
+    }
+
+    let oar = Item {
+        name("chipped oar")
+        adjectives("chipped")
+        firstSight("An oar lies athwart the raft.")
+    }
+
+    /// The closed-opaque-hull case: a vehicle with a lid, carrying a wrench.
+    let pod = Item {
+        name("diving pod")
+        adjectives("diving")
+        enterable
+        container
+        openable
+        startsOpen
+    }
+
+    let wrench = Item {
+        name("rusty wrench")
+        adjectives("rusty")
+    }
+
+    /// Hull and deck at once, for the two listing channels on one vehicle.
+    /// Carries a sack inside and a bell on top.
+    let barge = Item {
+        name("flat barge")
+        adjectives("flat")
+        enterable
+        container
+        surface
+    }
+
+    let sack = Item {
+        name("burlap sack")
+        adjectives("burlap")
+    }
+
+    let bell = Item {
+        name("brass bell")
+        adjectives("brass")
+    }
+
+    /// A rideable actor — the hull that is also somebody.
+    let mule = Actor {
+        name("gray mule")
+        adjectives("gray")
+        enterable
     }
 
     let dais = Item {
@@ -121,6 +180,15 @@ struct HarborGame: Game {
         bucket.starts(in: dock)
         pebble.starts(in: dock)
         lantern.starts(in: dock)
+
+        raft.starts(in: dock)
+        oar.starts(on: raft)
+        pod.starts(in: dock)
+        wrench.starts(inside: pod)
+        mule.starts(in: dock)
+        barge.starts(in: dock)
+        sack.starts(inside: barge)
+        bell.starts(on: barge)
         dais.starts(in: dock)
         chair.starts(on: dais)
         bin.starts(in: dock)

@@ -451,7 +451,7 @@ actor PlaytestSessions {
     /// - Throws: ``PlaytestError`` when the source holds no slots.
     /// - Returns: what was copied and what was already there.
     static func stageSlots(from source: URL, into destination: URL) throws -> StagedSlots {
-        let slots = SaveStore.existingSaveNames(in: source)
+        let slots = SaveStore.existingSaves(in: source)
         guard !slots.isEmpty else {
             throw PlaytestError(
                 """
@@ -471,13 +471,34 @@ actor PlaytestSessions {
         // a round's eight staged sessions is eight calls where it was seventy-two.
         let already = Set(SaveStore.existingSaveNames(in: destination))
         var copied: [String] = []
-        for slot in slots where !already.contains(slot) {
-            try FileManager.default.copyItem(
-                at: SaveStore.resolve(slot, in: source),
-                to: try SaveStore.resolveForWrite(slot, in: destination))
+        var restorable: [String] = []
+        for (slot, from) in slots {
+            if already.contains(slot) {
+                restorable.append(slot)
+                continue
+            }
+            // The source URL is the directory entry `existingSaves` read, not a
+            // path recomputed from the name: a saves directory copied off HFS+
+            // holds decomposed filenames, and the recomputed composed path is
+            // not a file there. `resolveForWrite` returns non-nil for any name
+            // that listing produced, so the fallback is unreachable rather than
+            // silent — and it stages the slot under the name the restore prompt
+            // will be given.
+            let to =
+                try SaveStore.resolveForWrite(slot, in: destination)
+                ?? destination
+                .appendingPathComponent(slot)
+                .appendingPathExtension(SaveStore.fileExtension)
+            // Two source slots longer than the byte bound can share a truncated
+            // destination name. Throwing there would abort the staging with the
+            // earlier copies already on disk; skipping leaves the slot out of
+            // both lists, which is the same promise the guard above keeps.
+            guard !FileManager.default.fileExists(atPath: to.path) else { continue }
+            try FileManager.default.copyItem(at: from, to: to)
             copied.append(slot)
+            restorable.append(slot)
         }
-        return StagedSlots(from: source, copied: copied, restorable: slots)
+        return StagedSlots(from: source, copied: copied, restorable: restorable)
     }
 
     /// Whether a URL names a directory that exists.

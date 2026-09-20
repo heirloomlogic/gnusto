@@ -109,7 +109,7 @@ struct ContainerTests {
             _ = try Bootstrap.build(GhostLockGame())
             Issue.record("expected BootstrapError")
         } catch let error as BootstrapError {
-            #expect(error.diagnostics.contains { $0.contains("not a stored property") })
+            #expect(error.diagnostics.contains { $0.contains("the bootstrap never registered") })
         } catch {
             Issue.record("expected a BootstrapError, got \(error)")
         }
@@ -1013,5 +1013,100 @@ struct ContainerTests {
     @Test func pushWithNoRuleGivesStockMessage() async throws {
         let transcript = try await play(PantryGame(), ["push crate"])
         expectInOrder(transcript, ["You can't move that."])
+    }
+
+    // MARK: - An item that is both a surface and a container
+
+    /// The two channels are asked separately, so a closed dresser shows what
+    /// rests on its top and withholds what is shut in its drawer. LOOK, SEARCH,
+    /// TAKE, TAKE ALL and the parser's own scope all read the same walk, so one
+    /// fixture pins all five. (#513)
+    @Test func aClosedSurfaceContainerExposesOnlyWhatRestsOnIt() async throws {
+        let transcript = try await play(
+            DresserGame(),
+            ["look", "search dresser", "take sock", "take lamp"])
+
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("On the oak dresser is a brass lamp."))
+        #expect(!look.contains("sock"))
+
+        expectInOrder(
+            transcript,
+            [
+                "The oak dresser is closed.",
+                "You can't see any such thing.",
+                "Taken.",
+            ])
+    }
+
+    /// The two channels part company mid-walk, not just at the first level. An
+    /// open biscuit tin stands on the closed dresser's top, so the surface
+    /// channel carries straight on into the tin while the dresser's own drawer
+    /// stays shut underneath it.
+    @Test func anOpenContainerOnAClosedSurfaceContainerStillGivesUpItsContents()
+        async throws
+    {
+        let transcript = try await play(
+            DresserGame(), ["search tin", "take thimble", "take sock"])
+
+        expectInOrder(
+            transcript,
+            [
+                "In the biscuit tin is a steel thimble.",
+                "Taken.",
+                "You can't see any such thing.",
+            ])
+    }
+
+    /// TAKE ALL reads the reachable set, and a closed drawer keeps its contents
+    /// out of it while the top's lamp comes along.
+    @Test func takeAllSkipsWhatIsShutInsideASurfaceContainer() async throws {
+        let taken = turnOutput(of: "take all", in: try await play(DresserGame(), ["take all"]))
+        #expect(taken.contains("brass lamp"))
+        #expect(!taken.contains("wool sock"))
+    }
+
+    /// Opening it restores the old behaviour whole: the drawer lists, searches
+    /// and gives up its sock.
+    @Test func openingASurfaceContainerHandsOverItsContents() async throws {
+        let transcript = try await play(
+            DresserGame(), ["open dresser", "look", "search dresser", "take sock"])
+
+        expectInOrder(
+            transcript,
+            [
+                "Opening the oak dresser reveals a wool sock.",
+                "On the oak dresser is a brass lamp.",
+                "In the oak dresser is a wool sock.",
+                "In the oak dresser is a wool sock.",
+                "Taken.",
+            ])
+    }
+
+    /// `transparent` parts visibility from reach on the inside channel only, so
+    /// the shut glass cabinet splits three ways in one turn: the medal on its
+    /// top comes off in the hand, the vase behind its glass is seen and refused.
+    @Test func aClosedTransparentSurfaceContainerIsSeenAndNotReached() async throws {
+        let transcript = try await play(
+            DresserGame(), ["take medal", "examine vase", "take vase"])
+
+        expectInOrder(
+            transcript,
+            [
+                "Taken.",
+                "You see nothing special about the china vase.",
+                "You can't reach the china vase.",
+            ])
+    }
+
+    /// A container with no `openable` is permanently open, and being a surface
+    /// too changes nothing about either channel.
+    @Test func aPermanentlyOpenSurfaceContainerStillGivesUpItsContents() async throws {
+        let transcript = try await play(DresserGame(), ["look", "take book", "take candle"])
+
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("On the pine shelf is a wax candle."))
+        #expect(look.contains("In the pine shelf is a red book."))
+        expectInOrder(transcript, ["Taken.", "Taken."])
     }
 }

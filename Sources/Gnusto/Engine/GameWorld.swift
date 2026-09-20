@@ -707,15 +707,12 @@ public actor GameWorld {
             } catch {
                 frame.say("\(error)")
             }
-            // Even interrupted upkeep names a group. Keep the initial set
-            // on that path, or the refreshed set when expansion succeeded.
-            // Bind only after expansion so THEM can use its original referents.
-            // THEM is rebound only when this turn actually produced a group:
-            // the post-upkeep `.dark` and `.holder` cases both throw before
-            // `objects` is reassigned, leaving it at its pre-upkeep value —
-            // empty on every route into this method that reaches either
-            // case — and there THEM keeps whatever it already meant, the way
-            // LOOK in the dark leaves it alone.
+            // If the second expansion refuses or upkeep interrupts, objects
+            // keeps the initial set. Successful expansion replaces that set.
+            // An initially dark or empty holder starts with no objects, so it
+            // preserves THEM unless upkeep makes a group available; a group
+            // found before upkeep still binds even if upkeep later hides it.
+            // Bind here so expanding THEM can read its previous referents.
             if !objects.isEmpty {
                 frame.with { $0.state.pronounThem = objects }
             }
@@ -770,42 +767,46 @@ public actor GameWorld {
         switch multiple {
         case .all where intent == .take:
             let index = state.containment()
-            // The question TAKE ALL asks is "what could I pick up here", and
-            // that is the *reachable* set, not the nameable one: a shut glass
-            // case shows its medal and the troll's axe is plainly in his hands,
-            // but offering either only earns a refusal by name (#267). A
-            // `reach { … }` veto is deliberately still offered — `reachableItems`
-            // is containment-only, and a rule that says "the length of the
-            // gallery away" wants to say it, not to vanish the thing.
+            // TAKE ALL sweeps what is lying about: the floor of the room the
+            // player is standing in, and the tops of the tables and shelves
+            // standing on it. What it does **not** do is unpack — sweeping the
+            // whole reachable closure took the sack *and* the garlic inside it,
+            // and two commands later the sack was empty and its contents were
+            // loose on the ground, a rearrangement nobody asked for (#510). A
+            // surface is display and a container is packing, which is the line
+            // the sweep stops at; what is inside something here is taken by
+            // name, or by `take all from <it>` below.
+            //
+            // `from`/`off`/`out of` names the thing to sweep instead: its
+            // surface items and its contents, whether it is standing here or in
+            // the player's hands. The indirect slot is a *source* here and a
+            // *destination* for `put all in the sack`, which is why the
+            // subtraction further down reads it only for `.putIn`/`.putOn`:
+            // TAKE's rows spell no destination, so the two never meet.
+            let source: [EntityID] =
+                if let indirect = parsed.indirectObject {
+                    index.children(of: indirect) + (index.held[indirect] ?? [])
+                } else {
+                    floorHere(state, index).flatMap {
+                        [$0] + (definition.items[$0]?.isSurface == true ? index.onSurface[$0] ?? [] : [])
+                    }
+                }
+            // Intersected with the *reachable* set, not the nameable one. On
+            // the floor sweep that is the revealed test: a `hidden` item lies
+            // in the room without being on offer until something reveals it.
+            // On the `from` sweep it is also what keeps a shut glass case from
+            // handing over the medal it shows (#267). A `reach { … }` veto is
+            // deliberately still offered — `reachableItems` is containment-only,
+            // and a rule that says "the length of the gallery away" wants to say
+            // it, not to vanish the thing.
             let reachable = Visibility.reachableItems(
                 at: state.playerLocation, definition: definition, state: state, index: index)
-            // Subtract the player's inventory to *any* depth. The direct
-            // children are not enough: the water is in the bottle and the
-            // bottle is in your hand, and ALL has nothing to add to that.
-            // A TAKE ALL policy, not an impossibility — `take water` by name
-            // still runs, and is still the game's own business to answer.
-            let candidates: [EntityID]
-            let carried: Set<EntityID>
-            if let holder = parsed.indirectObject {
-                // `take all from the sack` is a smaller question than TAKE
-                // ALL: only what that holder has, and only its direct
-                // children, the way DROP ALL empties your hands and not your
-                // sack. Naming the holder is naming the thing, so the depth
-                // subtraction goes with it — a carried sack's garlic is
-                // exactly what the player asked for, and `take garlic` would
-                // have handed it over. What stays subtracted is what is
-                // already in their hands, which nothing can add to. (#507)
-                namedHolder = holder
-                let offered = index.children(of: holder) + (index.held[holder] ?? [])
-                candidates = offered.filter(reachable.contains)
-                carried = Set(index.held[.player] ?? [])
-            } else {
-                candidates = Array(reachable)
-                carried = index.closure(under: index.held[.player] ?? [])
-            }
+            namedHolder = parsed.indirectObject
+            let held = Set(index.held[.player] ?? [])
             objects = inDisplayOrder(
-                candidates.filter {
-                    definition.items[$0]?.isTakable == true && !carried.contains($0)
+                source.filter {
+                    reachable.contains($0) && definition.items[$0]?.isTakable == true
+                        && !held.contains($0)
                 })
         case .all:
             // DROP/PUT ALL is the opposite question and keeps the opposite
@@ -921,13 +922,40 @@ public actor GameWorld {
         if definition.items[holder]?.isActor == true {
             return definition.text.cantSearchActor(noun)
         }
-        guard definition.items[holder]?.isContainer == true else {
+        guard
+            definition.items[holder]?.isContainer == true
+                || definition.items[holder]?.isSurface == true
+        else {
             return definition.text.nothingToTakeThere()
         }
         if definition.items[holder]?.isOpenable == true, !state.openItems.contains(holder) {
             return definition.text.closedContainer(noun)
         }
+        // A holder is empty only if nothing perceivable remains. Scenery
+        // can make the take set empty without making the holder empty.
+        let contents = state.containment().children(of: holder)
+            .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
+        if contents.isEmpty { return definition.text.emptyContainer(noun) }
         return definition.text.nothingToTakeThere()
+    }
+
+    /// What "here" holds for the floor sweep: the room the player is standing
+    /// in, plus the hull of the vehicle they are aboard when that vehicle is a
+    /// container. `drop` puts what you let go of into a cargo vehicle rather
+    /// than on the ground sliding past below, so a sweep that read the room
+    /// alone would strand everything `drop all` had just put down (#540). Both,
+    /// not either: reach is room-granular, so the lantern on the quay is as
+    /// much within arm's length of the thwart as the pole in the bottom of the
+    /// boat is.
+    ///
+    /// One level, like every other floor. The hull's own contents come up; what
+    /// is packed inside a hamper standing in the hull does not.
+    private func floorHere(_ state: WorldState, _ index: ContainmentIndex) -> [EntityID] {
+        var floor = index.inRoom[state.playerLocation] ?? []
+        if let vehicle = state.playerVehicle, definition.items[vehicle]?.isContainer == true {
+            floor += index.inContainer[vehicle] ?? []
+        }
+        return floor
     }
 
     /// A keyword stands for a set, which has no order of its own, so it gets a

@@ -40,7 +40,7 @@ struct Zork1NounTests {
                     "x lunch", "x food", "x sandwich", "x dinner",
                     "x hot lunch", "x pepper sandwich", "x hot pepper dinner",
                 ],
-                description: "A hot pepper sandwich is here."
+                description: "There's nothing special about the lunch."
             ),
             (
                 commands: ["x garlic", "x clove", "x clove garlic"],
@@ -48,7 +48,7 @@ struct Zork1NounTests {
             ),
             (
                 commands: ["x bottle", "x container", "x clear bottle", "x glass container", "x clear glass bottle"],
-                description: "A bottle is sitting on the table."
+                description: "There's nothing special about the glass bottle."
             ),
             (
                 commands: ["x water", "x quantity", "x liquid", "x h2o", "x quantity water"],

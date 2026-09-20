@@ -167,6 +167,26 @@ struct NestedAllGame: Game {
         adjectives("dry")
     }
 
+    let receipt = Item {
+        name("paper receipt")
+        adjectives("paper")
+    }
+
+    /// Scenery, and a container: nothing in it can ever be swept, which is not
+    /// the same as nothing being in it.
+    let cabinet = Item {
+        name("oak cabinet")
+        adjectives("oak")
+        container
+        scenery
+    }
+
+    let mop = Item {
+        name("straw mop")
+        adjectives("straw")
+        scenery
+    }
+
     /// The surface the room description has always mentioned, and what sits
     /// on it: `take X from Y` has to answer for a thing resting on something
     /// as well as for a thing inside it.
@@ -216,6 +236,9 @@ struct NestedAllGame: Game {
         key.starts(in: depot)
         crate.starts(in: depot)
         wafer.starts(inside: crate)
+        cabinet.starts(in: depot)
+        mop.starts(inside: cabinet)
+        receipt.starts(on: counter)
         counter.starts(in: depot)
         mug.starts(on: counter)
         pouch.starts(heldBy: clerk)
@@ -253,6 +276,9 @@ struct LiveHolderLineGame: Game {
 
     var text: GameText {
         var text = GameText()
+        text.emptyContainer = .naming { _ in
+            self.crate.isTouched ? "Empty, the same as last time." : "Empty."
+        }
         text.nothingToTakeThere = .live {
             self.crate.isTouched ? "Empty, the same as last time." : "Empty."
         }
@@ -263,5 +289,120 @@ struct LiveHolderLineGame: Game {
         player.starts(in: signalBox)
         crate.starts(in: signalBox)
         hatch.starts(in: signalBox)
+    }
+}
+
+/// The boarded case (#540): a punt you climb into, which is a container, so
+/// `drop` puts what you let go of into the hull rather than on the water
+/// sliding past. A hamper already aboard, with a loaf packed inside it, is the
+/// control for "the hull is a floor, not an unpacking" — and the mooring post
+/// on the quay is the control for the room floor still being in reach from the
+/// thwart.
+struct MooringGame: Game {
+    let title = "Mooring"
+    let intro = "A quay, a punt, and a slack rope."
+
+    let quay = Location {
+        name("Quay")
+        description("Bollards, weed, and water slapping the stones.")
+    }
+
+    /// The vehicle: enterable *and* a container, which is the pair `drop`
+    /// reads.
+    let punt = Item {
+        name("flat punt")
+        adjectives("flat")
+        description("Tarred boards and one pole.")
+        enterable
+        container
+    }
+
+    let pole = Item {
+        name("ash pole")
+        adjectives("ash")
+    }
+
+    let biscuit = Item {
+        name("ship biscuit")
+        adjectives("ship")
+    }
+
+    /// Packed, and aboard: sweeping the hull must take the hamper and leave
+    /// the loaf in it.
+    let hamper = Item {
+        name("wicker hamper")
+        adjectives("wicker")
+        container
+    }
+
+    let loaf = Item {
+        name("brown loaf")
+        adjectives("brown")
+    }
+
+    /// On the quay rather than in the punt: reach is room-granular, so this
+    /// stays on offer from aboard.
+    let lantern = Item {
+        name("dock lantern")
+        adjectives("dock")
+    }
+
+    var map: WorldMap {
+        player.starts(in: quay)
+        punt.starts(in: quay)
+        pole.startsHeld
+        biscuit.startsHeld
+        hamper.starts(inside: punt)
+        loaf.starts(inside: hamper)
+        lantern.starts(in: quay)
+    }
+}
+
+/// Upkeep can invalidate a group that was nonempty before the turn started.
+struct ChangingHolderGame: Game {
+    let title = "Changing Holder"
+    let intro = ""
+    var darkens = false
+
+    init() {}
+    init(darkens: Bool) { self.darkens = darkens }
+    let room = Location {
+        name("Store")
+        description("A store room.")
+        dark
+    }
+    let lamp = Item {
+        name("lamp")
+        lightSource
+        startsLit
+    }
+    let crate = Item {
+        name("crate")
+        container
+        openable
+        startsOpen
+    }
+    let coin = Item { name("copper coin") }
+    let key = Item { name("brass key") }
+    let token = Item { name("wooden token") }
+    @Global var changed = false
+
+    var map: WorldMap {
+        player.starts(in: room)
+        lamp.startsHeld
+        crate.starts(in: room)
+        coin.starts(inside: crate)
+        key.starts(in: room)
+        token.starts(in: room)
+    }
+
+    var rules: Rules {
+        world.beforeEachTurn {
+            guard command.intent == .take, command.indirectObject == crate,
+                !changed
+            else { return }
+            changed = true
+            if darkens { lamp.isLit = false } else { crate.isOpen = false }
+        }
     }
 }

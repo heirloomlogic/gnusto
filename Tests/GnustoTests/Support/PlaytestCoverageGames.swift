@@ -189,6 +189,89 @@ struct CoalMineGame: Game {
     }
 }
 
+/// Two dead ends under one display name, each with its own unwalked exit.
+///
+/// ``CoalMineGame``'s sibling, and the case the coverage *queue* gets wrong
+/// where that one gets the closing record wrong. Walking west out of one Dead
+/// End used to close the other's west exit, because an exit item's id carried
+/// the display name; and `look` in one was compared against `look` in the
+/// other, so the rusty hinge lying in only one of them read as a fuse firing.
+/// Zork 1 and Dungeon have eight Dead Ends each, which is where coverage is
+/// hardest to come by and a false frontier costs most. (#504)
+struct TwinDeadEndGame: Game {
+    let title = "Twins"
+    let intro = "Two dead ends."
+
+    let hall = Location {
+        name("Hall")
+        description("A plain hall. Ways lead north and south.")
+    }
+
+    let deadA = Location {
+        name("Dead End")
+        description("A blind alley. A narrow crack leads west.")
+    }
+
+    let deadB = Location {
+        name("Dead End")
+        description("A blind alley. A narrow crack leads west.")
+    }
+
+    let closetA = Location {
+        name("Closet A")
+        description("A closet.")
+    }
+
+    let closetB = Location {
+        name("Closet B")
+        description("A closet.")
+    }
+
+    /// In one twin and not the other, so a probe that confuses the two sees a
+    /// sentence appear out of nowhere.
+    let hinge = Item {
+        name("rusty hinge")
+        description("A rusty hinge.")
+    }
+
+    /// Edible, so examining it raises `object:berries:eat` — an
+    /// always-committing fork. In `deadB` deliberately, so the fork's room is
+    /// the second Dead End the session meets, which reads `Dead End (2)`. See
+    /// ``CoverageLedger/forks()`` and the room-label test in
+    /// PlaytestCoverageTests.swift.
+    let berries = Item {
+        name("berries")
+        description("A cluster of dark berries.")
+    }
+
+    /// A draught the Hall starts printing once the tester has been somewhere
+    /// else, so the twins' session has one probe change that *is* a fuse.
+    /// Without it the two `timer:` assertions in PlaytestCoverageTests.swift
+    /// are both negative and a session recording no probes at all would pass
+    /// them.
+    var timers: [TimedEvent] {
+        daemon("draught", autostart: true) {
+            guard player.location == hall, player.moves > 1 else { return }
+            say("A draught moves along the floor.")
+        }
+    }
+
+    var map: WorldMap {
+        hall.north(deadA)
+        hall.south(deadB)
+        deadA.south(hall)
+        deadB.north(hall)
+        deadA.west(closetA)
+        deadB.west(closetB)
+        closetA.east(deadA)
+        closetB.east(deadB)
+
+        player.starts(in: hall)
+        hinge.starts(in: deadA)
+        berries.starts(in: deadB)
+    }
+}
+
 /// A room reached by a verb rather than by an exit.
 ///
 /// Dungeon has eight of these — the balloon flight, the bank curtain, the river

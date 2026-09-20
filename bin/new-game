@@ -177,6 +177,8 @@ else
   # makes? Derived from the template and the tag rather than a list kept by hand,
   # so it retires itself the day a complete tag ships, and comes back on its own
   # the day a new shim lands ahead of the tag that carries it.
+  # Consume the whole released file: grep -q can close early, making printf
+  # fail with SIGPIPE under pipefail and falsely flag a supported tool.
   stale_tools=""
   for shim in bin/templates/bin/* bin/lib/*; do
     [ -f "$shim" ] || continue
@@ -185,7 +187,7 @@ else
     if ! released="$(git show "$version:bin/$tool" 2>/dev/null)"; then
       stale_tools="$stale_tools $tool"
     elif grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' "bin/$tool" \
-        && ! printf '%s' "$released" | grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR'; then
+        && ! printf '%s' "$released" | grep 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' >/dev/null; then
       stale_tools="$stale_tools $tool"
     fi
   done

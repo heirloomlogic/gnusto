@@ -155,6 +155,57 @@ struct ScoringTests {
             ])
     }
 
+    /// Two gems named "gem", told apart by an adjective. The register key is
+    /// the entity ID, so each pays its own take value and holds its own
+    /// deposit credit; keyed on the display name, the second of each pair paid
+    /// nothing and the ceiling was unreachable.
+    @Test func twoTreasuresSharingADisplayNameScoreSeparately() async throws {
+        let transcript = try await play(
+            TwinGemsGame(),
+            [
+                "take red gem", "score",
+                "take blue gem", "score",
+                "put red gem in case", "score",
+                "put blue gem in case", "score",
+                "take red gem", "score",
+                "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 5 of a possible 20",
+                "Your score is 10 of a possible 20",
+                "Your score is 15 of a possible 20",
+                "Your score is 20 of a possible 20",
+                "Your score is 15 of a possible 20",
+            ])
+    }
+
+    /// Old name-keyed ledgers are refused before their score or placements
+    /// replace the running game. The fixture models both historical formats.
+    @Test(arguments: [1, 2])
+    func aLegacyScoringSaveIsRejectedWithoutChangingTheGame(format: Int) async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let written = try await play(
+            fresh: LegacyVaultGame(), ["backdate", "save", url.path, "quit"])
+        #expect(written.contains("Saved."))
+        var save = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        save["format"] = format
+        try JSONSerialization.data(withJSONObject: save).write(to: url)
+
+        let transcript = try await play(
+            fresh: BackdatedVaultGame(),
+            ["take coin", "restore", url.path, "inventory", "score", "wait", "score", "quit"])
+        #expect(transcript.contains(GameText().saveVersionMismatch()))
+        #expect(!transcript.contains("Restored."))
+        #expect(!transcript.contains("Restore failed."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("silver coin"))
+        #expect(turnOutput(of: "score", in: transcript).contains("Your score is 3 of a possible 10"))
+        #expect(turnOutput(ofLast: "score", in: transcript).contains("Your score is 3 of a possible 10"))
+    }
+
     @Test func claimedRegistersSurviveSaveAndRestore() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path

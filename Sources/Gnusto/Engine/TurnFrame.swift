@@ -145,9 +145,9 @@ enum Reentry: Sendable {
     /// the one issue #223 was reported from. A shipped game's 8 MB main thread
     /// and any release build reach far deeper.
     ///
-    /// | Seam | Real content | Overflows at | Cap |
+    /// | Seam | Real content | Observed stack limit | Cap |
     /// |---|---|---|---|
-    /// | ``liveText`` | 1–2 | 9 | 7 |
+    /// | ``liveText`` | 1–2 | No diagnostic at cap 7 | 6 |
     /// | ``walk`` | 1 | 216 | 32 |
     /// | ``reach`` | 1–2 | 318 | 32 |
     ///
@@ -170,20 +170,21 @@ enum Reentry: Sendable {
     /// more than the describer's own locals plausibly account for, so the cost
     /// is somewhere in the cycle rather than in any line this comment could
     /// name. Both figures are measurements, not derivations. Raising
-    /// ``liveText`` past 8 restores the original crash under `swift test` —
-    /// the ceiling was 10 when first measured and moved to 9 when #405 added
-    /// three stock lines to `GameText`, which is how thin the margin is;
+    /// the original measured ceiling was 10, then 9 after #405 added stock
+    /// lines to `GameText`. Integrating #570 failed the diagnostic test at cap
+    /// 7 and passed at cap 6 on macOS arm64 Debug. That measures whether the
+    /// guard can report safely, not the exact unguarded overflow depth;
     /// whoever wants more headroom should find and cut that per-level cost
     /// first, then re-measure and move this.
     ///
-    /// The "overflows at" column is the *recorded* ceiling; the *enforced* one
+    /// The table records observed limits; the *enforced* margin is
     /// is `ReentryGuardTests.liveTextCapFiresBeforeTheStackDoes` and its walk
     /// twin, which run each runaway for real in a child process and fail if the
     /// stack arrives before the cap. Move a number here and they are what tells
     /// you whether the margin survived.
     var cap: Int {
         switch self {
-        case .liveText: 7
+        case .liveText: 6
         case .walk: 32
         case .reach: 32
         }

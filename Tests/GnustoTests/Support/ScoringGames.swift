@@ -293,3 +293,55 @@ struct MisspelledRegisterGame: Game {
         player.starts(in: cell)
     }
 }
+
+/// Two treasures that answer to the same noun, told apart only by an
+/// adjective: the shape that used to collapse into one scoring register,
+/// because the register key was built from the display name.
+///
+/// Its ceiling is what the pair can pay: 5 on the take and 5 in the case,
+/// apiece.
+struct TwinGemsGame: Game {
+    let title = "Twin"
+    let intro = "Two gems, one word for them."
+    let maxScore = 20
+
+    let lab = Location {
+        name("Lab")
+        description("A bench, a display case, and two gems.")
+    }
+
+    let redGem = Item {
+        name("gem")
+        adjectives("red")
+        trait(.takeValue, 5)
+        trait(.depositValue, 5)
+    }
+
+    let blueGem = Item {
+        name("gem")
+        adjectives("blue")
+        trait(.takeValue, 5)
+        trait(.depositValue, 5)
+    }
+
+    let showcase = Item {
+        name("display case")
+        adjectives("display")
+        container
+    }
+
+    let scoring = Scoring()
+
+    var content: GameContents { scoring }
+
+    var map: WorldMap {
+        player.starts(in: lab)
+        redGem.starts(in: lab)
+        blueGem.starts(in: lab)
+        showcase.starts(in: lab)
+    }
+
+    var rules: Rules {
+        scoring.treasures([redGem, blueGem], into: showcase)
+    }
+}

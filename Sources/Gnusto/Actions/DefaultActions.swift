@@ -65,22 +65,31 @@ enum DefaultActions {
 
     // MARK: - Manipulation
 
-    static func take(_ command: Command, frame: TurnFrame) throws {
-        let item = try requireDirectObject(command)
+    /// The refusal `take` owns for `item`, or `nil` when nothing `take` knows
+    /// about stands in its way.
+    ///
+    /// Split out of ``take(_:frame:)`` so ``Burden`` can read the same ladder.
+    /// The cap is a `world.before(.take)` rule, which is stage 1 and therefore
+    /// ahead of everything here, and "no room in your hands" is the broadest
+    /// answer `take` has — so wherever this returns a line, the cap holds its
+    /// tongue and lets stage 4 print the specific one. One ladder read from
+    /// two places, rather than two that drift apart.
+    static func takeRefusal(for item: Item, frame: TurnFrame) -> String? {
         let id = item.id
+        let text = frame.definition.text
         // People get the person-specific refusal, not scenery's — and the
         // player gets their own, since the stock line is about somebody else.
         if id == .player {
-            try refuse(frame.definition.text.cantTakeSelf())
+            return text.cantTakeSelf()
         }
         if frame.definition.items[id]?.isActor == true {
-            try refuse(frame.definition.text.cantTakeActor(item.definiteNoun))
+            return text.cantTakeActor(item.definiteNoun)
         }
         // The one default that could relocate the thing the player is
         // sitting in.
         let boarded = frame.with { $0.state.playerVehicle }
         if id == boarded {
-            try refuse(frame.definition.text.notWhileInside(item.definiteNoun))
+            return text.notWhileInside(item.definiteNoun)
         }
         // `take X from Y` makes a claim about where X is, and the claim is
         // answered before the verb's complaints about picking the thing up: a
@@ -90,28 +99,40 @@ enum DefaultActions {
         // was named rather than about whether it can be lifted. Anywhere under
         // the holder counts — on it, inside it, in its hands, to any depth —
         // because a coin in a box in the sack is in the sack. (#507)
-        if let holder = command.indirectObject {
+        if let holder = frame.with({ $0.command?.indirectObject }) {
             // `holder.id` is read out here rather than inside the closure: an
             // item proxy reads the live frame, and asking it for anything from
             // inside `frame.with` re-enters the frame's own lock.
             let holderID = holder.id
             guard frame.with({ $0.state.isUnder(id, holderID) }) else {
-                try refuse(frame.definition.text.notFoundThere(item.definiteNoun))
+                return text.notFoundThere(item.definiteNoun)
             }
         }
         if item.isHeld {
-            try refuse(item.isWorn ? frame.definition.text.alreadyWearing() : frame.definition.text.alreadyHave())
+            return item.isWorn ? text.alreadyWearing() : text.alreadyHave()
         }
         guard frame.definition.items[id]?.isTakable == true else {
-            try refuse(frame.definition.text.cantTake())
+            return text.cantTake()
         }
         // The parser's scope is *visible* items, which also admits a closed
         // transparent container's contents (seen through the glass but not
         // touchable) — take needs the stricter reachable set to refuse those.
         // The item resolved, so it's visible: refuse with "can't reach", not
-        // "can't see".
+        // "can't see". Last of the ladder because it is the one entry that
+        // walks the scope set and may consult a `reach { … }` rule.
         guard Visibility.isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.definiteNoun))
+            return text.cantReach(item.definiteNoun)
+        }
+        return nil
+    }
+
+    static func take(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        // Read outside the `frame.with { … }` below: a proxy resolves through
+        // the frame, and the lock is not reentrant.
+        let id = item.id
+        if let refusal = takeRefusal(for: item, frame: frame) {
+            try refuse(refusal)
         }
         frame.with { scratch in
             scratch.state.place(id, .heldBy(.player))

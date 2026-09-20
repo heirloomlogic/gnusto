@@ -87,6 +87,16 @@ struct Zork1Tests {
         #expect(!turnOutput(of: "x window", in: transcript).contains("not enough to allow entry"))
     }
 
+    /// Into the house, lantern lit, down the trap door and round to the Gallery.
+    /// Shared with `Zork1ProseTests`, which asserts the painting's two channels
+    /// from the same frame.
+    static let toGallery: [String] = [
+        "south", "east", "open window", "west", "west",
+        "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down",
+        "south", "east",
+    ]
+
     /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
     /// lit, the trap door's slam is an inconvenience, not a prison. The full
     /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the
@@ -96,12 +106,7 @@ struct Zork1Tests {
     @Test func cellarLoopByLanternLight() async throws {
         let transcript = try await play(
             Zork1(),
-            [
-                "south", "east", "open window", "west", "west",
-                "take lantern", "turn on lantern",
-                "push rug", "open trap door", "down",
-                "south", "east", "take painting", "north", "up",
-            ],
+            Self.toGallery + ["take painting", "north", "up"],
             // Seed 1, recorded: the thief never crosses your path. Taking the
             // painting summons him, and the lantern is as much his to take — one
             // theft and these lit rooms go pitch black. 20 seeds in 5,000.
@@ -801,6 +806,7 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west",
                 "take all",
+                "take all from sack",
                 "drop all",
                 "take bottle", "open it", "look in it",
                 "west",
@@ -813,10 +819,12 @@ struct Zork1Tests {
                 "Kitchen",
                 // take all: name-sorted, per-object results; the scenery
                 // window is skipped, and so is the water — behind the shut
-                // bottle's glass, it is in view and out of arm's reach.
+                // bottle's glass, it is in view and out of arm's reach. The
+                // sack comes up off the floor packed, so the garlic and the
+                // lunch inside it take a sweep of their own (#510).
                 "brown sack: Taken.",
-                "clove of garlic: Taken.",
                 "glass bottle: Taken.",
+                "clove of garlic: Taken.",
                 "lunch: Taken.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",
