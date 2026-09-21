@@ -163,6 +163,20 @@ struct UndroppableSubjectTests {
         #expect(text.multipleNotAllowedWith("eat").contains("eat"))
     }
 
+    /// #501: a token straight off the player's input line has no length of
+    /// its own, so `unknownWord` bounds what it echoes rather than printing a
+    /// pasted blob whole.
+    @Test func unknownWordTruncatesALongToken() {
+        let text = GameText()
+        let short = String(repeating: "a", count: 30)
+        #expect(text.unknownWord(short) == "I don't know the word \"\(short)\".")
+
+        let long = String(repeating: "a", count: 100_000)
+        let line = text.unknownWord(long)
+        #expect(line == "I don't know the word \"\(String(repeating: "a", count: 30))…\".")
+        #expect(line.count < 100)
+    }
+
     @Test func everyPromptNamesTheVerbItIsWaitingOn() {
         let text = GameText()
         #expect(text.missingObject("take") == "What do you want to take?")
