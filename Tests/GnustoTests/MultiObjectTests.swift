@@ -224,6 +224,40 @@ struct MultiObjectTests {
         #expect(turnOutput(of: "look in hamper", in: transcript).contains("brown loaf"))
     }
 
+    /// The hull the sweep reads as its floor is not one of the things standing
+    /// on it (#541). The punt is a child of the quay and nothing about it is
+    /// `fixed`, so before the fix the sweep offered it and `take` answered
+    /// `flat punt: Not while you're in the flat punt.` beside the cargo lines,
+    /// every sweep, for as long as the player stayed aboard.
+    @Test func takeAllAboardAVehicleDoesNotOfferTheVehicle() async throws {
+        let transcript = try await play(MooringGame(), ["enter punt", "take all"])
+        let taking = turnOutput(of: "take all", in: transcript)
+        #expect(!taking.contains("flat punt"))
+        // The hull's own cargo is the control: the exclusion takes the vehicle
+        // and not the things standing in it.
+        #expect(taking.contains("wicker hamper: Taken."))
+    }
+
+    /// The exclusion is the keyword's, not the verb's. A player who writes the
+    /// vehicle down has asked about that thing and is owed the refusal, and an
+    /// `and`-joined list is a `.list` the parser resolved rather than a set the
+    /// engine swept. (`take <boarded vehicle>` on its own is
+    /// `VehicleTests.youCantTakeWhatYouAreSittingIn`.)
+    @Test func aListNamingTheBoardedVehicleStillRefuses() async throws {
+        let transcript = try await play(MooringGame(), ["enter punt", "take punt and lantern"])
+        let list = turnOutput(of: "take punt and lantern", in: transcript)
+        #expect(list.contains("flat punt: Not while you're in the flat punt."))
+        #expect(list.contains("dock lantern: Taken."))
+    }
+
+    /// A vehicle nobody is aboard is ordinary cargo, so TAKE ALL on the quay
+    /// still picks the punt up. The exclusion reads `state.playerVehicle`,
+    /// which is nil here, and not a trait of the item.
+    @Test func takeAllOnFootStillSweepsAnUnboardedVehicle() async throws {
+        let transcript = try await play(MooringGame(), ["take all"])
+        #expect(turnOutput(of: "take all", in: transcript).contains("flat punt: Taken."))
+    }
+
     /// An empty sweep answers about the thing the player named. "There is
     /// nothing here to take" is the room's line and says nothing about the
     /// showcase; a shut one is shut and an emptied one is empty, in the same
