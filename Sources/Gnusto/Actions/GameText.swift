@@ -423,7 +423,7 @@ public struct GameText: Sendable {
         "You can't put \($0) onto something it contains."
     }
 
-    /// Opening something that is locked.
+    /// Opening — or walking through — something that is locked.
     public var locked: Line<Noun> = .naming {
         "\($0.sentenceCased) \($0.verb("is", "are")) locked."
     }

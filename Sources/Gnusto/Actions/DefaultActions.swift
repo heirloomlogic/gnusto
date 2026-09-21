@@ -569,12 +569,17 @@ enum DefaultActions {
             try enter(destination, frame: frame, announcing: aside)
         case .door(let destination, let doorID):
             // A hidden door isn't there yet: behave as if the exit doesn't
-            // exist until it's revealed. Once revealed, a closed door blocks
-            // (its locked state only surfaces when the player tries to OPEN it).
-            let (revealed, isOpen) = frame.with { scratch -> (Bool, Bool) in
+            // exist until it's revealed. Once revealed, a shut door refuses
+            // with the locked line — the same one OPEN uses — when it's
+            // locked, and with the closed line otherwise, so the player is
+            // pointed at the actual obstacle rather than sent to OPEN it
+            // first to learn it was locked. An open door passes regardless
+            // of lock state.
+            let (revealed, isOpen, isLocked) = frame.with { scratch -> (Bool, Bool, Bool) in
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
-                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state)
+                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
+                    scratch.state.lockedItems.contains(doorID)
                 )
             }
             guard revealed else { try refuse(noExit ?? frame.definition.text.cantGoThatWay()) }
@@ -584,6 +589,15 @@ enum DefaultActions {
             // the immutable definition, so it needs no lock — unlike the proxy
             // spelling `item.definiteNoun`, which takes one and would hang.
             guard isOpen else {
+                // An open door always passes, even a locked one: the engine's
+                // own `lock` refuses to lock a door standing open
+                // (`cantLockOpen`), but a game rule can still set `isLocked`
+                // directly — Dungeon's grating lock does — so a door reaching
+                // here open-and-locked is real, and the player can see it's
+                // open. Speak the locked line only for a door that is shut.
+                guard !isLocked else {
+                    try refuse(frame.definition.text.locked(frame.definiteNoun(of: doorID)))
+                }
                 try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
             }
             try enter(destination, frame: frame, announcing: aside)

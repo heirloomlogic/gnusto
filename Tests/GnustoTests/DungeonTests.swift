@@ -5170,9 +5170,10 @@ struct DungeonTests {
             [
                 "This is a dreary room",
                 "You can make out a blue crystal sphere in there.",
-                // The engine's own answer for a shut door on an exit. The lock
-                // is what `open door` reports.
-                "The door made of oak is closed.",
+                // The engine's own answer for a locked door on an exit — the
+                // same obstacle `open door` reports, in the engine's own words
+                // rather than the room's custom "The door is locked."
+                "The door made of oak is locked.",
                 "Not unless somebody dices you first.",
             ])
         #expect(!transcript.contains("blue crystal sphere and a rusty iron key"))

@@ -56,8 +56,8 @@ struct LighthouseTranscriptTests {
             ])
     }
 
-    /// Doors and locks: the storeroom door refuses to open, and reads as closed
-    /// on a walk-through, until the brass key unlocks it.
+    /// Doors and locks: the storeroom door refuses to open, and reads as locked
+    /// on a walk-through too, until the brass key unlocks it.
     @Test func lockedDoorRefusesUntilUnlocked() async throws {
         let transcript = try await play(
             Lighthouse(),
@@ -70,7 +70,7 @@ struct LighthouseTranscriptTests {
             transcript,
             [
                 "> open door", "The storeroom door is locked.",
-                "> east", "The storeroom door is closed.",
+                "> east", "The storeroom door is locked.",
                 "> unlock door with key", "Unlocked.",
                 "> open door", "Opened.",
                 "Storeroom",
