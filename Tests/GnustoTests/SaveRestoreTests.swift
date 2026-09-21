@@ -114,6 +114,29 @@ private struct EvolvedAdditionGame: Game {
     }
 }
 
+/// A game that says the overwrite question in its own words, to prove both
+/// halves of the exchange come off `GameText` like every other line.
+private struct PoliteVaultGame: Game {
+    let title = "Polite Vault"
+    let intro = "The vault door stands open."
+
+    let anteroom = Location {
+        name("Anteroom")
+        description("Bare marble.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: anteroom)
+    }
+
+    var text: GameText {
+        var text = GameText()
+        text.saveOverwritePrompt = .naming { "Shall I write over \($0)?" }
+        text.saveNotReplaced = .naming { "As you wish; \($0) stands." }
+        return text
+    }
+}
+
 private func temporarySavePath(_ label: String) -> String {
     FileManager.default.temporaryDirectory
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
@@ -424,6 +447,144 @@ struct SaveRestoreTests {
             saveDirectory: dir)
         // Sorted, so "autumn" precedes "spring".
         #expect(transcript.contains("Restore from what file? (saved: autumn, spring)"))
+    }
+
+    // MARK: - Replacing a save asks first (#495)
+
+    @Test func theSavePromptListsExistingSavesToo() async throws {
+        let dir = temporarySaveDirectory("save-list")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Two saves, then a third `save` whose prompt shows them (empty
+        // answer cancels).
+        let transcript = try await play(
+            StrongboxGame(),
+            ["save", "spring", "save", "autumn", "save", ""],
+            saveDirectory: dir)
+        // Sorted, so "autumn" precedes "spring" — the restore prompt's listing,
+        // on the prompt that can destroy one of them.
+        #expect(transcript.contains("Save to what file? (saved: autumn, spring)"))
+    }
+
+    /// A name nothing is stored under writes straight through: the question is
+    /// about replacing a file, so there is nothing to ask.
+    @Test func aNewNameSavesWithoutAsking() async throws {
+        let dir = temporarySaveDirectory("fresh-name")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            ["save", "autumn", "save", "winter"],
+            saveDirectory: dir)
+        #expect(!transcript.contains("Replace"))
+        #expect(transcript.components(separatedBy: "Saved.").count == 3)
+        for slot in ["autumn", "winter"] {
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: dir.appendingPathComponent("\(slot).gnusto").path))
+        }
+    }
+
+    /// Yes, and only yes, replaces the file — and what comes back afterwards is
+    /// the newer world, not the one the slot used to hold.
+    @Test func anExplicitYesReplacesTheSave() async throws {
+        let dir = temporarySaveDirectory("replace-yes")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "take coin", "save", "autumn",  // the coin is in the save
+                "drop coin", "save", "autumn", "yes",  // and now it isn't
+                "take coin", "restore", "autumn", "inventory",
+            ],
+            saveDirectory: dir)
+        expectInOrder(
+            transcript,
+            ["Replace \"autumn\"? (yes/no)", "Saved.", "Restored."])
+        // The second save is what came back: the coin is on the floor.
+        #expect(!turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// Nothing but a yes is consent. A "no", a word that answers nothing and a
+    /// blank line all leave the file where it was and say so — and none of them
+    /// re-arms the question, so the line after one is read as a command.
+    @Test(arguments: ["no", "perhaps", ""])
+    func anAnswerThatIsNotYesPreservesTheSave(_ answer: String) async throws {
+        let dir = temporarySaveDirectory("replace-\(answer.isEmpty ? "blank" : answer)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "take coin", "save", "autumn",  // the coin is in the save
+                "drop coin", "save", "autumn", answer,  // refused
+                "north",  // read as a command, not as a second answer
+                "restore", "autumn", "inventory",
+            ],
+            saveDirectory: dir)
+        expectInOrder(
+            transcript,
+            [
+                "Replace \"autumn\"? (yes/no)",
+                "Not saved; \"autumn\" is unchanged.",
+                "Restored.",
+            ])
+        // Asked once, and only the first save wrote.
+        #expect(transcript.components(separatedBy: "Replace \"autumn\"?").count == 2)
+        #expect(transcript.components(separatedBy: "Saved.").count == 2)
+        #expect(turnOutput(of: "north", in: transcript).contains("Vault"))
+        // The first save is what came back: the coin is still in hand.
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    /// Input that simply ends at the question is the case nothing can print
+    /// its way out of, so the proof is the bytes: the file is the one the
+    /// first session wrote.
+    @Test func endOfInputAtTheQuestionPreservesTheSave() async throws {
+        let dir = temporarySaveDirectory("replace-eof")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let slot = dir.appendingPathComponent("autumn.gnusto")
+
+        _ = try await play(
+            StrongboxGame(), ["take coin", "save", "autumn"], saveDirectory: dir)
+        let written = try Data(contentsOf: slot)
+
+        // A second session in a different world, cut off at the question.
+        let transcript = try await play(
+            StrongboxGame(), ["north", "save", "autumn"], saveDirectory: dir)
+        #expect(transcript.contains("Replace \"autumn\"? (yes/no)"))
+        #expect(try Data(contentsOf: slot) == written)
+    }
+
+    /// The whole exchange is free. Asking, and answering either way, moves no
+    /// turn counter — so a player who guards a slot pays nothing for it.
+    @Test func theOverwriteQuestionCostsNoTurn() async throws {
+        let dir = temporarySaveDirectory("replace-free")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "north", "save", "autumn",
+                "save", "autumn", "no",
+                "save", "autumn", "yes",
+                "score",
+            ],
+            saveDirectory: dir)
+        let plain = try await play(StrongboxGame(), ["north", "score"], saveDirectory: dir)
+        #expect(
+            turnOutput(of: "score", in: transcript)
+                == turnOutput(of: "score", in: plain))
+    }
+
+    /// Both new lines are the game's to re-skin, like every other stock line.
+    @Test func theOverwriteWordingComesOffGameText() async throws {
+        let dir = temporarySaveDirectory("replace-voice")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            PoliteVaultGame(),
+            ["save", "autumn", "save", "autumn", "no"],
+            saveDirectory: dir)
+        expectInOrder(
+            transcript,
+            ["Shall I write over autumn?", "As you wish; autumn stands."])
+        #expect(!transcript.contains("Replace"))
     }
 
     @Test func savingLeavesTheUndoSnapshotAlone() async throws {

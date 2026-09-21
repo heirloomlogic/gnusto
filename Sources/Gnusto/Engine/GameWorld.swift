@@ -502,7 +502,7 @@ public actor GameWorld {
         case .restart: return performRestart()
         case .save:
             pendingPrompt = .saveFilename
-            return freeReply(definition.text.savePrompt())
+            return freeReply(savePromptText())
         case .restore:
             pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
             return freeReply(restorePromptText())

@@ -107,6 +107,59 @@ struct SaveStoreTests {
         #expect(!FileManager.default.fileExists(atPath: dir.path))
     }
 
+    // MARK: existingSave
+
+    /// The one question the save prompt asks before it replaces anything: is
+    /// there a file there, and what is it called?
+    @Test func existingSaveAnswersOnlyForAFileThatIsThere() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        #expect(SaveStore.existingSave("autumn", in: dir) == nil)
+
+        try Data("x".utf8).write(to: dir.appendingPathComponent("autumn.gnusto"))
+        let found = try #require(SaveStore.existingSave("autumn", in: dir))
+        #expect(found.url.lastPathComponent == "autumn.gnusto")
+        // Named as the restore prompt lists it, so the question quotes a name
+        // the player could type back.
+        #expect(found.name == "autumn")
+        #expect(SaveStore.existingSaveNames(in: dir).contains(found.name))
+    }
+
+    /// A name that can name no file at all is not an existing one either — the
+    /// prompt refuses it before the question arises.
+    @Test func existingSaveAnswersNothingForAnUnusableName() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        #expect(SaveStore.existingSave("...", in: dir) == nil)
+    }
+
+    /// An explicit path is guarded the same way, and named by its path: there
+    /// is no slot listing it belongs to.
+    @Test func existingSaveNamesAnExplicitPathByItsPath() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let outside = dir.appendingPathComponent("elsewhere.sav")
+        #expect(SaveStore.existingSave(outside.path, in: dir) == nil)
+
+        try Data("x".utf8).write(to: outside)
+        let found = try #require(SaveStore.existingSave(outside.path, in: dir))
+        #expect(found.name == outside.path)
+        #expect(found.url.path == outside.path)
+    }
+
+    /// A save written before the byte bound is at a path `resolve` no longer
+    /// computes, and it is still the file the name reaches — so the question is
+    /// asked about it rather than a second file being written beside it.
+    @Test func existingSaveFindsASaveWrittenUnderTheOldUnboundedRule() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let long = String(repeating: "a", count: 210)
+        try Data("x".utf8).write(to: dir.appendingPathComponent("\(long).gnusto"))
+        let found = try #require(SaveStore.existingSave(long, in: dir))
+        #expect(found.url.lastPathComponent == "\(long).gnusto")
+        #expect(found.name == long)
+    }
+
     // MARK: existingSaveNames
 
     @Test func existingSaveNamesListsGnustoFilesSorted() throws {

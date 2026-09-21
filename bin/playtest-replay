@@ -504,7 +504,17 @@ fed="$probe_dir/commands.txt"
   else
     awk '!/^[[:space:]]*$/' "$commands"
   fi
-  [[ -n "$save_slot" ]] && printf 'save\n%s\n' "$save_slot"
+  if [[ -n "$save_slot" ]]; then
+    printf 'save\n%s\n' "$save_slot"
+    # Replacing a slot asks first (#495), and the `yes` is fed like any other
+    # line. Only where the slot is already there: at a fresh one it would reach
+    # the parser as a command and put "I don't know the word" into a transcript
+    # another agent reads as evidence. This composes the slot's filename the way
+    # a plain name composes it; a name the engine sanitizes to something else is
+    # not found, and its save is then declined in so many words rather than
+    # silently.
+    if [[ -e "$scratch/saves/$save_slot.gnusto" ]]; then printf 'yes\n'; fi
+  fi
   # Twice. `quit` needs no confirmation on this path — the confirm prompt lives
   # only in TerminalIOHandler, which piped input never builds — but a pending
   # save/restore filename prompt or a death prompt is answered before any verb

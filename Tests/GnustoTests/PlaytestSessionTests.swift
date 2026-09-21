@@ -230,8 +230,17 @@ struct PlaytestSessionTests {
         _ = try await session.move(commands: commands, allowPrompts: true)
 
         let recorded = try text(at: session.transcriptURL)
+        // A saves directory of the replay's own, where every other test in this
+        // suite can share the session's. Both drivers have to meet the same
+        // empty one: the session's `save` wrote `slot-one`, and a replay
+        // writing the same slot would be asked to confirm the replacement
+        // (#495) — a question the session was never asked, so the transcripts
+        // would differ over the state of a directory rather than over the
+        // drivers, which is the only thing this test is about.
         let replayed = try await replTranscript(
-            OperaHouse(), commands, seed: 0, saveDirectory: session.saveDirectory)
+            OperaHouse(), commands, seed: 0,
+            saveDirectory: harness.root.appendingPathComponent(
+                "repl-saves", isDirectory: true))
         #expect(recorded == replayed)
     }
 

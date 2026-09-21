@@ -188,6 +188,7 @@ bin/playtest-replay Fulminate --commands probe.txt   --label deep --restore anch
 
 Both `save` and `restore` are two-turn interactions — the parser knows only the bare
 verb, and the engine asks for a filename on the next line — which the flags handle.
+Re-running a `--save` over a slot that is already there is a third line, the `yes` that answers `Replace "anchor"? (yes/no)`, and the flag feeds that too when it finds the slot on disk.
 Restoring costs no turn, so it doesn't move the clock. Saves land under
 `GNUSTO_SAVE_DIR` at `.context/playtest/<label>/saves/`, so they never touch your real
 save slots and parallel testers can't read each other's.
