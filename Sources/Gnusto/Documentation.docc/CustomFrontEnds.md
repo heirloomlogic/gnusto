@@ -224,14 +224,7 @@ and never reaches ``GameWorld/perform(_:)``, so no fuse or daemon advances.
 front-end concerns by construction — the world simulation cannot see them, so a
 tester's notes cost no turns.
 
-``REPL/init(world:io:transcriptURL:status:)`` takes two optional extras.
-`transcriptURL` records from the first turn. `status` appends the one-line
-`[status] room=… | moves=… | turn=cost|free` footer described in
-`docs/playtesting.md`. Both default to `nil`, and that default is the safety
-argument: the test suite builds its REPLs without either argument, so no
-environment variable can make a suite transcript grow a line. ``GameMain`` is
-the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and
-passes what it found.
+``REPL/init(world:io:transcriptURL:status:environment:)`` takes three optional extras. `transcriptURL` records from the first turn. `status` appends the one-line `[status] room=… | moves=… | turn=cost|free` footer described in `docs/playtesting.md`. Both default to `nil`, and that default is the safety argument: the test suite builds its REPLs without either argument, so no environment variable can make a suite transcript grow a line. ``GameMain`` is the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and passes what it found. `environment` is where a bare-name `script` reads `GNUSTO_TRANSCRIPT_DIR`; it defaults to the process environment, and a test passes its own to keep a recording out of the real transcripts directory.
 
 If your game type conforms to ``GameMain``, all of this is already wired —
 `@main struct MyGame: Game, GameMain {}` is a complete executable. Write your
@@ -270,7 +263,7 @@ That is all an iOS app does differently: it supplies its own handler, because
 - ``ScriptedIOHandler``
 - ``ScriptedIOHandler/transcript``
 - ``REPL``
-- ``REPL/init(world:io:transcriptURL:status:)``
+- ``REPL/init(world:io:transcriptURL:status:environment:)``
 - ``REPL/run()``
 - ``GameMain``
 - ``GameWorld``
