@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoClock
 
 // Games that ask the turn frame for something it cannot give, one fixture per
 // guard in `TurnFrame.swift`. Most of them cannot be played: the verb they
@@ -196,5 +197,35 @@ struct OpeningCommandGame: Game {
 
     var map: WorldMap {
         player.starts(in: hall)
+    }
+}
+
+/// A `map` block that asks the clock what time it is — the mistake issue #493
+/// is about, and the reason the trap names `map` and `WorldMap`.
+///
+/// Reading ``Clock/now`` needs a live turn, and a `WorldMap` is built at
+/// bootstrap, so **building this game traps**. Only the exit test in
+/// `ProxyFrameTests` may construct it; anything else takes the whole test
+/// process down with it. A timetable is what a map may ask instead:
+/// `ManorLab` in `ClockGames.swift` places its butler with
+/// `butlerDay.location(at:)`, which reads no world state, and bootstraps fine.
+struct ClockInTheMapGame: Game {
+    let title = "Clock in the Map"
+    let intro = "A game whose map asks what time it is."
+
+    let clock = Clock(startingAt: TimeOfDay(20, 0), minutesPerTurn: 1)
+
+    let hall = Location {
+        name("Hall")
+    }
+
+    let shed = Location {
+        name("Shed")
+    }
+
+    var content: GameContents { clock }
+
+    var map: WorldMap {
+        player.starts(in: clock.now.hour >= 12 ? hall : shed)
     }
 }

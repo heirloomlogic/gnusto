@@ -600,9 +600,13 @@ enum Ctx {
             fatalError(
                 """
                 Gnusto: live world state was accessed outside a game turn. \
-                Properties like `isLit`, `score`, and @Global values are only \
-                available inside rule bodies while the engine is running a \
-                command.
+                Properties like `isLit`, `score`, `clock.now` and @Global \
+                values only have a value while the engine is running a turn: a \
+                rule body, an action, a timer and a `describe`/`presence` \
+                block are all inside one. A `map` block is not — a `WorldMap` \
+                is built at bootstrap, before the first turn, so it can say \
+                where things start but cannot read their state, and an \
+                entity's own declaration block runs earlier still.
                 """)
         }
         guard frame.isAlive else {
