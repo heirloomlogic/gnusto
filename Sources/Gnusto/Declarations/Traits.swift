@@ -347,6 +347,10 @@ public let plural = ItemTrait(kind: .plural)
 /// either is a bootstrap warning rather than a third opinion. A blank word is a
 /// fatal diagnostic, with every other blank author-facing text.
 ///
+/// The word itself is not validated against a list of real articles: whatever
+/// is passed renders verbatim in front of the name, so a typo here reaches
+/// the transcript unchanged.
+///
 /// - Parameter word: the article to use, such as "a" or "an".
 /// - Returns: the article trait.
 public func article(_ word: String) -> ItemTrait {

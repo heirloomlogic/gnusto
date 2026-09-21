@@ -363,6 +363,12 @@ struct ProperNameTests {
                 item "rails" declares article("a") and plural; a plural name takes \
                 "some", so the trait has no effect.
                 """))
+        #expect(
+            definition.warnings.contains(
+                """
+                actor "duchess" declares article("an") and properName; a proper name \
+                takes no article, so the trait has no effect.
+                """))
     }
 
     /// A blank article is not a quiet trait with no effect; it is the same

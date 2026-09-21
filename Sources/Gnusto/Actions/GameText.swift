@@ -810,7 +810,7 @@ public struct GameText: Sendable {
     /// The name with its definite article ("the velvet cloak"), or the name
     /// alone when it is a proper name ("Mrs. Vane").
     ///
-    /// The engine calls this — and ``indefinite(_:proper:plural:)`` — *before* it
+    /// The engine calls this — and ``indefinite(_:article:proper:plural:)`` — *before* it
     /// reaches a line's closure, which is why every template above interpolates
     /// a finished phrase rather than putting an article in front of a bare
     /// name. A custom closure receives the same finished phrase; these statics

@@ -244,10 +244,19 @@ struct ContradictoryArticleGame: Game {
         article("a")
     }
 
+    /// The same dead-article warning, on an actor rather than an item, so the
+    /// subject word ("actor" vs. "item") gets checked too.
+    let duchess = Actor {
+        name("Duchess")
+        properName
+        article("an")
+    }
+
     var map: WorldMap {
         player.starts(in: hall)
         excalibur.starts(in: hall)
         rails.starts(in: hall)
+        duchess.starts(in: hall)
     }
 }
 
