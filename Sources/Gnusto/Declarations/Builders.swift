@@ -116,7 +116,10 @@ extension GnustoBuilder where Element == SyntaxRule {
     /// literal of intents still lands here: `SyntaxRule` declares no static
     /// member of its own type, so there is nothing for a leading dot to name
     /// and the favored overload cannot solve `[.ring, .polish]` — the compiler
-    /// falls back to this one.
+    /// falls back to this one. That ranking holds only as long as `SyntaxRule`
+    /// stays that way: a static member of type `SyntaxRule` sharing a name
+    /// with an `Intent` would give the favored overload something to solve
+    /// and silently steal that literal from this one.
     ///
     /// - Parameter intents: the intents whose rows to splice.
     /// - Returns: the intents' verb rows.
