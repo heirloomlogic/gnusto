@@ -45,6 +45,10 @@ struct Zork1: Game, GameMain {
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."
         text.alreadyHave = "You already have that!"
+        // `V-SUPER-BRIEF` (gverbs.zil:23) hyphenates where the engine's stock
+        // line, following the modern ZIL library, writes the word closed up.
+        // `V-VERBOSE` and `V-BRIEF` need no line: the engine already matches.
+        text.superbriefDescriptions = "Super-brief descriptions."
         // Parser: an unrecognized sentence (gparser.zil).
         text.didntUnderstand = "That sentence isn't one I recognize."
         // "take all" with nothing to take (gmain.zil).

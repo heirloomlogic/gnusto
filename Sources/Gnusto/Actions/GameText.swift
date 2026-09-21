@@ -359,8 +359,15 @@ public struct GameText: Sendable {
     public var maximumVerbosity: Line<Nothing> = "Maximum verbosity."
     /// A successful `brief`. The wording is the original's, from `V-BRIEF`.
     public var briefDescriptions: Line<Nothing> = "Brief descriptions."
-    /// A successful `superbrief`. The wording is the original's, from
-    /// `V-SUPER-BRIEF`.
+    /// A successful `superbrief`.
+    ///
+    /// The one of the three whose wording is **not** the original's: Zork I's
+    /// `V-SUPER-BRIEF` writes *"Super-brief descriptions."* with a hyphen,
+    /// where the modern ZIL library and the games built on it write it closed
+    /// up. The closed spelling is the stock line here because it matches the
+    /// verb the player types, and `Sources/Zork1/` sets the hyphen back for
+    /// itself — the one game in this package that reproduces rather than
+    /// adapts. `FIDELITY.md` records it.
     public var superbriefDescriptions: Line<Nothing> = "Superbrief descriptions."
 
     // MARK: - Again & oops

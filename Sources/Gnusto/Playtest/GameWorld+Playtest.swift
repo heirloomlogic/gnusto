@@ -113,14 +113,17 @@ extension GameWorld {
     /// Note what a snapshot does *not* carry, by the same argument that keeps
     /// them off `WorldState`: the UNDO snapshot, the pristine restart state,
     /// any open prompt, the `firedTimers` tally, and the VERBOSE / BRIEF /
-    /// SUPERBRIEF preference. Restoring rewinds the world, not the session.
+    /// SUPERBRIEF preference. A snapshot is the world, not the session — so a
+    /// driver rewinding a whole session records the session's half itself and
+    /// hands the mode back through ``restore(_:mode:)``.
     ///
     /// - Returns: the current world state.
     func snapshot() -> WorldState {
         state
     }
 
-    /// Puts back a state taken by ``snapshot()``.
+    /// Puts back a state taken by ``snapshot()``, along with the description
+    /// mode the caller recorded beside it.
     ///
     /// Clears the open clarification and prompt, because a question asked
     /// against the old state has no answer in the new one — the same
@@ -129,9 +132,23 @@ extension GameWorld {
     /// taken: a rewind swaps the world out from under it, and a footer read
     /// afterwards would name the hour of a turn that has been written off.
     ///
-    /// - Parameter snapshot: a state previously returned by `snapshot()`.
-    func restore(_ snapshot: WorldState) {
+    /// **`mode` is a parameter rather than something left alone**, and that is
+    /// the one place this differs from the player's own RESTORE. The VERBOSE /
+    /// BRIEF / SUPERBRIEF preference belongs to the session and not to the
+    /// world, so SAVE, RESTORE, UNDO and RESTART all leave it where the player
+    /// set it (#499). A play-test rewind is not one of those: it truncates the
+    /// command list too, so a `verbose` it discarded is no longer a line the
+    /// session ever typed and cannot go on applying. The other way back from a
+    /// rewind — replaying the retained prefix into a fresh world — rebuilds
+    /// the mode from the surviving commands, and this parameter is how the
+    /// snapshot path lands on the same answer.
+    ///
+    /// - Parameters:
+    ///   - snapshot: a state previously returned by `snapshot()`.
+    ///   - mode: the description mode to stand in afterwards.
+    func restore(_ snapshot: WorldState, mode: DescriptionMode) {
         state = snapshot
+        descriptionMode = mode
         pendingClarification = nil
         pendingPrompt = nil
         statusFieldState = nil

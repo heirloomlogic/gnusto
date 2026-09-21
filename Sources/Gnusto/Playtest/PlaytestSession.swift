@@ -308,11 +308,19 @@ actor PlaytestSession {
         let lastMoves: Int
         let finished: Bool
         /// What was armed at the time. A snapshot taken with a question open is
-        /// not usable — `GameWorld.restore(_:)` closes questions on purpose —
+        /// not usable — `GameWorld.restore(_:mode:)` closes questions on purpose —
         /// so the rewind falls back to a replay for that line. See
         /// ``truncate(to:naming:)``.
         let pending: PlaytestAwaiting
         let lastNudge: Int
+        /// The VERBOSE / BRIEF / SUPERBRIEF preference this line was typed
+        /// under. Held here because it is not in `WorldState` — the player's
+        /// own RESTORE leaves the mode alone on purpose (#499) — and a rewind
+        /// is not a restore: it takes the command list back with the world, so
+        /// a `verbose` the truncation discarded has to stop applying. The
+        /// replay path gets that for free by rebuilding the mode out of the
+        /// surviving prefix; this is how the ring path agrees with it.
+        let mode: DescriptionMode
     }
 
     /// The last ``snapshotRing`` turns, oldest first.
@@ -1465,7 +1473,7 @@ actor PlaytestSession {
     /// Two ways back, and the second is the reason the first can be a bounded
     /// ring. If the ring still holds the line, the world is put back from it
     /// directly. If it does not — or if the snapshot was taken with a question
-    /// open, which `GameWorld.restore(_:)` closes and a replay would re-arm —
+    /// open, which `GameWorld.restore(_:mode:)` closes and a replay would re-arm —
     /// the world is dropped and the retained prefix is replayed, which is the
     /// same machinery an eviction uses and is exact for the same reason. That
     /// path is refused for a session that used the player's own `save` or
@@ -1513,7 +1521,7 @@ actor PlaytestSession {
         ring.removeAll { $0.line > target }
 
         if let usable, let world {
-            await world.restore(usable.state)
+            await world.restore(usable.state, mode: usable.mode)
             ledger = usable.ledger
             statusLine = usable.statusLine
             lastMoves = usable.lastMoves
@@ -2032,7 +2040,8 @@ actor PlaytestSession {
                 lastMoves: lastMoves,
                 finished: finished,
                 pending: pending,
-                lastNudge: lastNudge))
+                lastNudge: lastNudge,
+                mode: await world.descriptionMode))
         if ring.count > Self.snapshotRing {
             ring.removeFirst()
         }

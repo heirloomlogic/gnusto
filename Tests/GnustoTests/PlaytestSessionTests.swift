@@ -555,6 +555,48 @@ struct PlaytestSessionTests {
         #expect(!inventory.contains("pebble"))
     }
 
+    /// A rewind takes the description mode back with the world too, and the two
+    /// ways back have to agree about it.
+    ///
+    /// The VERBOSE / BRIEF / SUPERBRIEF preference is not in `WorldState`: it
+    /// belongs to the session, so the player's own SAVE, RESTORE, UNDO and
+    /// RESTART all leave it where it was set (#499). A rewind is not one of
+    /// those, because it truncates `commands.txt` as well — so a `verbose` the
+    /// rewind discarded is a line the session never typed, and a mode still
+    /// standing at VERBOSE would print a long description the replay of that
+    /// command list cannot produce. The replay path already got this right by
+    /// construction, rebuilding the mode out of the surviving prefix; the ring
+    /// path kept the live mode and broke byte identity on the next entry.
+    @Test func aRewindTakesTheDescriptionModeBackWithTheWorld() async throws {
+        let harness = try Harness(BlinkGame())
+        let session = try await harness.sessions.open(label: "modes", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(
+            commands: ["look", "verbose", "north", "south"], allowPrompts: false)
+
+        // Back to before the `verbose`, well inside the ring.
+        let back = try await session.rewind(turns: 3)
+        #expect(back.line == 1)
+        #expect(try text(at: session.commandsURL) == "look\n")
+
+        // The vault has never been entered in the world the rewind left
+        // standing, so the first way in is long in every mode. The second is
+        // the one the mode decides, and it is brief again — which it can only
+        // be if the mode went back with the record.
+        _ = try await session.move(commands: ["north", "south"], allowPrompts: false)
+        let revisit = try await session.move(commands: ["north"], allowPrompts: false)
+        #expect(revisit.contains("Vault"))
+        #expect(!revisit.contains("Cold, and quite empty"))
+
+        // And the whole file is still what the surviving command list replays
+        // to, which is the invariant a rewound session exists to keep.
+        #expect(
+            try text(at: session.transcriptURL)
+                == (try await replTranscript(
+                    BlinkGame(), ["look", "north", "south", "north"], seed: 0,
+                    saveDirectory: session.saveDirectory)))
+    }
+
     /// Going back further than the ring reaches is a replay of the retained
     /// prefix — the same machinery an eviction uses, and exact for the same
     /// reason. The ring is a fast path, not the only one, which is what lets it
@@ -581,7 +623,7 @@ struct PlaytestSessionTests {
     }
 
     /// A rewind onto a turn that opened a question replays rather than
-    /// snapshotting, because `GameWorld.restore(_:)` closes questions on purpose
+    /// snapshotting, because `GameWorld.restore(_:mode:)` closes questions on purpose
     /// and a session that came back to a line with a clarification armed has to
     /// find it armed — otherwise the next line means something different than it
     /// would in a replay, and the transcript stops being reproducible.
@@ -611,7 +653,7 @@ struct PlaytestSessionTests {
         let session = try await harness.sessions.open(label: "saved", seed: 0)
         _ = try await session.opening()
         // The batch halts on the armed filename prompt, so the checkpoint stands
-        // at a line whose snapshot is unusable — `GameWorld.restore(_:)` closes
+        // at a line whose snapshot is unusable — `GameWorld.restore(_:mode:)` closes
         // questions on purpose — and the only way back is a replay, which this
         // session may not do.
         _ = try await session.move(commands: ["save"], allowPrompts: false)
