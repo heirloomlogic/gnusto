@@ -96,10 +96,14 @@ public struct DangerousDark: GameContent {
     /// is printed and nothing else: a warning swallowed for repeating the room's
     /// own dark line is still a warned turn.
     ///
-    /// **The death is always the lingering one, and the line has to say so.**
-    /// The counter cannot reach the dice before the third dark turn, so nothing
-    /// this daemon kills was killed on the turn it walked into the dark — which
-    /// is the distinction Zork draws with two separate sentences. `V-WALK`
+    /// **The death this daemon deals is the lingering one, and the line has to
+    /// say so.** The first dark turn only warns, and the dice wait for dark turn
+    /// `graceTurns + 2` — the third dark turn at the default grace of one, and
+    /// never earlier than dark turn 2, because dark turn 1 is the warning's own
+    /// arm however low `graceTurns` goes. So a
+    /// death here lands on a turn spent lingering in a dark the player has
+    /// already been warned about, rather than on the turn they walked into it —
+    /// which is the distinction Zork draws with two separate sentences. `V-WALK`
     /// (`gverbs.zil:1578`) says "You have walked into the slavering fangs of a
     /// lurking grue!" and fires only on a *blocked* move in the dark, a mechanic
     /// this plugin does not have at all; `GOTO` (`gverbs.zil:2110-2114`) says

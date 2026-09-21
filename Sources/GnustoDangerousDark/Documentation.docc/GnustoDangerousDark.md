@@ -72,16 +72,7 @@ static let grueDeath = GameText.Line<GameText.Noun?>.naming(
 }
 ```
 
-**The death this daemon deals is always the lingering one**, and the line has to
-be true of that. The counter cannot reach the dice before the third dark turn, so
-nothing it kills was killed on the turn it walked into the dark. Zork draws the
-distinction with two separate sentences and this is the second of them: `V-WALK`
-(`gverbs.zil:1578`) says *"You have walked into the slavering fangs of a lurking
-grue!"* and fires only on a **blocked** move in the dark, which is a branch this
-library does not have; `GOTO` (`:2110-2114`) names the vehicle you are sitting in,
-or says "room". Both halves are the game's words — the stock line names no place
-at all, because a library that has not seen the game should not decide what to
-call the place somebody was taken from.
+**The death this daemon deals is the lingering one**, and the line has to be true of that. The first dark turn only warns, and the dice wait for dark turn `graceTurns + 2` — the third dark turn at the default grace of one, and never earlier than dark turn 2, because dark turn 1 is the warning's own arm however low `graceTurns` goes. So a death here lands on a turn spent lingering in a dark the player has already been warned about, rather than on the turn they walked into it. Zork draws the distinction with two separate sentences and this is the second of them: `V-WALK` (`gverbs.zil:1578`) says *"You have walked into the slavering fangs of a lurking grue!"* and fires only on a **blocked** move in the dark, which is a branch this library does not have; `GOTO` (`:2110-2114`) names the vehicle you are sitting in, or says "room". Both halves are the game's words — the stock line names no place at all, because a library that has not seen the game should not decide what to call the place somebody was taken from.
 
 `warning` is said *once* per turn, through the engine's `sayOnceThisTurn(_:)`.
 A game that also points `text.pitchBlack` at the same sentence — Zork does,
