@@ -107,7 +107,9 @@ the player typed, in any order. `topic("murder", "body")` answers `ask butler
 about the murder`, `… about that dreadful murder` and `… about the body` alike,
 while `topic("murder weapon")` needs both words present. Each keyword is
 normalized exactly as the parser normalizes player input, so articles, capitals
-and punctuation don't matter.
+and punctuation don't matter. A row needs at least one keyword that survives
+normalization — `topic(reply:)` with none, or `topic("", reply:)` with an empty
+one, traps at declaration time rather than building a row that can never match.
 
 Rows are tried in declaration order and the first match wins, so the specific go
 above the general, and for a subject whose answer changes, the gated version goes

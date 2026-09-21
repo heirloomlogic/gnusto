@@ -568,6 +568,53 @@ struct ConversationTests {
             ])
         #expect(transcript.contains("I was in the pantry all evening, sir."))
     }
+
+    // MARK: - Declaration-time validation
+
+    /// A blank keyword and a punctuation-only one reach the guard the same way
+    /// no keywords at all do: normalization empties them (#486). Asserting that
+    /// in process is what keeps the exit tests below at one child process per
+    /// `topic(...)` overload rather than one per input.
+    @Test("a blank or punctuation-only keyword normalizes away")
+    func aBlankOrPunctuationOnlyKeywordNormalizesAway() {
+        #expect(Topic.normalize("").isEmpty)
+        #expect(Topic.normalize("!!!").isEmpty)
+    }
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// A `reply:` row with no usable keyword would build a row
+    /// `answers(_:for:knowing:)` can never match — a silent no-op, not the
+    /// catch-all an author reaching for the bare form might expect (#486).
+    @Test("the reply form traps on a row with no usable keyword")
+    func theReplyFormTrapsOnARowWithNoUsableKeyword() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = topic(reply: "\"The catch-all that never fires.\"")
+        }
+        // The file is in the needles because `file:`/`declaredOn:` exist to put
+        // it there: without them `fatalError` reports `TopicEntry.swift`, which
+        // is the one place the author did not write anything.
+        expectTrap(
+            result,
+            says: "topic(...) needs at least one keyword", "ConversationTests.swift")
+    }
+
+    /// The `perform:` overload builds its own row and calls the guard itself,
+    /// so it takes a child process of its own (#486).
+    @Test("the perform form traps on a row with no usable keyword")
+    func thePerformFormTrapsOnARowWithNoUsableKeyword() async {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = topic(perform: {})
+        }
+        expectTrap(result, says: "topic(...) needs at least one keyword")
+    }
+
+    #endif
 }
 
 /// How many times `needle` appears in `haystack`. The suite has

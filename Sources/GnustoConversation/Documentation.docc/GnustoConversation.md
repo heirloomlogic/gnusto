@@ -71,8 +71,8 @@ row, how an answer is made to land once, and a worked interrogation.
 
 ### Topic rows
 
-- ``topic(_:only:knowing:unless:learning:when:again:id:reply:)``
-- ``topic(_:only:knowing:unless:learning:when:again:id:perform:)``
+- ``topic(_:only:knowing:unless:learning:when:again:id:file:declaredOn:reply:)``
+- ``topic(_:only:knowing:unless:learning:when:again:id:file:declaredOn:perform:)``
 - ``TopicEntry``
 - ``TopicBuilder``
 
