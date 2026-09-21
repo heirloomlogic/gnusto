@@ -184,10 +184,17 @@ public struct Location: Sendable, Equatable {
     ///
     /// Two consequences of the destination being a closure:
     ///
-    /// - **It is not validated at bootstrap.** The other exit forms name a
-    ///   room the bootstrap can resolve; this one is opaque until it runs, so
-    ///   a destination that isn't a stored property of the game surfaces on
-    ///   the turn the player takes the exit, not at launch.
+    /// - **It is not validated at bootstrap, and an invalid destination
+    ///   traps.** The other exit forms name a room the bootstrap can resolve;
+    ///   this one is opaque until it runs, and running it at launch would
+    ///   prove nothing, since it may answer differently every turn. So a
+    ///   destination that isn't a stored property of the game — a `Location`
+    ///   built inside the closure, say — compiles and boots, and the first
+    ///   time anything asks this exit where it leads the engine stops the
+    ///   game with a `fatalError` naming this room, this direction and the
+    ///   name the returned `Location` declares. There is no in-game refusal
+    ///   to fall back on: this is an authoring mistake, and it is as fatal in
+    ///   a shipped binary as it is in a test.
     /// - **It contributes nothing to the reachable-room set**, which is built
     ///   from declared destinations, and nothing to the adjacency the naming
     ///   reach is drawn from. A room reachable *only* this way reads to the

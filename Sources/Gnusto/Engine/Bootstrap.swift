@@ -503,7 +503,17 @@ enum Bootstrap {
                 // `Location.exit(_:toward:)` for what that costs. Claiming the
                 // direction is still checked: it is the one mistake this exit
                 // kind can make that bootstrap can still catch.
-                claimExit(.dynamic(destination: { destination().id }), direction, from: fromID)
+                // The result is checked instead when the closure runs, and the
+                // wrapper is what makes that message findable: `fromID` and
+                // `direction` are in scope here and nowhere downstream — see
+                // `TurnFrame.dynamicDestination(_:from:toward:)`.
+                claimExit(
+                    .dynamic(
+                        destination: {
+                            Ctx.current.dynamicDestination(
+                                destination(), from: fromID, toward: direction)
+                        }),
+                    direction, from: fromID)
 
             case .placement(let itemToken, let target):
                 guard let itemID = resolveItem(itemToken, role: "a placement") else {

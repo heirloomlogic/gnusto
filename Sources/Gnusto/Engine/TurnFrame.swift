@@ -283,6 +283,40 @@ final class TurnFrame: Sendable {
         return id
     }
 
+    /// The id a dynamic exit's destination closure named, or a diagnostic
+    /// naming the exit that produced it.
+    ///
+    /// `Bootstrap` wraps every `exit(_:toward:)` closure in a call to this and
+    /// stores the wrapper as the exit's destination, so whatever asks a dynamic
+    /// exit where it leads — travel, FOLLOW, anything added later — asks
+    /// through here. That is why the check is written once rather than at each
+    /// caller: a caller cannot reach the author's closure directly.
+    ///
+    /// The generic `id(for:describing:)` message above would be the one an
+    /// author reads otherwise, and it can name neither the exit nor the room,
+    /// because by then all it holds is a token. Here both are known: the
+    /// bootstrap captured them when it built the wrapper.
+    func dynamicDestination(
+        _ destination: Location,
+        from source: EntityID,
+        toward direction: Direction
+    ) -> EntityID {
+        guard let id = definition.registry.id(for: destination.token) else {
+            let named =
+                LocationDefinition(traits: destination.traits).name
+                .map { "named \"\($0)\"" } ?? "with no name(…) trait"
+            fatalError(
+                """
+                Gnusto: the dynamic \(direction) exit from "\(source)" returned \
+                a Location \(named) that is not part of the running game. A \
+                dynamic destination must be a Location declared as a stored \
+                property of your Game or GameContent type; one constructed \
+                inside the closure has no identity in the world.
+                """)
+        }
+        return id
+    }
+
     /// No exit test, deliberately: this is a registry invariant, not an
     /// authoring mistake. Every id reaching it came from the registry that would
     /// have to have lost it, so no fixture arranges the failure without first

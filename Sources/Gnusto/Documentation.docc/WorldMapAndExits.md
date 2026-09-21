@@ -166,10 +166,7 @@ closure:
 - **It is a read.** It may run more than once in a turn — `FOLLOW` asks it which
   way the quarry went before travel takes it — so it must answer from state
   rather than change any. A die rolled here is rolled twice.
-- **It is not validated at bootstrap.** The other four kinds name a room the
-  bootstrap resolves at launch; this one is opaque until it runs, so a
-  destination that isn't a stored property of the game surfaces on the turn the
-  player takes the exit.
+- **It is not validated at bootstrap, and an invalid destination traps.** The other four kinds name a room the bootstrap resolves at launch; this one is opaque until it runs, and running it at launch would prove nothing, because it may answer differently every turn. So a destination that isn't a stored property of the game — a `Location` built inside the closure, say — compiles and boots, and the first time anything asks the exit where it leads the engine stops the game with a `fatalError` naming the source room, the direction, and the name the returned `Location` declares. There is no in-game refusal to fall back on; this is an authoring mistake, and it is as fatal in a shipped binary as it is in a test.
 - **It contributes no destination to the reachable-room set**, described below.
 
 ## Computing the direction
