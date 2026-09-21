@@ -810,7 +810,7 @@ public struct GameText: Sendable {
     /// The name with its definite article ("the velvet cloak"), or the name
     /// alone when it is a proper name ("Mrs. Vane").
     ///
-    /// The engine calls this — and ``indefinite(_:proper:plural:)`` — *before* it
+    /// The engine calls this — and ``indefinite(_:article:proper:plural:)`` — *before* it
     /// reaches a line's closure, which is why every template above interpolates
     /// a finished phrase rather than putting an article in front of a bare
     /// name. A custom closure receives the same finished phrase; these statics
@@ -829,15 +829,23 @@ public struct GameText: Sendable {
     /// "an apple", "some rails"), or the name alone when it is a proper name
     /// ("Mrs. Vane").
     ///
+    /// Four answers, in this order: a proper name takes no article, a plural one
+    /// takes "some", a name that declared its own takes that, and everything
+    /// else takes the one its first letter asks for — "an" before a vowel, "a"
+    /// otherwise. See `article(_:)` for the third.
+    ///
     /// - Parameters:
     ///   - name: the bare name to article.
+    ///   - article: the article the name was declared to take, from the
+    ///     `article(_:)` trait, or `nil` to read the first letter. A blank
+    ///     string reads the first letter too; the bootstrap refuses one.
     ///   - proper: whether the name is a proper name, in which case it is
     ///     returned unchanged.
     ///   - plural: whether the name is grammatically plural, which takes
     ///     "some" — English has no plural indefinite article of its own.
     /// - Returns: the rendered noun phrase.
     public static func indefinite(
-        _ name: String, proper: Bool = false, plural: Bool = false
+        _ name: String, article: String? = nil, proper: Bool = false, plural: Bool = false
     )
         -> String
     {
@@ -845,6 +853,8 @@ public struct GameText: Sendable {
             name
         } else if plural {
             "some \(name)"
+        } else if let article, article.blankTextKind == nil {
+            "\(article) \(name)"
         } else if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
         } else {

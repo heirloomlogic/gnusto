@@ -363,8 +363,15 @@ final class TurnFrame: Sendable {
     /// "Mrs. Vane" for a `properName`. What the room and inventory listings
     /// are handed.
     func indefiniteName(of id: EntityID) -> String {
-        GameText.indefinite(
-            displayName(of: id), proper: isProperName(id), plural: isPlural(id))
+        // Bound once rather than looked up per answer: this renders once per
+        // listed thing, and the name, the article and both traits are all
+        // fields of the one definition.
+        let item = definition.items[id]
+        return GameText.indefinite(
+            item?.name ?? definition.locationName(of: id),
+            article: item?.article,
+            proper: item?.isProperName == true,
+            plural: item?.isPlural == true)
     }
 
     /// The entity behind its definite article *and* its number — what the stock

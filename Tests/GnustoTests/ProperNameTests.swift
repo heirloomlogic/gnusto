@@ -281,4 +281,121 @@ struct ProperNameTests {
             GameText.list(["Excalibur", "a coin", "an axe"])
                 == "Excalibur, a coin, and an axe")
     }
+
+    // MARK: - The declared article
+
+    /// The first letter is right for almost every name and wrong for the two
+    /// below it, which is the whole reason `article(_:)` exists: English spells
+    /// "hour" with a consonant it does not say, and "unicorn" with a vowel it
+    /// does not say either.
+    @Test func aDeclaredArticleReachesTheRoomListing() async throws {
+        let transcript = try await play(DeclaredArticleGame(), ["look"])
+        #expect(transcript.contains("There is an hour glass here."))
+        #expect(transcript.contains("There is a unicorn here."))
+        #expect(!transcript.contains("a hour glass"))
+        #expect(!transcript.contains("an unicorn"))
+    }
+
+    /// The control, in the same transcript: a name that declares nothing is
+    /// still articled by its first letter, both ways round.
+    @Test func anUndeclaredNameStillReadsItsFirstLetter() async throws {
+        let transcript = try await play(DeclaredArticleGame(), ["look"])
+        #expect(transcript.contains("There is a brass lantern here."))
+        #expect(transcript.contains("There is an apple here."))
+    }
+
+    /// Actors declare from the same trait vocabulary, and the line that lists
+    /// one in a room is indefinite, so the trait has to reach them too.
+    @Test func aDeclaredArticleReachesAnActorsListingLine() async throws {
+        let transcript = try await play(DeclaredArticleGame(), ["look"])
+        #expect(transcript.contains("An heiress is here."))
+        #expect(!transcript.contains("A heiress"))
+    }
+
+    @Test func aDeclaredArticleReachesTheInventory() async throws {
+        let transcript = try await play(
+            DeclaredArticleGame(), ["take hour glass", "take unicorn", "i"])
+        let inventory = turnOutput(of: "i", in: transcript)
+        #expect(inventory.contains("an hour glass"))
+        #expect(inventory.contains("a unicorn"))
+    }
+
+    /// The other indefinite site: what opening a container reveals, and what
+    /// looking inside one lists.
+    @Test func aDeclaredArticleReachesAContainerListing() async throws {
+        let transcript = try await play(
+            DeclaredArticleGame(),
+            ["open chest", "take hour glass", "put hour glass in chest", "look in chest"])
+        let inside = turnOutput(of: "look in chest", in: transcript)
+        #expect(inside.contains("In the chest is an hour glass."))
+    }
+
+    /// The definite article is one word and has no exceptions, so the trait
+    /// leaves it alone.
+    @Test func aDeclaredArticleLeavesTheDefiniteFormAlone() async throws {
+        let transcript = try await play(
+            DeclaredArticleGame(), ["x hour glass", "eat hour glass"])
+        #expect(turnOutput(of: "x hour glass", in: transcript).contains("the hour glass"))
+        #expect(
+            turnOutput(of: "eat hour glass", in: transcript)
+                .contains("The hour glass is not food."))
+    }
+
+    @Test func declaringAnArticleWarnsAboutNothing() throws {
+        let (definition, _) = try Bootstrap.build(DeclaredArticleGame())
+        #expect(definition.warnings.isEmpty, "\(definition.warningReport ?? "no report")")
+    }
+
+    /// The two traits above it in the order still win, so the trait can only
+    /// ever be dead beside them — and the bootstrap says so rather than letting
+    /// the author find out from a transcript that never changed.
+    @Test func anArticleTheEngineCannotPrintWarns() throws {
+        let (definition, _) = try Bootstrap.build(ContradictoryArticleGame())
+        #expect(
+            definition.warnings.contains(
+                """
+                item "excalibur" declares article("an") and properName; a proper name \
+                takes no article, so the trait has no effect.
+                """))
+        #expect(
+            definition.warnings.contains(
+                """
+                item "rails" declares article("a") and plural; a plural name takes \
+                "some", so the trait has no effect.
+                """))
+        #expect(
+            definition.warnings.contains(
+                """
+                actor "duchess" declares article("an") and properName; a proper name \
+                takes no article, so the trait has no effect.
+                """))
+    }
+
+    /// A blank article is not a quiet trait with no effect; it is the same
+    /// author error as a blank description, and fatal in the same breath.
+    @Test func anArticleThatIsNotAWordIsFatal() throws {
+        var diagnostics: [String] = []
+        do {
+            _ = try Bootstrap.build(BlankArticleGame())
+            Issue.record("expected a BootstrapError")
+        } catch let error as BootstrapError {
+            diagnostics = error.diagnostics
+        }
+        #expect(
+            diagnostics.contains(
+                #"item "hourGlass" declares a whitespace-only article(…) trait."#))
+        #expect(diagnostics.contains(#"item "sandGlass" declares an empty article(…) trait."#))
+    }
+
+    /// The helper itself, with the order stated once: proper, then plural, then
+    /// the declared article, then the first letter.
+    @Test func theDeclaredArticleOutranksOnlyTheFirstLetter() {
+        #expect(GameText.indefinite("hour glass", article: "an") == "an hour glass")
+        #expect(GameText.indefinite("unicorn", article: "a") == "a unicorn")
+        #expect(GameText.indefinite("hour glass") == "a hour glass")  // the letter, unaided
+        #expect(GameText.indefinite("unicorn") == "an unicorn")
+        #expect(GameText.indefinite("Excalibur", article: "an", proper: true) == "Excalibur")
+        #expect(GameText.indefinite("rails", article: "a", plural: true) == "some rails")
+        #expect(GameText.indefinite("hour glass", article: "  ") == "a hour glass")
+    }
 }

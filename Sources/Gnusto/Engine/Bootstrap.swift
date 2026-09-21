@@ -365,6 +365,7 @@ enum Bootstrap {
             let subject = "\(kind) \"\(id)\""
             diagnoseBlank(definition.description, on: subject, as: "description(…) trait")
             diagnoseBlank(definition.firstSight, on: subject, as: "firstSight(…) trait")
+            diagnoseBlank(definition.article, on: subject, as: "article(…) trait")
             if let pair = definition.twoStateDescription {
                 diagnoseBlank(
                     pair.text, on: subject, as: "description(when:_:otherwise:) text")
@@ -855,6 +856,25 @@ enum Bootstrap {
                 traitWarnings.append(
                     "item \"\(id)\" declares transparent but is not a container; "
                         + "the trait has no effect.")
+            }
+            // An article the engine can never print: `properName` suppresses
+            // the article outright and `plural` replaces it with "some", so
+            // under either of those the declared word is a third opinion
+            // nothing asks for. A blank article never reaches this loop: it is
+            // a fatal diagnostic above (Gate 1, line ~666), which throws
+            // before trait warnings are collected — so `article` here is
+            // never blank and needs no re-check.
+            if let article = item.article {
+                let kind = item.isActor ? "actor" : "item"
+                if item.isProperName {
+                    traitWarnings.append(
+                        "\(kind) \"\(id)\" declares article(\"\(article)\") and properName; "
+                            + "a proper name takes no article, so the trait has no effect.")
+                } else if item.isPlural {
+                    traitWarnings.append(
+                        "\(kind) \"\(id)\" declares article(\"\(article)\") and plural; "
+                            + "a plural name takes \"some\", so the trait has no effect.")
+                }
             }
             if wornItems.contains(id) && !item.isWearable {
                 traitWarnings.append(

@@ -21,6 +21,7 @@ public struct ItemTrait: Sendable {
         case synonyms([String])
         case properName
         case plural
+        case article(String)
         case pronoun(Pronoun)
         case firstSight(String)
         case twoStateFirstSight(TwoStateText)
@@ -329,6 +330,32 @@ public let properName = ItemTrait(kind: .properName)
 /// is asking a game to rename a thing to suit a stub line. A mine has rails,
 /// not a rails, and the noun should not have to apologize for it.
 public let plural = ItemTrait(kind: .plural)
+
+/// The indefinite article this name takes, for the names English spells one way
+/// and says another: `article("an")` on an hour glass, `article("a")` on a
+/// unicorn.
+///
+/// Without it the engine reads the first letter, which is right for almost every
+/// name and wrong for the handful whose spelling and sound disagree. Declared
+/// rather than listed, because an exception list is a dictionary the engine
+/// would have to keep, and a game knows its own nouns.
+///
+/// It reaches only the *indefinite* article, so it changes a room listing, an
+/// inventory line and every other "a …" the engine renders, and nothing about
+/// "the …". ``properName`` and ``plural`` still outrank it: a proper name takes
+/// no article at all and a plural one takes "some", so declaring this beside
+/// either is a bootstrap warning rather than a third opinion. A blank word is a
+/// fatal diagnostic, with every other blank author-facing text.
+///
+/// The word itself is not validated against a list of real articles: whatever
+/// is passed renders verbatim in front of the name, so a typo here reaches
+/// the transcript unchanged.
+///
+/// - Parameter word: the article to use, such as "a" or "an".
+/// - Returns: the article trait.
+public func article(_ word: String) -> ItemTrait {
+    ItemTrait(kind: .article(word))
+}
 
 /// The gendered pronoun this person answers to: `pronoun(.she)` makes `her`
 /// another way to name her, for every verb, without spending a synonym on the

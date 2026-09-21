@@ -53,7 +53,23 @@ Where a line *opens* on the phrase, reach for ``GameText/Noun/sentenceCased``: `
 text.cantTakeActor = .naming { "\($0.sentenceCased) would sooner not." }
 ```
 
-The other three helpers are public statics too, for a custom line that builds a phrase of its own: ``GameText/definite(_:proper:)``, ``GameText/indefinite(_:proper:plural:)``, and ``GameText/list(_:)``, which joins already-rendered phrases into an English list. A rule can reach the same forms through ``Item/definiteName`` and ``Item/indefiniteName``.
+The other three helpers are public statics too, for a custom line that builds a phrase of its own: ``GameText/definite(_:proper:)``, ``GameText/indefinite(_:article:proper:plural:)``, and ``GameText/list(_:)``, which joins already-rendered phrases into an English list. A rule can reach the same forms through ``Item/definiteName`` and ``Item/indefiniteName``.
+
+The indefinite article has four answers, in order: `properName` takes none, `plural` takes "some", a name that declared its own article takes that, and everything else takes the one its first letter asks for — "an" before a vowel, "a" otherwise. That last rule is right for almost every name and wrong for the handful English spells one way and says another, which is what ``article(_:)`` is for:
+
+```swift
+let hourGlass = Item {
+    name("hour glass")
+    article("an")
+}
+
+let unicorn = Item {
+    name("unicorn")
+    article("a")
+}
+```
+
+``article(_:)`` reaches the indefinite article alone, so it changes a room listing, an inventory line and every other "a …" the engine renders, and nothing about "the …" — the definite article is one word with no exceptions in it. Declaring it beside `properName` or `plural` is a non-fatal bootstrap warning, since both of those outrank it and the word could never print; declaring it blank is fatal, with every other blank author-facing text.
 
 A capitalized `name(…)` on an item or actor without `properName` is a non-fatal bootstrap warning — not an inference, since `Elvish sword` is a common noun, but the author who meant a proper name shouldn't have to find out from a transcript. Location names are exempt: the engine never articles a room.
 
