@@ -173,7 +173,7 @@ extension GameWorld {
         state = restored
         undoSnapshot = nil
         pendingClarification = nil
-        let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
+        let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.text.restored())
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)

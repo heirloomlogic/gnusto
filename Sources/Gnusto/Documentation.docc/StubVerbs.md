@@ -72,15 +72,7 @@ Ritual and flavor: `pray`, `sing`, `curse`/`swear`, `xyzzy`/`plugh`, `count`,
 
 Commerce: `buy`, `sell`. Fixtures: `blow`.
 
-Deliberately **not** stubs: `verbose`/`brief`/`notify`/`script` are missing
-*features*, and a canned refusal would be a worse answer than the error.
-`again`/`g` and `oops` were on that list until they stopped being missing —
-both act on a line the pipeline has already finished with, so they are
-engine-level rows beside UNDO rather than stubs. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slot
-and somebody to ask. `ring` and `wind` are left free for games that want to own
-them outright; bare `hello`/`hi` were too, until leaving them out meant a
-greeting to a room came back as *"What do you want to hello?"* — they are core
-rows on ``Intent/greet`` now.
+Deliberately **not** stubs: `notify`/`script` are missing *features*, and a canned refusal would be a worse answer than the error. `again`/`g` and `oops` were on that list until they stopped being missing, and `verbose`, `brief` and `superbrief` — the last of which the list never named — went the same way. The first two act on a line the pipeline has already finished with; the last three set a session preference that lives on the `GameWorld` actor rather than in the world. No stage can answer any of them, so all five are engine-level rows beside UNDO rather than stubs. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slot and somebody to ask. `ring` and `wind` are left free for games that want to own them outright; bare `hello`/`hi` were too, until leaving them out meant a greeting to a room came back as *"What do you want to hello?"* — they are core rows on ``Intent/greet`` now.
 
 ## Aimed at yourself
 

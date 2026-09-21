@@ -37,7 +37,10 @@ extension GameWorld {
     /// - Returns: the contributed `name`/`value` pairs, in declaration order.
     func statusFields() -> [(String, String)] {
         guard !definition.statusFields.isEmpty else { return [] }
-        let scratch = TurnFrame(definition: definition, state: statusFieldState ?? state)
+        let scratch = TurnFrame(
+            definition: definition, state: statusFieldState ?? state,
+            // Nothing here describes a room, so the mode is inert.
+            descriptionMode: .brief)
         let fields = Ctx.$frame.withValue(scratch) {
             definition.statusFields.flatMap { $0() }
         }

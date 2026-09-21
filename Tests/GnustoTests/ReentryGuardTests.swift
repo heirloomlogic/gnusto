@@ -257,7 +257,7 @@ struct ReentryGuardTests {
     /// directly.
     private static func freshFrame() throws -> TurnFrame {
         let (definition, state) = try Bootstrap.buildCore(MiniGame())
-        return TurnFrame(definition: definition, state: state)
+        return TurnFrame(definition: definition, state: state, descriptionMode: .brief)
     }
 }
 

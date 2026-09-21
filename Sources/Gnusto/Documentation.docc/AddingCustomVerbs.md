@@ -24,7 +24,7 @@ Going: `go`/`walk`/`run`, `enter`/`board`/`get in`/`go through`/`climb`/`step`, 
 
 People: `greet`/`hello`/`hi`/`say to`.
 
-Meta: `score`, `version`, `quit`/`q`, and the six the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`, `again`/`g`, `oops`.
+Meta: `score`, `version`, `quit`/`q`, and the nine the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`, `again`/`g`, `oops`, and the description modes `verbose`, `brief`, `superbrief`/`super`.
 
 `again` (or `g`) re-parses the last command the player ran — read against the room as it stands now, so `take it` repeated is about whatever "it" means this turn — and costs whatever that command costs. Nothing engine-level and nothing meta is ever recorded, so it cannot repeat itself, an UNDO, a SAVE or a score check, and neither can a parse error or a turn nothing answered. It is world state, so UNDO rolls it back with the turn that set it and a restored save still knows what to repeat.
 

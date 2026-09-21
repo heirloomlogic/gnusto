@@ -19,6 +19,26 @@ struct Zork1ProseTests {
         expectNoEngineStubLineSurvives(in: Zork1().text.stubs, game: "Zork 1")
     }
 
+    /// The three description-mode verbs, where Zork I's wording and the
+    /// engine's stock wording part company over one hyphen.
+    ///
+    /// `V-VERBOSE` and `V-BRIEF` (`gverbs.zil:13`, `:18`) are the stock lines
+    /// already. `V-SUPER-BRIEF` (`:23`) writes *"Super-brief descriptions."*,
+    /// where the engine follows the modern ZIL library and writes the word
+    /// closed up — so Zork 1 sets the line back and this is what proves it
+    /// reaches the player. See `FIDELITY.md`, "VERBOSE / BRIEF / SUPERBRIEF".
+    @Test func theDescriptionModeRepliesAreTheSourcesOwn() async throws {
+        let transcript = try await play(Zork1(), ["verbose", "superbrief", "brief"])
+        expectInOrder(
+            transcript,
+            [
+                "Maximum verbosity.",
+                "Super-brief descriptions.",
+                "Brief descriptions.",
+            ])
+        #expect(!transcript.contains("Superbrief descriptions."))
+    }
+
     /// The lines a player is most likely to try on purpose, taken verbatim from
     /// `gverbs.zil` and reaching the player through the real pipeline rather
     /// than through the table above — which proves the floor is *installed*, not

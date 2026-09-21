@@ -125,7 +125,7 @@ struct PlaytestSeamTests {
         for _ in 1...4 { _ = await world.perform("wait") }
         #expect(await world.snapshot().moves == 4)
 
-        await world.restore(mark)
+        await world.restore(mark, mode: .brief)
         #expect(await world.snapshot().moves == 0)
         // The tally is session state, not world state: the daemon really did
         // run four times, and rewinding the world does not unhappen it. Same

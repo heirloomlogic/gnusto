@@ -49,7 +49,7 @@ struct ProxyFrameTests {
     /// process is spent on the wording alone.
     @Test func retiringAFrameKillsIt() throws {
         let (definition, state) = try Bootstrap.buildCore(MiniGame())
-        let frame = TurnFrame(definition: definition, state: state)
+        let frame = TurnFrame(definition: definition, state: state, descriptionMode: .brief)
         #expect(frame.isAlive)
 
         let scratch = frame.retire()

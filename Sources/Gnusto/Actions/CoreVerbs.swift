@@ -431,9 +431,9 @@ extension DefaultActions {
 
         .handled(.version, [["version"]], reach: .notNeeded) { _, frame in version(frame) },
 
-        // The engine-level six. They own rows so the parser knows the words and
-        // the vocabulary reports them, but `GameWorld.run` acts on the actor's
-        // snapshots and returns before any stage runs.
+        // The engine-level rows. They own rows so the parser knows the words and
+        // the vocabulary reports them, but `GameWorld` answers them ahead of the
+        // pipeline and returns before any stage runs.
         .engineLevel(.undo, [["undo"]]),
         .engineLevel(.restart, [["restart"]]),
         .engineLevel(.save, [["save"]]),
@@ -451,6 +451,20 @@ extension DefaultActions {
         // topic is the one slot that never looks its tokens up. The bare row
         // is what answers `oops` on its own.
         .engineLevel(.oops, [["oops"], ["oops", .topic]]),
+        // The description modes. Engine-level too: the preference they set is
+        // session state on the `GameWorld` actor, which no stage can write.
+        // `super` alone is the original's synonym for `superbrief`
+        // (`gsyntax.zil`, `<SYNONYM SUPER SUPERBRIEF>`), and the two-word
+        // spelling is there because the tokenizer splits on the space.
+        .engineLevel(.verbose, [["verbose"]]),
+        .engineLevel(.brief, [["brief"]]),
+        .engineLevel(
+            .superbrief,
+            [
+                ["superbrief"],
+                ["super", "brief"],
+                ["super"],
+            ]),
     ]
 
     /// Keyed for the stage-4 lookup — the same dispatch table the stub path

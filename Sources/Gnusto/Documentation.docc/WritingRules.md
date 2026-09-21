@@ -174,6 +174,8 @@ Four things are worth knowing:
 
 A room is described in full the first time the player walks in and briefly on every entry after that — its name and the things lying in it, but not its long description, because the player has already read it. That is the classic behaviour and it is right for a room made of stone.
 
+The player can move that line. `verbose` prints the long description on every entry, `superbrief` prints it on none, and `brief` is the default described above; the game answers `Maximum verbosity.`, `Superbrief descriptions.` and `Brief descriptions.`. The three verbs are engine-level and free — no rule sees them, no timer ticks, and the move counter stands still. LOOK is unaffected: it is the player asking to be told again, so it prints the long description in every mode. So is `alwaysDescribed`, below. And the preference belongs to the session rather than to the world, so SAVE, RESTORE, UNDO and RESTART all leave it where the player set it, and a newly launched game starts at `brief`.
+
 It is wrong for a room the player is *rewriting*. A sliding-block floor, a mirror box, a machine whose dials have moved: there the `describe { … }` closure is the only readout there is, and a brief re-entry silently withholds it. The player types `undo` after a push and gets the heading and nothing under it. Declare ``alwaysDescribed`` and the long description prints on every entry too:
 
 ```swift
@@ -183,7 +185,7 @@ let puzzle = Location {
 }
 ```
 
-It is opt-in, one room at a time; every other room keeps the brief revisit. The three paths it fixes are UNDO, RESTORE, and walking back in through an exit — all of which re-describe as an entry rather than as a LOOK. On a room with nothing to print — no `description(…)` and no `describe { … }` — the trait is a bootstrap warning, since it has no text to un-hide.
+It is opt-in, one room at a time; every other room keeps the brief revisit. The three paths it fixes are UNDO, RESTORE, and walking back in through an exit — all of which re-describe as an entry rather than as a LOOK. It outranks the player's preference too: a room that declares it is described in full in `superbrief` as well, because the trait says this description is not prose they have already read. On a room with nothing to print — no `description(…)` and no `describe { … }` — the trait is a bootstrap warning, since it has no text to un-hide.
 
 ## When the item's listing line *is* the state
 

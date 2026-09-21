@@ -84,6 +84,7 @@ struct CoreVerbTests {
         // engine-level
         "undo", "restart", "save", "restore", "load",
         "again", "g", "oops", "oops lantern",
+        "verbose", "brief", "superbrief", "super brief", "super",
     ]
 
     /// Ties the hand-written list to the table, so a core row added later can't
@@ -215,7 +216,10 @@ struct CoreVerbTests {
         #expect(DefaultActions.builtInIntents.isDisjoint(with: DefaultActions.engineIntents))
         #expect(DefaultActions.builtInIntents.union(DefaultActions.engineIntents) == all)
         #expect(
-            DefaultActions.engineIntents == [.undo, .restart, .save, .restore, .again, .oops])
+            DefaultActions.engineIntents == [
+                .undo, .restart, .save, .restore, .again, .oops,
+                .verbose, .brief, .superbrief,
+            ])
     }
 
     /// Stub intents share the table but never `builtInIntents` — reclaiming one
@@ -226,7 +230,7 @@ struct CoreVerbTests {
         #expect(all.isDisjoint(with: DefaultActions.stubIntents))
     }
 
-    // MARK: - The engine-level four
+    // MARK: - The engine-level rows
 
     /// The bug this shape was worth fixing for. UNDO, RESTART, SAVE and RESTORE
     /// are answered in `GameWorld.run` before any stage, so an `actions` row for

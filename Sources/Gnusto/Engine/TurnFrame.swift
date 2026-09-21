@@ -243,10 +243,29 @@ enum Reentry: Sendable {
 /// the actor, so it is uncontended in practice.
 final class TurnFrame: Sendable {
     let definition: GameDefinition
+    /// The session's ``DescriptionMode``, copied in from the `GameWorld` actor
+    /// that built the frame.
+    ///
+    /// It rides here because `describeSurroundings()` and `arrive(at:)` are
+    /// reached from rule bodies, which hold a frame and never the actor.
+    /// Undefaulted for the reason `state` is: a frame that describes and was
+    /// never told the mode would print the wrong room and fail nothing. Every
+    /// frame the engine describes through comes from
+    /// ``GameWorld/turnFrame(_:)``; the two that are not turns say `.brief` at
+    /// the site, and neither prints a room — the bootstrap's registration
+    /// frame runs declaration builders, and the one `statusFields()` reads
+    /// through is discarded with whatever it was told.
+    let descriptionMode: DescriptionMode
     private let box: Mutex<Scratch>
 
-    init(definition: GameDefinition, state: WorldState, command: Command? = nil) {
+    init(
+        definition: GameDefinition,
+        state: WorldState,
+        command: Command? = nil,
+        descriptionMode: DescriptionMode
+    ) {
         self.definition = definition
+        self.descriptionMode = descriptionMode
         self.box = Mutex(Scratch(state: state, command: command))
     }
 

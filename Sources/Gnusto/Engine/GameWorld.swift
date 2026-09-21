@@ -144,6 +144,16 @@ public actor GameWorld {
     /// sample exists at all.
     var statusFieldState: WorldState?
 
+    /// How much of a room to print on the way in — the player's VERBOSE /
+    /// BRIEF / SUPERBRIEF preference.
+    ///
+    /// Actor state, never serialized, for the reason `firedTimers` and
+    /// `roomsOccupied` above state: it is a fact about *this run of the
+    /// program*, not about the world. ``DescriptionMode`` says what that
+    /// placement buys and why nothing else in the engine writes the
+    /// preference.
+    var descriptionMode: DescriptionMode = .brief
+
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
     /// to replay a specific one.
@@ -208,7 +218,7 @@ public actor GameWorld {
     ///
     /// - Returns: the opening turn's output and status.
     public func begin() -> TurnResult {
-        let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
+        let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.intro)
             frame.say(definition.text.banner(definition.title, definition.tagline))
@@ -506,6 +516,9 @@ public actor GameWorld {
         case .restore:
             pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
             return freeReply(restorePromptText())
+        case .verbose: return setDescriptionMode(.verbose)
+        case .brief: return setDescriptionMode(.brief)
+        case .superbrief: return setDescriptionMode(.superbrief)
         default: break
         }
 
@@ -583,8 +596,24 @@ public actor GameWorld {
         Command(intent: .look, verbPhrase: "look", rawInput: "")
     }
 
+    /// A frame over the world as it stands, for a turn about to run or a
+    /// re-describe about to print.
+    ///
+    /// Written once because every one of these carries the same three things
+    /// — the definition, the live state, and the session's
+    /// ``DescriptionMode`` — and the next per-session value the frame has to
+    /// carry should be a field here rather than an edit at five call sites.
+    ///
+    /// - Parameter command: the command the frame is running, if any.
+    /// - Returns: a live frame.
+    func turnFrame(_ command: Command? = nil) -> TurnFrame {
+        TurnFrame(
+            definition: definition, state: state, command: command,
+            descriptionMode: descriptionMode)
+    }
+
     private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
-        let frame = TurnFrame(definition: definition, state: state, command: command)
+        let frame = turnFrame(command)
         Ctx.$frame.withValue(frame) {
             performStages(command, frame: frame, upkeep: true)
             finishTurn(intent: command.intent, frame: frame)
@@ -647,8 +676,7 @@ public actor GameWorld {
         // rules are rule bodies and may ask `command.intent`. What the player
         // typed was the group's intent, so that is what they are handed — no
         // object, because none has been named yet.
-        let frame = TurnFrame(
-            definition: definition, state: state, command: command(from: parsed))
+        let frame = turnFrame(command(from: parsed))
         Ctx.$frame.withValue(frame) {
             do {
                 try runUpkeepBefore(intent, frame: frame)
@@ -991,7 +1019,7 @@ public actor GameWorld {
         state = snapshot
         undoSnapshot = nil
         pendingClarification = nil
-        let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
+        let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.text.undone())
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
@@ -1006,6 +1034,28 @@ public actor GameWorld {
         undoSnapshot = nil
         pendingClarification = nil
         return begin()
+    }
+
+    /// Takes the player's new description-mode preference and confirms it.
+    ///
+    /// Free, like the other meta intents: no stage runs, no rule sees it, no
+    /// timer ticks and the move counter stands still. It changes what
+    /// the *next* entry prints and says nothing about this room, so it does
+    /// not re-describe — a player who wants the room now types LOOK, which is
+    /// full in every mode.
+    ///
+    /// - Parameter mode: the mode the player asked for.
+    /// - Returns: the confirmation, as a free reply.
+    func setDescriptionMode(_ mode: DescriptionMode) -> TurnResult {
+        descriptionMode = mode
+        let text = definition.text
+        let confirmation =
+            switch mode {
+            case .verbose: text.maximumVerbosity()
+            case .brief: text.briefDescriptions()
+            case .superbrief: text.superbriefDescriptions()
+            }
+        return freeReply(confirmation)
     }
 
     /// A parse-error-style response: message only, no rules, no turn.
