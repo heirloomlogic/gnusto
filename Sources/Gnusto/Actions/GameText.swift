@@ -313,7 +313,10 @@ public struct GameText: Sendable {
     public var cantPutInThat: Line<Nothing> = "You can't put things in that."
     /// Putting something into itself.
     public var cantPutInItself: Line<Nothing> = "You can't put something in itself."
-    /// Putting something into a container that is at capacity.
+    /// Putting something into a container at its ``capacity(_:)``, or onto a
+    /// surface at its ``surfaceCapacity(_:)``. One line for both: it names
+    /// neither the thing nor the placement, so it is as true of a crowded
+    /// shelf as of a full sack.
     public var noRoom: Line<Nothing> = "There's no room."
     /// Taking something that would tip the player's load over a ``Burden``'s
     /// cap. Handed the thing they reached for.

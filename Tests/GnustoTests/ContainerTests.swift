@@ -4,6 +4,12 @@ import Testing
 
 @testable import Gnusto
 
+extension TraitKey<Bool> {
+    /// The worked example's allowlist trait — see
+    /// `aBeforeRuleFiltersWhatTheSurfaceTakesAndTheCapStillCounts`.
+    fileprivate static let candle = Self("candle", default: false)
+}
+
 /// Trait parsing, initial-state seeding, bootstrap validation, proxy API,
 /// save/restore, and room-description consequences of the container model.
 struct ContainerTests {
@@ -49,6 +55,30 @@ struct ContainerTests {
         }
         let (definition, _) = try Bootstrap.build(CapGame())
         #expect(definition.items[EntityID("bin")]?.capacity == 2)
+    }
+
+    @Test func surfaceCapacityTraitStored() throws {
+        struct ShelfGame: Game {
+            let title = "Shelf"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let shelf = Item {
+                name("shelf")
+                surface
+                surfaceCapacity(3)
+            }
+            var map: WorldMap {
+                player.starts(in: room)
+                shelf.starts(in: room)
+            }
+        }
+        let (definition, _) = try Bootstrap.build(ShelfGame())
+        let shelf = try #require(definition.items[EntityID("shelf")])
+        #expect(shelf.surfaceCapacity == 3)
+        #expect(shelf.capacity == nil)
     }
 
     // MARK: - Initial-state seeding
@@ -821,6 +851,176 @@ struct ContainerTests {
         }
         let transcript = try await play(TinyBinGame(), ["put stick in bin"])
         expectInOrder(transcript, ["There's no room."])
+    }
+
+    @Test func putOnEnforcesSurfaceCapacity() async throws {
+        struct NarrowShelfGame: Game {
+            let title = "NarrowShelf"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let shelf = Item {
+                name("shelf")
+                surface
+            }
+            let ledge = Item {
+                name("ledge")
+                surface
+                surfaceCapacity(1)
+            }
+            let rock = Item { name("rock") }
+            let stick = Item { name("stick") }
+            let feather = Item { name("feather") }
+            var map: WorldMap {
+                player.starts(in: room)
+                shelf.starts(in: room)
+                ledge.starts(in: room)
+                rock.starts(on: ledge)
+                stick.startsHeld
+                feather.startsHeld
+            }
+        }
+        // The capped ledge refuses a second thing; the shelf, which declares no
+        // surfaceCapacity, takes everything offered it.
+        let transcript = try await play(
+            NarrowShelfGame(),
+            ["put stick on ledge", "put stick on shelf", "put feather on shelf"])
+        expectInOrder(
+            transcript,
+            [
+                "There's no room.",
+                "You put the stick on the shelf.",
+                "You put the feather on the shelf.",
+            ])
+    }
+
+    @Test func zeroCapacityRefusesEveryPlacementAndWarnsAboutNeither() async throws {
+        struct SealedGame: Game {
+            let title = "Sealed"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let plinth = Item {
+                name("plinth")
+                container
+                surface
+                capacity(0)
+                surfaceCapacity(0)
+            }
+            let coin = Item { name("coin") }
+            var map: WorldMap {
+                player.starts(in: room)
+                plinth.starts(in: room)
+                coin.startsHeld
+            }
+        }
+        let (definition, _) = try Bootstrap.build(SealedGame())
+        #expect(definition.warnings.isEmpty)
+        let transcript = try await play(
+            SealedGame(), ["put coin in plinth", "put coin on plinth"])
+        expectInOrder(transcript, ["There's no room.", "There's no room."])
+    }
+
+    @Test func insideAndSurfaceCapacitiesAreCountedSeparately() async throws {
+        struct CabinetGame: Game {
+            let title = "Cabinet"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let cabinet = Item {
+                name("cabinet")
+                container
+                surface
+                capacity(1)
+                surfaceCapacity(1)
+            }
+            let coin = Item { name("coin") }
+            let gem = Item { name("gem") }
+            let pebble = Item { name("pebble") }
+            var map: WorldMap {
+                player.starts(in: room)
+                cabinet.starts(in: room)
+                coin.startsHeld
+                gem.startsHeld
+                pebble.startsHeld
+            }
+        }
+        // One inside and one on top both fit: filling the top leaves the inside
+        // cap untouched. The third thing has nowhere to go either way.
+        let transcript = try await play(
+            CabinetGame(),
+            [
+                "put coin on cabinet", "put gem in cabinet",
+                "put pebble on cabinet", "put pebble in cabinet",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "You put the coin on the cabinet.",
+                "You put the gem in the cabinet.",
+                "There's no room.",
+                "There's no room.",
+            ])
+    }
+
+    /// The worked example in <doc:ContainersDoorsAndLocks>: a `before` rule
+    /// decides *what* belongs on the mantelpiece and the trait decides *how
+    /// many*, with the rule handing an approved item on to the default action.
+    @Test func aBeforeRuleFiltersWhatTheSurfaceTakesAndTheCapStillCounts()
+        async throws
+    {
+        struct MantelpieceGame: Game {
+            let title = "Mantelpiece"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let mantelpiece = Item {
+                name("mantelpiece")
+                surface
+                surfaceCapacity(1)
+            }
+            let candle = Item {
+                name("white candle")
+                trait(.candle, true)
+            }
+            let taper = Item {
+                name("red taper")
+                trait(.candle, true)
+            }
+            let hammer = Item { name("hammer") }
+            var map: WorldMap {
+                player.starts(in: room)
+                mantelpiece.starts(in: room)
+                candle.startsHeld
+                taper.startsHeld
+                hammer.startsHeld
+            }
+            var rules: Rules {
+                mantelpiece.before(.putOn) {
+                    guard command.directObject?[default: .candle] == true else {
+                        try refuse("Only a candle belongs on the mantelpiece.")
+                    }
+                }
+            }
+        }
+        let transcript = try await play(
+            MantelpieceGame(),
+            ["put hammer on mantelpiece", "put candle on mantelpiece", "put taper on mantelpiece"])
+        expectInOrder(
+            transcript,
+            [
+                "Only a candle belongs on the mantelpiece.",
+                "You put the white candle on the mantelpiece.",
+                "There's no room.",
+            ])
     }
 
     @Test func putInRejectsCycles() async throws {

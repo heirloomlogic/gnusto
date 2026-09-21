@@ -214,6 +214,16 @@ enum DefaultActions {
         if frame.with({ isOrContains($0.state.containment(), surfaceID, id) }) {
             try refuse(frame.definition.text.cantPutOntoOwnContents(item.definiteNoun))
         }
+        // Counted apart from whatever is inside the same item: a cabinet that
+        // is both `container` and `surface` keeps two tallies.
+        if let capacity = frame.definition.items[surfaceID]?.surfaceCapacity {
+            let occupants = frame.with { scratch in
+                scratch.state.containment().onSurface[surfaceID]?.count ?? 0
+            }
+            guard occupants < capacity else {
+                try refuse(frame.definition.text.noRoom())
+            }
+        }
         if item.isWorn {
             frame.say(frame.definition.text.firstTakingOff(item.definiteNoun))
             frame.with { _ = $0.state.wornItems.remove(id) }

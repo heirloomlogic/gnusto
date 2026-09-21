@@ -379,6 +379,19 @@ enum Bootstrap {
                     pair.otherwise, on: subject,
                     as: "firstSight(when:_:otherwise:) otherwise text")
             }
+            // A negative cap has no reading. Zero is a real declaration — a
+            // holder that takes nothing — and an omitted one means unlimited,
+            // so there is nothing below zero left for an author to have meant.
+            // Fatal rather than warned, because every other value in the range
+            // says something.
+            func diagnoseNegative(_ value: Int?, as trait: String) {
+                guard let value, value < 0 else { return }
+                diagnostics.append(
+                    "\(subject) declares \(trait)(\(value)); a capacity cannot be negative. "
+                        + "Use 0 to permit nothing, or omit the trait for no limit.")
+            }
+            diagnoseNegative(definition.capacity, as: "capacity")
+            diagnoseNegative(definition.surfaceCapacity, as: "surfaceCapacity")
         }
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
@@ -833,6 +846,11 @@ enum Bootstrap {
                     "item \"\(id)\" declares capacity but is not a container; "
                         + "the trait has no effect.")
             }
+            if item.surfaceCapacity != nil && !item.isSurface {
+                traitWarnings.append(
+                    "item \"\(id)\" declares surfaceCapacity but is not a surface; "
+                        + "the trait has no effect.")
+            }
             if item.isTransparent && !item.isContainer {
                 traitWarnings.append(
                     "item \"\(id)\" declares transparent but is not a container; "
@@ -919,6 +937,7 @@ enum Bootstrap {
                 (item.isLockable, "declares a lockedBy entry"),
                 (item.startsUnlocked, "declares the item trait \"startsUnlocked\""),
                 (item.capacity != nil, "declares the item trait \"capacity\""),
+                (item.surfaceCapacity != nil, "declares the item trait \"surfaceCapacity\""),
             ]
             for (declared, phrase) in mechanical where declared {
                 traitWarnings.append(

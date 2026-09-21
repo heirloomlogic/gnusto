@@ -33,7 +33,7 @@ let sack = Item {
 }
 ```
 
-Cap how much a container holds with ``capacity(_:)`` — the put-in action refuses once it's full:
+Cap how much a container holds with ``capacity(_:)`` — the put-in action refuses with ``GameText/noRoom`` once it's full — and how much a surface holds with ``surfaceCapacity(_:)``, which the put-on action reads the same way:
 
 ```swift
 let basket = Item {
@@ -41,7 +41,47 @@ let basket = Item {
     container
     capacity(3)
 }
+
+let mantelpiece = Item {
+    name("mantelpiece")
+    surface
+    surfaceCapacity(1)
+}
 ```
+
+Neither trait grants storage on its own: ``container`` is what permits putting things inside and ``surface`` is what permits putting them on top, and the bootstrap warns for a capacity declared without its capability, where it can never be read. With the capability declared, an omitted limit means unlimited. An explicit `0` is a real declaration and refuses every placement through that half, so it needs no warning either. A negative number has nothing left to mean and is a fatal bootstrap diagnostic naming the item and the trait.
+
+The two counts are independent, which is what an item declaring both capabilities relies on: a cabinet's top filling up says nothing about the room left on its shelves.
+
+```swift
+let cabinet = Item {
+    name("grey cabinet")
+    container
+    surface
+    openable
+    startsOpen
+    capacity(4)
+    surfaceCapacity(1)
+}
+```
+
+Both limits count objects rather than weight, and both count only what is *directly* placed — a sack inside the basket is one of the basket's three, however full the sack is.
+
+Which objects a holder will take is the game's business, not the engine's: there is no allowlist trait. Refuse the ones that don't belong in a `before` rule and let everything else fall through to the default action, which then applies the capacity:
+
+```swift
+extension TraitKey<Bool> {
+    static let candle = Self("candle", default: false)
+}
+
+mantelpiece.before(.putOn) {
+    guard command.directObject?[default: .candle] == true else {
+        try refuse("Only a candle belongs on the mantelpiece.")
+    }
+}
+```
+
+The rule answers only the question the engine has no opinion about. Returning without refusing lets the turn carry on to the put-on action and its ``surfaceCapacity(_:)`` check, so the first candle is put down and a second is told there is no room.
 
 A cap on the *player's* hands is ``Burden``: a bundle with no rooms of its own that refuses any `take` tipping the load over its `carryCap`. Every takeable item weighs its ``TraitKey/weight`` (5 unless declared), a container brings its contents along, and ``Item/burden`` and ``Player/burden`` weigh the same way for a game's own load gates:
 
