@@ -262,8 +262,9 @@ struct PluralAgreementTests {
         // `itemInContainer` — the verb belongs to the *contents*, which the
         // sentence names second.
         #expect(transcript.contains("In the wicker hamper are some lead weights."))
-        // `locked` — "The iron gates are locked." Printed twice: once by OPEN,
-        // once by `travel`'s own locked check, before the gates are unlocked.
+        // `locked` — "The iron gates are locked." Printed once, by OPEN — the
+        // gates are unlocked before the one `north` in this script runs, so
+        // `travel`'s own locked check never fires.
         #expect(transcript.contains("The iron gates are locked."))
         // `closedContainer`, off the travel path — once the gates are unlocked
         // but still shut, walking north reaches the plain closed line rather

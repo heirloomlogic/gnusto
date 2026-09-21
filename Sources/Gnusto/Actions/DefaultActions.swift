@@ -587,10 +587,16 @@ enum DefaultActions {
             // and has no use for the name. `frame.definiteNoun(of:)` reads only
             // the immutable definition, so it needs no lock — unlike the proxy
             // spelling `item.definiteNoun`, which takes one and would hang.
-            guard !isLocked else {
-                try refuse(frame.definition.text.locked(frame.definiteNoun(of: doorID)))
-            }
             guard isOpen else {
+                // An open door always passes, even a locked one: the engine's
+                // own `lock` refuses to lock a door standing open
+                // (`cantLockOpen`), but a game rule can still set `isLocked`
+                // directly — Dungeon's grating lock does — so a door reaching
+                // here open-and-locked is real, and the player can see it's
+                // open. Speak the locked line only for a door that is shut.
+                guard !isLocked else {
+                    try refuse(frame.definition.text.locked(frame.definiteNoun(of: doorID)))
+                }
                 try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
             }
             try enter(destination, frame: frame, announcing: aside)

@@ -79,7 +79,26 @@ struct DoorTests {
         // routes through `travel` for — see the comment on `board`.
         let transcript = try await play(LockedDoorGame(), ["go through iron door"])
         expectInOrder(transcript, ["> go through iron door", "The iron door is locked."])
+        #expect(!turnOutput(of: "go through iron door", in: transcript).contains("closed"))
         #expect(!transcript.contains("Vault"))
+    }
+
+    @Test func openAndLockedDoorPasses() async throws {
+        // A door can be open and locked at once when a game's own rule sets
+        // `isLocked` directly, the way Dungeon's grating lock does. `travel`'s
+        // locked check must not refuse a door the player can see standing
+        // open — locked-and-open passes through.
+        let transcript = try await play(
+            LockedDoorGame(),
+            ["unlock iron door with key", "open iron door", "lock iron door with key", "north"])
+        expectInOrder(
+            transcript,
+            [
+                "> unlock iron door with key", "Unlocked.",
+                "> open iron door", "Opened.",
+                "> lock iron door with key", "Locked.",
+                "> north", "Vault",
+            ])
     }
 
     @Test func closedButUnlockedDoorStillReadsAsClosedOnGo() async throws {
