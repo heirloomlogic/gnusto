@@ -64,36 +64,25 @@ struct DemoGameStubVerbTests {
 
     // MARK: - Boot warnings
 
-    /// Zork overrides roughly twenty stub verbs to keep the original's voice.
-    /// Before the stub carve-out every one of those would have warned at launch
-    /// for doing exactly the right thing; now the list is down to the single
-    /// warning Zork genuinely earns.
-    ///
-    /// `action(.score)` shadows real behavior — score is a meta intent, so no
-    /// rule can reach it and the override is the only seam — and that warning
-    /// predates stub verbs. Asserted exactly rather than as "is empty" so it
-    /// stays visible instead of being papered over.
-    @Test func zorkBootsWithOnlyTheScoreOverrideWarning() throws {
-        let (definition, _) = try Bootstrap.build(Zork1())
-        let report = definition.warningReport ?? "no report"
-        #expect(
-            definition.warnings == [
-                "custom action for intent \"score\" overrides the built-in default "
-                    + "of the same intent."
-            ], "\(report)")
-    }
-
-    /// Every other shipped game boots with nothing to say — Dungeon and
-    /// KindlyDeep included, which the hand-written list this replaced had
-    /// silently never covered.
+    /// Every shipped game boots with nothing to say — Dungeon and KindlyDeep
+    /// included, which the hand-written list this replaced had silently never
+    /// covered.
     ///
     /// Asked of the whole set rather than four named games because a bootstrap
     /// warning is the engine's one channel to an author, and a warning nobody
     /// asserts about is a warning nobody reads. #350 added one — a listing line
     /// wired to the examine channel — and it was true of eleven declarations in
     /// two games before anything checked.
-    @Test func theOtherDemoGamesBootWithNoWarnings() throws {
-        for (title, definition) in try ShippedGames.definitions() where title != "Zork1" {
+    ///
+    /// Zork used to be the one exception. It overrides roughly twenty stub
+    /// verbs to keep the original's voice, all of them silent since the stub
+    /// carve-out, plus `action(.score)`, which shadows real behavior — score is
+    /// a meta intent, so no rule can reach it and the override is the only
+    /// seam. `GameMain` prints the report to stderr before the intro, so that
+    /// last one reached every player who ran the game in a terminal; the row
+    /// now says `overriding: true` and the set is empty. (#502)
+    @Test func theDemoGamesBootWithNoWarnings() throws {
+        for (title, definition) in try ShippedGames.definitions() {
             #expect(
                 definition.warnings.isEmpty,
                 "\(title): \(definition.warningReport ?? "no report")")

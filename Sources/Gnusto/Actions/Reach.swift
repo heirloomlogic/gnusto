@@ -17,7 +17,7 @@
 /// object already in the player's hands passes for free.
 ///
 /// Public because a game's own verb has to be able to say it: a custom verb
-/// that carries its own default line — ``action(_:reach:say:)`` and its
+/// that carries its own default line — ``action(_:reach:overriding:say:)`` and its
 /// siblings — declares this column exactly as the two halves of the standard
 /// table do, and it is the only place an invented verb can state what it has
 /// to touch.

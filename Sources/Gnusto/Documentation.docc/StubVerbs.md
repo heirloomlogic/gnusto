@@ -159,7 +159,7 @@ agreement, and the ``GameText/StubReplies/yourself`` and
 now something an assignment can do, it has stopped being a reason to reach for a
 row at all. A row whose body is a *closure* keeps none of them and stays silent, because that is a game taking the verb over — the reach guard included, unless the row asks for it back with `reach:`. `Sources/Dungeon/` re-skinned seventeen stubs that way and had given all four away without noticing.
 
-A row whose body is a *line* — ``action(_:reach:say:)`` and its siblings, the
+A row whose body is a *line* — ``action(_:reach:overriding:say:)`` and its siblings, the
 spelling a **custom** verb uses to carry its own default — works on a stub
 intent too, and warns, naming the `text.stubs` slot it should have been. There
 is no case where it is the right answer: the assignment is the same sentence and
