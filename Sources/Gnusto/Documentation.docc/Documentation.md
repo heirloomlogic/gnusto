@@ -90,6 +90,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``startsOpen``
 - ``transparent``
 - ``capacity(_:)``
+- ``surfaceCapacity(_:)``
 - ``hidden``
 
 ### Containers, Doors, and Locks

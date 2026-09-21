@@ -26,6 +26,8 @@ struct DuplicateDeclarationsGame: Game {
         firstSight("Second listing line.")
         capacity(1)
         capacity(2)
+        surfaceCapacity(1)
+        surfaceCapacity(2)
         trait(.diagnosticValue, 1)
         trait(.diagnosticValue, 2)
     }
@@ -70,10 +72,39 @@ struct InertDeclarationsGame: Game {
         name("measured thing")
         capacity(2)
     }
+    let surfaceCapacityOnly = Item {
+        name("stacked thing")
+        surfaceCapacity(2)
+    }
 
     var map: WorldMap {
         player.starts(in: hall)
         wornOnly.startsWorn
+    }
+}
+
+/// A capacity below zero has no reading, on either placement. Both traits are
+/// declared on an item that carries the matching capability, so the only thing
+/// wrong with either is the number.
+struct NegativeCapacityGame: Game {
+    let title = "Negative capacity"
+    let intro = ""
+    let hall = Location { name("Hall") }
+    let hamper = Item {
+        name("hamper")
+        container
+        capacity(-1)
+    }
+    let ledge = Item {
+        name("ledge")
+        surface
+        surfaceCapacity(-2)
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        hamper.starts(in: hall)
+        ledge.starts(in: hall)
     }
 }
 

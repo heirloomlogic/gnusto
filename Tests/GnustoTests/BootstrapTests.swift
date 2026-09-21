@@ -50,6 +50,7 @@ struct BootstrapTests {
                 "item \"alpha\" declares description(…) more than once.",
                 "item \"alpha\" declares firstSight(…) more than once.",
                 "item \"alpha\" declares capacity(…) more than once.",
+                "item \"alpha\" declares surfaceCapacity(…) more than once.",
                 "item \"alpha\" declares custom trait \"diagnosticValue\" more than once.",
             ]
         }
@@ -102,11 +103,27 @@ struct BootstrapTests {
                 "item \"capacityOnly\" declares capacity but is not a container; "
                     + "the trait has no effect.",
                 "item \"openOnly\" declares startsOpen but is not openable; the flag has no effect.",
+                "item \"surfaceCapacityOnly\" declares surfaceCapacity but is not a surface; "
+                    + "the trait has no effect.",
                 "item \"transparentOnly\" declares transparent but is not a container; "
                     + "the trait has no effect.",
                 "item \"wornOnly\" starts worn but is not wearable; the placement creates "
                     + "an item the player cannot remove or wear again.",
             ])
+    }
+
+    @Test func negativeCapacityDeclarationsAreFatal() {
+        #expect {
+            try Bootstrap.build(NegativeCapacityGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                "item \"hamper\" declares capacity(-1); a capacity cannot be negative. "
+                    + "Use 0 to permit nothing, or omit the trait for no limit.",
+                "item \"ledge\" declares surfaceCapacity(-2); a capacity cannot be negative. "
+                    + "Use 0 to permit nothing, or omit the trait for no limit.",
+            ]
+        }
     }
 
     @Test func reservedWordWarningsAreSortedWithinAnItem() throws {

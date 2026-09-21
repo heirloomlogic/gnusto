@@ -34,6 +34,7 @@ public struct ItemTrait: Sendable {
         case transparent
         case startsUnlocked
         case capacity(Int)
+        case surfaceCapacity(Int)
         case hidden
         case lightSource
         case startsLit
@@ -568,10 +569,32 @@ public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
 /// (enforced by the put-in action). The bootstrap warns when it is declared on
 /// a non-container, where it has no effect.
 ///
+/// The trait grants no storage of its own: ``container`` is what permits
+/// putting things inside, and an omitted capacity on a container means
+/// unlimited. `capacity(0)` is a legal declaration and refuses every
+/// insertion. A negative value is a fatal bootstrap diagnostic.
+///
+/// Inside and on-top are counted separately — see ``surfaceCapacity(_:)``.
+///
 /// - Parameter n: the maximum number of items.
 /// - Returns: the capacity trait.
 public func capacity(_ n: Int) -> ItemTrait {
     ItemTrait(kind: .capacity(n))
+}
+
+/// The maximum number of items that may be placed directly on a surface
+/// (enforced by the put-on action). The bootstrap warns when it is declared on
+/// a non-surface, where it has no effect.
+///
+/// The counterpart of ``capacity(_:)``, reading its zero, its omission and its
+/// negative the same way, and counted independently of it: an item declaring
+/// both ``container`` and ``surface`` keeps two tallies, so filling its top
+/// says nothing about the room left inside it.
+///
+/// - Parameter n: the maximum number of items.
+/// - Returns: the surface capacity trait.
+public func surfaceCapacity(_ n: Int) -> ItemTrait {
+    ItemTrait(kind: .surfaceCapacity(n))
 }
 
 /// The item is excluded from visibility and room descriptions until revealed

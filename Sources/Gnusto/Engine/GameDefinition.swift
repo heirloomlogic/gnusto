@@ -111,6 +111,9 @@ struct ItemDefinition: Sendable {
     var isLockable = false
     var startsUnlocked = false
     var capacity: Int?
+    /// The cap on items directly on this item's surface. Counted apart from
+    /// ``capacity``, which caps what sits inside. See ``surfaceCapacity(_:)``.
+    var surfaceCapacity: Int?
     /// The resolved lock key, filled in by Bootstrap from the item's
     /// `lockedBy(_:)` map entry. `nil` for non-lockable items. That same entry
     /// also sets `isLockable`.
@@ -182,6 +185,9 @@ struct ItemDefinition: Sendable {
             case .capacity(let n):
                 if capacity != nil { onDuplicate("capacity(…)") }
                 capacity = n
+            case .surfaceCapacity(let n):
+                if surfaceCapacity != nil { onDuplicate("surfaceCapacity(…)") }
+                surfaceCapacity = n
             case .hidden: isHidden = true
             case .lightSource: isLightSource = true
             case .startsLit: startsLit = true
