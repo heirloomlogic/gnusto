@@ -1,6 +1,12 @@
 import Foundation
 import Testing
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
 /// Launch the real MCP wrapper against a fake Swift command and product. A
 /// nested SwiftPM invocation would contend with the test runner's build lock.
 struct MCPBuildGateTests {
@@ -68,7 +74,14 @@ struct MCPBuildGateTests {
         func write(_ text: String, to path: URL, executable: Bool = false) throws {
             try FileManager.default.createDirectory(
                 at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try text.write(to: path, atomically: true, encoding: .utf8)
+            // Other tests launch processes while fixtures are being written.
+            // Do not let a child inherit a writable script descriptor: on Linux
+            // that keeps exec from opening the script (ETXTBSY) after we close it.
+            let descriptor = open(path.path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, mode_t(0o600))
+            guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+            let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+            defer { try? file.close() }
+            try file.write(contentsOf: Data(text.utf8))
             if executable {
                 try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path.path)
             }

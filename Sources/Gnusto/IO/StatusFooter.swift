@@ -20,7 +20,7 @@ import Foundation
 /// `statusFields`.
 ///
 /// Off unless asked for. `GNUSTO_STATUS` is read by ``GameMain`` — the
-/// composition root — and the value handed to ``REPL/init(world:io:transcriptURL:status:)``,
+/// composition root — and the value handed to ``REPL/init(world:io:transcriptURL:status:environment:)``,
 /// which defaults to `nil`. The test suite constructs its REPLs without the
 /// argument, so `GNUSTO_STATUS=1 swift test` changes nothing: the footer is
 /// opt-in *by construction* rather than by an environment variable happening
