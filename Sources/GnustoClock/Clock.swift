@@ -35,6 +35,9 @@ extension Intent {
 ///
 /// Reading `now` needs a live turn, so it belongs in rule bodies, `describe`
 /// blocks and actions — not in a `map` block, which is evaluated at bootstrap.
+/// Ask there and the engine traps, naming the `map` block rather than the rule
+/// body the author never wrote. What a map asks instead is ``Timetable``, which
+/// reads no world state — the GnustoClock article has the line.
 ///
 /// **Not provided: `wait until <time>`.** The parser has no numeric slot and
 /// requires every token to be consumed, so `wait until 8 15` can never match a

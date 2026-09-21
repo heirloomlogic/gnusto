@@ -91,7 +91,26 @@ struct ProxyFrameTests {
         expectTrap(
             result,
             says: "live world state was accessed outside a game turn",
-            "only available inside rule bodies")
+            "while the engine is running a turn")
+    }
+
+    /// The same trap reached the way an author actually reaches it: not from
+    /// `main`, but from a `map` block that asks the clock what time it is. A
+    /// `WorldMap` is built at bootstrap, so there is no turn to read — and the
+    /// author wrote no rule, so a message that only said "rule bodies" gave
+    /// them nothing to search for. Issue #493.
+    @Test("a map block that reads live state traps, and names the map block")
+    func readingStateFromAMapBlockTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try Bootstrap.buildCore(ClockInTheMapGame())
+        }
+        expectTrap(
+            result,
+            says: "live world state was accessed outside a game turn",
+            "A `map` block is not",
+            "`WorldMap` is built at bootstrap")
     }
 
     /// The second of `Ctx.current`'s two guards, and the harder of the pair to
