@@ -107,8 +107,23 @@ extension GnustoBuilder where Element == SyntaxRule {
     /// .sing]`. The array form isn't just taste: bare leading-dot statements on
     /// consecutive lines parse as one chained member access (`.ring.polish`),
     /// so multiple intents need either this or an `Intent.` prefix per line.
+    ///
+    /// Disfavored so that `[]` — the way an author spells "this type declares
+    /// no verbs" while still writing the property out — resolves to the
+    /// `[SyntaxRule]` overload above instead of being ambiguous between the
+    /// two. Both would yield the same empty table, but the compiler can only
+    /// say `ambiguous use of 'buildExpression'`, naming neither. A non-empty
+    /// literal of intents still lands here: `SyntaxRule` declares no static
+    /// member of its own type, so there is nothing for a leading dot to name
+    /// and the favored overload cannot solve `[.ring, .polish]` — the compiler
+    /// falls back to this one. That ranking holds only as long as `SyntaxRule`
+    /// stays that way: give it static members of its own type and any literal
+    /// whose elements *all* name one would solve against the favored overload
+    /// instead, silently taken from this one.
+    ///
     /// - Parameter intents: the intents whose rows to splice.
     /// - Returns: the intents' verb rows.
+    @_disfavoredOverload
     public static func buildExpression(_ intents: [Intent]) -> [SyntaxRule] {
         intents.flatMap(\.verbRows)
     }
