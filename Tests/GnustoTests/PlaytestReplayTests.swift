@@ -340,6 +340,22 @@ struct PlaytestReplayTests {
         #expect(endless?.description.contains("runs at most") == true)
     }
 
+    /// A command holding its own newline is refused too: the probe's
+    /// `commands.txt` is one command per line, so `"south\nnorth"` fed as a
+    /// single element would be written to disk as two lines that never
+    /// reproduce what the single element does when fed straight to the REPL —
+    /// https://github.com/heirloomlogic/gnusto/issues/500.
+    @Test func aReplayRefusesACommandContainingANewline() async throws {
+        let prepared = try PreparedGame(OperaHouse())
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await PlaytestReplay.run(
+                prepared: prepared, commands: ["look", "south\nnorth"], seed: 0, expect: nil)
+        }
+        #expect(refusal?.description.contains("newline") == true)
+        #expect(refusal?.description.contains("nothing ran") == true)
+    }
+
     // MARK: - Restoring somebody else's save
 
     /// A session under one label, walked somewhere and saved, for the rows

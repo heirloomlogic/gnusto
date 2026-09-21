@@ -798,6 +798,46 @@ struct PlaytestSessionTests {
         #expect(!(try text(at: session.transcriptURL).contains("> look")))
     }
 
+    // MARK: - Newlines inside a command
+
+    /// `commands.txt` is one command per line, so a command holding its own
+    /// `\n` would silently become two lines the moment `persistCommands()`
+    /// wrote it — one `Turn` in memory, two lines on disk, and a replay of the
+    /// file would run something the tester never typed. Refused instead, the
+    /// same way `script`/`unscript` are — https://github.com/heirloomlogic/gnusto/issues/500.
+    @Test func aCommandContainingANewlineIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "newlines", seed: 0)
+        _ = try await session.opening()
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await session.move(commands: ["look", "south\nnorth"], allowPrompts: false)
+        }
+        #expect(refusal?.description.contains("newline") == true)
+
+        // Nothing ran: the `look` in front of the refused line never reached
+        // the world.
+        #expect(!(try text(at: session.transcriptURL).contains("> look")))
+    }
+
+    /// `export`'s byte-identity proof reads `commands.txt` back off disk
+    /// rather than trusting the in-memory `Turn` list, which is the inverse
+    /// of `persistCommands()`'s own format — `commandLines(in:)` is that
+    /// inverse, tested directly since a well-formed session can no longer
+    /// put an embedded newline into `turns` to observe the divergence any
+    /// other way.
+    @Test func commandLinesInvertsPersistedCommandsIncludingAFoldedNewline() throws {
+        #expect(PlaytestSession.commandLines(in: "look\n") == ["look"])
+        #expect(PlaytestSession.commandLines(in: "look\nwave\n") == ["look", "wave"])
+        #expect(PlaytestSession.commandLines(in: "\n") == [])
+        #expect(PlaytestSession.commandLines(in: "") == [])
+        // The shape the bug produced: one `Turn` whose own text held a `\n`,
+        // persisted by `turns.map(\.line).joined(separator: "\n")`. Once on
+        // disk the byte stream is indistinguishable from two commands, which
+        // is exactly why `export` must trust the file over the `Turn` count.
+        #expect(PlaytestSession.commandLines(in: "south\nnorth\n") == ["south", "north"])
+    }
+
     // MARK: - Isolation between sessions
 
     /// `SaveStore.defaultDirectory(forGameTitled:)` is per *title*, so left
