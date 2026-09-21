@@ -9,6 +9,29 @@ private func temporarySavePath(_ label: String) -> String {
         .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
 }
 
+/// A fuse whose declared count stands past what a save may carry.
+///
+/// The declaration is ordinary arithmetic and the game would play. A running
+/// fuse's count rides in every save, so a declared count this large is either
+/// carried into a save no restore will accept, or overridden at every start
+/// and never used at all. Neither is what the author meant, and the first case
+/// would reach them as a bare "Restore failed." on a file their own game
+/// wrote. Bootstrap says so at the declaration instead.
+private struct OverlongFuseGame: Game {
+    let title = "Overlong Fuse"
+    let intro = "Should never boot."
+
+    let room = Location { name("Room") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+    }
+
+    var timers: [TimedEvent] {
+        fuse("eon", after: WorldState.counterLimit + 1) {}
+    }
+}
+
 struct TimerTests {
     // MARK: - Fuses
 
@@ -226,6 +249,25 @@ struct TimerTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("dup") && text.contains("zero")
+        }
+    }
+
+    /// A fuse count a restore would refuse is named at bootstrap.
+    ///
+    /// `WorldState.counterLimit` bounds every whole number a save carries, and
+    /// a running fuse's count is one of them. What this proves is that the
+    /// declaration alone is enough: the count is refused where it is written,
+    /// in a diagnostic naming the fuse and the bound, rather than left for a
+    /// "Restore failed." that names neither.
+    @Test func aFuseCountPastTheSaveBoundIsRefusedAtBootstrap() {
+        #expect {
+            try Bootstrap.build(OverlongFuseGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("fuse \"eon\"")
+                && text.contains("carried by every save")
+                && text.contains("\(WorldState.counterLimit)")
         }
     }
 

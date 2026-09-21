@@ -494,6 +494,41 @@ extension WorldState {
 }
 
 extension WorldState {
+    /// How far from zero a whole number a save carries may stand.
+    ///
+    /// Every such number is one the engine, a library or a rule goes on doing
+    /// arithmetic with after the restore, and Swift's `+` traps on overflow. So
+    /// a file holding `Int.max` in `moves` restored cleanly and then killed the
+    /// process on the next turn's increment, one turn after the player had been
+    /// told the restore succeeded (#487). Bounding the value at the door
+    /// answers every site that reads one of those scalars back, including
+    /// sites in game code this engine will never see. It does not reach a
+    /// number nested inside a `.data` global, which is the author's own
+    /// `Codable` shape and is checked for shape alone.
+    ///
+    /// Ten to the twelfth, chosen from both sides:
+    ///
+    /// - `Int.max` is more than nine million times it, so the numbers a save
+    ///   carries can be added together, and the sum scaled by a modest factor,
+    ///   with room left above them. How much room a particular factor leaves
+    ///   is the game's own question: a clock declared at a million minutes per
+    ///   turn spends most of it.
+    /// - The engine's own move counter cannot reach it in play, because a move
+    ///   costs a turn. What a game puts in `score`, in an `Int` global or in a
+    ///   fuse's count is the game's own arithmetic, and a game that writes a
+    ///   number past the bound finds that save refused the next time it is
+    ///   restored.
+    ///
+    /// It bounds what a save may *carry*, not what a rule may compute. A game
+    /// that runs a number past this bound during play is never stopped
+    /// mid-turn; its save is simply refused the next time it is restored.
+    static let counterLimit = 1_000_000_000_000
+
+    /// Whether `number` stands within ``counterLimit`` of zero.
+    private static func isInRange(_ number: Int) -> Bool {
+        (-counterLimit...counterLimit).contains(number)
+    }
+
     /// Whether this state is referentially consistent with `definition` — every
     /// ID it names is declared, every trait-gated set holds only entities with
     /// the trait, the containment graph is acyclic, the scalar counters are in
@@ -501,8 +536,15 @@ extension WorldState {
     /// restored save that fails any check is refused whole rather than
     /// silently repaired: a crafted or corrupt file must never reach the
     /// engine, where an unknown EntityID or a mistyped global would trap the
-    /// process. Never mutates; `score` and `rngState` are accepted as-is (any
-    /// value is legal for both).
+    /// process. Never mutates.
+    ///
+    /// "In range" means every whole number the file carries at top level —
+    /// `moves`, `score`, each live fuse's count, and each `Int` global this
+    /// build declares — lies
+    /// within ``counterLimit`` of zero. A number nested inside a `.data`
+    /// global is the author's own `Codable` shape and is checked for shape
+    /// alone. `rngState` is accepted as-is: it is a bit pattern rather than a
+    /// counter, and the generator's arithmetic wraps.
     ///
     /// - Parameter definition: the bootstrapped game to validate against.
     /// - Returns: `true` when every check passes; `false` on the first failure.
@@ -586,10 +628,19 @@ extension WorldState {
         for (id, value) in globals {
             guard let global = definition.globals[id] else { continue }
             guard global.accepts(value) else { return false }
+            // The magnitude the type check cannot ask about. A rule reads an
+            // `Int` global and does arithmetic with it exactly as the engine
+            // does with its own counters, so the same bound applies. The case
+            // is read from the stored value rather than from the declared
+            // type, so a global of some other type that boxes itself as an
+            // `.int` — `GnustoClock`'s `TimeOfDay` does — is bounded too.
+            if case .int(let number) = value, !Self.isInRange(number) { return false }
         }
 
         // Live fuses count down; a non-positive count would already have fired.
-        guard activeFuses.values.allSatisfy({ $0 > 0 }) else { return false }
+        guard activeFuses.values.allSatisfy({ $0 > 0 && Self.isInRange($0) }) else {
+            return false
+        }
 
         // A provenance check, not a cost one. `lastCommand` is recorded only
         // after a line parses (`GameWorld.run`), and the parser refuses a line
@@ -610,9 +661,12 @@ extension WorldState {
         // one.
         guard lastCommand.count <= StandardParser.tokenLimit else { return false }
 
-        // A save is taken mid-play, with a non-negative move count.
+        // A save is taken mid-play, with a move count that is non-negative and
+        // small enough to go on counting. A score may be negative — a game can
+        // take points away — so only its magnitude is asked about.
         guard status == .playing else { return false }
-        guard moves >= 0 else { return false }
+        guard moves >= 0, Self.isInRange(moves) else { return false }
+        guard Self.isInRange(score) else { return false }
 
         return true
     }

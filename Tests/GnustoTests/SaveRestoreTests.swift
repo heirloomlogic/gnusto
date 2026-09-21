@@ -519,6 +519,114 @@ struct SaveRestoreTests {
         }
     }
 
+    // MARK: - A counter a save carries must be one the engine can go on counting
+
+    @Test func tamperedOverflowingMovesIsRejected() async throws {
+        // The file restored cleanly and then killed the process on the next
+        // turn's `moves += 1`, one turn after the player was told the restore
+        // succeeded (#487).
+        try await expectTamperedSaveRejected("huge-moves") {
+            $0.moves = Int.max
+        }
+    }
+
+    @Test func tamperedOverflowingScoreIsRejected() async throws {
+        try await expectTamperedSaveRejected("huge-score") {
+            $0.score = Int.max
+        }
+    }
+
+    @Test func tamperedUnderflowingScoreIsRejected() async throws {
+        // A score may legitimately be negative, so the guard asks about
+        // distance from zero and this end has to be proved separately.
+        try await expectTamperedSaveRejected("tiny-score") {
+            $0.score = Int.min
+        }
+    }
+
+    @Test func tamperedOverflowingIntGlobalIsRejected() async throws {
+        // `disturbances` is declared `Int`, so the type check passes and only
+        // the magnitude check can catch it. A rule that adds to it would trap
+        // exactly as the engine's own counter did.
+        try await expectTamperedSaveRejected("huge-global") {
+            $0.globals[EntityID("disturbances")] = .int(Int.max)
+        }
+    }
+
+    @Test func tamperedOverflowingFuseCountIsRejected() async throws {
+        // `bell` is declared, so the schedule survives reconciliation and the
+        // count is the only thing wrong with the file.
+        try await expectTamperedSaveRejected("huge-fuse") {
+            $0.activeFuses["bell"] = Int.max
+        }
+    }
+
+    @Test func aCounterAtTheLimitRestoresAndGoesOnCounting() async throws {
+        // The positive control, and the reason the refusals above can be
+        // trusted: the bound is a bound and not a ban on large numbers. A
+        // counter sitting exactly on it restores, and the turns after it still
+        // cost a move.
+        let path = temporarySavePath("limit-moves")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(StrongboxGame(), ["save", path])
+        try tamperWithSave(at: path) {
+            $0.moves = WorldState.counterLimit
+            $0.score = WorldState.counterLimit
+            $0.globals[EntityID("disturbances")] = .int(-WorldState.counterLimit)
+        }
+
+        let transcript = try await play(
+            StrongboxGame(), ["restore", path, "ring", "wait", "wait", "wait", "look", "score"])
+
+        #expect(transcript.contains("Restored."))
+        #expect(!transcript.contains("Restore failed."))
+        #expect(transcript.contains("The bell rings!"))
+        #expect(turnOutput(of: "look", in: transcript).contains("Anteroom"))
+        // The counter itself, read back: five turns cost a move apiece from
+        // the limit, and the score sat on the limit through all of them.
+        // `restore` and `score` are meta and cost nothing. Asking the fuse
+        // instead would prove only that it counted down, which it does
+        // without reading `moves` at all.
+        #expect(
+            turnOutput(of: "score", in: transcript)
+                .contains(
+                    "Your score is \(WorldState.counterLimit), "
+                        + "in \(WorldState.counterLimit + 5) turns."))
+    }
+
+    @Test func tamperedOverflowingScoreIsRejectedBeforeAnAwardCanTrap() async throws {
+        // The scoring plugin's `player.score += points` is the other arithmetic
+        // site #487 named, and it lives in a different module from the counter
+        // it reads. Refusing the file is what covers both at once.
+        let path = temporarySavePath("huge-score-award")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(TreasureVaultGame(), ["save", path])
+        try tamperWithSave(at: path) { $0.score = Int.max }
+
+        let transcript = try await play(
+            TreasureVaultGame(), ["restore", path, "take gem", "score"])
+
+        #expect(transcript.contains("Restore failed."))
+        // The award still pays out of the untouched world, which is the proof
+        // the refusal left the session playable rather than merely alive.
+        #expect(turnOutput(of: "score", in: transcript).contains("Your score is 4"))
+    }
+
+    @Test func aRestoredScoreAtTheLimitStillTakesAnAward() async throws {
+        let path = temporarySavePath("limit-score-award")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(TreasureVaultGame(), ["save", path])
+        try tamperWithSave(at: path) { $0.score = WorldState.counterLimit }
+
+        let transcript = try await play(
+            TreasureVaultGame(), ["restore", path, "take gem", "score"])
+
+        #expect(transcript.contains("Restored."))
+        #expect(
+            turnOutput(of: "score", in: transcript)
+                .contains("Your score is \(WorldState.counterLimit + 4)"))
+    }
+
     @Test func tamperedTraitViolationIsRejected() async throws {
         // The coin is not a light source, so it can't legitimately be lit.
         try await expectTamperedSaveRejected("bad-trait") {
