@@ -379,8 +379,9 @@ public struct GameText: Sendable {
     /// apart from ``restoreFailed`` for the reason `SaveFile.ReadError` gives.
     public var saveVersionMismatch: Line<Nothing> =
         "That save file was written by a different version of this game."
-    /// A save or restore that named a filesystem path in a session where only
-    /// plain slot names are allowed — headless runs, the play-test harness.
+    /// A save, restore or `script` that named a filesystem path in a session
+    /// where only plain slot names are allowed — headless runs, the play-test
+    /// harness.
     public var savePathRefused: Line<Nothing> =
         "Paths aren't allowed here; enter a plain name."
     /// A save or restore whose answer holds no letter, number or underscore

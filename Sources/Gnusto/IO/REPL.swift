@@ -22,6 +22,12 @@ public struct REPL: Sendable {
     /// REPL without the argument, so no environment variable can make the suite's
     /// transcripts grow a line. See ``StatusFooter``.
     private let status: StatusFooter?
+    /// The environment a mid-session `script` resolves a bare name against —
+    /// `GNUSTO_TRANSCRIPT_DIR`, the transcripts directory the name lands in.
+    /// An explicit path never consults it, and neither does anything else here.
+    /// Injectable so a test's transcript lands in its own temp directory rather
+    /// than the developer's real one; ``TranscriptStore`` takes it the same way.
+    private let environment: [String: String]
 
     /// Creates a REPL driving the given world through the given IO handler.
     ///
@@ -32,14 +38,18 @@ public struct REPL: Sendable {
     ///     or `nil` to begin idle.
     ///   - status: a status footer to append to every turn's output, or `nil`
     ///     for the plain transcript a player and the test suite see.
+    ///   - environment: the environment a bare-name `script` reads
+    ///     `GNUSTO_TRANSCRIPT_DIR` from; defaults to the process environment.
     public init(
         world: GameWorld, io: any IOHandler, transcriptURL: URL? = nil,
-        status: StatusFooter? = nil
+        status: StatusFooter? = nil,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.world = world
         self.io = io
         self.transcriptURL = transcriptURL
         self.status = status
+        self.environment = environment
     }
 
     /// Runs the prompt/parse/perform/print loop until the game ends.
@@ -138,14 +148,26 @@ public struct REPL: Sendable {
 
     /// Starts or stops transcript recording in response to `script`/`unscript`,
     /// reporting the outcome to the player, and returns the recorder now in
-    /// force (a fresh one, or `nil` once stopped or on failure).
+    /// force (a fresh one, the recorder already running, or `nil` once stopped
+    /// or on failure).
     private func toggleTranscript(
         _ command: TranscriptCommand, recorder: TranscriptRecorder?
     ) -> TranscriptRecorder? {
         switch command {
         case .start(let name):
+            // Same guard the save/restore prompts make (`GameWorld+Prompts.swift`):
+            // a restricted session (headless runs, the play-test harness) may
+            // only name a bare slot, never a filesystem path, or `script` would
+            // let an untrusted command line open and truncate any file the
+            // process can write (#481). Refused before the existing recording
+            // (if any) is touched, so a bad `script` line doesn't kill a good one.
+            if let name, world.savePathsRestricted, SaveStore.isExplicitPath(name) {
+                io.write("\(world.definition.text.savePathRefused())\n\n")
+                return recorder
+            }
             recorder?.close()  // a second `script` replaces the active recording
-            let url = TranscriptStore.url(forName: name, gameTitled: world.definition.title)
+            let url = TranscriptStore.url(
+                forName: name, gameTitled: world.definition.title, environment: environment)
             guard let started = try? TranscriptRecorder(url: url) else {
                 io.write("[Couldn't start transcript recording.]\n\n")
                 return nil

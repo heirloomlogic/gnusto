@@ -24,7 +24,7 @@ In a terminal that supports bracketed paste, pasting a multi-line block into a l
 
 ### Recording a transcript
 
-`script` starts writing the session to a file and `unscript` stops; `script <name>` names it, and a name containing `/` or starting with `~` is treated as a path. To record from the opening text instead, set `GNUSTO_TRANSCRIPT` — see <doc:SharingYourGame#Environment-variables>. A transcript is plain text, `> command` lines interleaved with the game's output and comments included, so a tester can attach one to a bug report.
+`script` starts writing the session to a file and `unscript` stops; `script <name>` names it, and a name containing `/` or starting with `~` is treated as a path — except in a session whose save directory was injected, by `GNUSTO_SAVE_DIR` or by a `saveDirectory` passed to ``GameWorld``, as `bin/playtest-replay` does. There a path is refused in the same words the save prompt refuses one, and only a bare name records. To record from the opening text instead, set `GNUSTO_TRANSCRIPT` — see <doc:SharingYourGame#Environment-variables>. A transcript is plain text, `> command` lines interleaved with the game's output and comments included, so a tester can attach one to a bug report.
 
 ## The status footer
 

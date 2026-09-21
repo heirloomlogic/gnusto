@@ -139,4 +139,51 @@ struct TranscriptCommandTests {
         #expect(recorded.contains("> look"))
         #expect(recorded.contains("> quit"))
     }
+
+    /// #481: a save-restricted session (any `saveDirectory` given explicitly, or
+    /// `GNUSTO_SAVE_DIR`) used to let `script <path>` truncate any file the
+    /// process could write, because the REPL's transcript toggle never read
+    /// `savePathsRestricted` — only the save/restore prompts did. Reproduces the
+    /// issue's repro script: a victim file with real contents, a piped session
+    /// that tries to `script` straight over it.
+    @Test func scriptWithAnExplicitPathIsRefusedWhenSavePathsAreRestricted() async throws {
+        let victim = tempDirectory().appendingPathComponent("victim.txt")
+        try FileManager.default.createDirectory(
+            at: victim.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "important data".write(to: victim, atomically: true, encoding: .utf8)
+
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let io = ScriptedIOHandler(lines: ["script \(victim.path)", "look", "unscript", "quit"])
+        await REPL(world: world, io: io).run()
+
+        #expect(io.transcript.contains("Paths aren't allowed here; enter a plain name."))
+        // Refused before the recorder ever opens the file: contents untouched,
+        // not truncated to nothing and not fed the session's own commands.
+        let untouched = try String(contentsOf: victim, encoding: .utf8)
+        #expect(untouched == "important data")
+    }
+
+    /// The companion half of #481: the guard is scoped to explicit paths, so an
+    /// ordinary bare-name `script` still records normally in a restricted
+    /// session — the fix must not have over-refused.
+    @Test func scriptWithABareNameStillWorksWhenSavePathsAreRestricted() async throws {
+        // A bare name resolves under the transcripts directory, which is the
+        // developer's real one unless `GNUSTO_TRANSCRIPT_DIR` says otherwise —
+        // so the test hands the REPL its own, the way the rest of this file
+        // hands it its own save directory and transcript file.
+        let transcripts = tempDirectory()
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let io = ScriptedIOHandler(lines: ["script mysession", "look", "unscript", "quit"])
+        await REPL(
+            world: world, io: io,
+            environment: ["GNUSTO_TRANSCRIPT_DIR": transcripts.path]
+        ).run()
+
+        #expect(io.transcript.contains("[Recording transcript to "))
+        #expect(io.transcript.contains("[Transcript recording ended: "))
+        #expect(!io.transcript.contains("Paths aren't allowed here"))
+        // And it recorded into that directory, nowhere else.
+        let recorded = transcripts.appendingPathComponent("mysession.txt")
+        #expect(try String(contentsOf: recorded, encoding: .utf8).contains("> look"))
+    }
 }
