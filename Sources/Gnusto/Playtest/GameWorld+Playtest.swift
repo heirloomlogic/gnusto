@@ -37,6 +37,9 @@ enum PlaytestAwaiting: String, Sendable, CaseIterable {
     case clarification
     /// The next line is a filename to save to.
     case saveFilename
+    /// The name given at the save prompt already names a file, and the next
+    /// line decides whether it is replaced. Only `yes` or `y` replaces it.
+    case confirmSaveOverwrite
     /// The next line is the name of a save to restore.
     case restoreFilename
     /// The player is dead; the next line must be RESTART, RESTORE, UNDO or
@@ -52,6 +55,8 @@ enum PlaytestAwaiting: String, Sendable, CaseIterable {
             "the game asked a clarifying question and reads your next line as its answer"
         case .saveFilename:
             "the game is waiting for a filename to save to"
+        case .confirmSaveOverwrite:
+            "that save already exists and the game is waiting for yes or no before replacing it"
         case .restoreFilename:
             "the game is waiting for the name of a save to restore"
         case .deathChoice:
@@ -75,6 +80,7 @@ extension GameWorld {
     func awaiting() -> PlaytestAwaiting {
         switch pendingPrompt {
         case .saveFilename: return .saveFilename
+        case .confirmSaveOverwrite: return .confirmSaveOverwrite
         case .restoreFilename: return .restoreFilename
         case .deathChoice: return .deathChoice
         case nil: return pendingClarification == nil ? .none : .clarification

@@ -210,7 +210,7 @@ enum SaveStore {
             .filter { $0.pathExtension == fileExtension }
             .compactMap { url -> (name: String, url: URL)? in
                 let basename = url.deletingPathExtension().lastPathComponent
-                let nfc = basename.precomposedStringWithCanonicalMapping
+                let nfc = slotName(of: url)
                 guard FilesystemName.unbounded(basename) == nfc else { return nil }
                 return (name: nfc, url: url)
             }
@@ -225,6 +225,47 @@ enum SaveStore {
             }
             .map { (name: $0.key, url: $0.value) }
             .sorted { $0.name < $1.name }
+    }
+
+    /// The save `answer` names **and that is actually there**, paired with the
+    /// name to speak of it by: the slot name the restore prompt lists, or the
+    /// whole path where the player gave one. `nil` when the answer names no
+    /// usable slot, or names one the directory doesn't hold.
+    ///
+    /// The existence question and the naming question are one question, and it
+    /// is asked here because this is the layer that reads the directory. A
+    /// caller that answered it with a `stat` of ``resolve(_:in:)``'s path and
+    /// then spelled the name back out of that path would have a second copy of
+    /// a rule whose whole point is that the path is not always what the file is
+    /// called — see ``locate(_:in:)``.
+    ///
+    /// - Parameters:
+    ///   - answer: the raw line the player typed at the prompt.
+    ///   - directory: the saves directory bare names resolve under.
+    /// - Returns: the existing file and its name, or `nil`.
+    static func existingSave(_ answer: String, in directory: URL) -> (url: URL, name: String)? {
+        let trimmed = answer.trimmingCharacters(in: .whitespaces)
+        guard let url = locate(trimmed, in: directory),
+            FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        if isExplicitPath(trimmed) { return (url: url, name: url.path) }
+        // The listing's own name where the file is one it lists, so the
+        // question quotes what the restore prompt would offer. The fallback is
+        // for the file `locate` did not find in the directory and the volume
+        // says is there anyway — a case-insensitive match on the computed path
+        // — which the listing has no entry for and so no name of.
+        let listed = existingSaves(in: directory).first { $0.url == url }
+        return (url: url, name: listed?.name ?? slotName(of: url))
+    }
+
+    /// The name a save file is listed and spoken of under: its basename without
+    /// the extension, composed, because a volume may hand the same name back
+    /// decomposed and the two spell one name.
+    ///
+    /// - Parameter url: the save file.
+    /// - Returns: the slot name.
+    private static func slotName(of url: URL) -> String {
+        url.deletingPathExtension().lastPathComponent.precomposedStringWithCanonicalMapping
     }
 
     /// Which of two directory entries spelling the same name is the one to list.

@@ -364,6 +364,23 @@ public struct GameText: Sendable {
     public var savePrompt: Line<Nothing> = "Save to what file?"
     /// The filename question after `restore`.
     public var restorePrompt: Line<Nothing> = "Restore from what file?"
+    /// The yes/no question asked when the name given at the save prompt
+    /// already names a file on disk. The subject is that file, named as the
+    /// restore prompt would list it — or as the whole path, where the player
+    /// gave one.
+    ///
+    /// Only `yes` and `y` are read as consent, and those two words are the
+    /// engine's rather than the table's; a game that asks the question in
+    /// another language asks it about the same two answers.
+    public var saveOverwritePrompt: Line<Word> = .naming {
+        "Replace \"\($0)\"? (yes/no)"
+    }
+    /// The answer to anything but a yes at ``saveOverwritePrompt`` — a "no", a
+    /// blank line, or a word that answers nothing. The save is abandoned and
+    /// the file it would have replaced is still there.
+    public var saveNotReplaced: Line<Word> = .naming {
+        "Not saved; \"\($0)\" is unchanged."
+    }
     /// A successful `save`.
     public var saved: Line<Nothing> = "Saved."
     /// A `save` whose file couldn't be written.
