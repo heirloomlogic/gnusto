@@ -119,7 +119,7 @@ command, not a defect.)
 
 ## Never count commands as turns
 
-Meta commands (`score`, `quit`, `version`, `undo`, `restart`, `save`, `restore`) and
+Meta commands (`score`, `quit`, `version`, `undo`, `restart`, `save`, `restore`, `verbose`, `brief`, `superbrief`) and
 **every command that fails to parse** cost no turn. `again`/`g` and `oops` are the two
 that cost whatever the line they hand back to the parser costs — a repeated LOOK is
 free and a repeated TAKE is a move. This is the most common timing

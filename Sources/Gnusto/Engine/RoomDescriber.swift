@@ -1,8 +1,45 @@
 enum DescribeMode {
-    /// Entering the room: verbose on first visit, brief on revisits.
+    /// Entering the room: the session's ``DescriptionMode`` decides.
     case entry
     /// An explicit LOOK: always verbose.
     case look
+}
+
+/// How much of a room the player wants on the way in — the classic
+/// VERBOSE / BRIEF / SUPERBRIEF preference.
+///
+/// A preference about *this run of the program*, not about the world. It lives
+/// on the `GameWorld` actor beside `firedTimers` and never reaches
+/// `WorldState`, and that placement is the whole of its lifetime rule: a save
+/// file is written out of a `WorldState` and read back into one, UNDO and
+/// RESTART assign a `WorldState` over the live one, and the play-test
+/// `restore(_:)` puts one back — so every one of them leaves the mode where
+/// the player set it without a line of code saying so. A newly launched
+/// session gets a fresh `GameWorld` and therefore ``brief``.
+enum DescriptionMode: Sendable {
+    /// The long description on every entry.
+    case verbose
+    /// The long description on the first visit only — the default.
+    case brief
+    /// The long description on no entry at all.
+    case superbrief
+
+    /// Whether *entering* a room prints its long description.
+    ///
+    /// Only the entry path asks. An explicit LOOK and a room declared
+    /// `alwaysDescribed` are both long whatever the preference says, and
+    /// `RoomDescriber` tests those beside this rather than folding them in
+    /// here — as it tests darkness, which returns before any of the three.
+    ///
+    /// - Parameter revisit: whether the player has stood in this room before.
+    /// - Returns: whether to print the long description.
+    func describesEntry(revisit: Bool) -> Bool {
+        switch self {
+        case .verbose: true
+        case .brief: !revisit
+        case .superbrief: false
+        }
+    }
 }
 
 /// Composes room descriptions per classic IF conventions.
@@ -59,10 +96,16 @@ enum RoomDescriber {
         }
 
         let location = definition.locations[locationID]
-        // A revisit is brief — the player has read the room already — unless the
-        // room's description is the state they are changing, in which case
-        // withholding it withholds the only readout there is.
-        let verbose = mode == .look || !wasVisited || location?.isAlwaysDescribed == true
+        // Under the default BRIEF a revisit is short — the player has read the
+        // room already — and VERBOSE and SUPERBRIEF move that line to every
+        // entry or to none. Two things overrule the preference: an explicit
+        // LOOK, which is the player asking to be told again, and a room whose
+        // description is the state they are changing, where withholding it
+        // withholds the only readout there is.
+        let verbose =
+            mode == .look
+            || location?.isAlwaysDescribed == true
+            || frame.descriptionMode.describesEntry(revisit: wasVisited)
 
         if withRoomName {
             let roomName = location?.name ?? locationID.raw

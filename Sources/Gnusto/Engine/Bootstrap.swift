@@ -1078,7 +1078,10 @@ enum Bootstrap {
             warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings,
             onDeath: { game.onDeath() })
 
-        let registrationFrame = TurnFrame(definition: definition, state: state)
+        let registrationFrame = TurnFrame(
+            definition: definition, state: state,
+            // Registration describes nothing, so the mode is inert.
+            descriptionMode: .brief)
         let (declaredRules, declaredTimers, declaredScores) = Ctx.$frame.withValue(
             registrationFrame
         ) { () -> ([Rule], [(String?, TimedEvent)], [Int]) in

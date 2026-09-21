@@ -1634,6 +1634,14 @@ including `theFloorKeepsTheReachGuardTheRowsGaveAway`, which is what the mechani
 change bought back. The seed-0 350-point walkthrough is unmoved: no stub verb
 appears in its route.
 
+## VERBOSE / BRIEF / SUPERBRIEF (both games, carried by an engine change, #499)
+
+**This section is about both halves of the ledger.** The three description-mode verbs are the engine's, not either game's, so both games answer them identically and neither declares anything. Before #499 the engine had no such verb and `verbose` in either game answered *I don't know the word "verbose"*, which is why the departure is worth writing down.
+
+The verbs, the wording and the precedence are the original's. `V-VERBOSE`, `V-BRIEF` and `V-SUPER-BRIEF` in `gverbs.zil` answer *"Maximum verbosity."*, *"Brief descriptions."* and *"Superbrief descriptions."*, and those are the engine's stock lines verbatim. `gsyntax.zil` declares `SUPER` as a synonym of `SUPERBRIEF`, and the engine takes `super` as well. `DESCRIBE-ROOM` prints the long description when the line was an explicit LOOK or `VERBOSE` is set, which is the precedence the engine reproduces; `gmain.zil` lists all three among the verbs that skip `CLOCKER`, the original's timer tick, and they are meta intents here for the same reason.
+
+**One departure.** `V-FIRST-LOOK` in `gverbs.zil` calls `DESCRIBE-OBJECTS` only when `SUPER-BRIEF` is unset, so the original's superbrief entry prints the room's name and nothing else — not even the things lying on the floor. The engine's superbrief withholds the long description and keeps the item paragraphs, so an entry reads as a name plus what is there to pick up. That is the owner's decision on #499, taken as a usability call rather than as a reading of the source: a mode that hides the objects hides the game. The two games inherit it because the engine owns the verb.
+
 ## Dungeon (`Sources/Dungeon/`)
 
 ### The prose rule, stated before any region entry

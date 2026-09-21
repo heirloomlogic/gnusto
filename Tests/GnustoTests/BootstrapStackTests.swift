@@ -52,7 +52,7 @@ struct BootstrapStackTests {
         // asserts it directly rather than inferring it from a green suite.
         let resolved = try DeepStack.run { () -> Bool in
             let (definition, state) = try Bootstrap.buildCore(MiniGame())
-            let frame = TurnFrame(definition: definition, state: state)
+            let frame = TurnFrame(definition: definition, state: state, descriptionMode: .brief)
             let inside = Ctx.$frame.withValue(frame) { Ctx.frame != nil }
             return inside && Ctx.frame == nil
         }.value

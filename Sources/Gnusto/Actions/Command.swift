@@ -104,10 +104,13 @@ public struct Intent: Hashable, Sendable {
     public static let quit = Intent("quit")
     /// Report the engine version.
     public static let version = Intent("version")
-    // The engine-level six. `GameWorld.run` answers these before the turn
+    // The engine-level intents. `GameWorld.run` answers these before the turn
     // pipeline starts, so no rule sees them and no `actions` row can reclaim
     // them — `DefaultActions.engineIntents` is where that is declared, and the
-    // bootstrap warns about a row that tries.
+    // bootstrap warns about a row that tries. The six below are about the
+    // program rather than the world — a snapshot, a save file, or the line just
+    // typed; the three after them set a session preference that lives on the
+    // actor.
 
     /// Reverse the last turn (engine-level; not overridable).
     public static let undo = Intent("undo")
@@ -125,10 +128,26 @@ public struct Intent: Hashable, Sendable {
     /// doesn't parse.
     public static let oops = Intent("oops")
 
+    // The three description-mode verbs. Engine-level for a reason the six
+    // above share: what they set is a session preference on the `GameWorld`
+    // actor rather than anything in `WorldState`, and no pipeline stage can
+    // reach the actor.
+
+    /// Print every room's long description on every entry (engine-level; not
+    /// overridable).
+    public static let verbose = Intent("verbose")
+    /// Print a room's long description on the first visit only — the mode a
+    /// session starts in (engine-level; not overridable).
+    public static let brief = Intent("brief")
+    /// Print no room's long description on entry (engine-level; not
+    /// overridable).
+    public static let superbrief = Intent("superbrief")
+
     /// Meta intents talk to the game program, not the world: they skip all
     /// rules and don't consume a turn.
     static let metaIntents: Set<Intent> = [
         .score, .quit, .version, .undo, .restart, .save, .restore,
+        .verbose, .brief, .superbrief,
     ]
 
     var isMeta: Bool { Intent.metaIntents.contains(self) }

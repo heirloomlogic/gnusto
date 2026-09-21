@@ -332,7 +332,12 @@ computed `static var`, which rebuilds it on every read.
   through an exit all re-describe as an *entry*, which prints the room name and
   the item paragraphs but skips `description(…)`/`describe { }`. For a room whose
   description **is** the state (a sliding-block floor, a mirror box), declare
-  `alwaysDescribed` on the `Location` and it prints every time. The mirror
+  `alwaysDescribed` on the `Location` and it prints every time. The player moves
+  that line with `verbose` (every entry) or `superbrief` (no entry); `brief` is
+  the default and the mode a session starts in. All three are engine-level and
+  free, and the preference sits on the `GameWorld` actor rather than in
+  `WorldState`, so SAVE/RESTORE/UNDO/RESTART leave it alone. LOOK and
+  `alwaysDescribed` are full in every mode. The mirror
   problem: `describeSurroundings()` is always a full LOOK, so a rule that moves
   the player *within* one room reprints the heading — pass
   `describeSurroundings(withRoomName: false)`.

@@ -352,6 +352,17 @@ public struct GameText: Sendable {
     /// An `undo` with no snapshot to rewind to.
     public var cantUndo: Line<Nothing> = "There's nothing to undo."
 
+    // MARK: - Description modes
+
+    /// A successful `verbose`. The wording is the original's, from
+    /// `V-VERBOSE`.
+    public var maximumVerbosity: Line<Nothing> = "Maximum verbosity."
+    /// A successful `brief`. The wording is the original's, from `V-BRIEF`.
+    public var briefDescriptions: Line<Nothing> = "Brief descriptions."
+    /// A successful `superbrief`. The wording is the original's, from
+    /// `V-SUPER-BRIEF`.
+    public var superbriefDescriptions: Line<Nothing> = "Superbrief descriptions."
+
     // MARK: - Again & oops
 
     /// An `again` before any command has run.

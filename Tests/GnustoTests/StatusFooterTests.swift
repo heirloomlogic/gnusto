@@ -111,6 +111,7 @@ struct StatusFooterTests {
         let spelling: [Intent: String] = [
             .score: "score", .version: "version", .quit: "quit",
             .undo: "undo", .restart: "restart", .save: "save", .restore: "restore",
+            .verbose: "verbose", .brief: "brief", .superbrief: "superbrief",
         ]
         #expect(Set(spelling.keys) == Intent.metaIntents)
 
@@ -123,6 +124,7 @@ struct StatusFooterTests {
                 + [spelling[.save]!, "three", spelling[.restart]!]
                 + [spelling[.restore]!, "three"]
                 + [spelling[.version]!, spelling[.undo]!, spelling[.score]!]
+                + [spelling[.verbose]!, spelling[.superbrief]!, spelling[.brief]!]
                 + [spelling[.quit]!])
 
         // The turn the box is about: RESTART put the counter back to zero and
@@ -136,9 +138,10 @@ struct StatusFooterTests {
                 " room=Foyer of the Opera House | moves=3 | score=0 | turn=free"))
 
         // And nothing else in the session claims a turn either: the opening and
-        // all nine meta lines are free, and the three LOOKs are the only cost.
+        // all twelve meta lines are free, and the three LOOKs are the only
+        // cost.
         let footers = transcript.split(separator: "\n").filter { $0.hasPrefix("[status]") }
-        #expect(footers.count == 13)
+        #expect(footers.count == 16)
         #expect(footers.filter { $0.hasSuffix("turn=cost") }.count == 3)
     }
 

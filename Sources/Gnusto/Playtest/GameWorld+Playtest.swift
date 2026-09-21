@@ -112,8 +112,8 @@ extension GameWorld {
     ///
     /// Note what a snapshot does *not* carry, by the same argument that keeps
     /// them off `WorldState`: the UNDO snapshot, the pristine restart state,
-    /// any open prompt, and the `firedTimers` tally. Restoring rewinds the
-    /// world, not the session.
+    /// any open prompt, the `firedTimers` tally, and the VERBOSE / BRIEF /
+    /// SUPERBRIEF preference. Restoring rewinds the world, not the session.
     ///
     /// - Returns: the current world state.
     func snapshot() -> WorldState {
