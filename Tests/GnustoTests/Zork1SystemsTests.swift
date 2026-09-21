@@ -133,9 +133,10 @@ struct Zork1SystemsTests {
         let transcript = try await play(
             Zork1(),
             [
-                "south", "east", "open window", "west", "up",
-                "take knife", "down", "west",
-                "take lantern", "take sword", "turn on lantern",
+                "south", "east", "open window", "west",
+                "west", "take lantern", "turn on lantern", "east",
+                "up", "take knife", "down", "west",
+                "take sword",
                 "push rug", "open trap door", "down",
                 "south", "east", "north",
                 "up",

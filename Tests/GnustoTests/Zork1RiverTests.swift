@@ -458,9 +458,10 @@ struct Zork1RiverTests {
             Zork1(),
             [
                 "south", "east", "open window", "west",
-                "up", "take rope", "down",
                 "west",
                 "take sword", "take lantern", "turn on lantern",
+                "east", "up", "take rope", "down",
+                "west",
                 "push rug", "open trap door", "down",
                 "north", "west",
                 "attack troll", "attack troll", "attack troll",

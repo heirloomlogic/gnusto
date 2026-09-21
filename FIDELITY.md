@@ -1742,8 +1742,6 @@ map, taken from `dung.355` and checked room by room against the exit counts in
 - The **Gallery and Studio hang off the crawlway**, so the painting can be had
   without ever meeting the troll — where Zork I puts the Gallery behind him. The
   Studio's doors are north and northwest, not south.
-- The **Attic is dark.** The mainframe gives it no light bit, so the lamp has to go
-  up the stairs.
 - The **trap door bars itself for good** on the first descent, with nobody in the
   story to blame and no negotiating from below ("The door is locked from above").
   Zork I makes it the thief's doing and frees it when he falls. The Studio chimney
@@ -2114,8 +2112,8 @@ the committed document rather than out of `dung.355`.
   the fuse that carries it, are the trilogy's invention.
 - **The river is dark.** The mainframe gives `RLIGHTBIT` to the Rainbow Room and
   the End of Rainbow and to nothing else down here — not the five stretches, not
-  either beach, not the Shore, not Aragain Falls. The Attic set the precedent at
-  milestone 1: where the source withholds the light bit, so does this game.
+  either beach, not the Shore, not Aragain Falls. Where the source withholds the
+  light bit, so does this game.
 - **There is no Sandy Cave and no jewelled scarab.** The shovel lies in the Small
   Cave on the western approach, and what four digs in the beach turn up is a
   **statue**, worth 10 to find and 13 to case. The fifth dig collapses the hole,
