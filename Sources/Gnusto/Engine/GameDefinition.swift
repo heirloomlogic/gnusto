@@ -75,6 +75,10 @@ struct ItemDefinition: Sendable {
     /// The name is grammatically plural: the stock lines agree with it, and the
     /// indefinite article becomes "some". See `GameText.Noun`.
     var isPlural = false
+    /// The indefinite article the name was declared to take, overriding the
+    /// first-letter rule. `nil` for the names that letter gets right. See
+    /// `article(_:)`.
+    var article: String?
     var firstSight: String?
     /// A `firstSight(when:_:otherwise:)` trait, lowered into the presence slot.
     var twoStateFirstSight: TwoStateText?
@@ -162,6 +166,9 @@ struct ItemDefinition: Sendable {
             case .synonyms(let words): synonyms += words
             case .properName: isProperName = true
             case .plural: isPlural = true
+            case .article(let word):
+                if article != nil { onDuplicate("article(…)") }
+                article = word
             case .pronoun(let word):
                 if pronoun != nil { onDuplicate("pronoun(…)") }
                 pronoun = word

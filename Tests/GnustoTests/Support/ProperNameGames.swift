@@ -157,3 +157,126 @@ struct UndeclaredProperNameGame: Game {
         lantern.starts(in: orangeGroveAvenue)
     }
 }
+
+/// A hall of names whose spelling and sound disagree, so one transcript shows
+/// the declared article reaching every site the first-letter rule reaches.
+///
+/// The hour glass is the "an" case a vowel test gets wrong, the unicorn the "a"
+/// case it gets wrong the other way, and the lantern is the control that
+/// declares nothing.
+struct DeclaredArticleGame: Game {
+    let title = "Declared Article"
+    let intro = "A bare hall."
+
+    let hall = Location {
+        name("Hall")
+        description("A bare hall.")
+    }
+
+    let hourGlass = Item {
+        name("hour glass")
+        article("an")
+        adjectives("hour")
+    }
+
+    let unicorn = Item {
+        name("unicorn")
+        article("a")
+    }
+
+    /// Actors share the item trait vocabulary, and their listing line is
+    /// indefinite too, so the trait has to reach a person as well as a prop.
+    let heiress = Actor {
+        name("heiress")
+        article("an")
+    }
+
+    /// The control: no declared article, so the first letter still decides.
+    let lantern = Item {
+        name("brass lantern")
+        adjectives("brass")
+    }
+
+    /// The other control: a vowel the first letter gets right on its own.
+    let apple = Item {
+        name("apple")
+    }
+
+    let chest = Item {
+        name("chest")
+        container
+        openable
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        hourGlass.starts(in: hall)
+        unicorn.starts(in: hall)
+        heiress.starts(in: hall)
+        lantern.starts(in: hall)
+        apple.starts(in: hall)
+        chest.starts(in: hall)
+    }
+}
+
+/// A game that declares an article the engine can never print, so both warnings
+/// about a dead article have something to fire on.
+struct ContradictoryArticleGame: Game {
+    let title = "Contradictory"
+    let intro = "A hall."
+
+    let hall = Location {
+        name("Hall")
+        description("A bare hall.")
+    }
+
+    /// A proper name takes no article at all.
+    let excalibur = Item {
+        name("Excalibur")
+        properName
+        article("an")
+    }
+
+    /// A plural name takes "some".
+    let rails = Item {
+        name("rails")
+        plural
+        article("a")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        excalibur.starts(in: hall)
+        rails.starts(in: hall)
+    }
+}
+
+/// A game whose declared article is not a word, which is fatal alongside every
+/// other blank author-facing text rather than merely ineffective.
+struct BlankArticleGame: Game {
+    let title = "Blank Article"
+    let intro = "A hall."
+
+    let hall = Location {
+        name("Hall")
+        description("A bare hall.")
+    }
+
+    let hourGlass = Item {
+        name("hour glass")
+        article("  ")
+        adjectives("hour")
+    }
+
+    let sandGlass = Item {
+        name("sand glass")
+        article("")
+        adjectives("sand")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        hourGlass.starts(in: hall)
+        sandGlass.starts(in: hall)
+    }
+}

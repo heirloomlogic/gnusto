@@ -81,7 +81,7 @@ the table renders.
 | `"a" and "b" are the same Location value; each location must be its own declaration.` | One `Location` (or `Item`, or `Actor`) value assigned to two properties. Each entity is its own `let`. |
 | `location "hall" has no name(…) trait.` | Also `item "…"` and `actor "…"`. Every entity needs a `name(…)` trait. |
 | `location "hall" declares an empty name(…) trait.` | Also `whitespace-only`. A room name is not parser vocabulary, but it is its heading; give the room a name that can print. |
-| `item "coin" declares an empty description(…) trait.` | Also `location`, `actor`, `firstSight(…)`, `whitespace-only`, and either `text` or `otherwise text` branch of the `when:_:otherwise:` forms. Omit optional text to use stock behavior; explicitly blank text is an author error. |
+| `item "coin" declares an empty description(…) trait.` | Also `location`, `actor`, `firstSight(…)`, `article(…)`, `whitespace-only`, and either `text` or `otherwise text` branch of the `when:_:otherwise:` forms. Omit optional text to use stock behavior; explicitly blank text is an author error. |
 | `item "coin" declares name(…) more than once.` | Also `description(…)`, `firstSight(…)`, the two-state description forms, `pronoun(…)`, `capacity(…)`, `surfaceCapacity(…)`, custom traits, and location names/descriptions/custom traits. These are single-valued declarations; remove the duplicate instead of relying on the later value. `adjectives` and `synonyms` deliberately accumulate. |
 | `the north exit from "hall" references a location the bootstrap never registered; it must be a stored property of the game, or of a content bundle the game both stores and lists in 'var content'.` | Also `… door from "hall" references an item …`. The `map` block named something the reflection walk never saw — usually a computed property, one declared in an extension, or one on a bundle that is stored but not listed. If the source is also unresolved, the diagnostic names the direction instead. |
 | `"attic" declares its north exit more than once.` | Two `map` entries claim one direction. |
@@ -150,6 +150,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `item "window" declares transparent but is not a container; the trait has no effect.` | Transparency only exposes a closed container's contents. Add ``container``, or remove ``transparent``. |
 | `item "hat" starts worn but is not wearable; the placement creates an item the player cannot remove or wear again.` | Add ``wearable``, or use `startsHeld`. |
 | `item "robot" declares takesOrders but is not an actor; only a person can be given an order, and the flag has no effect.` | Declare it as an `Actor`. |
+| `item "sword" declares article("an") and properName; a proper name takes no article, so the trait has no effect.` | Also `… declares article("a") and plural; a plural name takes "some", so the trait has no effect.` The indefinite article answers in the order `properName`, `plural`, ``article(_:)``, first letter, so a declared article under either of the first two can never print. Remove it, or remove the trait above it. |
 | `item "Vane" is named "Mrs. Vane", which reads as a proper name but is not declared properName; stock lines will say "the Mrs. Vane".` | Add ``properName``. Not inferred, because "Elvish sword" is a common noun and so is "Orange Grove Avenue". Locations are exempt — the engine never articles a room name. |
 | `item "lamp" gives one sentence to firstSight(…) and description(…); the room listing is spent on first touch and EXAMINE is not, so examining it while it is held will assert where it is lying.` | The two channels are read at different times: the listing line prints until the item is touched, the examine text prints forever. One sentence that says where the thing lies is true on the first and false on the second. Write two sentences. |
 | `actor "troll" declares the item trait "container"; actors hold things via their inventory, and it will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `startsUnlocked`, `capacity`, `surfaceCapacity`, and a `lockedBy` map entry — the message reads `actor "troll" declares a lockedBy entry; …` for that one, since there is no `lockable` trait to declare. Legal, almost never meant; the actor is left as declared rather than stripped of the trait. |
@@ -219,6 +220,7 @@ See <doc:SplittingAGameAcrossFiles>.
 - ``SyntaxRule``
 - ``firstSight(_:)``
 - ``properName``
+- ``article(_:)``
 - ``pronoun(_:)``
 - ``alwaysDescribed``
 - ``alwaysListed``
