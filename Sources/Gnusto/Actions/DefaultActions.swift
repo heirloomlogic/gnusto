@@ -569,11 +569,12 @@ enum DefaultActions {
             try enter(destination, frame: frame, announcing: aside)
         case .door(let destination, let doorID):
             // A hidden door isn't there yet: behave as if the exit doesn't
-            // exist until it's revealed. Once revealed, a locked door refuses
-            // with the locked line — the same one OPEN uses — and only a
-            // closed-but-unlocked door falls back to the closed line, so the
-            // player is pointed at the actual obstacle rather than sent to
-            // OPEN it first to learn it was locked.
+            // exist until it's revealed. Once revealed, a shut door refuses
+            // with the locked line — the same one OPEN uses — when it's
+            // locked, and with the closed line otherwise, so the player is
+            // pointed at the actual obstacle rather than sent to OPEN it
+            // first to learn it was locked. An open door passes regardless
+            // of lock state.
             let (revealed, isOpen, isLocked) = frame.with { scratch -> (Bool, Bool, Bool) in
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),

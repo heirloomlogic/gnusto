@@ -101,8 +101,10 @@ struct BoardedDoorGame: Game {
 
 /// A locked door between a hall and a vault. The door is openable + lockable;
 /// the player must unlock it with the key before it will open, and only then
-/// can pass. The `.lock` rule sets `isLocked` directly and skips the engine's
-/// `cantLockOpen` guard — the shape of Dungeon's grating lock
+/// can pass. The `.lock` rule sets `isLocked` directly and replies before the
+/// engine's own `setLocked` ever runs, so it bypasses every guard that verb
+/// has — reach, already-locked, `cantLockOpen`, key held, wrong key — not
+/// just `cantLockOpen`. That's the shape of Dungeon's grating lock
 /// (`turnTheGratingsLock`), which the engine's own `setLocked` does not have —
 /// so `lock iron door with key` can put the door into a state the engine's
 /// own verb can't reach on its own: open *and* locked. Regression fixture for
