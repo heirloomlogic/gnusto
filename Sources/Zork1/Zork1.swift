@@ -170,9 +170,11 @@ struct Zork1: Game, GameMain {
     /// so this can't be an `after(.score)` rule — the override is the only
     /// seam. The first line reproduces the engine's `scoreLine` verbatim so
     /// existing "Your score is N of a possible 350" assertions still hold.
+    /// `overriding: true` says the shadowing is deliberate, which keeps the
+    /// bootstrap's built-in-override warning off every player's screen.
     var actions: [IntentAction] {
         let possibleScore = maxScore
-        action(.score) {
+        action(.score, overriding: true) {
             let moves = player.moves
             say(
                 """

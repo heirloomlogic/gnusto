@@ -18,13 +18,14 @@
 /// identically to inside a built-in.
 ///
 /// A row that is only a *sentence* takes one of the line factories instead —
-/// ``action(_:reach:say:)``, ``action(_:reach:naming:)``,
-/// ``action(_:orBare:reach:guardsActors:naming:)``. Those are not shorthand for
-/// the closure: they route the verb through the same path a stub verb takes, so
-/// it gets the object's rendered name and the `yourself`/`somebodyElse` guards,
-/// which a closure cannot have. The reach guard both forms declare the same
-/// way, with `reach:`. See ``action(_:reach:say:)`` for why the rest of that
-/// difference is the point.
+/// ``action(_:reach:overriding:say:)``, ``action(_:reach:overriding:naming:)``,
+/// ``action(_:orBare:reach:overriding:guardsActors:naming:)``. Those are not
+/// shorthand for the closure: they route the verb through the same path a stub
+/// verb takes, so it gets the object's rendered name and the
+/// `yourself`/`somebodyElse` guards, which a closure cannot have. The reach
+/// guard both forms declare the same way, with `reach:`. See
+/// ``action(_:reach:overriding:say:)`` for why the rest of that difference is
+/// the point.
 public struct IntentAction: Sendable {
     /// What the row answers with, and the whole of the difference between the
     /// two doors.
@@ -53,8 +54,14 @@ public struct IntentAction: Sendable {
 
     let intent: Intent
     /// Which object slots the player has to be able to touch, whichever kind
-    /// of row this is. See ``action(_:reach:perform:)``.
+    /// of row this is. See ``action(_:reach:overriding:perform:)``.
     let reach: Reach
+    /// The author's "yes, I meant it" on a row that reclaims a built-in's
+    /// stage-4 default: `overriding: true`. It reaches exactly one decision —
+    /// Bootstrap's built-in-override warning, which it silences for this row
+    /// alone. It gates no dispatch, no reach check and no other diagnostic, so
+    /// a row that turns out to override nothing behaves the same either way.
+    let acknowledgesOverride: Bool
     let kind: Kind
 
     /// Builds a stage-4 default action for `intent`. A row whose intent
@@ -65,15 +72,19 @@ public struct IntentAction: Sendable {
     /// - Parameters:
     ///   - intent: the intent this action handles.
     ///   - reach: which object slots the player has to be able to touch before
-    ///     the body runs. See ``action(_:reach:perform:)``.
+    ///     the body runs. See ``action(_:reach:overriding:perform:)``.
+    ///   - overriding: whether the author is acknowledging that this row
+    ///     reclaims a built-in. See ``acknowledgesOverride``.
     ///   - body: the action's behavior.
     init(
         _ intent: Intent,
         reach: Reach = .notNeeded,
+        overriding: Bool = false,
         perform body: @escaping @Sendable () throws -> Void
     ) {
         self.intent = intent
         self.reach = reach
+        self.acknowledgesOverride = overriding
         self.kind = .body(body)
     }
 
@@ -85,17 +96,21 @@ public struct IntentAction: Sendable {
     /// - Parameters:
     ///   - intent: the intent this line answers.
     ///   - reach: which object slots the player has to be able to touch.
+    ///   - overriding: whether the author is acknowledging that this row
+    ///     reclaims a built-in. See ``acknowledgesOverride``.
     ///   - requiresObject: whether the sentence has anything to say about a
     ///     command that named nothing.
     ///   - render: the sentence, given the game's text table and the command.
     init(
         _ intent: Intent,
         reach: Reach,
+        overriding: Bool = false,
         requiresObject: Bool = false,
         render: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
         self.reach = reach
+        self.acknowledgesOverride = overriding
         self.kind = .line(requiresObject: requiresObject, render: render)
     }
 
@@ -107,7 +122,9 @@ public struct IntentAction: Sendable {
     /// to be read against.
     func owned(by namespace: String?) -> IntentAction {
         guard let namespace, case .body(let body) = kind else { return self }
-        return IntentAction(intent, reach: reach) { try Ctx.owned(namespace, body) }
+        return IntentAction(intent, reach: reach, overriding: acknowledgesOverride) {
+            try Ctx.owned(namespace, body)
+        }
     }
 }
 
@@ -141,17 +158,37 @@ public struct IntentAction: Sendable {
 /// }
 /// ```
 ///
+/// Reclaiming a built-in is a warning at bootstrap, printed to stderr before
+/// the intro on the `@main` path, because a row that shadows real behavior by
+/// accident is worth hearing about once. A row that means it says so:
+///
+/// ```swift
+/// action(.score, overriding: true) {
+///     say("Your score is \(player.score), which makes you a Cheat.")
+/// }
+/// ```
+///
+/// `overriding:` silences that one warning for that one declaration, and
+/// nothing else. A row for `undo` still warns that the engine answers it ahead
+/// of the pipeline, a bare `say:` line on a stub intent still warns that
+/// `text.stubs` is the cheaper spelling, and every diagnostic the rest of the
+/// game earns is untouched — it is an acknowledgement, not a suppression
+/// switch.
+///
 /// - Parameters:
 ///   - intent: the intent this action handles.
 ///   - reach: which object slots the player has to be able to touch.
+///   - overriding: the acknowledgement described above. On a row that reclaims
+///     nothing it does nothing.
 ///   - body: the action's behavior.
 /// - Returns: the intent action.
 public func action(
     _ intent: Intent,
     reach: Reach = .notNeeded,
+    overriding: Bool = false,
     perform body: @escaping @Sendable () throws -> Void
 ) -> IntentAction {
-    IntentAction(intent, reach: reach, perform: body)
+    IntentAction(intent, reach: reach, overriding: overriding, perform: body)
 }
 
 /// A custom verb's own default line: the sentence it answers with when no rule
@@ -182,8 +219,9 @@ public func action(
 ///
 /// This form names nothing, so it is the one for a verb whose sentence never
 /// mentions what the player pointed at. Where the sentence does, use
-/// ``action(_:reach:naming:)``, which hands the line the object's rendered name
-/// and answers `wind me` and `wind the troll` in the engine's own words.
+/// ``action(_:reach:overriding:naming:)``, which hands the line the object's
+/// rendered name and answers `wind me` and `wind the troll` in the engine's own
+/// words.
 ///
 /// **Choosing this form for a verb whose rows carry a `.directObject` is a
 /// choice, and it has a cost.** The engine forbids the same shape in its own
@@ -218,23 +256,26 @@ public func action(
 ///     *game* invented. A row reclaiming a built-in or a stub reclaims that
 ///     verb's answer and not its physics, so the standard table's column
 ///     stands: `take` has to reach what it takes whoever writes the sentence.
+///   - overriding: pass `true` to acknowledge that this row reclaims a
+///     built-in's stage-4 default. See ``action(_:reach:overriding:perform:)``.
 ///   - line: the sentence.
 /// - Returns: the intent action.
 public func action(
     _ intent: Intent,
     reach: Reach = .notNeeded,
+    overriding: Bool = false,
     say line: String
 ) -> IntentAction {
-    IntentAction(intent, reach: reach) { _, _ in line }
+    IntentAction(intent, reach: reach, overriding: overriding) { _, _ in line }
 }
 
 /// A custom verb's own default line, for a sentence that **names what the
 /// player pointed at**.
 ///
-/// Everything ``action(_:reach:say:)`` says about the reach guard holds here,
-/// and this form adds the three a closure also can't have: the object arrives
-/// as a ``GameText/Noun``, so a line whose verb has to agree conjugates itself
-/// rather than hard-coding the singular; the player gets
+/// Everything ``action(_:reach:overriding:say:)`` says about the reach guard
+/// holds here, and this form adds the three a closure also can't have: the
+/// object arrives as a ``GameText/Noun``, so a line whose verb has to agree
+/// conjugates itself rather than hard-coding the singular; the player gets
 /// ``GameText/StubReplies/yourself`` instead of "the yourself"; and anybody
 /// else gets ``GameText/StubReplies/somebodyElse`` instead of being spoken
 /// about as furniture.
@@ -250,21 +291,24 @@ public func action(
 ///
 /// A verb whose rows don't all carry an object, or whose sentence reads
 /// perfectly well with the name left out, wants
-/// ``action(_:orBare:reach:guardsActors:naming:)`` instead: this form has no
-/// answer for a command that named nothing.
+/// ``action(_:orBare:reach:overriding:guardsActors:naming:)`` instead: this
+/// form has no answer for a command that named nothing.
 ///
 /// - Parameters:
 ///   - intent: the intent this line answers.
 ///   - reach: which object slots the player has to be able to touch.
+///   - overriding: pass `true` to acknowledge that this row reclaims a
+///     built-in's stage-4 default. See ``action(_:reach:overriding:perform:)``.
 ///   - line: the sentence, given the object's rendered name.
 /// - Returns: the intent action.
 public func action(
     _ intent: Intent,
     reach: Reach = .notNeeded,
+    overriding: Bool = false,
     naming line: @escaping @Sendable (GameText.Noun) -> String
 ) -> IntentAction {
     IntentAction(
-        intent, reach: reach, requiresObject: true,
+        intent, reach: reach, overriding: overriding, requiresObject: true,
         render: StubVerb.nameCascade { _, noun in line(noun) })
 }
 
@@ -293,6 +337,8 @@ public func action(
 ///   - intent: the intent this line answers.
 ///   - bare: the sentence for a command that named nothing.
 ///   - reach: which object slots the player has to be able to touch.
+///   - overriding: pass `true` to acknowledge that this row reclaims a
+///     built-in's stage-4 default. See ``action(_:reach:overriding:perform:)``.
 ///   - guardsActors: whether naming somebody else gets
 ///     ``GameText/StubReplies/somebodyElse`` rather than the line.
 ///   - line: the sentence, given the object's rendered name.
@@ -301,6 +347,7 @@ public func action(
     _ intent: Intent,
     orBare bare: String,
     reach: Reach = .notNeeded,
+    overriding: Bool = false,
     guardsActors: Bool = false,
     naming line: @escaping @Sendable (GameText.Noun) -> String
 ) -> IntentAction {
@@ -311,6 +358,7 @@ public func action(
     return IntentAction(
         intent,
         reach: reach,
+        overriding: overriding,
         render: StubVerb.optionalNameCascade(guardsActors: guardsActors) { _, noun in both(noun) })
 }
 

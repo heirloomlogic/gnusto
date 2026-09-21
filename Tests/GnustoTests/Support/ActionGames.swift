@@ -75,6 +75,49 @@ struct ThemedTakeGame: Game {
     }
 }
 
+/// ``ThemedTakeGame``'s override acknowledged with `overriding: true`,
+/// alongside a second override that isn't and one diagnostic that has nothing
+/// to do with either. Proves the acknowledgement is scoped to the declaration
+/// carrying it rather than to the game, and — since the `take` row is
+/// otherwise ``ThemedTakeGame``'s — that it leaves the behavior alone.
+struct PartlyAcknowledgedOverrideGame: Game {
+    let title = "Partly Acknowledged"
+    let intro = "A vault."
+
+    let vault = Location {
+        name("Vault")
+        description("A cramped stone vault.")
+    }
+
+    let coin = Item {
+        name("gold coin")
+        adjectives("gold")
+    }
+
+    /// `startsLit` on something that is not a `lightSource` — an inert flag,
+    /// and the unrelated warning this fixture needs.
+    let lamp = Item {
+        name("brass lamp")
+        adjectives("brass")
+        startsLit
+    }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+        coin.starts(in: vault)
+        lamp.starts(in: vault)
+    }
+
+    var actions: [IntentAction] {
+        action(.take, overriding: true) { [coin] in
+            try reply("You pocket the \(coin.name) with a guilty glance.")
+        }
+        action(.drop) {
+            try reply("You would rather keep hold of it.")
+        }
+    }
+}
+
 /// A plugin that ships a whole verb behavior — vocabulary (`hail`) and a
 /// stage-4 default — with no host rules at all, exercising `GamePlugin.actions`
 /// spliced by the host exactly like `verbs`.

@@ -977,7 +977,7 @@ enum DefaultActions {
     /// Speaks a default line — a stub verb's, or a custom verb's own. Written
     /// once because the two are the same path by construction: that a game's
     /// invented verb answers exactly as the engine's own stubs do is the claim
-    /// ``action(_:reach:say:)`` makes, and a second copy here is where it would
+    /// ``action(_:reach:overriding:say:)`` makes, and a second copy here is where it would
     /// quietly stop being true.
     ///
     /// The reach guard comes first, so `squeeze water` through a shut glass

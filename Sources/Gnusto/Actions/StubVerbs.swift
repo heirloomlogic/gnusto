@@ -204,7 +204,7 @@ extension StubVerb {
     /// ``named``'s guard cascade, without the rows — the renderer on its own.
     ///
     /// Split out because a *custom* verb wants the identical cascade and has no
-    /// business declaring engine rows to get it: ``action(_:reach:naming:)``
+    /// business declaring engine rows to get it: ``action(_:reach:overriding:naming:)``
     /// hands its line through here, so a game's invented verb answers `squeeze
     /// me` and `squeeze the troll` in exactly the words the engine's own stubs
     /// do. One implementation, two doors.
@@ -223,7 +223,7 @@ extension StubVerb {
     }
 
     /// ``optionallyNamed``'s guard cascade, without the rows, for the reason
-    /// ``nameCascade(_:)`` is split out. ``action(_:orBare:reach:guardsActors:naming:)``
+    /// ``nameCascade(_:)`` is split out. ``action(_:orBare:reach:overriding:guardsActors:naming:)``
     /// is the other door.
     ///
     /// - Parameters:
@@ -938,7 +938,7 @@ extension DefaultActions {
     /// keyed copy of them.
     ///
     /// A custom verb that declared a default row — a closure through
-    /// ``action(_:reach:perform:)``, or a line through ``action(_:reach:say:)``
+    /// ``action(_:reach:overriding:perform:)``, or a line through ``action(_:reach:overriding:say:)``
     /// and its siblings — states its own `reach:` there, and it is read
     /// **last** rather than first. A line row reclaiming a verb the engine already
     /// declares is reclaiming its *answer*, not its physics: `take` has to be

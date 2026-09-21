@@ -971,9 +971,13 @@ enum Bootstrap {
                         + "the engine answers \(action.intent.raw) before the turn "
                         + "pipeline.")
             } else if DefaultActions.builtInIntents.contains(action.intent) {
-                actionWarnings.append(
-                    "custom action for intent \"\(action.intent.raw)\" overrides the "
-                        + "built-in default of the same intent.")
+                // Silenced by `overriding: true`, the author saying they know.
+                // The rung stays exclusive, so nothing else changes. (#502)
+                if !action.acknowledgesOverride {
+                    actionWarnings.append(
+                        "custom action for intent \"\(action.intent.raw)\" overrides the "
+                            + "built-in default of the same intent.")
+                }
             } else if actionOverrides[action.intent] != nil {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides an "

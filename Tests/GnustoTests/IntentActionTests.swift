@@ -35,6 +35,33 @@ struct IntentActionTests {
         #expect(definition.actionOverrides[.take] != nil)
     }
 
+    // MARK: - Acknowledging the override (#502)
+
+    /// `overriding: true` silences the built-in-override warning for the row
+    /// that carries it and nothing else. The acknowledged `take` row drops out
+    /// of the report; the unacknowledged `drop` row beside it still warns, and
+    /// so does the inert `startsLit` flag, which is about neither.
+    @Test func acknowledgingOneOverrideSilencesOnlyThatWarning() throws {
+        let (definition, _) = try Bootstrap.build(PartlyAcknowledgedOverrideGame())
+        #expect(
+            definition.warnings == [
+                "item \"lamp\" declares startsLit but is not a lightSource; "
+                    + "the flag has no effect.",
+                "custom action for intent \"drop\" overrides the built-in default "
+                    + "of the same intent.",
+            ], "\(definition.warningReport ?? "no report")")
+        // Silenced, not dropped: the row is still what stage 4 dispatches to.
+        #expect(definition.actionOverrides[.take] != nil)
+    }
+
+    /// The acknowledgement is about the warning and nothing else — the row is
+    /// ``ThemedTakeGame``'s, so the transcript is too.
+    @Test func acknowledgingTheOverrideLeavesDispatchAlone() async throws {
+        let transcript = try await play(PartlyAcknowledgedOverrideGame(), ["take coin"])
+        expectInOrder(transcript, ["You pocket the gold coin with a guilty glance."])
+        #expect(!transcript.contains("Taken."))
+    }
+
     @Test func gamesWithoutCustomActionsRecordNoActionWarnings() throws {
         let (definition, _) = try Bootstrap.build(CustomActionGame())
         #expect(definition.warnings.isEmpty)
