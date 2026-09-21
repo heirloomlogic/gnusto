@@ -644,8 +644,32 @@ public struct GameText: Sendable {
     // MARK: - Parser replies
 
     /// A word outside the game's whole vocabulary.
+    ///
+    /// The token quoted here is a raw run of characters straight off the
+    /// player's input line, with no length of its own — `take` followed by a
+    /// hundred thousand `a`s tokenizes to one "word" that long. Every other
+    /// line built on ``Word`` is bounded by construction instead: a pronoun
+    /// (``noReferent``) or a matched verb phrase
+    /// (``multipleNotAllowedWith``) comes from a small, known vocabulary, so
+    /// only this one line needs its own cap. The cap lives here rather than
+    /// on ``Word`` itself, which other callers (a formatted time in
+    /// `GnustoClock`, a spell's name in `GnustoSpellcasting`) reuse for
+    /// short strings that were never at risk and should not be silently
+    /// truncated on a rule they don't need. This cap applies only to the
+    /// stock line; a game's own closure assigned here gets the raw token.
+    ///
+    /// `word.count` (grapheme clusters) misses a cluster that is itself
+    /// unbounded — one base character plus tens of thousands of combining
+    /// marks — so `scalarCap` bounds `unicodeScalars` first.
     public var unknownWord: Line<Word> = .naming {
-        "I don't know the word \"\($0)\"."
+        let word = $0.word
+        let cap = 30
+        let scalarCap = cap * 4
+        let quoted =
+            word.count > cap || word.unicodeScalars.count > scalarCap
+            ? "\(String(word.unicodeScalars.prefix(scalarCap)).prefix(cap))…"
+            : word
+        return "I don't know the word \"\(quoted)\"."
     }
 
     /// A pronoun ("it", "them") with nothing bound to it yet.

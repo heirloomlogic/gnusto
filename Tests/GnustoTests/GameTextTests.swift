@@ -163,6 +163,36 @@ struct UndroppableSubjectTests {
         #expect(text.multipleNotAllowedWith("eat").contains("eat"))
     }
 
+    /// #501: a token straight off the player's input line has no length of
+    /// its own, so `unknownWord` bounds what it echoes rather than printing a
+    /// pasted blob whole.
+    @Test func unknownWordTruncatesALongToken() {
+        let text = GameText()
+        let short = String(repeating: "a", count: 30)
+        #expect(text.unknownWord(short) == "I don't know the word \"\(short)\".")
+
+        let overByOne = String(repeating: "a", count: 31)
+        let overByOneLine = text.unknownWord(overByOne)
+        #expect(overByOneLine == "I don't know the word \"\(short)…\".")
+
+        let long = String(repeating: "a", count: 100_000)
+        let line = text.unknownWord(long)
+        #expect(line == "I don't know the word \"\(String(repeating: "a", count: 30))…\".")
+        #expect(line.count < 100)
+    }
+
+    /// #501/#590: a single grapheme cluster can still be unboundedly long — one
+    /// base character followed by tens of thousands of combining marks tokenizes
+    /// to one `Character`, so a cap on `word.count` alone never trips.
+    @Test func unknownWordBoundsAnUnboundedSingleCluster() {
+        let text = GameText()
+        let combining = "a" + String(repeating: "\u{0301}", count: 50_000)
+        #expect(combining.count == 1)
+
+        let line = text.unknownWord(combining)
+        #expect(line.unicodeScalars.count < 200)
+    }
+
     @Test func everyPromptNamesTheVerbItIsWaitingOn() {
         let text = GameText()
         #expect(text.missingObject("take") == "What do you want to take?")
