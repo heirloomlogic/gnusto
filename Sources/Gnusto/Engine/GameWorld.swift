@@ -831,10 +831,20 @@ public actor GameWorld {
                 at: state.playerLocation, definition: definition, state: state, index: index)
             namedHolder = parsed.indirectObject
             let held = Set(index.held[.player] ?? [])
+            // The vehicle the player is aboard comes out too. Boarding leaves
+            // it a child of the room they are standing in, and `enterable`
+            // asks for no trait that would hold it down, so the filters above
+            // pass an ordinary boat and the sweep printed `flat punt: Not
+            // while you're in the flat punt.` beside every real cargo line,
+            // every sweep, for as long as the player stayed aboard (#541).
+            // The refusal itself is right; offering it is not. Naming the
+            // thing still gets it — `.list` below is deliberately unfiltered —
+            // and a vehicle nobody is aboard is swept as before.
+            let boarded = state.playerVehicle
             objects = inDisplayOrder(
                 source.filter {
                     reachable.contains($0) && definition.items[$0]?.isTakable == true
-                        && !held.contains($0)
+                        && !held.contains($0) && $0 != boarded
                 })
         case .all:
             // DROP/PUT ALL is the opposite question and keeps the opposite
