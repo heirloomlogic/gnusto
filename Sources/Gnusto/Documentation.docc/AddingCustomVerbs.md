@@ -80,6 +80,8 @@ var verbs: [SyntaxRule] {
 }
 ```
 
+Declaring the property and leaving it empty means what omitting it means — this type declares no verbs — and there are two spellings. An empty body, `var verbs: [SyntaxRule] {}`, works on every builder-backed property, `rules`, `map` and `content` included. An empty array, `var verbs: [SyntaxRule] { [] }`, works on the three that are arrays — `verbs`, `actions`, `timers` — and not on `rules`, `map` or `content`, whose builders collect into a wrapper type rather than an array. Both compile on a `Game`, on a ``GameContent`` and on a ``GamePlugin`` alike; write one when a bundle you are stubbing out should say so at the declaration rather than by omission.
+
 If you forget the listing, the rule silently never fires from typed input; the bootstrap records a non-fatal warning naming the intent and the fix. It warns about the mirror mistake too — a verb you list and then wire to nothing, which the parser will match and stage 4 will have no answer for.
 
 Because the object resolves into ``Command/directObject``, you can attach the rule to the object (`bell.before(…)`) or handle the intent more broadly on the ``World`` when several objects share behavior:
