@@ -30,8 +30,9 @@ struct PluralLab: Game {
     // MARK: - The gates, which are a door and are locked
 
     /// Both halves of the closed-door path in one item: locked, so `open gates`
-    /// reaches ``GameText/locked``, and shut, so walking north reaches
-    /// ``GameText/closedContainer`` through `travel`.
+    /// and walking north while still locked both reach ``GameText/locked``
+    /// through `travel`; unlocked but still shut, walking north reaches
+    /// ``GameText/closedContainer`` instead.
     let gates = Item {
         name("iron gates")
         adjectives("iron")

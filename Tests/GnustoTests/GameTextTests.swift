@@ -248,8 +248,8 @@ struct PluralAgreementTests {
         let transcript = try await play(
             PluralLab(),
             [
-                "open gates", "north", "search bins", "search crates",
-                "search hamper", "turn on lamps", "turn off lamps",
+                "open gates", "unlock gates with key", "north", "search bins",
+                "search crates", "search hamper", "turn on lamps", "turn off lamps",
                 "hello hands", "hello scales",
                 "follow hands", "follow scales",
                 "hands, take scales",
@@ -262,9 +262,12 @@ struct PluralAgreementTests {
         // `itemInContainer` — the verb belongs to the *contents*, which the
         // sentence names second.
         #expect(transcript.contains("In the wicker hamper are some lead weights."))
-        // `locked` — "The iron gates are locked."
+        // `locked` — "The iron gates are locked." Printed twice: once by OPEN,
+        // once by `travel`'s own locked check, before the gates are unlocked.
         #expect(transcript.contains("The iron gates are locked."))
-        // `closedContainer`, off the travel path — "The iron gates are closed."
+        // `closedContainer`, off the travel path — once the gates are unlocked
+        // but still shut, walking north reaches the plain closed line rather
+        // than the locked one — "The iron gates are closed."
         #expect(transcript.contains("The iron gates are closed."))
         // `closedContainer`, off the search path — "The metal bins are closed."
         #expect(transcript.contains("The metal bins are closed."))

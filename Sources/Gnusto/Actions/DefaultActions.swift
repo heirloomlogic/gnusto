@@ -569,12 +569,16 @@ enum DefaultActions {
             try enter(destination, frame: frame, announcing: aside)
         case .door(let destination, let doorID):
             // A hidden door isn't there yet: behave as if the exit doesn't
-            // exist until it's revealed. Once revealed, a closed door blocks
-            // (its locked state only surfaces when the player tries to OPEN it).
-            let (revealed, isOpen) = frame.with { scratch -> (Bool, Bool) in
+            // exist until it's revealed. Once revealed, a locked door refuses
+            // with the locked line — the same one OPEN uses — and only a
+            // closed-but-unlocked door falls back to the closed line, so the
+            // player is pointed at the actual obstacle rather than sent to
+            // OPEN it first to learn it was locked.
+            let (revealed, isOpen, isLocked) = frame.with { scratch -> (Bool, Bool, Bool) in
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
-                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state)
+                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
+                    scratch.state.lockedItems.contains(doorID)
                 )
             }
             guard revealed else { try refuse(noExit ?? frame.definition.text.cantGoThatWay()) }
@@ -583,6 +587,9 @@ enum DefaultActions {
             // and has no use for the name. `frame.definiteNoun(of:)` reads only
             // the immutable definition, so it needs no lock — unlike the proxy
             // spelling `item.definiteNoun`, which takes one and would hang.
+            guard !isLocked else {
+                try refuse(frame.definition.text.locked(frame.definiteNoun(of: doorID)))
+            }
             guard isOpen else {
                 try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
             }
