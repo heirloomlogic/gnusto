@@ -410,7 +410,7 @@ function routesRows(game) {
     remedy: ok
       ? null
       : (broken.length
-        ? `bin/playtest-routes ${game} list   # ${broken.join(', ')}: no seed, no commands, or no landing`
+        ? `bin/playtest-routes ${game} list   # ${broken.join(', ')}: the loader refuses each, and says why`
         : `the round pins one seed and \`open\` refuses any other — re-cut whichever is the odd one out`),
   }]
 }

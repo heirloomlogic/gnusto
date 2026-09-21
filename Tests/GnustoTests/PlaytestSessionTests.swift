@@ -90,6 +90,25 @@ struct PlaytestSessionTests {
                 to: routes.appendingPathComponent("\(name).json"), atomically: true,
                 encoding: .utf8)
         }
+
+        /// Writes a route manifest's bytes verbatim.
+        ///
+        /// `writeRoute` above quotes every command it is given, so it cannot
+        /// produce a `"commands"` array holding a number, an object or `null` —
+        /// exactly the shapes `load` has to refuse. This writes whatever JSON
+        /// text the caller hands it instead.
+        ///
+        /// - Parameters:
+        ///   - name: the route's name, which is also the file stem.
+        ///   - json: the manifest's bytes, exactly as they land on disk.
+        /// - Throws: whatever creating the directory or writing the file throws.
+        func writeRawRoute(_ name: String, _ json: String) throws {
+            try FileManager.default.createDirectory(
+                at: routes, withIntermediateDirectories: true)
+            try json.write(
+                to: routes.appendingPathComponent("\(name).json"), atomically: true,
+                encoding: .utf8)
+        }
     }
 
     /// The same commands through a real `REPL`, with the footer a session
@@ -1287,6 +1306,143 @@ struct PlaytestSessionTests {
         let session = try await harness.sessions.open(
             label: "unchecked", seed: 0, start: "cloakroom")
         #expect(try await session.opening().status.contains("room=Cloakroom"))
+    }
+
+    // MARK: - A manifest whose "commands" array holds something other than a string
+
+    /// A `"commands"` entry that is a number used to be dropped silently by
+    /// `compactMap { $0.stringValue }` — the tester played a shortened route and
+    /// nothing said so. `load` refuses instead, naming the offending index and
+    /// what it found there.
+    @Test func aRouteWithANumericCommandIsRefusedNamingTheIndex() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "numeric",
+            #"{"seed":0,"commands":["west",99,"east"],"landing":{"room":"Cloakroom"}}"#)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "numeric", seed: 0, start: "numeric")
+        }
+        #expect(refusal?.description.contains("command 2 is a number (99)") == true)
+        #expect(refusal?.description.contains("not a string") == true)
+        #expect(refusal?.description.contains("Nothing ran") == true)
+
+        let opened = await harness.sessions.count()
+        #expect(opened == 0)
+    }
+
+    /// The same refusal for an object entry.
+    @Test func aRouteWithAnObjectCommandIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "object",
+            #"{"seed":0,"commands":["west",{"a":1}],"landing":{"room":"Cloakroom"}}"#)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "object", seed: 0, start: "object")
+        }
+        #expect(refusal?.description.contains("command 2 is an object") == true)
+    }
+
+    /// The same refusal for a `null` entry.
+    @Test func aRouteWithANullCommandIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "nullcmd", #"{"seed":0,"commands":["west",null],"landing":{"room":"Cloakroom"}}"#)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "nullcmd", seed: 0, start: "nullcmd")
+        }
+        #expect(refusal?.description.contains("command 2 is null") == true)
+    }
+
+    /// Every element non-string used to report "holds no commands", because
+    /// every survivor of `compactMap` was filtered out and the empty result
+    /// looked exactly like an empty file. It now names the first bad element
+    /// instead, which is true of what the file holds.
+    @Test func aRouteWhoseCommandsAreAllNonStringNamesTheFirstOneRatherThanClaimingEmpty()
+        async throws
+    {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "allbad", #"{"seed":0,"commands":[1,2,3],"landing":{"room":"Cloakroom"}}"#)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "allbad", seed: 0, start: "allbad")
+        }
+        #expect(refusal?.description.contains("command 1 is a number (1)") == true)
+        #expect(refusal?.description.contains("holds no commands") == false)
+    }
+
+    /// A route's commands go straight into a session's `turns` — see
+    /// `PlaytestSession.init` — which never passes through
+    /// `refuseTranscriptCommands`, the check a `move` batch runs on every line.
+    /// `load` runs the same newline check itself, so a route cannot reach
+    /// `commands.txt` holding a line that would split in two on disk.
+    @Test func aRouteCommandContainingANewlineIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "newline",
+            "{\"seed\":0,\"commands\":[\"west\\nnorth\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "newline", seed: 0, start: "newline")
+        }
+        #expect(refusal?.description.contains("command 1 contains a newline") == true)
+
+        let opened = await harness.sessions.count()
+        #expect(opened == 0)
+    }
+
+    /// A command that merely *ends* in a newline is refused too, and this is the
+    /// case the two readers used to disagree about: `bin/lib/playtest-focus.js`
+    /// trimmed before it looked, and JavaScript's `trim()` strips a line
+    /// terminator where `trimmingCharacters(in: .whitespaces)` leaves it, so
+    /// `bin/playtest-routes verify` passed a file `open` then threw on. Both now
+    /// read the element as written.
+    @Test func aRouteCommandEndingInANewlineIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "trailing", "{\"seed\":0,\"commands\":[\"west\\n\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "trailing", seed: 0, start: "trailing")
+        }
+        #expect(refusal?.description.contains("command 1 contains a newline") == true)
+    }
+
+    /// The other half of that disagreement: `Character.isNewline` is true for
+    /// U+0085 and U+000B as well as the line feed, and the JavaScript reader was
+    /// testing a narrower class. Both now test this one.
+    @Test func aRouteCommandHoldingAnExoticNewlineIsRefused() async throws {
+        for (label, escape) in [("nel", "\\u0085"), ("vtab", "\\u000b")] {
+            let harness = try Harness(OperaHouse())
+            try harness.writeRawRoute(
+                label,
+                "{\"seed\":0,\"commands\":[\"look\(escape)north\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+            let refusal = await #expect(throws: PlaytestError.self) {
+                try await harness.sessions.open(label: label, seed: 0, start: label)
+            }
+            #expect(refusal?.description.contains("command 1 contains a newline") == true)
+        }
+    }
+
+    /// The index a refusal names counts the manifest's elements, not the ones
+    /// that survive the blank filter — a tester told "command 1" about the
+    /// second element would edit the wrong line. The non-string refusal has
+    /// always counted that way; the newline refusal used to count over the
+    /// filtered list.
+    @Test func aNewlineRefusalCountsTheManifestsOwnElements() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRawRoute(
+            "blankfirst",
+            "{\"seed\":0,\"commands\":[\"\",\"west\\nnorth\"],\"landing\":{\"room\":\"Cloakroom\"}}")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "blankfirst", seed: 0, start: "blankfirst")
+        }
+        #expect(refusal?.description.contains("command 2 contains a newline") == true)
     }
 
     /// Over the tool table: the receipt names the route and how many lines it
