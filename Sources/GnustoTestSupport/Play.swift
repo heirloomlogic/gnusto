@@ -65,35 +65,87 @@ public func play(
 }
 
 /// The output of a single command within a transcript: everything between
-/// the **first** `> command` line and the next prompt (or the end). Returns
-/// "" when the command never appears.
+/// the **first** `> command` prompt line and the next prompt (or the end).
+/// Returns "" when the command never appears as a prompt.
 ///
 /// A route that types the same command more than once and asks about a later
 /// turn gets the first one here; ``turnOutput(ofLast:in:)`` is the slice for
 /// the last.
+///
+/// The match is anchored to the start of a line: the start of the
+/// transcript, or immediately after a newline. A command quoted in
+/// CLAUDE.md's two-space form — a sign, a scrap of verse — fails that,
+/// because `TextWrap` keeps a form's indent and the quoted line never
+/// reaches column 0. The indent is one of the two things that keep a
+/// quote off the anchor; prose ahead of it on the folded line is the other.
+/// Prose that renders `> command` alone at column 0 still matches, and
+/// both a `<br>` around the command and a blank line before it render it
+/// that way, so quote a command in the indented form when a test slices
+/// on it.
+///
+/// The end boundary is the same rule: the turn ends at the next `"\n> "`,
+/// so any column-0 line opening with `> ` closes the slice, quoted or not.
 ///
 /// - Parameters:
 ///   - command: the command whose turn to extract.
 ///   - transcript: the transcript to search.
 /// - Returns: that turn's output, or "" when the command never appears.
 public func turnOutput(of command: String, in transcript: String) -> String {
-    guard let start = transcript.range(of: "> \(command)\n") else { return "" }
-    return output(before: "\n> ", in: String(transcript[start.upperBound...]))
+    guard let start = promptEnd(of: command, in: transcript) else { return "" }
+    return output(before: "\n> ", in: String(transcript[start...]))
 }
 
 /// The output of the **last** time a transcript ran `command` — the slice for
 /// "and the second time I looked", where ``turnOutput(of:in:)`` would hand
 /// back the first look.
 ///
+/// The match is anchored the same way ``turnOutput(of:in:)`` is, with the
+/// same limit: a line start only, so a command quoted in the indented
+/// two-space form is skipped and one rendered at column 0 is not.
+///
 /// - Parameters:
 ///   - command: the command whose last turn to extract.
 ///   - transcript: the transcript to search.
 /// - Returns: that turn's output, or "" when the command never appears.
 public func turnOutput(ofLast command: String, in transcript: String) -> String {
-    guard let start = transcript.range(of: "> \(command)\n", options: .backwards) else {
+    guard let start = promptEnd(of: command, in: transcript, options: .backwards) else {
         return ""
     }
-    return output(before: "\n> ", in: String(transcript[start.upperBound...]))
+    return output(before: "\n> ", in: String(transcript[start...]))
+}
+
+/// The index just past a `> command` line that opens the transcript or is
+/// preceded by a newline. A quoted `  > command` on a sign matches neither
+/// form, because the indent `TextWrap` preserves for a form keeps it off
+/// column 0. Prose is not otherwise excluded: a `> command` the renderer
+/// puts at column 0 is indistinguishable from a prompt here.
+///
+/// - Parameters:
+///   - command: the command the prompt line must read.
+///   - transcript: the transcript to search.
+///   - options: passed through to the interior search; `.backwards` finds
+///     the last matching prompt instead of the first.
+/// - Returns: the index right after the prompt line's newline, or nil when
+///   no real prompt line matches.
+private func promptEnd(
+    of command: String,
+    in transcript: String,
+    options: String.CompareOptions = []
+) -> String.Index? {
+    let line = "> \(command)\n"
+    let prefixEnd: String.Index? =
+        transcript.hasPrefix(line)
+        ? transcript.index(transcript.startIndex, offsetBy: line.count)
+        : nil
+    // The transcript's opening line, if it matches, is always the earliest
+    // possible prompt, so a forward search prefers it over any interior
+    // match; a backward search prefers an interior match, since that is
+    // necessarily later in the transcript than the opening line.
+    if !options.contains(.backwards), let prefixEnd { return prefixEnd }
+    if let range = transcript.range(of: "\n\(line)", options: options) {
+        return range.upperBound
+    }
+    return prefixEnd
 }
 
 /// Everything a transcript printed after its first occurrence of `marker` —
