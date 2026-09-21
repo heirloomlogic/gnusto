@@ -655,11 +655,20 @@ public struct GameText: Sendable {
     /// on ``Word`` itself, which other callers (a formatted time in
     /// `GnustoClock`, a spell's name in `GnustoSpellcasting`) reuse for
     /// short strings that were never at risk and should not be silently
-    /// truncated on a rule they don't need.
+    /// truncated on a rule they don't need. This cap applies only to the
+    /// stock line; a game's own closure assigned here gets the raw token.
+    ///
+    /// `word.count` (grapheme clusters) misses a cluster that is itself
+    /// unbounded — one base character plus tens of thousands of combining
+    /// marks — so `scalarCap` bounds `unicodeScalars` first.
     public var unknownWord: Line<Word> = .naming {
         let word = $0.word
         let cap = 30
-        let quoted = word.count > cap ? "\(word.prefix(cap))…" : word
+        let scalarCap = cap * 4
+        let quoted =
+            word.count > cap || word.unicodeScalars.count > scalarCap
+            ? "\(String(word.unicodeScalars.prefix(scalarCap)).prefix(cap))…"
+            : word
         return "I don't know the word \"\(quoted)\"."
     }
 
