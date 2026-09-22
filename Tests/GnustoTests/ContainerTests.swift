@@ -1383,10 +1383,11 @@ struct ContainerTests {
             "fails to restore")
     }
 
-    /// `replace(with:)` reaches the same cycle by another road: it copies the
-    /// replaced item's placement onto the replacement, so replacing a box with
-    /// the sack the box is sitting in puts the sack inside itself. It names no
-    /// target, so it says so in its own words.
+    /// `replace(with:)` builds the same cycle without going through the `move`
+    /// overloads: it copies the replaced item's placement onto the
+    /// replacement, so replacing a box with the sack the box is sitting in
+    /// puts the sack inside itself. It names no target, so it traps in its own
+    /// words.
     @Test func replacingAnItemWithItsOwnHolderTraps() async throws {
         let result = await #expect(
             processExitsWith: .failure, observing: [\.standardErrorContent]
