@@ -77,10 +77,13 @@ enum Visibility {
     /// there is no such rule, which is every item of every game that has not
     /// opted in.
     ///
-    /// What the observer is **holding** always passes without asking. A rule
-    /// keyed to a square of a sliding-block floor answers "is this within arm's
-    /// reach of where I stand", and a thing already in the hand is not a
-    /// question — vetoing it would stop the player opening a box they carry.
+    /// What the observer **carries** passes without asking: in their hands,
+    /// or on or inside something they are carrying, to any depth. A rule keyed
+    /// to a square of a sliding-block floor answers "is this within arm's
+    /// reach of where I stand", and a thing the observer is carrying is not a
+    /// question — vetoing it would stop the player opening a box they carry,
+    /// or taking a card back out of their own sack (#605). Whether a closed
+    /// container is in the way is containment's to answer, not this rule's.
     ///
     /// Takes the frame lock for the placement read and then calls the closure
     /// *outside* it: a rule body re-enters the frame through `Ctx.current`, and
@@ -96,7 +99,7 @@ enum Visibility {
         // no reach rule there never is.
         let declared = frame.definition.rules.itemReach
         guard !declared.isEmpty, let rule = declared[id] else { return true }
-        if frame.with({ $0.state.placements[id] == .heldBy(observer) }) { return true }
+        if frame.with({ $0.state.isPossession(id, of: observer) }) { return true }
         return frame.nested(.reach, within: id) { rule.allows() }
     }
 

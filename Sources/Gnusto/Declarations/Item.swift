@@ -703,8 +703,10 @@ public struct Item: Sendable, Equatable {
     /// rather than "you can't see any such thing".
     ///
     /// Two things the engine settles so the closure doesn't have to. What the
-    /// asker is **holding** always passes, so a rule keyed to a square can't
-    /// stop the player opening a box they are carrying. And the rule is
+    /// asker **carries** passes without the closure being asked — in their
+    /// hands, or on or inside something they are carrying, to any depth — so a
+    /// rule keyed to a square can't stop the player opening a box they are
+    /// carrying, or taking the card out of it. And the rule is
     /// consulted **before any `before` rule runs**, so an item's own rules never
     /// fire for something out of reach.
     ///
