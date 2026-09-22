@@ -452,6 +452,25 @@ extension WorldState {
         return false
     }
 
+    /// Whether placing `id` under `holder` would close a containment cycle:
+    /// `holder` is `id` itself, or already sits somewhere under it. What
+    /// `put in`, `put on` and the `move` overloads that place one item under
+    /// another all ask before they write the placement, since a cycle is a
+    /// graph the walks up out of it never leave.
+    ///
+    /// It asks ``isUnder(_:_:)`` with the two swapped — is the holder already
+    /// below the thing it is about to hold? — so every kind of link counts and
+    /// it costs the depth of the nesting rather than the size of a subtree. The
+    /// self case is the arm ``isUnder(_:_:)`` deliberately does not have.
+    ///
+    /// - Parameters:
+    ///   - id: the item about to be placed.
+    ///   - holder: the entity it is about to be placed under.
+    /// - Returns: true when the placement would build a cycle.
+    func placementWouldCycle(_ id: EntityID, under holder: EntityID) -> Bool {
+        id == holder || isUnder(holder, id)
+    }
+
     /// The room `id` is ultimately standing in — the same walk UP as
     /// `isPossession(_:of:)`, run to the top instead of looking for somebody on
     /// the way. A coin inside a sack on a table in the Hall answers Hall, so it

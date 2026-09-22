@@ -1309,4 +1309,122 @@ struct ContainerTests {
         #expect(look.contains("In the pine shelf is a red book."))
         expectInOrder(transcript, ["Taken.", "Taken."])
     }
+
+    // MARK: - Containment cycles
+
+    #if GNUSTO_EXIT_TESTS
+
+    /// The issue's repro: two containers, each moved into the other. The second
+    /// move is the one that closes the loop, and it is the one that traps.
+    @Test func movingAContainerInsideItsOwnContentsTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(CycleMoveGame(), ["tangle"])
+        }
+        expectTrap(
+            result,
+            says: "move(inside:)", "\"box\" inside \"sack\"", "containment cycle",
+            "fails to restore")
+    }
+
+    /// The surface channel closes the same loop, and the walk
+    /// `placementWouldCycle(_:under:)` makes counts every kind of link, so the
+    /// guard reads the same either way.
+    @Test func movingASurfaceOntoWhatIsStandingOnItTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(CycleMoveGame(), ["stack"])
+        }
+        expectTrap(result, says: "move(onto:)", "\"box\" onto \"sack\"", "containment cycle")
+    }
+
+    /// Handing a sack to somebody standing inside it loops through the holding
+    /// link, which `WorldState.room(of:)` walks up exactly as it walks up the
+    /// other two, so it is as much a cycle as the other two.
+    @Test func handingAnItemToAnActorInsideItTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(CycleMoveGame(), ["entrust"])
+        }
+        expectTrap(
+            result,
+            says: "move(heldBy:)", "\"sack\" into the hands of \"porter\"",
+            "containment cycle")
+    }
+
+    /// A single item put inside itself is the degenerate cycle, and the put
+    /// verbs already refuse it through the same arm of the same check.
+    @Test func movingAContainerInsideItselfTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(CycleMoveGame(), ["swallow"])
+        }
+        expectTrap(result, says: "move(inside:)", "\"box\" inside \"box\"")
+    }
+
+    #endif
+}
+
+/// A live game whose commands each ask for a placement that would close a
+/// containment cycle: one per link `WorldState.room(of:)` walks up — inside,
+/// onto and held — and one that puts an item inside itself. An author's `move`
+/// has no prose to refuse in the way `put in` does, so each has to trap.
+private struct CycleMoveGame: Game {
+    let title = "Cycle moves"
+    let intro = "A sack, a box and a porter."
+
+    let room = Location {
+        name("Room")
+        description("A plain room.")
+    }
+
+    let sack = Item {
+        name("brown sack")
+        container
+        surface
+    }
+
+    let box = Item {
+        name("wooden box")
+        container
+        surface
+    }
+
+    let porter = Actor { name("porter") }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        sack.starts(in: room)
+        box.starts(in: room)
+        porter.starts(in: room)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("tangle", intent: Intent("tangle"))
+        SyntaxRule("stack", intent: Intent("stack"))
+        SyntaxRule("entrust", intent: Intent("entrust"))
+        SyntaxRule("swallow", intent: Intent("swallow"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("tangle")) {
+            sack.move(inside: box)
+            box.move(inside: sack)
+        }
+        world.before(Intent("stack")) {
+            sack.move(onto: box)
+            box.move(onto: sack)
+        }
+        world.before(Intent("entrust")) {
+            porter.asItem.move(inside: sack)
+            sack.move(heldBy: porter.asItem)
+        }
+        world.before(Intent("swallow")) {
+            box.move(inside: box)
+        }
+    }
 }

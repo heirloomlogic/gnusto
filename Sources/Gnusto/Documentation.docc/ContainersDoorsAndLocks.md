@@ -102,7 +102,7 @@ Inside a rule, the live relationships are:
 
 - ``Item/holds(_:)`` — is that item on or inside this one?
 - ``Item/contents`` — everything currently on or inside it, sorted for stable iteration.
-- ``Item/move(inside:)`` and ``Item/move(onto:)`` — place an item directly, bypassing the parser (they trap if the target isn't a container or surface).
+- ``Item/move(inside:)`` and ``Item/move(onto:)`` — place an item directly, bypassing the parser. They trap if the target isn't a container or surface. They also trap if the target is the moved item itself or already sits somewhere under it, since that placement would close a containment cycle: `put in` refuses one in prose, and a rule has no prose to refuse in. `move(heldBy:)` asks the same question, so handing a sack to somebody standing inside it traps too.
 
 ```swift
 box.after(.open) {

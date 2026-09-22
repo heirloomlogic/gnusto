@@ -389,27 +389,30 @@ public struct Item: Sendable, Equatable {
     }
 
     /// Moves the item inside a container, bypassing the usual actions. Traps if
-    /// the target is not a container.
+    /// the target is not a container, or if it is this item itself or sits
+    /// somewhere under it, which would build a containment cycle.
     ///
     /// - Parameter container: the container to move the item into.
     public func move(inside container: Item) {
         let (frame, id) = resolved
-        let containerID = container.holding(.container, in: frame)
+        let containerID = container.holding(.container, moving: id, in: frame)
         frame.with { $0.state.place(id, .inside(containerID)) }
     }
 
     /// Moves the item onto a surface, bypassing the usual actions. Traps if the
-    /// target is not a surface.
+    /// target is not a surface, or if it is this item itself or sits somewhere
+    /// under it, which would build a containment cycle.
     ///
     /// - Parameter surface: the surface to move the item onto.
     public func move(onto surface: Item) {
         let (frame, id) = resolved
-        let surfaceID = surface.holding(.surface, in: frame)
+        let surfaceID = surface.holding(.surface, moving: id, in: frame)
         frame.with { $0.state.place(id, .on(surfaceID)) }
     }
 
-    /// Resolves this item as a placement target, trapping unless it carries the
-    /// trait the placement needs, and handing back its id.
+    /// Resolves this item as a placement target, trapping unless it carries
+    /// the trait the placement needs and the placement closes no containment
+    /// cycle, and handing back its id.
     ///
     /// The trap used to say only what was wrong — "is not a container" — and
     /// left an author holding a declaration they had no reason to suspect. The
@@ -418,25 +421,40 @@ public struct Item: Sendable, Equatable {
     /// caller has nothing to omit. Same lesson as ``declaredFuse(_:in:else:)``,
     /// taken one step further.
     ///
+    /// The cycle half sits here for the same reason. `putIn` and `putOn` ask
+    /// `WorldState.placementWouldCycle(_:under:)` and refuse in prose; a rule
+    /// has no prose to refuse in, so it asks the same question and traps.
+    /// ``move(inside:)``, ``move(onto:)`` and ``move(heldBy:)`` all come
+    /// through here, so none of the three can be the one that forgets.
+    ///
     /// - Parameters:
     ///   - holder: the trait the placement requires.
+    ///   - moved: the item being placed under this one.
     ///   - frame: the live frame, passed rather than re-read — the caller is
     ///     holding it, and resolving an id takes the frame lock.
     /// - Returns: this item's id.
-    fileprivate func holding(_ holder: HolderTrait, in frame: TurnFrame) -> EntityID {
+    fileprivate func holding(
+        _ holder: HolderTrait, moving moved: EntityID, in frame: TurnFrame
+    ) -> EntityID {
         let id = frame.id(for: token, describing: "Item")
         guard let definition = frame.definition.items[id], holder.isCarried(by: definition) else {
             fatalError(holder.diagnostic(for: id))
+        }
+        guard frame.with({ !$0.state.placementWouldCycle(moved, under: id) }) else {
+            fatalError(holder.cycleDiagnostic(moving: moved, under: id))
         }
         return id
     }
 
     /// Moves the item into an entity's inventory, bypassing the usual actions.
+    /// Traps if the target is not an actor, or if it sits somewhere under this
+    /// item — handing a sack to somebody standing in it builds a containment
+    /// cycle just as surely as putting the sack in itself.
     ///
     /// - Parameter holder: the entity to hold the item.
     public func move(heldBy holder: Item) {
         let (frame, id) = resolved
-        let holderID = holder.holding(.actor, in: frame)
+        let holderID = holder.holding(.actor, moving: id, in: frame)
         frame.with { $0.state.place(id, .heldBy(holderID)) }
     }
 
@@ -742,6 +760,37 @@ private enum HolderTrait: String {
         case .actor:
             "pass an Actor, or use `move(inside:)` for a container or `move(onto:)` for a surface"
         }
+    }
+
+    /// Where the placement puts the moved item, for the cycle complaint.
+    var destination: String {
+        switch self {
+        case .container: "inside"
+        case .surface: "onto"
+        case .actor: "into the hands of"
+        }
+    }
+
+    /// The whole complaint, for a target the move would close a containment
+    /// cycle through.
+    ///
+    /// It says what the cycle costs because neither symptom names its cause
+    /// where the author meets it: `WorldState.room(of:)` answers nil for an
+    /// item whose chain of parents loops, and `isConsistent(with:)` rejects the
+    /// graph a save carries.
+    ///
+    /// - Parameters:
+    ///   - moved: the item being placed.
+    ///   - target: the target it was to be placed under.
+    /// - Returns: the message to trap with.
+    func cycleDiagnostic(moving moved: EntityID, under target: EntityID) -> String {
+        """
+        Gnusto: \(function) cannot move "\(moved)" \(destination) "\(target)", because \
+        "\(target)" is "\(moved)" itself or already sits somewhere under it. The move \
+        would build a containment cycle: the items in one belong to no room, so they \
+        drop out of scope, and a save taken afterwards fails to restore. Move \
+        "\(target)" out from under "\(moved)" first, or place a different item.
+        """
     }
 
     /// The whole complaint, for a target that does not carry the trait.

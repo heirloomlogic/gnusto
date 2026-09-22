@@ -211,7 +211,7 @@ enum DefaultActions {
         }
         let id = item.id
         let surfaceID = surface.id
-        if frame.with({ isOrContains($0.state.containment(), surfaceID, id) }) {
+        if frame.with({ $0.state.placementWouldCycle(id, under: surfaceID) }) {
             try refuse(frame.definition.text.cantPutOntoOwnContents(item.definiteNoun))
         }
         // Counted apart from whatever is inside the same item: a cabinet that
@@ -257,7 +257,7 @@ enum DefaultActions {
         }
         let id = item.id
         let containerID = container.id
-        if frame.with({ isOrContains($0.state.containment(), containerID, id) }) {
+        if frame.with({ $0.state.placementWouldCycle(id, under: containerID) }) {
             try refuse(frame.definition.text.cantPutInsideOwnContents(item.definiteNoun))
         }
         if let capacity = frame.definition.items[containerID]?.capacity {
@@ -277,26 +277,6 @@ enum DefaultActions {
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.putItemIn(item.definiteNoun, container.definiteNoun))
-    }
-
-    /// True if `candidate` is `target` itself, or sits somewhere inside
-    /// `target`'s containment subtree (on a surface or inside a container,
-    /// to any depth) — the shape a `putIn` cycle would take. Guards against
-    /// putting a container into itself or into one of its own contents.
-    private static func isOrContains(
-        _ index: ContainmentIndex, _ candidate: EntityID, _ target: EntityID
-    ) -> Bool {
-        if candidate == target { return true }
-        var frontier = [target]
-        var seen: Set<EntityID> = []
-        while let id = frontier.popLast() {
-            guard seen.insert(id).inserted else { continue }
-            for childID in index.children(of: id) {
-                if childID == candidate { return true }
-                frontier.append(childID)
-            }
-        }
-        return false
     }
 
     /// Names of the perceivable items directly inside `container`, sorted for

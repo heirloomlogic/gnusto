@@ -61,8 +61,8 @@ struct ContainmentIndex: Sendable {
     /// dresser handed out its drawer (#513). Such a walk reads ``onSurface``
     /// and ``inContainer`` separately; see `Visibility.collect`. What is left
     /// here is the callers that genuinely want both halves and genuinely want
-    /// to ignore open state: a cycle guard, a raw `contents` accessor, and
-    /// ``closure(under:)``.
+    /// to ignore open state: ``closure(under:)``, and the accessors that list
+    /// what a holder has.
     ///
     /// - Parameter id: the surface/container to read.
     /// - Returns: its surface items followed by its inside items.
@@ -80,8 +80,9 @@ struct ContainmentIndex: Sendable {
     /// re-tread the same `bottle → player` link once for every item in the
     /// bottle.
     ///
-    /// `visited` is the cycle guard as well as the result: a runtime-created
-    /// placement cycle must not send this round forever.
+    /// `visited` is the cycle guard as well as the result: the walk has to
+    /// terminate on a cyclic graph rather than trust that nothing built one,
+    /// on the same grounds as `WorldState.isPossession(_:of:)`.
     ///
     /// - Parameter roots: the entities to walk down from.
     /// - Returns: the roots and every descendant of them.
