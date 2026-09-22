@@ -1,4 +1,4 @@
-import Gnusto
+@testable import Gnusto
 
 /// A rule-built containment cycle that reaches Burden through both its public total and the carrying-cap rule.
 struct BurdenCycleGame: Game {
@@ -49,7 +49,19 @@ struct BurdenCycleGame: Game {
     }
 
     private func makeCycle() {
-        outer.move(inside: inner)
-        inner.move(inside: outer)
+        force(outer, inside: inner)
+        force(inner, inside: outer)
+    }
+
+    /// Writes the placement straight into the world state, which is what it
+    /// takes to build a cycle now that `move(inside:)` traps on one. `Burden`
+    /// totals through `ContainmentIndex.closure(under:)`, whose `visited` set
+    /// is what makes the walk terminate on a cyclic graph, and these tests are
+    /// what holds that guard — so the fixture goes on building the malformed
+    /// graph and reaches past the author-facing trap to do it.
+    private func force(_ item: Item, inside container: Item) {
+        let (frame, id) = item.resolved
+        let containerID = container.id
+        frame.with { $0.state.place(id, .inside(containerID)) }
     }
 }
