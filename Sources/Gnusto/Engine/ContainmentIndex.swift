@@ -61,8 +61,8 @@ struct ContainmentIndex: Sendable {
     /// dresser handed out its drawer (#513). Such a walk reads ``onSurface``
     /// and ``inContainer`` separately; see `Visibility.collect`. What is left
     /// here is the callers that genuinely want both halves and genuinely want
-    /// to ignore open state: ``closure(under:)``, and the accessors that list
-    /// what a holder has.
+    /// to ignore open state: ``closure(under:)``, and the reads that hand back
+    /// what a holder has as one list.
     ///
     /// - Parameter id: the surface/container to read.
     /// - Returns: its surface items followed by its inside items.

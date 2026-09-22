@@ -507,7 +507,10 @@ public struct Item: Sendable, Equatable {
     /// boarded player — a vehicle swapped out from under its passenger leaves
     /// them standing where they were.
     ///
-    /// Replacing an item with itself does nothing.
+    /// Replacing an item with itself does nothing. Replacing it with something
+    /// it already sits under traps: a box inside a sack, replaced *by* that
+    /// sack, would hand the sack a placement under itself, and a containment
+    /// cycle shows itself far from the line that built it.
     ///
     /// - Parameter other: the item to put in this one's place.
     public func replace(with other: Item) {
@@ -517,6 +520,17 @@ public struct Item: Sendable, Equatable {
         // Read the placement before `vanish()` overwrites it, and let `vanish()`
         // stay the one definition of leaving play.
         let placement = frame.with { $0.state.placements[id] ?? .nowhere }
+        // The placement carries across whole, so it can hand `other` a holder
+        // that is `other` itself or sits under it — the same cycle the `move`
+        // overloads trap on, arrived at without naming a target.
+        switch placement {
+        case .heldBy(let holder), .on(let holder), .inside(let holder):
+            if frame.with({ $0.state.placementWouldCycle(otherID, under: holder) }) {
+                fatalError(replacementCycleDiagnostic(replacing: id, with: otherID))
+            }
+        case .room, .nowhere:
+            break
+        }
         vanish()
         frame.with { $0.state.place(otherID, placement) }
     }
@@ -712,6 +726,38 @@ public struct Item: Sendable, Equatable {
     }
 }
 
+/// What a containment cycle costs, in the clause every trap about one says.
+///
+/// The traps say it because neither symptom names its cause where the author
+/// meets it: `WorldState.room(of:)` answers nil for an item whose chain of
+/// parents loops, and `isConsistent(with:)` rejects the graph a save carries.
+private let containmentCycleCost = """
+    the items in one belong to no room, so they drop out of scope, and a save \
+    taken afterwards fails to restore
+    """
+
+/// The whole complaint, for a ``Item/replace(with:)`` whose replacement would
+/// inherit a placement somewhere under itself.
+///
+/// It is not ``HolderTrait/cycleDiagnostic(moving:under:)``: the author named
+/// no target here, only the item being replaced, so the sentence that helps is
+/// the one written in those terms.
+///
+/// - Parameters:
+///   - replaced: the item leaving play, whose placement was to carry across.
+///   - other: the replacement that would have taken it.
+/// - Returns: the message to trap with.
+private func replacementCycleDiagnostic(
+    replacing replaced: EntityID, with other: EntityID
+) -> String {
+    """
+    Gnusto: replace(with:) cannot put "\(other)" where "\(replaced)" is, because \
+    "\(replaced)" sits somewhere under "\(other)" — the replacement would land under \
+    itself. That is a containment cycle, and \(containmentCycleCost). Move "\(replaced)" \
+    out from under "\(other)" first, or replace it with a different item.
+    """
+}
+
 /// The trait a placement target has to carry, and the whole sentence the trap
 /// says about it.
 ///
@@ -725,7 +771,7 @@ public struct Item: Sendable, Equatable {
 /// equivalent runtime placement its own answer too. A version beside
 /// ``Placement`` could serve both paths, but that is wider than this local
 /// runtime validation.
-private enum HolderTrait: String {
+enum HolderTrait: String {
     case container
     case surface
     case actor
@@ -774,23 +820,29 @@ private enum HolderTrait: String {
     /// The whole complaint, for a target the move would close a containment
     /// cycle through.
     ///
-    /// It says what the cycle costs because neither symptom names its cause
-    /// where the author meets it: `WorldState.room(of:)` answers nil for an
-    /// item whose chain of parents loops, and `isConsistent(with:)` rejects the
-    /// graph a save carries.
+    /// The two arms are the two mistakes, and each says only its own: a thing
+    /// placed under itself, and a thing placed under something it already
+    /// holds. The first has no "take it out first" to offer, so it does not
+    /// offer one.
     ///
     /// - Parameters:
     ///   - moved: the item being placed.
     ///   - target: the target it was to be placed under.
     /// - Returns: the message to trap with.
     func cycleDiagnostic(moving moved: EntityID, under target: EntityID) -> String {
-        """
-        Gnusto: \(function) cannot move "\(moved)" \(destination) "\(target)", because \
-        "\(target)" is "\(moved)" itself or already sits somewhere under it. The move \
-        would build a containment cycle: the items in one belong to no room, so they \
-        drop out of scope, and a save taken afterwards fails to restore. Move \
-        "\(target)" out from under "\(moved)" first, or place a different item.
-        """
+        guard moved != target else {
+            return """
+                Gnusto: \(function) cannot move "\(moved)" \(destination) itself. That is \
+                a containment cycle of one, and \(containmentCycleCost). Place it under \
+                a different item.
+                """
+        }
+        return """
+            Gnusto: \(function) cannot move "\(moved)" \(destination) "\(target)", because \
+            "\(target)" already sits somewhere under "\(moved)". The move would build a \
+            containment cycle, and \(containmentCycleCost). Move "\(target)" out from \
+            under "\(moved)" first, or place a different item.
+            """
     }
 
     /// The whole complaint, for a target that does not carry the trait.

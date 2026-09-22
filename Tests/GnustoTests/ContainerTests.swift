@@ -1312,10 +1312,65 @@ struct ContainerTests {
 
     // MARK: - Containment cycles
 
+    /// The one predicate every entry point asks, read up the chain: a holder
+    /// that is the moved item itself, one sitting directly under it, and one
+    /// further down all answer yes; an unrelated holder answers no.
+    @Test func placementWouldCycleReadsTheChainUpward() throws {
+        let state = WorldState(
+            playerLocation: EntityID("room"),
+            placements: [
+                EntityID("sack"): .room(EntityID("room")),
+                EntityID("box"): .inside(EntityID("sack")),
+                EntityID("coin"): .on(EntityID("box")),
+                EntityID("lamp"): .room(EntityID("room")),
+            ])
+
+        #expect(state.placementWouldCycle(EntityID("box"), under: EntityID("box")))
+        #expect(state.placementWouldCycle(EntityID("sack"), under: EntityID("box")))
+        #expect(state.placementWouldCycle(EntityID("sack"), under: EntityID("coin")))
+        #expect(!state.placementWouldCycle(EntityID("sack"), under: EntityID("lamp")))
+    }
+
+    /// The trap's wording, branch by branch. Each `move` overload names itself
+    /// and the channel it places through, and the degenerate cycle — a thing
+    /// placed under itself — gets its own sentence rather than an "or" it
+    /// already knows the answer to. Asserted in process, per the rule in
+    /// `expectTrap`: the branches are worth checking apiece and the sentence is
+    /// a pure function of the case.
+    @Test func theCycleTrapNamesTheMoveAndTheChannel() throws {
+        let box = EntityID("box")
+        let sack = EntityID("sack")
+
+        let inside = HolderTrait.container.cycleDiagnostic(moving: box, under: sack)
+        #expect(inside.contains("move(inside:) cannot move \"box\" inside \"sack\""))
+        #expect(inside.contains("\"sack\" already sits somewhere under \"box\""))
+        #expect(inside.contains("Move \"sack\" out from under \"box\" first"))
+
+        let onto = HolderTrait.surface.cycleDiagnostic(moving: box, under: sack)
+        #expect(onto.contains("move(onto:) cannot move \"box\" onto \"sack\""))
+
+        let held = HolderTrait.actor.cycleDiagnostic(moving: sack, under: EntityID("porter"))
+        #expect(held.contains("move(heldBy:) cannot move \"sack\" into the hands of \"porter\""))
+
+        // The self case says only what is true of it, and offers no "take it
+        // out first" it cannot deliver.
+        let itself = HolderTrait.container.cycleDiagnostic(moving: box, under: box)
+        #expect(itself.contains("move(inside:) cannot move \"box\" inside itself"))
+        #expect(itself.contains("Place it under a different item."))
+        #expect(!itself.contains("out from under"))
+
+        // Both arms say what the cycle costs: neither symptom names its cause
+        // where the author meets it.
+        #expect(inside.contains("belong to no room"))
+        #expect(itself.contains("belong to no room"))
+    }
+
     #if GNUSTO_EXIT_TESTS
 
     /// The issue's repro: two containers, each moved into the other. The second
-    /// move is the one that closes the loop, and it is the one that traps.
+    /// move is the one that closes the loop, and it is the one that traps. One
+    /// exit test, not one per overload: all three resolve their target through
+    /// `holding(_:moving:in:)`, and the tests above cover what each then says.
     @Test func movingAContainerInsideItsOwnContentsTraps() async throws {
         let result = await #expect(
             processExitsWith: .failure, observing: [\.standardErrorContent]
@@ -1328,54 +1383,32 @@ struct ContainerTests {
             "fails to restore")
     }
 
-    /// The surface channel closes the same loop, and the walk
-    /// `placementWouldCycle(_:under:)` makes counts every kind of link, so the
-    /// guard reads the same either way.
-    @Test func movingASurfaceOntoWhatIsStandingOnItTraps() async throws {
+    /// `replace(with:)` reaches the same cycle by another road: it copies the
+    /// replaced item's placement onto the replacement, so replacing a box with
+    /// the sack the box is sitting in puts the sack inside itself. It names no
+    /// target, so it says so in its own words.
+    @Test func replacingAnItemWithItsOwnHolderTraps() async throws {
         let result = await #expect(
             processExitsWith: .failure, observing: [\.standardErrorContent]
         ) {
-            _ = try await play(CycleMoveGame(), ["stack"])
-        }
-        expectTrap(result, says: "move(onto:)", "\"box\" onto \"sack\"", "containment cycle")
-    }
-
-    /// Handing a sack to somebody standing inside it loops through the holding
-    /// link, which `WorldState.room(of:)` walks up exactly as it walks up the
-    /// other two, so it is as much a cycle as the other two.
-    @Test func handingAnItemToAnActorInsideItTraps() async throws {
-        let result = await #expect(
-            processExitsWith: .failure, observing: [\.standardErrorContent]
-        ) {
-            _ = try await play(CycleMoveGame(), ["entrust"])
+            _ = try await play(CycleMoveGame(), ["swap"])
         }
         expectTrap(
             result,
-            says: "move(heldBy:)", "\"sack\" into the hands of \"porter\"",
-            "containment cycle")
-    }
-
-    /// A single item put inside itself is the degenerate cycle, and the put
-    /// verbs already refuse it through the same arm of the same check.
-    @Test func movingAContainerInsideItselfTraps() async throws {
-        let result = await #expect(
-            processExitsWith: .failure, observing: [\.standardErrorContent]
-        ) {
-            _ = try await play(CycleMoveGame(), ["swallow"])
-        }
-        expectTrap(result, says: "move(inside:)", "\"box\" inside \"box\"")
+            says: "replace(with:)", "cannot put \"sack\" where \"box\" is",
+            "containment cycle", "fails to restore")
     }
 
     #endif
 }
 
 /// A live game whose commands each ask for a placement that would close a
-/// containment cycle: one per link `WorldState.room(of:)` walks up — inside,
-/// onto and held — and one that puts an item inside itself. An author's `move`
-/// has no prose to refuse in the way `put in` does, so each has to trap.
+/// containment cycle: one built by a `move`, and one built by `replace(with:)`
+/// carrying a placement across. An author's `move` has no prose to refuse in
+/// the way `put in` does, so each has to trap.
 private struct CycleMoveGame: Game {
     let title = "Cycle moves"
-    let intro = "A sack, a box and a porter."
+    let intro = "A sack and a box."
 
     let room = Location {
         name("Room")
@@ -1394,20 +1427,15 @@ private struct CycleMoveGame: Game {
         surface
     }
 
-    let porter = Actor { name("porter") }
-
     var map: WorldMap {
         player.starts(in: room)
         sack.starts(in: room)
         box.starts(in: room)
-        porter.starts(in: room)
     }
 
     var verbs: [SyntaxRule] {
         SyntaxRule("tangle", intent: Intent("tangle"))
-        SyntaxRule("stack", intent: Intent("stack"))
-        SyntaxRule("entrust", intent: Intent("entrust"))
-        SyntaxRule("swallow", intent: Intent("swallow"))
+        SyntaxRule("swap", intent: Intent("swap"))
     }
 
     var rules: Rules {
@@ -1415,16 +1443,9 @@ private struct CycleMoveGame: Game {
             sack.move(inside: box)
             box.move(inside: sack)
         }
-        world.before(Intent("stack")) {
-            sack.move(onto: box)
-            box.move(onto: sack)
-        }
-        world.before(Intent("entrust")) {
-            porter.asItem.move(inside: sack)
-            sack.move(heldBy: porter.asItem)
-        }
-        world.before(Intent("swallow")) {
-            box.move(inside: box)
+        world.before(Intent("swap")) {
+            box.move(inside: sack)
+            box.replace(with: sack)
         }
     }
 }
