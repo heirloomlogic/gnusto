@@ -952,6 +952,21 @@ struct DungeonEndgameTests {
         #expect(transcript.contains("You have died"))
     }
 
+    /// He kills you for striking him, not for being named as the tool.
+    /// `MASTER-FUNCTION` answers `ATTAC` (`act4.231:791`), and ATTACK's tool
+    /// slot wants a held weapon (`dung.354:3797`), so he is never in it.
+    @Test func theDungeonMasterNamedAsTheToolKillsNobody() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + [
+                "north", "cut sword with dungeon master",
+            ],
+            seed: Self.seed)
+
+        #expect(transcript.contains("with the dungeon master would accomplish nothing"))
+        #expect(!transcript.contains("You have died"))
+    }
+
     /// `set dial to four` is the source's own spelling, and it went missing for a
     /// milestone: naming a number needs one object per number, and issue #174's
     /// stack budget could not afford eight more. The budget is a real number now

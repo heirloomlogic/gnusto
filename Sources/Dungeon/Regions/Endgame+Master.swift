@@ -386,7 +386,14 @@ extension DungeonEndgame {
             try require(masterCanBeAddressed, else: Prose.masterIsNotHere)
         }
 
-        dungeonMaster.before(.attack, .smash, .cut) { try die(Prose.masterKillsYou) }
+        // Only when he is the one struck: an item rule also runs for the tool
+        // slot and for the one addressed. Inside his earshot he is the only
+        // person but the player, so a person in the object slot is him.
+        dungeonMaster.before(.attack, .smash, .cut) {
+            guard let struck = command.directObject, struck.isActor, !struck.isPlayer
+            else { return }
+            try die(Prose.masterKillsYou)
+        }
 
         dungeonMaster.before(.stay) {
             masterStaying = true
