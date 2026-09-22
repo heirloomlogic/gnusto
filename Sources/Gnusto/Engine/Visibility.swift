@@ -115,9 +115,9 @@ enum Visibility {
     /// A `reach { … }` rule gates this too. The rule models a room the map
     /// keeps as one place and the game divides by hand, and its closure is not
     /// told who is asking, so it gives the actor the answer it gives the player.
-    /// What the actor carries, in hand or in a bag to any depth, skips the
-    /// closure the way the player's own possessions do, so an actor reaches a
-    /// thing it carries even while that closure returns false.
+    /// The closure is not asked about what the actor carries, as it is not for
+    /// the player's possessions, so the rule never vetoes a carried thing; a
+    /// closed container around one still keeps it out of reach.
     static func isReachable(_ id: EntityID, from actor: EntityID, frame: TurnFrame) -> Bool {
         inScope(id, observer: actor, frame: frame, descendClosedTransparent: false)
             && reachRuleAllows(id, for: actor, frame: frame)
