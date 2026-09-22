@@ -88,12 +88,14 @@ public func say(_ message: String, from sources: Location...) {
 public func say(_ message: String, from earshot: Earshot) {
     // The frame is bound once and the player's room read off it, rather than
     // through `player.location`: that accessor reaches `Ctx.current` again, and
-    // this is a question one lock can answer. The read stays *outside*
-    // `with { }` — the `Mutex` is not reentrant. Membership itself is
-    // ``Earshot/contains(_:)``, so the gate this applies and the gate an author
-    // can ask for are one piece of code and cannot drift apart.
+    // this is a question one lock can answer. Membership itself is
+    // `Earshot.contains(_:)`, so the gate this applies and the gate an author
+    // can ask for are one piece of code and cannot drift apart — and it
+    // resolves every listed room, which is what turns an unregistered one into
+    // the inline-entity trap instead of a line that silently never prints. The
+    // resolution stays *outside* `with { }`: the `Mutex` is not reentrant.
     let frame = Ctx.current
-    let here = frame.location(for: frame.with { $0.state.playerLocation })
+    let here = frame.with { $0.state.playerLocation }
     guard earshot.contains(here) else { return }
     frame.say(message)
 }

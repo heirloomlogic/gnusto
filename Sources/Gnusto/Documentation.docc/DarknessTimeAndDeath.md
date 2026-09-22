@@ -103,9 +103,11 @@ fuse("dustyRoomFalls", after: 5) {
 
 An ``Earshot`` takes a variadic list or an array, so a region that already keeps a roster of its own rooms builds one out of that roster plus the few that are not on it, rather than re-typing the roster and letting the two drift.
 
+Every room on the list has to be one the game declared, which is to say a stored property the bootstrap registered. A `Location` built inline — or handed back by a computed property, which mints a fresh one on every read — is not that room, and reading the list traps with the same diagnostic any inline entity earns.
+
 The engine will not compute the list for you, and deliberately does not try. Distance over the exit graph is false of any map where two adjacent rooms are two hundred feet apart, or where four rooms are four heights of one shaft. What carries, and how far, is a question about the fiction — so the author answers it, once per source rather than once per line.
 
-A body that has to know the answer *before* it says anything asks ``Earshot/contains(_:)`` instead. A daemon that draws randomness is the usual case: guard on the room first and a turn spent out of earshot burns no randomness, which is what keeps a pinned seed pinned.
+A body that has to know the answer *before* it says anything asks ``Earshot/contains(_:)`` instead. A daemon that draws randomness is the usual case: guard on the room first and a turn spent out of earshot burns no randomness, which is what keeps a pinned seed pinned. That call needs a live turn, the way `clock.now` does, because it resolves the listed rooms: a rule body, an action, a timer or a `describe`/`presence` block is inside one, and a `map` block is not.
 
 Dropping the line changes nothing else, exactly as ``sayOnceThisTurn(_:)`` does. Put the state change above the `say` and the fuel still runs out, the window still shuts, the gates still open — the player is simply not told about a room they are not in. The one ordering trap is a change that puts its own subject out of sight: ask *before* you blow the candle out, or nobody standing over it will be told why the room went dark.
 

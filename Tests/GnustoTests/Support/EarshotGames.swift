@@ -83,3 +83,40 @@ struct EarshotGame: Game {
         player.starts(in: quarry)
     }
 }
+
+/// A fixture for the mistake ``Earshot`` used to swallow (#476): a room that is
+/// not a stored property of the game, so the bootstrap never registered it and
+/// nothing in the world can ever equal it.
+struct UnregisteredEarshotGame: Game {
+    let title = "Unregistered Earshot"
+    let intro = "A hall, and a room that is not part of the game."
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    /// Computed rather than stored, so every read mints a fresh declaration
+    /// token: the value a rule body hands to `say(_:from:)` is one the
+    /// bootstrap has never seen.
+    var ghostRoom: Location {
+        Location {
+            name("Ghost")
+        }
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("ring", intent: Intent("ring"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("ring")) {
+            say("A bell rings.", from: ghostRoom)
+            try handled()
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+    }
+}
