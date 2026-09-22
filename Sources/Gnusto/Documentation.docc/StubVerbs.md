@@ -48,9 +48,7 @@ which means it:
 
 ## What's in the set
 
-Violence and force: `attack`/`kill`/`hit`/`fight` (bare or `with` a weapon),
-`break`/`smash`/`destroy`, `burn`, `cut`/`slice`, `dig`, `pull`/`drag`,
-`turn`/`rotate`, `squeeze`, `shake`, `knock (on)`, `throw … at …`, `kick`.
+Violence and force: `attack`/`kill`/`hit`/`fight` (bare or `with` a weapon), `break`/`smash`/`destroy`, `burn`, `cut`/`slice` and `dig` (each bare or `with` a tool), `pull`/`drag`, `turn`/`rotate`, `squeeze`, `shake`, `knock (on)`, `throw … at …`, `kick`.
 
 Senses: `touch`/`feel`/`rub`, `smell`/`sniff`, `listen (to)`, `taste`/`lick`,
 `look under`/`underneath`, `look behind`, `look`/`peer through`.

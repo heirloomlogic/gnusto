@@ -109,8 +109,10 @@ extension Prose {
         // `V-BURN`'s last branch (`gverbs.zil:274`).
         stubs.burn = .naming { "You can't burn \($0.object)." }
         // `V-CUT`'s last branch (`gverbs.zil:400`). The four dots are the
-        // source's.
-        stubs.cut = .naming { "Strange concept, cutting \($0)...." }
+        // source's. The branch before it answers a tool that is not a weapon,
+        // and a stub line is handed the tool's name and not its traits, so
+        // this one line answers with a tool and without.
+        stubs.cut = .naming { "Strange concept, cutting \($0.object)...." }
         // `V-DIG` (`gverbs.zil:416`) answers for the *instrument*, defaulting it
         // to `HANDS` when the player names none. The engine's `dig` is handed no
         // instrument, so the hands are written in. The one place digging is the

@@ -120,6 +120,15 @@ extension DefaultActions {
                 ["take", .directObject, "from", .indirectObject],
                 ["take", .directObject, "off", .indirectObject],
                 ["take", .directObject, "out", "of", .indirectObject],
+                // Zork makes GET and REMOVE synonyms of TAKE (`gsyntax.zil:480`),
+                // so the player who typed `get garlic from sack` meant this.
+                // The parser tries `remove X from Y` before `doff`'s `remove X`
+                // because it has more literal words, so `remove garlic from sack`
+                // reaches this row and a bare `remove cloak` still reaches `doff`.
+                ["get", .directObject, "from", .indirectObject],
+                ["get", .directObject, "off", .indirectObject],
+                ["get", .directObject, "out", "of", .indirectObject],
+                ["remove", .directObject, "from", .indirectObject],
             ],
             reach: .directObject
         ) { try take($0, frame: $1) },

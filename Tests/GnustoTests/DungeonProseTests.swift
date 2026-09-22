@@ -1388,6 +1388,22 @@ struct DungeonProseTests {
             ])
     }
 
+    /// CUT with a tool names the tool, and CUT without one keeps the line it had. (#611)
+    @Test func cuttingWithAToolNamesTheTool() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["open mailbox", "take leaflet", "cut mailbox with leaflet", "slice mailbox with leaflet", "cut mailbox"])
+        for command in ["cut mailbox with leaflet", "slice mailbox with leaflet"] {
+            #expect(
+                turnOutput(of: command, in: transcript)
+                    .contains("Cutting the small mailbox with the leaflet would accomplish nothing."),
+                "\(command): \(transcript)")
+        }
+        #expect(
+            turnOutput(of: "cut mailbox", in: transcript)
+                .contains("You have nothing that would cut the small mailbox."))
+    }
+
     @Test func theLoudRoomStopsRoaringOnceTheEchoSettlesIt() async throws {
         let transcript = try await play(
             Dungeon(), Self.toTheLoudRoom + ["echo", "look", "listen"], seed: 18)

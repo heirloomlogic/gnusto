@@ -14,7 +14,7 @@ When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `ba
 
 Thirty-one intents, listed here because the commonest reason to mint a verb is not knowing the engine already has it. Two files in this repo had independently minted a "go through" before the engine's own `enter` was noticed.
 
-Handling things: `take`/`get`/`grab`/`hold`/`carry`/`pick up`, `drop`/`discard`/`put down`, `put … on`/`onto`/`hang`/`place`, `put … in`/`into`, `wear`/`don`, `remove`/`doff`/`take off`.
+Handling things: `take`/`get`/`grab`/`hold`/`carry`/`pick up`, `take`/`get … from`/`off`/`out of` and `remove … from`, `drop`/`discard`/`put down`, `put … on`/`onto`/`hang`/`place`, `put … in`/`into`, `wear`/`don`, `remove`/`doff`/`take off`.
 
 Looking: `examine`/`x`/`inspect`/`look at`, `read`, `look`/`l`, `look in`/`search`/`find`/`look for`, `inventory`/`inv`/`i`.
 

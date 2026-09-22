@@ -101,7 +101,12 @@ extension Prose {
             "\($0.sentenceCased) \($0.verb("is", "are")) made of sterner stuff."
         }
         stubs.burn = .naming { "You have nothing to set \($0.object) alight with." }
-        stubs.cut = .naming { "You have nothing that would cut \($0)." }
+        stubs.cut = .naming {
+            guard let instrument = $0.instrument else {
+                return "You have nothing that would cut \($0.object)."
+            }
+            return "Cutting \($0.object) with \(instrument) would accomplish nothing."
+        }
         // `V-DIG` (`gverbs.zil:405`) answers for the tool, not the ground. The
         // one place in the game where digging is the puzzle is the sand, and
         // `sand.before(.dig)` in ``DungeonRiver`` claims it long before this.
