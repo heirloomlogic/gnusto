@@ -216,12 +216,23 @@ struct PipelineTests {
         }
     }
 
+    /// A take that succeeds runs the world `after` rule after the location's
+    /// `after` rule and before the each-turn rules. (#606)
+    @Test func aWorldAfterRuleRunsOnATakeThatSucceeded() async throws {
+        let transcript = try await play(WorldAfterProbeGame(), ["take coin"])
+        let turn = turnOutput(of: "take coin", in: transcript)
+
+        expectInOrder(turn, ["Taken.", "[LOCATION-AFTER]", "[WORLD-AFTER coin]", "[LOCATION-EACH]"])
+    }
+
     /// On a multi-object take a world `after` rule runs once for each object
-    /// that was taken, and sees that object's command. (#606)
+    /// that was taken, sees that object's command, and prints inside that
+    /// object's labelled line. (#606)
     @Test func aWorldAfterRuleRunsForEachObjectTaken() async throws {
         let transcript = try await play(WorldAfterProbeGame(), ["take coin and statue"])
         let turn = turnOutput(of: "take coin and statue", in: transcript)
 
+        #expect(turn.contains("coin: Taken. [LOCATION-AFTER] [WORLD-AFTER coin]"))
         expectInOrder(turn, ["[WORLD-AFTER coin]", "The statue will not budge.", "[WORLD-EACH]"])
         #expect(!turn.contains("[WORLD-AFTER statue]"))
     }
