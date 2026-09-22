@@ -16,8 +16,9 @@ struct PipelineTests {
                 "Taken.",
                 "[itemAfter]",
                 "[locAfter]",
-                "[locEachAfter]",
                 "[worldAfter]",
+                "[locEachAfter]",
+                "[worldEachAfter]",
             ])
     }
 
@@ -29,6 +30,7 @@ struct PipelineTests {
         #expect(!refusedTurn.contains("Taken."))
         #expect(!refusedTurn.contains("[itemAfter]"))
         #expect(!refusedTurn.contains("[locAfter]"))
+        #expect(!refusedTurn.contains("[worldAfter]"))
         // World time still passes on refused turns.
         #expect(refusedTurn.contains("[locEachAfter]"))
     }
@@ -212,16 +214,6 @@ struct PipelineTests {
             #expect(!turn.contains("[LOCATION-AFTER]"), "\(command)")
             expectInOrder(turn, ["[LOCATION-EACH]", "[WORLD-EACH]"])
         }
-    }
-
-    /// A world `after` rule runs in stage 5, after the location's `after`
-    /// rules and before any each-turn rule. (#606)
-    @Test func aWorldAfterRuleRunsAfterTheLocationsAfterRules() async throws {
-        let transcript = try await play(WorldAfterProbeGame(), ["take coin"])
-
-        expectInOrder(
-            turnOutput(of: "take coin", in: transcript),
-            ["Taken.", "[LOCATION-AFTER]", "[WORLD-AFTER coin]", "[LOCATION-EACH]", "[WORLD-EACH]"])
     }
 
     /// On a multi-object take a world `after` rule runs once for each object

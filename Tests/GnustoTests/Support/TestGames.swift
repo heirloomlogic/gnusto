@@ -291,7 +291,7 @@ struct OrderProbeGame: Game {
 
     var rules: Rules {
         world.beforeEachTurn { say("[worldBefore]") }
-        world.afterEachTurn { say("[worldAfter]") }
+        world.afterEachTurn { say("[worldEachAfter]") }
         lab.beforeEachTurn { say("[locEachBefore]") }
         lab.before(.take) { say("[locBefore]") }
         widget.before(.take) {
@@ -303,6 +303,7 @@ struct OrderProbeGame: Game {
         }
         widget.after(.take) { say("[itemAfter]") }
         lab.after(.take) { say("[locAfter]") }
+        world.after(.take) { say("[worldAfter]") }
         lab.afterEachTurn { say("[locEachAfter]") }
 
         // "drop widget" arms the refusal for subsequent takes.
