@@ -112,10 +112,12 @@ enum Visibility {
     /// *other* people are holding stays out, the player included: lifting from
     /// those hands is stealing, which is a plugin's job, exactly as it is for
     /// the player's own reach set.
-    /// A `reach { … }` rule gates this too, and is not told who is asking. The
-    /// rule models a room the map keeps as one place and the game divides by
-    /// hand; a sub-room position the game tracks for the player is the only one
-    /// it tracks, so a thing out of the player's reach is out of everybody's.
+    /// A `reach { … }` rule gates this too. The rule models a room the map
+    /// keeps as one place and the game divides by hand, and its closure is not
+    /// told who is asking, so it gives the actor the answer it gives the player.
+    /// What the actor carries, in hand or in a bag to any depth, skips the
+    /// closure the way the player's own possessions do, so an actor reaches a
+    /// thing it carries even while that closure returns false.
     static func isReachable(_ id: EntityID, from actor: EntityID, frame: TurnFrame) -> Bool {
         inScope(id, observer: actor, frame: frame, descendClosedTransparent: false)
             && reachRuleAllows(id, for: actor, frame: frame)
