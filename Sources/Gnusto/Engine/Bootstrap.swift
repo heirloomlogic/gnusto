@@ -815,8 +815,8 @@ enum Bootstrap {
         // The words the parser claims for itself are checked the same way, and
         // for the same reason: stripping happens ahead of *every* reading of a
         // line, so a game declaring `it`, `all`, `and`, `but` or `his` as
-        // filler silently loses, in that order, pronouns, multi-object
-        // commands, conjunction lists, exceptions, and the possessive the
+        // filler silently loses each of those words: a pronoun, a multi-object
+        // keyword, the conjunction, an exception keyword, and a possessive the
         // parser drops in front of a noun. Reserved words are tested before
         // possessives, so `her` — which is in both sets — reports as the
         // pronoun, the costlier of the two.
