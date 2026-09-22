@@ -1227,9 +1227,9 @@ public actor GameWorld {
         // the player was told nothing happened, so nothing may happen.
         let costsTurn = !intent.isMeta && !frame.with { $0.unhandled }
         if costsTurn {
-            // The rules, then the world's clock, after the rules have reacted
-            // to the command. Both stop at the first rule or body that finds
-            // the game already ended.
+            // Stage 6's rules run first, then the world's clock ticks. Each
+            // checks the status before every rule or timer body, so neither
+            // runs one once the game has ended.
             let here = frame.with { $0.state.playerLocation }
             runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
             runCatching(rules.worldAfter, matching: intent, frame: frame)
@@ -1295,8 +1295,9 @@ public actor GameWorld {
     }
 
     /// Runs one of stage 6's rule lists, catching each rule's interrupt so a
-    /// refusal in one rule does not skip the next — and, as `tickTimers`
-    /// does, stops before the first rule that finds the game ended. (#607)
+    /// refusal in one rule does not skip the next. Like `tickTimers`, it
+    /// checks the status before every rule and stops once the game has
+    /// ended. (#607)
     private func runCatching(_ rules: [Rule], matching intent: Intent, frame: TurnFrame) {
         for rule in rules where rule.matches(intent) {
             guard frame.with({ $0.state.status }) == .playing else { return }
