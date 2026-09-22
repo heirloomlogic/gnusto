@@ -67,7 +67,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Scroll — `.scroll(_:)` | **passwall**, inked on brittle parchment, good for one reading. | The scroll is consumed **on success only**. A refused cast leaves the parchment intact, and the game says so on the page. |
 | Four paradigms, one chain | Each spell opens exactly one obstacle, in order: niche, door, wall, golem. | **Four** distinct paradigms, **one** obstacle each, in chain order. Fewer paradigms, or two spells on one obstacle, and the game stops being the proof it exists to be. |
 | Custom trait | `TraitKey<Bool>.combustible` on the golem. | Targeted spells check an author-declared trait, so casting at the wrong thing is a wasted turn rather than a win. |
-| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study — otherwise it waits. It also stands down if the door is already shut. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book — and must not narrate a slam the player performed himself. |
+| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study with the book in reach — otherwise it waits. It also stands down if the door is already shut. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book — and must not narrate a slam the player performed himself. |
 | No unwinnable state, by any route | `wardedDoor.before(.close)` refuses while the book is out of reach and otherwise closes and says the wards caught; `graniteWall.before(.close)` refuses outright. | **The game cannot be made unwinnable, by the fuse or by the player.** Whatever closes a barrier, whether a rule, a timer or a `close` command, has to leave a way back or refuse. |
 | `@Global` state | `doorSealed`, distinguishing "nothing is wrong yet" from "open again because you unbarred it". | The book's first read is gated on the *event*, not on the door's position — a boolean the door itself cannot supply. |
 | `hidden` / `reveal()` | The scroll in the niche; the amulet behind the golem. | **Two** hidden things, each revealed by a different spell, so reveal is shown twice by two routes. |
@@ -171,14 +171,9 @@ WALL` are refused in prose that points at the magic without naming the spell.
 
 One fuse, and it is the inciting incident.
 
-`doorSeals` is armed at bootstrap for two turns. When it fires it checks where the
-apprentice is. **If he is not in the study, it re-arms for one more turn and says
-nothing** — and it will keep doing that indefinitely.
+`doorSeals` is armed at bootstrap for two turns. When it fires it checks where the apprentice is and where the book is. **If he is not in the study, or the book is not within his reach there, it re-arms for one more turn and says nothing** — and it will keep doing that indefinitely.
 
-That guard is load-bearing, not politeness: the book is on the study desk and the
-niche is beside the study door, so an apprentice sealed into the gallery has no book,
-no cantrip, no scroll and no way back. The door waits until he is on the right side
-of it, however long that takes.
+That guard is load-bearing, not politeness. `unbar` is the only way back through the door, and memorizing it needs the book in hand, so a seal with the book on the far side of the door leaves the game unwinnable, and nothing says so: an apprentice caught in the gallery with the book still on the desk is shut out from it, and one who carried it west, dropped it, and came home is shut in without it (#614). The door waits until he is on the right side of it with the book, however long that takes.
 
 It also checks the door, and **stands down entirely if the door is already shut**. The
 only way that happens is that the apprentice shut it himself, and the slam's copy — *You

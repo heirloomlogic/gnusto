@@ -428,6 +428,36 @@ struct GramaryeTests {
         #expect(transcript.contains("a cantrip called glow"))
     }
 
+    /// The fuse used to ask only where the apprentice was, so a book carried
+    /// into the gallery and dropped there was sealed out behind him on the walk
+    /// back — and `memorize unbar` needs it in hand (#614). It waits for the
+    /// book too, then seals the door once he brings it home, and the game is
+    /// still won from there.
+    @Test func theFuseWaitsForTheBookToComeBack() async throws {
+        let transcript = try await play(
+            Gramarye(),
+            [
+                "take spellbook", "west", "drop spellbook", "east", "wait",
+                "go west", "take spellbook", "go east",
+                "cast glow", "take passwall scroll", "memorize unbar", "cast unbar", "west",
+                "cast passwall", "north", "cast firebolt at golem", "take amulet",
+            ],
+            seed: 0)
+
+        // Back in the study without the book, the door stays open; home with
+        // it, the door seals behind him, and that is the only slam.
+        #expect(turnOutput(of: "go west", in: transcript).contains("The Long Gallery"))
+        #expect(turnOutput(of: "go east", in: transcript).contains("meets its frame with a boom"))
+        #expect(occurrences(of: "meets its frame with a boom", in: transcript) == 1)
+        expectInOrder(
+            transcript,
+            [
+                "You fix the unbar spell in your memory.",
+                "the door drifts open",
+                "Your score is 10 of a possible 10",
+            ])
+    }
+
     /// The ending inventories the world it is standing in, and the door is the
     /// one item of it the player can still change.
     @Test func theEndingNamesTheDoorItFinds() async throws {
