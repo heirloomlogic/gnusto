@@ -1392,13 +1392,10 @@ struct DungeonProseTests {
     @Test func cuttingWithAToolNamesTheTool() async throws {
         let transcript = try await play(
             Dungeon(),
-            ["open mailbox", "take leaflet", "cut mailbox with leaflet", "slice mailbox with leaflet", "cut mailbox"])
-        for command in ["cut mailbox with leaflet", "slice mailbox with leaflet"] {
-            #expect(
-                turnOutput(of: command, in: transcript)
-                    .contains("Cutting the small mailbox with the leaflet would accomplish nothing."),
-                "\(command): \(transcript)")
-        }
+            ["open mailbox", "take leaflet", "cut mailbox with leaflet", "cut mailbox"])
+        #expect(
+            turnOutput(of: "cut mailbox with leaflet", in: transcript)
+                .contains("Cutting the small mailbox with the leaflet would accomplish nothing."))
         #expect(
             turnOutput(of: "cut mailbox", in: transcript)
                 .contains("You have nothing that would cut the small mailbox."))

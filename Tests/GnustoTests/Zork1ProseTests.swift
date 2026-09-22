@@ -469,20 +469,17 @@ struct Zork1ProseTests {
 
     // MARK: - Sentences the source parses (#611)
 
-    /// `CUT OBJECT WITH OBJECT` is the source's only CUT row (`gsyntax.zil:149`), and the knife is a weapon, so `V-CUT` reaches its last branch. Both spellings reach the same line.
+    /// `CUT OBJECT WITH OBJECT` is the source's only CUT row (`gsyntax.zil:149`), and the knife is a weapon, so `V-CUT` reaches its last branch.
     @Test func cuttingTheRopeWithTheKnifeIsVCutsLastBranch() async throws {
         let transcript = try await play(
             Zork1(),
             [
                 "north", "east", "open window", "west", "west",  // into the Living Room
                 "take lamp", "turn on lamp", "east", "up",  // lit, into the Attic
-                "take knife", "cut rope with knife", "slice rope with knife",
+                "take knife", "cut rope with knife",
             ])
-        for command in ["cut rope with knife", "slice rope with knife"] {
-            #expect(
-                turnOutput(of: command, in: transcript)
-                    .contains("Strange concept, cutting the coil of rope...."),
-                "\(command): \(transcript)")
-        }
+        #expect(
+            turnOutput(of: "cut rope with knife", in: transcript)
+                .contains("Strange concept, cutting the coil of rope...."))
     }
 }

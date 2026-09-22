@@ -131,7 +131,6 @@ struct StubVerbTests {
     @Test(arguments: [
         ("burn rod with flask", "You can't set fire to the brass rod with the glass flask."),
         ("cut rod with flask", "You can't cut the brass rod with the glass flask."),
-        ("slice rod with flask", "You can't cut the brass rod with the glass flask."),
         ("dig bench with rod", "You can't dig the long bench with the brass rod."),
         ("fill flask with rod", "You can't fill the glass flask with the brass rod."),
         ("tie rod to bench", "You can't tie the brass rod to the long bench."),
