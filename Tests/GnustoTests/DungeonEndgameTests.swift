@@ -779,6 +779,24 @@ struct DungeonEndgameTests {
         #expect(transcript.contains("You have died"))
     }
 
+    /// A mirror named as the tool is not the thing struck. The source cannot
+    /// even parse it: every verb that reaches `MIRROR-FUNCTION`'s break
+    /// wants a weapon or a carried object in that slot (`dung.354:4050`,
+    /// `:4011`).
+    @Test func aMirrorNamedAsTheToolStaysWhole() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + [
+                "down", "north", "drop lamp", "south", "push red button",
+                "north", "north", "in", "cut pole with first mirror",
+                "attack pole with first mirror",
+            ],
+            seed: Self.seed)
+
+        #expect(transcript.contains("with the first mirror would accomplish nothing"))
+        #expect(!transcript.contains("The glass goes down in a sheet"))
+    }
+
     // MARK: - The Dungeon Master
 
     /// Three questions drawn from eight, and the door opens on the third right

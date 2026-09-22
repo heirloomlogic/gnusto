@@ -49,9 +49,14 @@ extension DungeonEndgame {
         }
 
         // Either mirror, broken, loses the game outright — so it is refused
-        // nowhere and reported plainly, which is the source's own answer.
-        mirrorOne.before(.attack, .smash, .cut) { try shatter(mirrorOne) }
-        mirrorTwo.before(.attack, .smash, .cut) { try shatter(mirrorTwo) }
+        // nowhere and reported plainly, which is the source's own answer. Only
+        // the mirror struck breaks: an item rule also runs for the tool slot.
+        for mirror in [mirrorOne, mirrorTwo] {
+            mirror.before(.attack, .smash, .cut) {
+                guard command.directObject == mirror else { return }
+                try shatter(mirror)
+            }
+        }
     }
 
     /// The four coloured panels against the way each of them turns the box.

@@ -1491,6 +1491,7 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
 - **`dig` loses its instrument.** `V-DIG` (`:416`) answers about the tool and
   defaults it to `HANDS`; the engine hands the line no instrument, so the hands
   are written into the sentence.
+- **`cut` renders one of `V-CUT`'s four branches.** The last one, "Strange concept, cutting the X...." (`gverbs.zil:400`), answers `cut X with Y` and also a bare `cut X`, which has no row in the source: `gsyntax.zil:149` is CUT's only syntax and it has a tool slot. The other three are not reproduced. An actor is attacked (`:385`), but here the stub's actor guard answers first, so `cut troll with sword` prints "The troll does not understand this." A `BURNBIT` object cut with a weapon is destroyed (`:387`), so `cut sack with knife` removes the brown sack in the source and leaves it here. A tool without `WEAPONBIT` gets "The "cutting edge" of a X is hardly adequate." (`:396`), so `cut rope with leaflet` gets the last branch instead. A stub line is handed two names and no traits, so each of the three would need a Zork 1 rule on `.cut`.
 - **`knock` keeps both branches, and loses one article.** `V-KNOCK` (`:765`)
   answers "Nobody's home." at a `DOORBIT` object and "Why knock on a X?" at
   anything else. Both are reproduced (#247) — the split is a game-wide rule,
