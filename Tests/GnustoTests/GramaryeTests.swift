@@ -428,6 +428,19 @@ struct GramaryeTests {
         #expect(transcript.contains("a cantrip called glow"))
     }
 
+    /// The same stand-down when he shuts it from the gallery: the fuse is still
+    /// waiting for him there, so it must not slam the door he has just unbarred
+    /// and spend his `unbar` when he walks back into the study.
+    @Test func theFuseStandsDownIfHeShutsTheDoorFromTheGallery() async throws {
+        let transcript = try await play(
+            Gramarye(),
+            ["take spellbook", "west", "close door", "memorize unbar", "cast unbar", "east", "wait", "look"],
+            seed: 0)
+
+        #expect(!transcript.contains("meets its frame with a boom"))
+        #expect(turnOutput(of: "look", in: transcript).contains("stands open, its warding-marks dark"))
+    }
+
     /// The fuse used to ask only where the apprentice was, so a book carried
     /// into the gallery and dropped there was sealed out behind him on the walk
     /// back — and `memorize unbar` needs it in hand (#614). It waits for the

@@ -253,21 +253,24 @@ struct Gramarye: Game, GameMain {
     /// reach, and re-arms and waits otherwise. The book half is what keeps the
     /// game winnable: `unbar` is the only spell that opens this door, and
     /// memorizing it needs the book in hand, so a seal with the book dropped in
-    /// the gallery would leave no way back through (#614). The study half keeps
-    /// the slam in the room its copy is written for.
+    /// the gallery and no `unbar` already in memory would leave no way back
+    /// through (#614). The study half keeps the slam in the room its copy is
+    /// written for.
     ///
-    /// And it stands down entirely if the door is already shut, because the
-    /// only way that happens is that the apprentice shut it himself, and a slam
-    /// that insisted "You touched nothing" over his own hand on the door would
-    /// be the game telling him a lie about the last thing he did.
+    /// And it stands down for good once the apprentice has shut the door
+    /// himself, because a slam that insisted "You touched nothing" over his own
+    /// hand on the door would be the game telling him a lie about the last
+    /// thing he did. It asks `doorSealed` rather than the door: from the
+    /// gallery he can shut it, unbar it and walk back into the study while the
+    /// fuse is still waiting for him there.
     var timers: [TimedEvent] {
         fuse("doorSeals", after: 2, autostart: true) {
+            guard !doorSealed else { return }  // he got there first
             // The same book check `wardedDoor.before(.close)` makes.
             guard player.location == study, spellbook.isReachable else {
                 startFuse("doorSeals", after: 1)  // wait for the apprentice and the book
                 return
             }
-            guard wardedDoor.isOpen else { return }  // he got there first
             sealTheDoor()
             say(
                 """
