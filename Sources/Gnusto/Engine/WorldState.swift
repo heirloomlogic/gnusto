@@ -660,7 +660,7 @@ extension WorldState {
         // on first read.
         //
         // A name this build no longer declares is dropped rather than refused —
-        // see `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:)`,
+        // see `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:declaredLocations:)`,
         // which owns that policy for globals and timers alike.
         for (id, value) in globals {
             guard let global = definition.globals[id] else { continue }

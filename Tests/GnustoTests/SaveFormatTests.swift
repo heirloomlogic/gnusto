@@ -147,6 +147,137 @@ struct SaveFormatTests {
         }
     }
 
+    /// The older half of the issue #608 pair: one room and one light source.
+    /// `snuff` takes the hall's own light away, so a save can hold a room the
+    /// player darkened.
+    private struct PatchV1: Game {
+        let title = "Patchable"
+        let intro = "A plain hall."
+
+        let hall = Location {
+            name("Hall")
+            description("A plain hall.")
+        }
+
+        let lamp = Item {
+            name("brass lamp")
+            lightSource
+            startsLit
+        }
+
+        var map: WorldMap {
+            player.starts(in: hall)
+            lamp.starts(in: hall)
+        }
+
+        var verbs: [SyntaxRule] {
+            SyntaxRule("snuff", intent: Intent("snuff"))
+        }
+
+        var rules: Rules {
+            world.before(Intent("snuff")) {
+                hall.isLit = false
+                try reply("The hall goes dark.")
+            }
+        }
+    }
+
+    /// The newer half: the same hall and lamp, plus a lit annex holding a lit
+    /// torch and an open chest, a dark vault behind a locked grate, and a
+    /// cloak the player starts wearing. The annex, torch, chest, grate and
+    /// cloak each start in a set the old save has no entry for; the vault is
+    /// declared dark, so a new room is not simply assumed lit.
+    private struct PatchV2: Game {
+        let title = "Patchable"
+        let intro = "A plain hall, now with an annex."
+
+        let hall = Location {
+            name("Hall")
+            description("A plain hall.")
+        }
+
+        let annex = Location {
+            name("Annex")
+            description("A small annex.")
+        }
+
+        let vault = Location {
+            name("Vault")
+            description("A cold vault.")
+            dark
+        }
+
+        let lamp = Item {
+            name("brass lamp")
+            lightSource
+            startsLit
+        }
+
+        let torch = Item {
+            name("pine torch")
+            lightSource
+            startsLit
+        }
+
+        let chest = Item {
+            name("oak chest")
+            container
+            openable
+            startsOpen
+        }
+
+        let grate = Item {
+            name("iron grate")
+            scenery
+            openable
+        }
+
+        let key = Item {
+            name("iron key")
+        }
+
+        let cloak = Item {
+            name("wool cloak")
+            wearable
+        }
+
+        var map: WorldMap {
+            player.starts(in: hall)
+            lamp.starts(in: hall)
+            torch.starts(in: annex)
+            chest.starts(in: annex)
+            key.starts(in: vault)
+            cloak.startsWorn
+            hall.east(annex)
+            annex.west(hall)
+            annex.north(vault, via: grate)
+            vault.south(annex, via: grate)
+            grate.lockedBy(key)
+        }
+    }
+
+    /// Saves `PatchV1` after `commands` through the game's own SAVE, so the
+    /// file is exactly what a player of the older build would be holding.
+    private static func patchV1Save(
+        _ label: String, after commands: [String] = []
+    ) async throws
+        -> String
+    {
+        let path = temporarySavePath(label)
+        let transcript = try await play(fresh: PatchV1(), commands + ["save", path])
+        #expect(transcript.contains("Saved."))
+        return path
+    }
+
+    /// Reads the save at `path` into a fresh bootstrap of `game`, through the
+    /// same `SaveFile.read` the RESTORE prompt calls.
+    private static func restore(_ path: String, into game: some Game) throws -> WorldState {
+        let (definition, pristineState) = try Bootstrap.buildCore(game)
+        return try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+    }
+
     /// `SaveRestoreTests` and `TimerTests` each spell this privately too — the
     /// established shape for a throwaway save path in this suite. Lifting the
     /// three into `GnustoTestSupport` is worth doing and is not this change's
@@ -717,6 +848,86 @@ struct SaveFormatTests {
         #expect(restored.placements == savedState.placements)
         #expect(restored.activeFuses == savedState.activeFuses)
         #expect(restored.activeDaemons == savedState.activeDaemons)
+    }
+
+    // MARK: - What a save predates starts as declared (issue #608)
+
+    @Test("an old save restored into a newer build shows the additions as declared")
+    func anOldSaveRestoredIntoANewerBuildShowsTheAdditionsAsDeclared() async throws {
+        let path = try await Self.patchV1Save("patch-transcript")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let transcript = try await play(
+            fresh: PatchV2(), ["restore", path, "east", "x chest", "north", "inventory"])
+
+        #expect(transcript.contains("Restored."))
+        let east = turnOutput(of: "east", in: transcript)
+        #expect(east.contains("Annex"))
+        #expect(!east.contains("pitch black"))
+        #expect(east.contains("torch"))
+        #expect(east.contains("chest"))
+        #expect(!turnOutput(of: "x chest", in: transcript).contains("can't see"))
+        #expect(turnOutput(of: "north", in: transcript).contains("locked"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("(being worn)"))
+    }
+
+    @Test("items a save predates take their declared state, and known items keep theirs")
+    func itemsASavePredatesTakeTheirDeclaredStateAndKnownItemsKeepTheirs() async throws {
+        let path = try await Self.patchV1Save("patch-items", after: ["extinguish lamp"])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let restored = try Self.restore(path, into: PatchV2())
+
+        #expect(restored.litItems == [EntityID("torch")])
+        #expect(restored.openItems == [EntityID("chest")])
+        #expect(restored.lockedItems == [EntityID("grate")])
+        #expect(restored.wornItems == [EntityID("cloak")])
+        #expect(restored.placements[EntityID("cloak")] == .heldBy(.player))
+    }
+
+    @Test("rooms a save predates take their declared light, and known rooms keep theirs")
+    func roomsASavePredatesTakeTheirDeclaredLightAndKnownRoomsKeepTheirs() async throws {
+        let path = try await Self.patchV1Save("patch-rooms", after: ["snuff"])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let restored = try Self.restore(path, into: PatchV2())
+
+        // The annex is lit by declaration and the vault is declared dark; the
+        // hall was lit by declaration too, but the save knew it and the player
+        // had darkened it.
+        #expect(restored.litRooms == [EntityID("annex")])
+    }
+
+    @Test("a save without a location roster still restores, and settles new items")
+    func aSaveWithoutALocationRosterStillRestoresAndSettlesNewItems() async throws {
+        let path = try await Self.patchV1Save("patch-no-roster")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let url = URL(fileURLWithPath: path)
+        var save = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        save["declaredLocations"] = nil
+        try Self.encode(save).write(to: url)
+        let restored = try Self.restore(path, into: PatchV2())
+
+        // Items need no roster: a missing placement is what marks them new.
+        #expect(restored.lockedItems == [EntityID("grate")])
+        #expect(restored.wornItems == [EntityID("cloak")])
+        // Without the roster nothing tells a new room from one the player
+        // darkened, so the save's own room light stands.
+        #expect(restored.litRooms == [EntityID("hall")])
+    }
+
+    @Test("a save records the locations its build declares")
+    func aSaveRecordsTheLocationsItsBuildDeclares() async throws {
+        let path = try await Self.patchV1Save("patch-roster", after: ["snuff"])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let save = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path)))
+                as? [String: Any])
+        let roster = try #require(save["declaredLocations"] as? [[String: String]])
+        #expect(roster == [["raw": "hall"]])
+
+        // Restored into the build that wrote it, the save's room light stands.
+        let restored = try Self.restore(path, into: PatchV1())
+        #expect(restored.litRooms.isEmpty)
     }
 
     /// Writes a save of `LedgerGame` whose globals are `mutate`d as typed
