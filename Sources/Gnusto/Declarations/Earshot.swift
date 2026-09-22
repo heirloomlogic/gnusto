@@ -51,6 +51,12 @@ public struct Earshot: Sendable {
     /// randomness, move state, or start a fuse on the strength of a line nobody
     /// is there to read.
     ///
+    /// **It needs a live turn**, the way `clock.now` does. Resolving the listed
+    /// rooms reads the running turn, so a call from a `map` block or an
+    /// entity's declaration block traps saying live world state was accessed
+    /// outside a game turn. Every place the gate is useful — a rule body, an
+    /// action, a timer, a `describe`/`presence` block — is inside one.
+    ///
     /// - Parameter room: the room to test, usually `player.location`.
     /// - Returns: true when the sound reaches that room.
     public func contains(_ room: Location) -> Bool {

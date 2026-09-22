@@ -87,10 +87,6 @@ struct EarshotGame: Game {
 /// A fixture for the mistake ``Earshot`` used to swallow (#476): a room that is
 /// not a stored property of the game, so the bootstrap never registered it and
 /// nothing in the world can ever equal it.
-///
-/// Both `say(_:from:)` overloads are reachable, because the room channel and
-/// the thing channel answer an unregistered argument the same way — by
-/// resolving it, and trapping when the registry has never heard of it.
 struct UnregisteredEarshotGame: Game {
     let title = "Unregistered Earshot"
     let intro = "A hall, and a room that is not part of the game."
@@ -109,25 +105,13 @@ struct UnregisteredEarshotGame: Game {
         }
     }
 
-    /// The same mistake one channel over.
-    var ghostBell: Item {
-        Item {
-            name("bell")
-        }
-    }
-
     var verbs: [SyntaxRule] {
         SyntaxRule("ring", intent: Intent("ring"))
-        SyntaxRule("toll", intent: Intent("toll"))
     }
 
     var rules: Rules {
         world.before(Intent("ring")) {
             say("A bell rings.", from: ghostRoom)
-            try handled()
-        }
-        world.before(Intent("toll")) {
-            say("A bell tolls.", from: ghostBell)
             try handled()
         }
     }

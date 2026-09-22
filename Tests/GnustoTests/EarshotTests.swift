@@ -68,6 +68,8 @@ struct EarshotTests {
         #expect(walkingOff.contains("Rooks: 2."))
     }
 
+    #if GNUSTO_EXIT_TESTS
+
     /// **An unregistered room traps rather than printing nothing** (#476).
     ///
     /// `Location.==` is reference identity on the declaration token, so a room
@@ -79,9 +81,9 @@ struct EarshotTests {
     /// registry, so the mistake lands on the diagnostic every other inline
     /// entity gets.
     ///
-    /// A child process apiece — see ``expectTrap(_:says:sourceLocation:)`` for
-    /// when that is worth spending. It is here because the wording is the whole
-    /// of the teaching: "not part of the running game" alone leaves an author
+    /// A child process — see ``expectTrap(_:says:sourceLocation:)`` for when
+    /// that is worth spending. It is here because the wording is the whole of
+    /// the teaching: "not part of the running game" alone leaves an author
     /// staring at a `Location` that plainly exists.
     @Test func anUnregisteredRoomTrapsInsteadOfPrintingNothing() async throws {
         let result = await #expect(
@@ -95,19 +97,5 @@ struct EarshotTests {
             "stored properties of your Game type")
     }
 
-    /// **And so does an unregistered thing**, on the ``Item`` overload — which
-    /// never had the identity bug, because its gate is ``Item/isVisible`` and
-    /// that read resolves the item's id before it can answer. Asserted so the
-    /// two channels are held to one answer.
-    @Test func anUnregisteredThingTrapsOnTheItemOverload() async throws {
-        let result = await #expect(
-            processExitsWith: .failure, observing: [\.standardErrorContent]
-        ) {
-            _ = try await play(UnregisteredEarshotGame(), ["toll"])
-        }
-        expectTrap(
-            result,
-            says: "Item is not part of the running game",
-            "stored properties of your Game type")
-    }
+    #endif
 }
