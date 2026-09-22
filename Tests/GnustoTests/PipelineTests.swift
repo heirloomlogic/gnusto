@@ -168,4 +168,76 @@ struct PipelineTests {
         expectInOrder(turn, ["[shunt]", "[pit-before]", "[robot-waits]"])
         #expect(!turn.contains("[gantry-before]"))
     }
+
+    /// An each-turn rule that kills the player is the last one that turn: the
+    /// rule after it neither prints below the death banner nor scores. (#607)
+    @Test func anEachTurnDeathStopsTheEachTurnRulesAfterIt() async throws {
+        let transcript = try await play(EachTurnDeathGame(), ["jump"])
+        let turn = turnOutput(of: "jump", in: transcript)
+
+        expectInOrder(turn, ["[rule-one-kills]", "*** You have died ***", "Your score is 0, in 1 turn."])
+        #expect(!turn.contains("[rule-two]"))
+    }
+
+    /// A location each-turn rule that wins the game stops the world's each-turn
+    /// rules too, so a world rule that would kill the player cannot turn the
+    /// win into a death. (#607)
+    @Test func anEachTurnWinCannotBeOverwrittenByALaterDeath() async throws {
+        let world = try cachedWorld(EachTurnWinGame(), seed: 1)
+        _ = await world.begin()
+        let result = await world.perform("jump")
+
+        #expect(result.output.contains("[you-win]"))
+        #expect(!result.output.contains("[world-kills]"))
+        #expect(!result.output.contains("*** You have died ***"))
+        #expect(result.isFinished)
+    }
+}
+
+/// Two world each-turn rules: the first kills the player, the second prints a
+/// marker and scores, so a transcript shows whether the second ran.
+private struct EachTurnDeathGame: Game {
+    let title = "Each-Turn Death"
+    let intro = "A cell."
+
+    let cell = Location {
+        name("Cell")
+        description("A bare cell.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: cell)
+    }
+
+    var rules: Rules {
+        world.afterEachTurn { try die("[rule-one-kills]") }
+        world.afterEachTurn {
+            say("[rule-two]")
+            player.score += 5
+        }
+    }
+}
+
+/// A location each-turn rule that wins the game, and a world each-turn rule —
+/// which stage 6 runs after the location's — that kills the player.
+private struct EachTurnWinGame: Game {
+    let title = "Each-Turn Win"
+    let intro = "A summit."
+
+    let summit = Location {
+        name("Summit")
+        description("The top of the mountain.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: summit)
+    }
+
+    var rules: Rules {
+        summit.afterEachTurn {
+            say("[you-win]")
+            try end(won: true)
+        }
+        world.afterEachTurn { try die("[world-kills]") }
+    }
 }
