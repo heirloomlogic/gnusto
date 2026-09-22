@@ -469,6 +469,10 @@ struct BootstrapTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             return bootstrapError.diagnostics == [
                 """
+                noise word "it" is also a reserved parser word (a pronoun or a \
+                multi-object keyword); stripping it would make that word untypeable.
+                """,
+                """
                 noise word "all" is also a reserved parser word (a pronoun or a \
                 multi-object keyword); stripping it would make that word untypeable.
                 """,

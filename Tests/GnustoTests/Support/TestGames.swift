@@ -961,9 +961,10 @@ extension Intent {
     #verb("shovel", ["north", .directObject])
 }
 
-/// Declares filler words that are the parser's own: a multi-object keyword, the
-/// conjunction, an exception word and a possessive. Each is stripped before any
-/// reading of the line, so each is fatal for the reason an item-word clash is.
+/// Declares filler words that are the parser's own: a pronoun, a multi-object
+/// keyword, the conjunction, an exception word and a possessive. Each is
+/// stripped before any reading of the line, so each is fatal for the reason an
+/// item-word clash is.
 struct ReservedNoiseWordGame: Game {
     let title = "ReservedNoise"
     let intro = ""
@@ -978,7 +979,7 @@ struct ReservedNoiseWordGame: Game {
         description("A gold coin.")
     }
 
-    var noiseWords: [String] { ["all", "and", "but", "his"] }
+    var noiseWords: [String] { ["it", "all", "and", "but", "his"] }
 
     var map: WorldMap {
         player.starts(in: hall)

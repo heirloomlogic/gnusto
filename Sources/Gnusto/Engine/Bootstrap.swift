@@ -703,7 +703,7 @@ enum Bootstrap {
             uniqueKeysWithValues: SyntaxRule.coreTable.map { ($0.key, $0.intent) })
         for verb in customVerbs {
             // A direction is not a row in any verb table, so the override check
-            // above cannot see this collision. `StandardParser.parse` answers a
+            // further down this loop cannot see this collision. `StandardParser.parse` answers a
             // line holding one token that names a direction with `.go` before
             // it assembles any candidate rows at all, so a pattern that is
             // exactly one direction word is unreachable. Only that shape:
@@ -814,10 +814,12 @@ enum Bootstrap {
         //
         // The words the parser claims for itself are checked the same way, and
         // for the same reason: stripping happens ahead of *every* reading of a
-        // line, so a game declaring `all`, `and`, `but` or `his` as filler
-        // silently loses multi-object commands, conjunction lists, exceptions
-        // and pronouns. Reserved words are tested before possessives, so `her`
-        // — which is both — reports as the pronoun, the costlier of the two.
+        // line, so a game declaring `it`, `all`, `and`, `but` or `his` as
+        // filler silently loses, in that order, pronouns, multi-object
+        // commands, conjunction lists, exceptions, and the possessive the
+        // parser drops in front of a noun. Reserved words are tested before
+        // possessives, so `her` — which is in both sets — reports as the
+        // pronoun, the costlier of the two.
         let customNoise = (modules.flatMap(\.noiseWords) + game.noiseWords)
             .flatMap(Vocabulary.words(in:))
         for word in customNoise + Vocabulary.defaultNoiseWords.sorted() {
