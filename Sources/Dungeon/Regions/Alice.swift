@@ -846,12 +846,17 @@ struct DungeonAlice: GameContent {
         // The one order that matters, and the whole reason the robot exists.
         // The cage the robot can see is the one standing in the closet, not the
         // one you are standing inside.
+        // The Cage has no way back in, so what lies on its floor goes to the
+        // closet with the player; the source strands it. See `FIDELITY.md`. (#620)
         steelCage.before(.take, .raise, .push, .pull, .open) {
             guard command.actor == robot, robot.isIn(dingyCloset) else {
                 try refuse(Prose.robotIsNotHere)
             }
             stopFuse("cageGas")
             steelCage.replace(with: mangledCage)
+            for item in cage.contents where item.isTakable {
+                item.move(to: dingyCloset)
+            }
             say(Prose.robotLiftsTheCage)
             arrive(at: dingyCloset)
             try handled()

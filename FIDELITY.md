@@ -2352,6 +2352,7 @@ structure; neither says it in the source's characters.
   not in the source. `Prose.robotSpringsTheCage` is the sentence that says so,
   and it says the sphere is *set down*, because a sphere in an actor's hand is
   a sphere outside the player's scope — see the note on that constant. (#286)
+- **What the player drops inside the Cage is on the closet floor after the robot lifts it.** `ROBOT-ACTOR` (`act3.199:268`) answers `robot, lift the cage` by moving the player and the cage object to `CAGER`. Nothing else in `CAGED` moves, `CAGED` has no exit, and `SPHERE-FUNCTION` only puts anyone in it while `CAGE-SOLVE!-FLAG` is false, which that same order sets. So in the source a sphere set down inside the cage is out of reach for the rest of the game, and so are the six points it is worth in the trophy case. The lift rule in `Sources/Dungeon/Regions/Alice.swift` moves every takable item on the Cage's floor to the Dingy Closet before it moves the player, because the cage was standing on the closet floor. (#620)
 
 **Also landed here.** The Round Room's description stopped being permanent:
 until this milestone nothing could stop the machinery under its floor, and a
