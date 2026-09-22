@@ -149,7 +149,6 @@ enum DefaultActions {
         }
         if item.isWorn {
             frame.say(frame.definition.text.firstTakingOff(item.definiteNoun))
-            frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             // Dropped while boarded in a cargo vehicle, things land in the
@@ -226,7 +225,6 @@ enum DefaultActions {
         }
         if item.isWorn {
             frame.say(frame.definition.text.firstTakingOff(item.definiteNoun))
-            frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.place(id, .on(surfaceID))
@@ -270,7 +268,6 @@ enum DefaultActions {
         }
         if item.isWorn {
             frame.say(frame.definition.text.firstTakingOff(item.definiteNoun))
-            frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.place(id, .inside(containerID))

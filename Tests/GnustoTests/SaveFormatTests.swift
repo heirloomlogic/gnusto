@@ -672,6 +672,28 @@ struct SaveFormatTests {
         }
     }
 
+    @Test("a save that marks an unheld item worn restores it unworn")
+    func aSaveThatMarksAnUnheldItemWornRestoresItUnworn() throws {
+        let path = Self.temporarySavePath("stray-worn")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let (definition, pristineState) = try Bootstrap.buildCore(WardrobeGame())
+        let hat = EntityID("hat")
+        #expect(pristineState.wornItems == [hat])
+
+        // `place` takes the worn mark off, so the stray mark goes back on after.
+        var savedState = pristineState
+        savedState.place(hat, .room(EntityID("hall")))
+        savedState.wornItems.insert(hat)
+        try SaveFile.write(
+            savedState, title: WardrobeGame().title, to: URL(fileURLWithPath: path))
+
+        let restored = try SaveFile.read(
+            from: URL(fileURLWithPath: path), matching: definition,
+            pristineState: pristineState)
+        #expect(restored.placements[hat] == .room(EntityID("hall")))
+        #expect(restored.wornItems.isEmpty)
+    }
+
     @Test("reconciling a save with the same definition preserves its schedule and placements")
     func reconcilingASaveWithTheSameDefinitionPreservesItsScheduleAndPlacements() throws {
         let path = Self.temporarySavePath("same-definition")

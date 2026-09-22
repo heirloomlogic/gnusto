@@ -316,17 +316,35 @@ extension WorldState {
     /// Invalidating the cache here, and nowhere else, is what lets every reader
     /// trust `containment()`.
     ///
+    /// `wornItems` marks what the player is wearing, so a placement anywhere
+    /// but the player's hands takes the mark off. Clearing it here rather than
+    /// in each mover is what reaches a rule's `move`, `scatterInventory` and a
+    /// thief's lift alike (issue #604).
+    ///
     /// - Parameters:
     ///   - id: the item to move.
     ///   - placement: where it now is.
     mutating func place(_ id: EntityID, _ placement: Placement) {
         placements[id] = placement
         containmentCache = nil
+        if placement != .heldBy(.player) {
+            wornItems.remove(id)
+        }
         if id == playerVehicle, placement != .room(playerLocation) {
             disembark()
         } else {
             strandIfSeparated()
         }
+    }
+
+    /// Takes the worn mark off anything the player is not holding — what
+    /// `place` does for one item, done for all of them.
+    ///
+    /// Internal for the same reason as `strandIfSeparated()`: decoding a save
+    /// writes `wornItems` and `placements` without passing `place`, so
+    /// `SaveFile.read` settles the marks once on the way in.
+    mutating func unwearUnheld() {
+        wornItems = wornItems.filter { placements[$0] == .heldBy(.player) }
     }
 
     /// The player walks into `room`, and a boarded vehicle rides along — cargo

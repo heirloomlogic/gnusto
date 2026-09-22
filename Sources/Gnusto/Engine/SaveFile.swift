@@ -196,11 +196,14 @@ struct SaveFile: Codable {
         for (id, placement) in pristineState.placements where state.placements[id] == nil {
             state.place(id, placement)
         }
-        // Decoding writes every property at once, funnels included, so the one
-        // invariant the engine maintains by construction is settled here rather
-        // than taken on trust from the file: a boarding whose vehicle isn't in
-        // the player's room is dropped, exactly as a live stranding would.
+        // Decoding writes every property at once, funnels included, so the
+        // boarding and the worn marks, which `place` keeps in step with a
+        // placement, are settled here rather than taken on trust from the
+        // file: a boarding whose vehicle isn't in the player's room is dropped,
+        // exactly as a live stranding would, and so is a worn mark on anything
+        // the player is not holding.
         state.strandIfSeparated()
+        state.unwearUnheld()
         // Remember the save's schedule before filtering. If a timer kept its
         // name but changed kind, its old entry is discarded and must not then
         // masquerade as a newly declared autostart.
