@@ -5,8 +5,10 @@
 /// world.beforeEachTurn { lanternFuel -= 1 }
 /// ```
 ///
-/// World `before` rules run before any location or item rules; world `after`
-/// rules run at the very end of the turn, after location each-turn rules.
+/// World `before` rules run before any location or item `before` rules; world
+/// `after` rules run after the item and location `after` rules, and are skipped
+/// on a turn those are skipped on. World `afterEachTurn` rules run after the
+/// location's `afterEachTurn` rules.
 public struct World: Sendable {
     /// Runs at the start of every turn, anywhere.
     ///

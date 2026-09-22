@@ -1192,8 +1192,8 @@ public actor GameWorld {
                 try DefaultActions.run(command, frame: frame)
             }
 
-            // Stage 5: item and location `after` rules. A meta intent has no
-            // room of record, and runs none of them.
+            // Stage 5: item, location and world `after` rules. A meta intent
+            // has no room of record, and runs none of them.
             if let here {
                 if let direct = command.directObject {
                     try run(rules.itemAfter[direct.id] ?? [], matching: intent)
@@ -1207,6 +1207,7 @@ public actor GameWorld {
                 // way stage 5 is already unwound — the same contract `reply`
                 // has always had for the player.
                 try run(rules.locationAfter[here] ?? [], matching: intent)
+                try run(rules.worldAfter, matching: intent)
             }
         } catch let interrupt as TurnInterrupt {
             handle(interrupt, frame: frame)
@@ -1232,7 +1233,7 @@ public actor GameWorld {
             // runs one once the game has ended.
             let here = frame.with { $0.state.playerLocation }
             runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
-            runCatching(rules.worldAfter, matching: intent, frame: frame)
+            runCatching(rules.worldAfterEachTurn, matching: intent, frame: frame)
             tickTimers(frame: frame)
             // The sample the contributed status fields are read against, taken
             // here and nowhere else. Both halves of the position are

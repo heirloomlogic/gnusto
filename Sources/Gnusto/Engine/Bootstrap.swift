@@ -1305,7 +1305,8 @@ enum Bootstrap {
             case .world:
                 switch rule.phase {
                 case .before, .beforeEachTurn: table.worldBefore.append(rule)
-                case .after, .afterEachTurn: table.worldAfter.append(rule)
+                case .after: table.worldAfter.append(rule)
+                case .afterEachTurn: table.worldAfterEachTurn.append(rule)
                 case .onEnter, .describe, .presence, .reach:
                     ruleDiagnostics.append(
                         "a world-level \(rule.phase) rule is not supported.")

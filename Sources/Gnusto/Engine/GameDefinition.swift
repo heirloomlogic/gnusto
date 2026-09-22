@@ -234,6 +234,7 @@ struct RuleTable: Sendable {
     var locationOnEnter: [EntityID: [Rule]] = [:]
     var worldBefore: [Rule] = []
     var worldAfter: [Rule] = []
+    var worldAfterEachTurn: [Rule] = []
     /// Live description closures declared via `item.describe { … }`. Consulted
     /// by `TurnFrame.describedText(of:)` after a runtime override and before a
     /// static `description(…)` trait.

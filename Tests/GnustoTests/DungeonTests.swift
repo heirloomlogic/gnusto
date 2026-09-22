@@ -4292,6 +4292,27 @@ struct DungeonTests {
             ])
     }
 
+    /// Lifting a treasure puts him into play; a take of one that was refused
+    /// does not, because the rule that summons him is a `world.after(.take)`
+    /// and those run only when the take succeeded. (#606)
+    @Test func aRefusedTakeOfATreasureLeavesTheThiefOffstage() async throws {
+        let world = try cachedWorld(Dungeon(), seed: 18)
+        _ = await world.begin()
+        for line in Self.intoTheKitchen + Self.downTheTrapDoor + ["south", "south"] {
+            _ = await world.perform(line)
+        }
+        let thief = EntityID("DungeonThief.thief")
+        let lair = Placement.room(EntityID("DungeonMaze.treasureRoom"))
+
+        let refused = await world.perform("take painting from lamp")
+        #expect(refused.output.contains("You don't find the painting there."))
+        #expect(await world.state.placements[thief] != lair)
+
+        let taken = await world.perform("take painting")
+        #expect(taken.output.contains("Taken."))
+        #expect(await world.state.placements[thief] == lair)
+    }
+
     /// He fights to the death in his lair, and when he falls everything in the
     /// bag falls with him — named in the line, because a colon that promises a
     /// list should deliver one.

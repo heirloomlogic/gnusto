@@ -192,6 +192,94 @@ struct PipelineTests {
         #expect(!result.output.contains("*** You have died ***"))
         #expect(result.isFinished)
     }
+
+    /// A world `after` rule is skipped on a take that a `before` rule refused,
+    /// that the default action refused, or that a `before` rule answered with
+    /// `reply`, as item and location `after` rules are. The each-turn rules
+    /// still run on all three. (#606)
+    @Test func aWorldAfterRuleSkipsATakeThatDidNotSucceed() async throws {
+        let transcript = try await play(
+            WorldAfterProbeGame(), ["take statue", "take pillar", "take urn"])
+
+        for (command, answer) in [
+            ("take statue", "The statue will not budge."),
+            ("take pillar", "You can't take that."),
+            ("take urn", "You lift the urn and set it back."),
+        ] {
+            let turn = turnOutput(of: command, in: transcript)
+            #expect(turn.contains(answer), "\(command)")
+            #expect(!turn.contains("[WORLD-AFTER"), "\(command)")
+            #expect(!turn.contains("[LOCATION-AFTER]"), "\(command)")
+            expectInOrder(turn, ["[LOCATION-EACH]", "[WORLD-EACH]"])
+        }
+    }
+
+    /// A world `after` rule runs in stage 5, after the location's `after`
+    /// rules and before any each-turn rule. (#606)
+    @Test func aWorldAfterRuleRunsAfterTheLocationsAfterRules() async throws {
+        let transcript = try await play(WorldAfterProbeGame(), ["take coin"])
+
+        expectInOrder(
+            turnOutput(of: "take coin", in: transcript),
+            ["Taken.", "[LOCATION-AFTER]", "[WORLD-AFTER coin]", "[LOCATION-EACH]", "[WORLD-EACH]"])
+    }
+
+    /// On a multi-object take a world `after` rule runs once for each object
+    /// that was taken, and sees that object's command. (#606)
+    @Test func aWorldAfterRuleRunsForEachObjectTaken() async throws {
+        let transcript = try await play(WorldAfterProbeGame(), ["take coin and statue"])
+        let turn = turnOutput(of: "take coin and statue", in: transcript)
+
+        expectInOrder(turn, ["[WORLD-AFTER coin]", "The statue will not budge.", "[WORLD-EACH]"])
+        #expect(!turn.contains("[WORLD-AFTER statue]"))
+    }
+}
+
+/// The #606 fixture: a statue a `before` rule refuses, a scenery pillar the
+/// default action refuses, an urn a `before` rule answers with `reply`, and a
+/// coin that can be taken. Each kind of rule prints its own marker.
+private struct WorldAfterProbeGame: Game {
+    let title = "World After Probe"
+    let intro = "A hall."
+
+    let hall = Location {
+        name("Hall")
+        description("A marble hall.")
+    }
+
+    let statue = Item {
+        name("statue")
+    }
+
+    let pillar = Item {
+        name("pillar")
+        scenery
+    }
+
+    let urn = Item {
+        name("urn")
+    }
+
+    let coin = Item {
+        name("coin")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        statue.starts(in: hall)
+        pillar.starts(in: hall)
+        urn.starts(in: hall)
+        coin.starts(in: hall)
+    }
+
+    var rules: Rules {
+        statue.before(.take) { try refuse("The statue will not budge.") }
+        urn.before(.take) { try reply("You lift the urn and set it back.") }
+        world.after(.take) { say("[WORLD-AFTER \(command.directObject?.name ?? "none")]") }
+        hall.after(.take) { say("[LOCATION-AFTER]") }
+        hall.afterEachTurn { say("[LOCATION-EACH]") }
+        world.afterEachTurn { say("[WORLD-EACH]") }
+    }
 }
 
 /// Two world each-turn rules: the first kills the player, the second prints a
