@@ -1,3 +1,4 @@
+import GnustoTestSupport
 import Testing
 
 @testable import CloakOfDarkness
@@ -459,6 +460,69 @@ struct BootstrapTests {
             return bootstrapError.description.contains("noise word \"spell\"")
                 && bootstrapError.description.contains("untypeable")
         }
+    }
+
+    @Test func noiseWordCollidingWithAParserWordIsRejected() {
+        #expect {
+            try Bootstrap.build(ReservedNoiseWordGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.diagnostics == [
+                """
+                noise word "it" is also a reserved parser word (a pronoun or a \
+                multi-object keyword); stripping it would make that word untypeable.
+                """,
+                """
+                noise word "all" is also a reserved parser word (a pronoun or a \
+                multi-object keyword); stripping it would make that word untypeable.
+                """,
+                """
+                noise word "and" is also a word that joins two object phrases; \
+                stripping it would make that word untypeable.
+                """,
+                """
+                noise word "but" is also a word that excepts objects from a group; \
+                stripping it would make that word untypeable.
+                """,
+                """
+                noise word "his" is also a possessive the parser drops in front of \
+                a noun; stripping it would make that word untypeable.
+                """,
+            ]
+        }
+    }
+
+    @Test func customVerbSpelledAsABareDirectionWarns() async throws {
+        let (definition, _) = try Bootstrap.build(DirectionVerbGame())
+        #expect(
+            definition.warnings.contains {
+                $0.contains("custom verb \"north\" can never match")
+                    && $0.contains("reads a line holding nothing but \"north\" as the direction")
+            })
+        // The row that leads with the same word but takes an object is
+        // reachable — `north coin` is two tokens — so it draws no warning.
+        #expect(!definition.warnings.contains { $0.contains("\"north <object>\"") })
+        // And the warning is true of the transcript: bare `north` is answered
+        // as a walk, while the two-token line reaches the custom action.
+        let transcript = try await play(DirectionVerbGame(), ["north", "north coin"])
+        #expect(turnOutput(of: "north", in: transcript).contains("You can't go that way."))
+        #expect(!transcript.contains("Trudging."))
+        #expect(transcript.contains("Shovelling."))
+    }
+
+    @Test func alwaysListedOnAnActorWarnsExactlyOnce() throws {
+        let expected =
+            """
+            actor "troll" declares the item trait "alwaysListed"; an actor's listing \
+            line is never spent on a first touch, so there is nothing for the trait \
+            to keep.
+            """
+        let (listed, _) = try Bootstrap.build(AlwaysListedActorGame())
+        #expect(listed.warnings.filter { $0.contains("alwaysListed") } == [expected])
+        // With no listing line either, the item-side "nothing to keep" check
+        // stays out of the way rather than saying it a second time.
+        let (mute, _) = try Bootstrap.build(MuteAlwaysListedActorGame())
+        #expect(mute.warnings.filter { $0.contains("alwaysListed") } == [expected])
     }
 
     @Test func vocabularyIsAssembledFromDeclarations() throws {
