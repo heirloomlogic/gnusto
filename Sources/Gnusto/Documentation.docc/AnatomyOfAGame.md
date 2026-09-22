@@ -88,7 +88,7 @@ The niche can hold things and take item rules. For text that turns on the niche'
 - `rules` — all game logic, as a ``Rules`` value. Defaults to empty.
 - `verbs` — player-typeable verbs this game adds, as `[SyntaxRule]`. Defaults to empty. See <doc:AddingCustomVerbs>.
 - `content` — content bundles the game composes itself from, as ``GameContents``. Defaults to empty. See <doc:ContentBundles>.
-- `noiseWords` — filler words the parser drops from input before matching, beside the built-in articles, as `[String]`. A spell game adds `"spell"` so `cast the glow spell` parses as `cast glow`. Defaults to empty; a noise word that is also a verb, preposition or item word is a fatal diagnostic, since stripping it would make the word untypeable.
+- `noiseWords` — filler words the parser drops from input before matching, beside the built-in articles, as `[String]`. A spell game adds `"spell"` so `cast the glow spell` parses as `cast glow`. Defaults to empty; a noise word that is also a verb, preposition, direction, item word, or one of the words the parser claims for itself — the pronouns, the multi-object keywords, the conjunction, the exception words, the possessives — is a fatal diagnostic, since stripping it would make the word untypeable.
 
 The protocol extension also hands every game three ambient references usable as bare identifiers inside `map` and `rules` blocks:
 

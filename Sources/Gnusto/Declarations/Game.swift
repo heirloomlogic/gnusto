@@ -77,8 +77,10 @@ public protocol Game: Sendable {
     /// from input before any matching, alongside the built-in articles ("the",
     /// "a", …). A spell game might add "spell" so `cast the glow spell` parses
     /// as `cast glow`. Defaults to empty. A noise word that is also a verb,
-    /// preposition, or item word is a fatal bootstrap diagnostic, since
-    /// stripping it would make that word untypeable.
+    /// preposition, direction, item word, or one of the words the parser claims
+    /// for itself — the pronouns, the multi-object keywords, the conjunction,
+    /// the exception words, the possessives — is a fatal bootstrap diagnostic,
+    /// since stripping it would make that word untypeable.
     var noiseWords: [String] { get }
 
     /// Content bundles this game composes itself from: each carries its own

@@ -702,6 +702,21 @@ enum Bootstrap {
         let coreIntentsByShape = Dictionary(
             uniqueKeysWithValues: SyntaxRule.coreTable.map { ($0.key, $0.intent) })
         for verb in customVerbs {
+            // A direction is not a row in any verb table, so the override check
+            // above cannot see this collision. `StandardParser.parse` answers a
+            // line holding one token that names a direction with `.go` before
+            // it assembles any candidate rows at all, so a pattern that is
+            // exactly one direction word is unreachable. Only that shape:
+            // `["north", .directObject]` still matches `north sword`, because a
+            // two-token line never takes the shortcut.
+            if verb.elements.count == 1, let word = verb.literalWords.first,
+                Vocabulary.standardDirections[word] != nil
+            {
+                verbWarnings.append(
+                    "custom verb \"\(verb.patternDescription)\" can never match: the parser "
+                        + "reads a line holding nothing but \"\(word)\" as the direction, "
+                        + "before any verb row is considered.")
+            }
             guard let claimed = coreIntentsByShape[verb.key], claimed != verb.intent else { continue }
             verbWarnings.append(
                 "custom verb \"\(verb.patternDescription)\" overrides a "
@@ -796,6 +811,13 @@ enum Bootstrap {
         // built-in articles are checked alongside the game's own: a declaration
         // that lands on one of those is just as untypeable, and nothing was
         // looking.
+        //
+        // The words the parser claims for itself are checked the same way, and
+        // for the same reason: stripping happens ahead of *every* reading of a
+        // line, so a game declaring `all`, `and`, `but` or `his` as filler
+        // silently loses multi-object commands, conjunction lists, exceptions
+        // and pronouns. Reserved words are tested before possessives, so `her`
+        // — which is both — reports as the pronoun, the costlier of the two.
         let customNoise = (modules.flatMap(\.noiseWords) + game.noiseWords)
             .flatMap(Vocabulary.words(in:))
         for word in customNoise + Vocabulary.defaultNoiseWords.sorted() {
@@ -806,6 +828,14 @@ enum Bootstrap {
                     "a structural word in a verb pattern"
                 } else if vocabulary.directions.keys.contains(word) {
                     "a direction"
+                } else if Vocabulary.reservedWords.contains(word) {
+                    "a reserved parser word (a pronoun or a multi-object keyword)"
+                } else if Vocabulary.conjunctions.contains(word) {
+                    "a word that joins two object phrases"
+                } else if Vocabulary.exclusions.contains(word) {
+                    "a word that excepts objects from a group"
+                } else if Vocabulary.possessives.contains(word) {
+                    "a possessive the parser drops in front of a noun"
                 } else if vocabulary.itemLexicons.values.contains(where: {
                     $0.nouns.contains(word) || $0.adjectives.contains(word)
                 }) {
@@ -965,6 +995,18 @@ enum Bootstrap {
                         + "things via their inventory, and it will behave "
                         + "item-like if left in place.")
             }
+        }
+        // `alwaysListed` is inert on an actor rather than item-like, so it gets
+        // its own sentence instead of a row in `mechanical` above. The trait
+        // buys an item out of the touch gate on the listing channel, and
+        // `RoomDescriber.sayListing(of:stock:)` never puts an actor behind that
+        // gate: it counts a person as still news on every look. So the
+        // transcript reads the same with the trait and without it.
+        for (id, item) in sortedItems where item.isActor && item.isAlwaysListed {
+            traitWarnings.append(
+                "actor \"\(id)\" declares the item trait \"alwaysListed\"; an actor's "
+                    + "listing line is never spent on a first touch, so there is nothing "
+                    + "for the trait to keep.")
         }
 
         // Phase 3b — assemble the stage-4 default-action overrides. Bundle
@@ -1419,8 +1461,11 @@ enum Bootstrap {
         // listing paragraph printing past the first touch, so an item with no
         // listing paragraph of its own has nothing for it to keep, and the
         // author finds out from a transcript that reads the same either way.
+        // Actors are left out: the trait keeps nothing on one whether or not it
+        // has a listing line, and the actor-trait warning above says so — this
+        // one would be a second sentence about the same declaration.
         let mutelyAlwaysListed = items.compactMap { id, item in
-            item.isAlwaysListed && item.firstSight == nil
+            !item.isActor && item.isAlwaysListed && item.firstSight == nil
                 && table.itemPresence[id] == nil ? id : nil
         }
         for id in mutelyAlwaysListed.sorted() {

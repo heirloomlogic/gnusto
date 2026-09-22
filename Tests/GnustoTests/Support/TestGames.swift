@@ -954,3 +954,113 @@ struct HostContentPlacementConflictGame: Game {
         placementContent.coin.starts(in: hall)
     }
 }
+
+// Test-only verbs for the bootstrap's verb-shape diagnostics.
+extension Intent {
+    #verb("trudge", ["north"])
+    #verb("shovel", ["north", .directObject])
+}
+
+/// Declares filler words that are the parser's own: a multi-object keyword, the
+/// conjunction, an exception word and a possessive. Each is stripped before any
+/// reading of the line, so each is fatal for the reason an item-word clash is.
+struct ReservedNoiseWordGame: Game {
+    let title = "ReservedNoise"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let coin = Item {
+        name("gold coin")
+        description("A gold coin.")
+    }
+
+    var noiseWords: [String] { ["all", "and", "but", "his"] }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        coin.starts(in: hall)
+    }
+}
+
+/// A custom verb whose whole pattern is one direction word, beside one that
+/// merely leads with the same word. The parser answers a lone `north` with a
+/// walk before it looks at any row, so the first can never match and the second
+/// still takes `north coin`.
+struct DirectionVerbGame: Game {
+    let title = "DirectionVerb"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let coin = Item {
+        name("gold coin")
+        description("A gold coin.")
+    }
+
+    var verbs: [SyntaxRule] { [.trudge, .shovel] }
+
+    var actions: [IntentAction] {
+        action(.trudge) { say("Trudging.") }
+        action(.shovel, reach: .directObject) { say("Shovelling.") }
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        coin.starts(in: hall)
+    }
+}
+
+/// An actor declaring `alwaysListed`. The trait buys an item out of the listing
+/// channel's touch gate, and an actor was never behind that gate, so the flag
+/// keeps nothing and the bootstrap must say so — once, even though the actor
+/// has a listing line to point at.
+struct AlwaysListedActorGame: Game {
+    let title = "AlwaysListedActor"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let troll = Actor {
+        name("troll")
+        firstSight("A troll stands here.")
+        alwaysListed
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        troll.starts(in: hall)
+    }
+}
+
+/// The same trait on an actor with no listing line of its own. Only the
+/// actor-trait warning fires: the item-side "nothing to keep" check leaves
+/// actors alone, so one declaration earns one sentence.
+struct MuteAlwaysListedActorGame: Game {
+    let title = "MuteAlwaysListedActor"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let troll = Actor {
+        name("troll")
+        alwaysListed
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        troll.starts(in: hall)
+    }
+}

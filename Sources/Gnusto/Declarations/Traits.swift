@@ -544,7 +544,8 @@ public let scenery = ItemTrait(kind: .scenery)
 ///
 /// An actor needs none of this: an actor's listing line is ungated already,
 /// because people are not props and handling one does not wear off their
-/// entrance.
+/// entrance. Declaring it on one is therefore a bootstrap warning too — there
+/// is nothing for it to keep.
 public let alwaysListed = ItemTrait(kind: .alwaysListed)
 
 /// Other items can be put on this item.
