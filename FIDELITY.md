@@ -1784,8 +1784,7 @@ which is the checksum on reading the tables out of `dung.355` (#156).
   is the same in both.
 
 **Adapted rather than reproduced, line by line.** `PASS1` and `PASS5` are in the
-comparison's `identical` bucket and `INSTR` in its `minor` one, so those three
-rooms are the trilogy verbatim. `LOBBY` is bucketed `substantial`, but the check
+comparison's `identical` bucket, so both rooms are the trilogy verbatim. `INSTR` is in its `minor` one and is adapted anyway, for the reason the Stream's entry under the mechanics below gives. `LOBBY` is bucketed `substantial`, but the check
 that bucket asks for comes out clean — both rooms have the same three ways out —
 so its wording stands too. `CAVE3`, `CHAS1`, `DOCK`, `MAINT` and `STREA` are
 `substantial` **and** differ because the exits or the fixtures differ, so each
@@ -1806,6 +1805,7 @@ Mr. TAA) are 1981 text with no located grant, and the joke is the same joke.
   ladder's words are the trilogy's, which carries the same nine.
 - **The matchbook's five matches** are not modelled; it is a readable object.
   Lighting things is the coal mine's milestone.
+- **The Stream is reached from the drained reservoir bed, and its description is written for that.** In the source `INSTR` is a water room (`dung.355:2026`): the reservoir's `UP` exit and Stream View's `LAUNC` exit lead to it, and its `LAND` exit leads to Stream View. `GOTO` (`rooms.394:1904`) refuses a room without `RLANDBIT` to anyone not in a vehicle, and `INSTR` has no `RLANDBIT`, so the source's Stream is a place for the boat. This game has no mooring on the reservoir or at Stream View, so the boat cannot be launched onto the reservoir or the stream, and the Stream's one way in is up from the drained reservoir bed. The trilogy's line put the reader on the water with a narrow beach to land on, which a player who walked up from the bed is not. So the Stream is described as the narrow cleft the stream comes down through, with no beach and no landing. On foot, `land` there says you are not in anything that needs landing, and west and east are not exits. (#623)
 - **The wire coil at Stream View is inert**, exactly as the brick in the Attic is.
   The explosion they make together belongs to a later milestone.
 - **The screwdriver and the hand pump are inert** for the same reason: the machine
@@ -1836,8 +1836,7 @@ does not build the far side of:
 - the Loud Room's east door onto the Ancient Chasm;
 - Reservoir North's tunnel north to the Atlantis Room;
 - Stream View's path north to the Glacier Room;
-- the Dam Base's launch onto the Frigid River, and the `launch` and `cross` exits
-  the reservoir and the stream have for a boat that does not exist yet;
+- the Dam Base's launch onto the Frigid River, since built with the boat, and the `launch` and `cross` exits the reservoir and the stream have, which are still not built — the Stream's entry under the mechanics above says what that means for the Stream;
 - Deep Canyon's northwest passage and the Deep Ravine's staircase are both gated in
   the source on carrying the gold coffin, which starts in the Egyptian Room. Until
   that room is built the gate is vacuously open, so the plain exit is declared.
@@ -2738,6 +2737,7 @@ entry below.
   have performed — the engine issue it was worth turned out to be #201, and
   `enter(_:)` is the answer. `climb` calls it, so both paths now describe the
   Small Square Room as an entry.
+- **`enter door` and `go through door` take the steel door once it is open, from either side.** In the source they do not. `THROUGH` (`act3.199:425`) finds no action on `CPDOR` or `CPDR2`, and neither is a vehicle, so it answers that you hit your head against the steel door, open or shut. Here both faces are a way through by name. While the door is shut they refuse in the words the exits use, and coming in through it from the Side Room puts you at the door square, as walking east does. (#623)
 - **The gold card is worth 25 and no room here is worth anything.** `GCARD` is
   `OFVAL 10 OTVAL 15`, declared inside a `<PUT <OBJECT …> ,OROOM <GET-ROOM
   "CP">>` wrapper at `dung.355:6324` rather than at top level. `CP`, `CPANT` and
@@ -2746,6 +2746,7 @@ entry below.
 **Mechanics simplified or deferred.**
 
 - **Object containment is room-granular, and the source's is square-granular.** `CPOBJS` is a 64-slot vector swapped into the room's contents on every step (`CPGOTO`, `act3.199:809`), so anything dropped stays in the square it was dropped in. A push changes `CPUVEC` and leaves `CPOBJS` alone (`CPWALL-OBJECT`, `act3.199:783`), so a wall pushed into a square covers what lies there until the wall moves off it, and the card starts that way, under the block at cell 37 (`dung.355:3116`). Gnusto has one contents list per room, so the port keeps the card's entry of that vector and no other: the grid records the square the card lies in (#619). The card is in the room only while the player stands in that square, and a card under a wall is in the room from no square, as in the source. The port departs from the source where the card lies on open floor in another square. The source shows nothing there. The port lists a stand-in item that says the card lies in another square, and that refuses `take card` with *"the card is squares away from you"* (#150). The consequence not modelled: **any other item dropped inside the puzzle can be picked up from any square**, where the source would make you walk back for it.
+- **The slit and the steel door are within reach from the door square and no other.** `CPOBJS` puts both in cell 52's slot (`dung.355:3118`), so in the source neither is in the room from any other square. Here both are in the room from every square, and each carries a reach rule that refuses a touch from any other square in the slit's words. `examine` needs no reach, so either can be examined from across the room. The door's rule is new with #623: before it, `knock on door` was answered from any square.
 - **`ODESCO` on the gold card is dead text and is not reproduced.** *"Nestled
   inside the niche is an engraved gold card"* prints only for an object inside a
   container, and the card is never in one. There is **no niche** in the mainframe

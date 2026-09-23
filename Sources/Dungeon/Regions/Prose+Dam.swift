@@ -530,12 +530,14 @@ extension Prose {
         leaves north, away from the water, and east along it.
         """
 
-    /// Verbatim. `INSTR` is in the comparison's `minor` bucket and the room is
-    /// unchanged between the two.
+    /// Adapted. `INSTR` is in the comparison's `minor` bucket, but the
+    /// trilogy line puts the reader on the water with a beach to land on, and
+    /// here the room's one way in is up from the drained reservoir bed. So it
+    /// names the cleft the full reservoir's description has the stream enter
+    /// by, and offers no landing. (#623)
     static let stream = """
-        You are on the gently flowing stream. The upstream route is too narrow
-        to navigate, and the downstream route is invisible due to twisting
-        walls. There is a narrow beach to land on.
+        You are in a narrow cleft in the rocks, where a gently flowing stream
+        comes down to the reservoir. The upstream route is too narrow to follow.
         """
 
     static let streamWater = """
@@ -544,8 +546,9 @@ extension Prose {
         """
 
     static let streamChannel = """
-        The walls twist away downstream and there is a strip of beach on one
-        side, wide enough to stand a boat on if you had one.
+        Wet rock on either side, close enough to touch both at once, and the
+        stream running down between them. Upstream the walls close in to a
+        crack.
         """
 
     /// Written fresh, and it takes `path` off ``streamWater``. Stream View's

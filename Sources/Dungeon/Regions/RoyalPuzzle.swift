@@ -450,21 +450,14 @@ struct DungeonRoyalPuzzle: GameContent {
         container
     }
 
-    /// `CPDOR`, the face of the door inside the puzzle.
-    let steelDoor = Item.scenery(
-        "steel door",
-        synonyms: "door",
-        description: Prose.puzzleSteelDoor
-    ) {
+    /// `CPDOR`, the face of the door inside the puzzle. No static text: the
+    /// slit opens it, and both faces say so. (#623)
+    let steelDoor = Item.scenery("steel door", synonyms: "door") {
         door
     }
 
     /// `CPDR2`, the same door from the Side Room, where it has a handle.
-    let sideDoor = Item.scenery(
-        "steel door",
-        synonyms: "door",
-        description: Prose.puzzleSideRoomDoor
-    ) {
+    let sideDoor = Item.scenery("steel door", synonyms: "door", "handle") {
         door
     }
 
@@ -613,10 +606,11 @@ extension DungeonRoyalPuzzle {
 
         // Which square you land in depends on which way you came, exactly as
         // the source's `GO-IN` hook does it: down the hole puts you under the
-        // opening, and the steel door puts you at the door square.
+        // opening, and the steel door puts you at the door square — walked
+        // through as `east` or by name, as `enter door`.
         puzzle.onEnter {
             var state = grid
-            if command.direction == .east {
+            if command.direction == .east || command.directObject == sideDoor {
                 state.playerSquare = RoyalPuzzleGrid.doorSquare
             } else {
                 state.playerSquare = RoyalPuzzleGrid.entrySquare
@@ -761,7 +755,7 @@ extension DungeonRoyalPuzzle {
         }
     }
 
-    /// The card, the slit, and the ladder the player can put a hand on.
+    /// The card, the slit, and the steel door the slit opens.
     @RuleBuilder fileprivate var cardRules: Rules {
         // The stand-in is in the room only while the card is in another
         // square, so it is never within reach.
@@ -787,8 +781,12 @@ extension DungeonRoyalPuzzle {
             grid = state
         }
 
-        slit.reach(otherwise: Prose.puzzleSlitOutOfReach) {
-            grid.playerSquare == RoyalPuzzleGrid.doorSquare
+        // The slit and the door are the west wall of one square, and the
+        // slit's refusal already names both. The door's half is #623's.
+        for fitting in [slit, steelDoor] {
+            fitting.reach(otherwise: Prose.puzzleSlitOutOfReach) {
+                grid.playerSquare == RoyalPuzzleGrid.doorSquare
+            }
         }
 
         // The slit keeps whatever it is given — the source removes the object
@@ -806,6 +804,24 @@ extension DungeonRoyalPuzzle {
             goldCard.vanish()
             $doorOpen.trips()
             try reply(Prose.puzzleCardConfiscated)
+        }
+
+        // The steel door's two faces. Both exits through it are conditional
+        // ones reading `doorOpen`, and a conditional exit names no door, so the
+        // stock `enter` found no way through a door the slit had opened and
+        // answered by hitting the player's head against it. (#623)
+        steelDoor.describe { Prose.puzzleSteelDoor(open: doorOpen) }
+        sideDoor.describe { Prose.puzzleSideRoomDoor(open: doorOpen) }
+
+        // `enter door` and `go through door` are the walk the exit is: the
+        // same refusal while the door is shut, the same arrival once it is
+        // open.
+        for (face, beyond) in [(steelDoor, sideRoom), (sideDoor, puzzle)] {
+            face.before(.board) {
+                try require(doorOpen, else: Prose.puzzleSteelDoorBars)
+                try enter(beyond)
+                try handled()
+            }
         }
     }
 

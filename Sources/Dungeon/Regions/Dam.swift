@@ -413,9 +413,16 @@ struct DungeonDam: GameContent {
         "bank", adjectives: "wet", "stone", synonyms: "bank", "banks", "path", "shore",
         description: Prose.streamViewBank)
 
+    /// The Stream's cleft, and the water in it. It was a beach while the room
+    /// offered one to land on. (#623)
     let streamChannel = Item.scenery(
-        "beach", adjectives: "narrow", synonyms: "shore", "stream", "water", "walls", "wall",
+        "cleft", adjectives: "narrow", synonyms: "rocks", "rock", "stream", "water", "walls", "wall",
         description: Prose.streamChannel)
+
+    /// The reservoir the Stream comes down to, seen from above it.
+    let reservoirFromStream = Item.scenery(
+        "reservoir", adjectives: "large", synonyms: "lake", "mud",
+        description: Prose.reservoirFromShore)
 
     /// Described by a rule: the bolt this room's own control panel carries is
     /// what decides whether there is any water out there to look at.
@@ -491,9 +498,9 @@ struct DungeonDam: GameContent {
         // Stream View. North is the Glacier Room, a later milestone.
         streamView.east(reservoirSouth)
 
-        // The stream. Landing on the beach is the boat's disembark and waits
-        // for the river milestone; on foot the shore is reached from Reservoir
-        // South's west.
+        // The stream. Its one way in is up from the drained reservoir bed, and
+        // no mooring joins it to Stream View, so it has no `land` or `launch`
+        // edge. See `FIDELITY.md`. (#623)
         stream.down(reservoir)
         stream.up(blocked: Prose.streamTooNarrow)
 
@@ -533,6 +540,7 @@ struct DungeonDam: GameContent {
         streamWater.starts(in: streamView)
         streamViewBank.starts(in: streamView)
         streamChannel.starts(in: stream)
+        reservoirFromStream.starts(in: stream)
         damView.starts(in: damRoom)
         damFromBelow.starts(in: damBase)
         privateDoorways.starts(in: damLobby)
@@ -557,7 +565,7 @@ struct DungeonDam: GameContent {
         // is emptied, because a reservoir is not a bottle. (#233)
         for pool in [
             damView, damFromBelow, reservoirWater, reservoirFromSouth,
-            reservoirFromNorth, streamWater, streamChannel,
+            reservoirFromNorth, reservoirFromStream, streamWater, streamChannel,
         ] {
             pool.before(.drink) { try reply(Prose.drinkWater) }
         }
