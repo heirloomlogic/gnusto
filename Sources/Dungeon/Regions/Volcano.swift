@@ -835,7 +835,10 @@ extension DungeonVolcano {
         clothBag.describe { bagInflated ? Prose.clothBagInflated : Prose.clothBagSlack }
 
         for part in [clothBag, receptacle] {
-            part.before(.take, .pull) { try reply(Prose.balloonPartIsFixed(part.name)) }
+            part.before(.take, .pull) {
+                guard command.directObject == part else { return }
+                try reply(Prose.balloonPartIsFixed(part.name))
+            }
         }
 
         // The wire is the one part with a verb of its own, so it is the one

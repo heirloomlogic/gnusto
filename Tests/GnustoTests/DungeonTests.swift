@@ -6155,6 +6155,10 @@ struct DungeonTests {
             route: toTheVolcano + ["put brick in basket"], takeFrom: "take brick from basket",
             takeHolder: "take basket", refusal: nil, seed: 18),
         Holder(
+            route: toTheVolcano + ["board basket", "put newspaper in receptacle"],
+            takeFrom: "take newspaper from receptacle", takeHolder: "take receptacle",
+            refusal: "integral part of the basket", seed: 18),
+        Holder(
             route: toTheWell + ["put bottle in bucket"], takeFrom: "take bottle from bucket",
             takeHolder: "take bucket", refusal: nil, seed: 41),
         Holder(
