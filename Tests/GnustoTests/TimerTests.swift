@@ -113,24 +113,26 @@ struct TimerTests {
         // (which sorts before it), both `after: 2`, on the same tick. Neither
         // restarted fuse is counted down again on that tick, so both fire at
         // the end of the third turn.
-        let transcript = try await play(RestartTickGame(), ["wait", "wait", "wait"])
-        let turns = transcript.components(separatedBy: "> wait")
-        #expect(turns[1].contains("A restarts b."))
-        #expect(turns[1].contains("C restarts a2 and the pulse."))
-        #expect(!turns[2].contains("B fires."))
-        #expect(!turns[2].contains("A2 fires."))
-        #expect(turns[3].contains("B fires."))
-        #expect(turns[3].contains("A2 fires."))
+        let transcript = try await play(RestartTickGame(), ["wait", "look", "wait"])
+        let first = turnOutput(of: "wait", in: transcript)
+        #expect(first.contains("A restarts b."))
+        #expect(first.contains("C restarts a2 and the pulse."))
+        let second = turnOutput(of: "look", in: transcript)
+        #expect(!second.contains("B fires."))
+        #expect(!second.contains("A2 fires."))
+        let third = turnOutput(ofLast: "wait", in: transcript)
+        #expect(third.contains("B fires."))
+        #expect(third.contains("A2 fires."))
     }
 
     @Test func aDaemonRestartedInsideATickWaitsForTheNextTick() async throws {
         // `c` stops and restarts the running `pulse` daemon. A timer a body
         // starts first runs on the next tick, so the pulse skips this one.
-        let transcript = try await play(RestartTickGame(), ["wait", "wait"])
-        let turns = transcript.components(separatedBy: "> wait")
-        #expect(turns[1].contains("C restarts a2 and the pulse."))
-        #expect(!turns[1].contains("Pulse."))
-        #expect(turns[2].contains("Pulse."))
+        let transcript = try await play(RestartTickGame(), ["wait", "look"])
+        let first = turnOutput(of: "wait", in: transcript)
+        #expect(first.contains("C restarts a2 and the pulse."))
+        #expect(!first.contains("Pulse."))
+        #expect(turnOutput(of: "look", in: transcript).contains("Pulse."))
     }
 
     // MARK: - Daemons

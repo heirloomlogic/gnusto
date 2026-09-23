@@ -87,11 +87,9 @@ public func daemon(
 // MARK: - Rule-body helpers
 
 /// Starts (or restarts, resetting the count of) the named fuse. `turns`
-/// overrides the declared count for this run. Called earlier in the turn, the
-/// fuse first counts down at the end of that turn; called while the timer
-/// tick runs, at the end of the next turn (see ``TimedEvent``). Naming an
-/// undeclared timer, a daemon, or an override below one turn is a programmer
-/// error and traps.
+/// overrides the declared count for this run. ``TimedEvent`` says which turn
+/// it first counts down on. Naming an undeclared timer, a daemon, or an
+/// override below one turn is a programmer error and traps.
 ///
 /// - Parameters:
 ///   - name: the fuse to start.
@@ -104,7 +102,7 @@ public func startFuse(_ name: String, after turns: Int? = nil) {
     let count = turns ?? declared
     frame.with { scratch in
         scratch.state.activeFuses[key] = count
-        scratch.startedDuringTick?.insert(key)
+        scratch.startedDuringTick.insert(key)
     }
 }
 
@@ -126,17 +124,17 @@ public func fuseRemaining(_ name: String) -> Int? {
     return frame.with { $0.state.activeFuses[key] }
 }
 
-/// Starts the named daemon; it first runs at the end of the current turn when
-/// called earlier in the turn, or at the end of the next turn when called
-/// while the timer tick runs (see ``TimedEvent``). A no-op if it is already
-/// running.
+/// Starts the named daemon. ``TimedEvent`` says which turn it first runs on.
+/// A no-op if it is already running.
 ///
 /// - Parameter name: the daemon to start.
 public func startDaemon(_ name: String) {
     let (frame, key) = declaredDaemon(name, in: "startDaemon", else: "startFuse(_:after:)")
     frame.with { scratch in
+        // Only a daemon that was not running is a start. Recording a call on
+        // a running one would make the tick skip a daemon the call left alone.
         if scratch.state.activeDaemons.insert(key).inserted {
-            scratch.startedDuringTick?.insert(key)
+            scratch.startedDuringTick.insert(key)
         }
     }
 }

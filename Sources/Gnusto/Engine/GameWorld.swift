@@ -1332,12 +1332,11 @@ public actor GameWorld {
             scratch.startedDuringTick = []
             return (scratch.state.activeFuses.keys.sorted(), scratch.state.activeDaemons.sorted())
         }
-        defer { frame.with { $0.startedDuringTick = nil } }
         for name in fuses {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name] else { continue }
             let fires = frame.with { scratch -> Bool in
-                guard scratch.startedDuringTick?.contains(name) != true,
+                guard !scratch.startedDuringTick.contains(name),
                     let remaining = scratch.state.activeFuses[name]
                 else { return false }
                 if remaining > 1 {
@@ -1355,7 +1354,7 @@ public actor GameWorld {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name],
                 frame.with({
-                    $0.state.activeDaemons.contains(name) && $0.startedDuringTick?.contains(name) != true
+                    $0.state.activeDaemons.contains(name) && !$0.startedDuringTick.contains(name)
                 })
             else { continue }
             runCatching(event, named: name, frame: frame)
