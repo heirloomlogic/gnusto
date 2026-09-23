@@ -1,9 +1,11 @@
-/// Original Zork I prose for the Temple & Hades region (``ZorkTemple``): the
-/// Engravings Cave and the Dome Room's rope descent, the Torch Room, the Temple
-/// and its Altar, the Egyptian Room with the coffin, and the dark way down past
-/// a draughty cave to the Entrance to Hades and the Land of the Dead. These are
-/// the verbatim Infocom descriptions (see THIRD_PARTY_NOTICES at the repo
-/// root). See `Prose.swift` for the names-vs-prose ledger rule.
+/// Zork I prose for the Temple & Hades region (``ZorkTemple``): the Engravings
+/// Cave and the Dome Room's rope descent, the Torch Room, the Temple and its
+/// Altar, the Egyptian Room with the coffin, and the dark way down past a
+/// draughty cave to the Entrance to Hades and the Land of the Dead. Much of it
+/// is Infocom's text (see THIRD_PARTY_NOTICES at the repo root); some examine
+/// texts and messages are the port's own, among them the bell's, the coffin's,
+/// the skull's and the (#407) scenery lines (`FIDELITY.md`). See `Prose.swift`
+/// for the names-vs-prose ledger rule.
 extension Prose {
     // MARK: - Rooms
 
@@ -97,10 +99,11 @@ extension Prose {
         Surely thou shalt repent of thy cunning.
         """
 
-    static let candles = """
-        A pair of white candles, half burned down. Unlit, they are only so
-        much cold wax.
-        """
+    /// `CANDLES-FCN`'s `EXAMINE` branch (`1actions.zil:2399`), one line per
+    /// state. (#618)
+    static let candlesBurning = "The candles are burning."
+
+    static let candlesOut = "The candles are out."
 
     static let coffin = """
         A magnificent coffin of solid gold, worked all over with the likeness
@@ -116,6 +119,18 @@ extension Prose {
     static let burningMatch = "The match is burning."
 
     // MARK: - First sights
+
+    /// `TORCH`'s `FDESC`. (#618)
+    static let torchFirstSight = "Sitting on the pedestal is a flaming torch, made of ivory."
+
+    /// `BOOK`'s `FDESC`. (#618)
+    static let bookFirstSight = "On the altar is a large black book, open to page 569."
+
+    /// `CANDLES`' `FDESC`, and the stock sentence for candles put out before
+    /// anything touched them. (#618)
+    static let candlesFirstSight = "On the two ends of the altar are burning candles."
+
+    static let candlesListedOut = "There is a pair of candles here."
 
     static let coffinFirstSight = "The solid-gold coffin used for the burial of Ramses II is here."
 
@@ -189,6 +204,8 @@ extension Prose {
     static let candlesNeedFlame = "You have to light them with something that's burning, you know."
 
     static let candlesLit = "The candles are lit."
+
+    static let candlesAlreadyLit = "The candles are already lit."
 
     static let candlesLitForRitual = """
         The flames flicker wildly and appear to dance. The earth beneath

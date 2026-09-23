@@ -24,6 +24,7 @@ struct Zork1NounTests {
     @Test func kitchenItemsAcceptDocumentedZILVocabulary() async throws {
         let commands = [
             "south", "east", "open window", "west",
+            "open sack",
             "x lunch", "x food", "x sandwich", "x dinner",
             "x hot lunch", "x pepper sandwich", "x hot pepper dinner",
             "x garlic", "x clove", "x clove garlic",
@@ -158,7 +159,7 @@ struct Zork1NounTests {
     /// beaches), and drain the reservoir — plus the Gallery and Studio nouns.
     static let b2: [String] = [
         "east",  // Kitchen
-        "take garlic",
+        "open sack", "take garlic",
         "up",  // Attic
         "x stairway",
         "take rope", "down",

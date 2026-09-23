@@ -5,25 +5,14 @@ source material it's modeling, or from a "finished" implementation of its
 own mechanics — so a later pass has a checklist instead of a memory. Each
 entry below is grouped by the task that introduced it.
 
-**Two games are ledgered here, and they do not follow the same prose rule.**
-Everything from *Task 8* down to *The kitchen window* is Zork 1, which
-reproduces its source verbatim and says so in every section. Everything from
-*Dungeon* onward is an adaptation instead, and that section states its own rule
-before any region entry. Read it before writing a line of Dungeon prose; carrying
-Zork 1's across is the mistake it exists to prevent.
+**Two games are ledgered here, and they do not follow the same prose rule.** Everything from *Task 8* down to *The kitchen window* is Zork 1, whose rule is to reproduce its source verbatim, and its entries record departures from that rule. Everything from *Dungeon* onward is an adaptation instead, and that section states its own rule before any region entry. Read it before writing a line of Dungeon prose; carrying Zork 1's across is the mistake it exists to prevent.
 
 ## Task 8 — Zork 1 slice: White House (`Sources/Zork1/`)
 
 ### Prose
 
-- **Every room and item description is now the original Zork I text**,
-  reproduced from the `historicalsource/zork1` archive under the MIT license
-  (see `THIRD_PARTY_NOTICES` at the repo root for provenance). Every
-  description is a named constant in `Sources/Zork1/Prose.swift`, and the
-  verbatim-text swap was applied one constant at a time. Room and item
-  *names* ("West of House", "brass lantern", "jewel-encrusted egg") are the
-  iconic proper nouns and were always used as-is; the descriptive prose
-  around them now carries the original Zork I text too.
+- **Room and item descriptions were swapped for the original Zork I text**, from the `historicalsource/zork1` archive under the MIT license (see `THIRD_PARTY_NOTICES` at the repo root for provenance). Each description is a named constant on `Prose`, declared in `Sources/Zork1/Prose.swift` and its `Prose+*.swift` extensions, and the swap was applied one constant at a time. Room and item *names* ("West of House", "brass lantern", "jewel-encrusted egg") are the iconic proper nouns and were always used as-is.
+- **Some examine texts are the port's own.** Where an object has no `TEXT` and no `EXAMINE` branch of its own, the original answers `EXAMINE` with `V-EXAMINE`'s stock line or looks inside it (`gverbs.zil:623`). Some items here answer with a sentence written for the port instead: the brass bell, the crystal skull and the clove of garlic among them, and the scenery #407 added for the nouns the room descriptions name. Several entries below remove sentences of that kind.
 - **A listing line is not an examine line, and nine items had been given the
   same sentence on both channels.** The burned-out lantern, the rusty knife,
   the jade figurine, the huge diamond, the folded pile of plastic, the red
@@ -39,11 +28,16 @@ Zork 1's across is the mistake it exists to prevent.
   knife and the burned-out lantern in `Zork1MazeTests`, and so on. (#350; this
   entry previously named a `ListingLineChannelTests` suite that has never
   existed, which is how the seven in #514 went unnoticed.)
-- **Seven more of the same class, in the house, the Gallery and the Egyptian Room.** The brown sack, the glass bottle, the coil of rope, the nasty knife and the elvish sword each carry an `FDESC`, and the painting and the sceptre an `FDESC` and an `LDESC` both; every one of those seven sentences had been declared as the item's `description(…)`, so `x sack` answered a player holding it with *"On the table is an elongated brown sack, smelling of hot peppers."* and the Kitchen, the Living Room and the Attic listed their contents in the engine's stock words instead of the source's. None of the seven has a `TEXT` property, so all seven now declare `firstSight(…)` and no `description(…)`, and `EXAMINE` falls through to `V-EXAMINE`'s stock line as the original does. The standing guard this time is a **derived sweep** rather than a list of names, which is what #350's per-item guard could not do. It walked every item of the built game and failed on an examine text shaped like a listing line; its pattern missed the tube, the trunk and both canaries (below), and it is now `ExamineChannelTests`, over every shipped game. (#514)
+- **Seven more of the same class, in the house, the Gallery and the Egyptian Room.** The brown sack, the glass bottle, the coil of rope, the nasty knife and the elvish sword each carry an `FDESC`, and the painting and the sceptre an `FDESC` and an `LDESC` both; every one of those seven sentences had been declared as the item's `description(…)`, so `x sack` answered a player holding it with *"On the table is an elongated brown sack, smelling of hot peppers."* and the Kitchen, the Living Room and the Attic listed their contents in the engine's stock words instead of the source's. None of the seven has a `TEXT` property, so all seven now declare `firstSight(…)` and no `description(…)`, and `EXAMINE` answers with `V-EXAMINE`'s stock line. The original does not say that for the sack or the bottle: `V-EXAMINE` looks inside them instead, which the port does not do (see the container entry below, #618). The standing guard this time is a **derived sweep** rather than a list of names, which is what #350's per-item guard could not do. It walked every item of the built game and failed on an examine text shaped like a listing line; its pattern missed the tube, the trunk and both canaries (below), and it is now `ExamineChannelTests`, over every shipped game. (#514)
 - **The three table lines needed the tables under them.** *"On the table is an elongated brown sack…"*, *"A bottle is sitting on the table."* and *"On a table is a nasty-looking knife."* are the source's own sentences, and the port had the sack, the bottle and the knife lying on the floor: `KITCHEN-TABLE` was `surface` but held nothing, and `ATTIC-TABLE` did not exist, so in the Attic `x table` answered *"You can't see any such thing."* on the turn after the room said the knife was on one. The two objects are `NDESCBIT` in the source — no room description names either — so the attic table is a `scenery` `surface` like the kitchen's, and the three items start on them as `1dungeon.zil` places them. The attic table's examine text is written fresh: `ATTIC-TABLE` has no `TEXT`, so there is nothing to reproduce. (#514)
 - **`LUNCH`'s `LDESC` is withdrawn, the way Dungeon's was.** *"A hot pepper sandwich is here."* is the only sentence the source gives the sandwich, and the original prints an `LDESC` only for a thing standing directly in a room (`DESCRIBE-OBJECT` reads it at level 0 and nowhere else). The sandwich starts in the sack, and taking it out is the first touch, so as `firstSight(…)` the line could print only for an untouched sandwich still inside the sack — where the original lists it as *"A lunch"* instead. It is withdrawn rather than declared for that one wrong frame. A sandwich taken out and dropped stands directly in the room, where the original prints the line; the port lists it there as *"There is a lunch here."* Dungeon hit the identical case at #205 and answered it the same way; the paragraph there saying `Sources/Zork1/` never had the problem was written before #514 briefly gave the lunch a listing line. (#514)
 - **`PAINTING`'s and `SCEPTRE`'s `LDESC`s are withdrawn rather than reproduced, because no listing channel here prints one only where the original does.** Each carries an `FDESC` *and* an `LDESC`: the original prints the `FDESC` until the object is handled and the `LDESC` for every listing after that, the `LDESC` only while the object stands directly in a room (`DESCRIBE-OBJECT` reads it at level 0 alone). `firstSight(…)` is the first half only, and the second half is the engine's own *"There is a painting here."* `firstSight(when: \.isTouched, …)` with `alwaysListed` would print the `LDESC` after the first touch, and would print it one level down as well, for a painting inside the trophy case. So *"A painting by a neglected genius is here."* and *"An ornamented sceptre, tapering to a sharp point, is here."* are no longer declared anywhere. The sceptre's `FDESC` — *"A sceptre, possibly that of ancient Egypt itself, is in the coffin…"* — is new to the port, and it is the line for the slot it now fills: the sceptre as the opened coffin first shows it. (#514)
 - **The tube, the trunk and both canaries were the same class, and #514's sweep missed them.** `TUBE`'s `LDESC`, `TRUNK`'s `LDESC` and the `FDESC` of `CANARY` and of `BROKEN-CANARY` had each been declared as the item's `description(…)`, so `x tube` answered a player holding the tube in the Dam Lobby with *"There is an object which looks like a tube of toothpaste here."*, and `read tube` said the same. `TUBE` has a `TEXT`, which `V-EXAMINE` and `V-READ` both print, so both now answer with the label, *"---> Frobozz Magic Gunk Company <---"* above *"All-Purpose Gunk"*, written as a form because the source breaks the line and indents the second half. The tube's `LDESC` is its `firstSight(…)`, and `toothpaste` is a synonym because that line names it. The original prints that `LDESC` wherever the tube stands directly in a room, handled or not. `firstSight(…)` stops at the first touch, so a tube the player has put down is listed as *"There is a tube here."* Adding `alwaysListed` would keep the line after the touch, and would also print it one level down, which is the painting's problem above. `TRUNK-F` answers `EXAMINE` through `STUPID-CONTAINER`, so the trunk examines to *"There are lots of jewels in there."*, as the bag of coins already did; its `FDESC` stays the listing line, and its `LDESC` is withdrawn for the reason the painting's is. Neither canary has a `TEXT`, so the original answers `EXAMINE` on both with the stock line; the port keeps each paragraph on the examine channel with its opening clause repaired and the rest verbatim, as it already did for the egg. The ruined bird's `FDESC` is its `firstSight(…)`: it starts offstage, and the line prints wherever the forced egg stands in a room with the bird untouched inside it. The intact bird's `FDESC` is not declared as a listing line at all. It starts inside the egg on the nest, two levels below Up a Tree, and the bootstrap warns about a listing line placed there, although play brings it up a level once the egg is moved; every shipped game is tested to boot with no warnings. So wherever the thief's opened egg stands in a room, the canary in it gets the engine's stock sentence, as it did before. (#617)
+- **The mailbox said a leaflet was inside it after the leaflet was gone.** A rule on `mailbox.before(.open)` added *"A leaflet sits inside, waiting to be read."* to every opening, including the ones after the leaflet was taken. The sentence is not in the source: `MAILBOX-F` (`1actions.zil:2259`) answers `TAKE` and nothing else. The rule is gone, so `open mailbox` is `V-OPEN`'s own answer, *"Opening the small mailbox reveals a leaflet."* while the leaflet is inside and *"Opened."* once it is not. `MAILBOX` has no `NDESCBIT`, so the mailbox is no longer `scenery`: West of House lists *"There is a small mailbox here."*, and `take mailbox` answers with `MAILBOX-F`'s *"It is securely anchored."* Its examine text, *"A small mailbox, its flag long since rusted in place."*, was written for the port and is withdrawn. (#618)
+- **`EXAMINE` does not look inside a container.** `V-EXAMINE` (`gverbs.zil:623`) prints an object's `TEXT` if it has one, and otherwise sends an object with `CONTBIT` or `DOORBIT` to `V-LOOK-INSIDE`, which says the container is closed, says it is empty, or lists what it holds. The engine's `EXAMINE` has no such branch, so the mailbox, the brown sack and the glass bottle answer *"There's nothing special about the …"*, where the original says *"The small mailbox is closed."* and *"The brown sack is closed."* at the start of the game, and lists the water in the bottle. `look in` gives the engine's own answer to the same question. Not reproduced: a `describe { }` on each container could restate `V-LOOK-INSIDE`, but it would be a second contents list beside the engine's, in a different format. (#618)
+- **The sack starts closed.** `SANDWICH-BAG` has no `OPENBIT`, and the port had declared the sack `startsOpen`, so `open sack` answered *"It is already open."* It starts closed now, and opening it names the lunch and the garlic. (#618)
+- **The lantern, the torch, the book and the map are listed by their `FDESC`s.** Each had been listed in the engine's stock words, apart from the torch, whose listing line was *"An ivory torch, burning, is here."*, a sentence not in the source. The four lines are now *"A battery-powered brass lantern is on the trophy case."*, *"Sitting on the pedestal is a flaming torch, made of ivory."*, *"On the altar is a large black book, open to page 569."* and *"In the trophy case is an ancient parchment which appears to be a map."* The torch's and the book's lines name what they rest on, so the torch starts on the marble pedestal and the book on the altar, as `1dungeon.zil` places them, and the altar is a `surface` because `ALTAR` carries `SURFACEBIT`. `flaming` is an adjective of the torch and `parchment` a noun for the map, because the lines use those words. `LAMP` also has an `LDESC`, *"There is a brass lantern (battery-powered) here."*, which is not declared, for the painting's reason above. (#618)
+- **The candles start burning.** `CANDLES` carries `ONBIT`, and its `FDESC` is *"On the two ends of the altar are burning candles."* The port's candles started unlit and were listed in the engine's stock words. They start lit now, with that `FDESC` as their listing line while they are lit and untouched. Put out before anything touches them, they are listed as *"There is a pair of candles here."*, which is what the original prints once `CANDLES-FCN`'s `LAMP-OFF` branch has set `TOUCHBIT`. Their examine text is `CANDLES-FCN`'s `EXAMINE` branch (`1actions.zil:2399`), *"The candles are burning."* or *"The candles are out."*; the port's *"A pair of white candles, half burned down. Unlit, they are only so much cold wax."* is withdrawn. `CANDLES-FCN` enables their burn-down on the first command that names the untouched candles (`1actions.zil:2344`), and the port starts its candle fuses at that command if the candles are lit. Lighting them while they burn answers *"The candles are already lit."* The cave's draught and the bell rung at the gate put them out only when the player is carrying them, since candles left on the altar would otherwise be put out from another room; `CAVE2-ROOM` checks the same thing (`IN? ,CANDLES ,WINNER`). (#618)
 - **The troll keeps the pairing, because he is a person.** `TROLL-FCN`'s
   `<VERB? EXAMINE>` branch answers with `<GETP ,TROLL ,P?LDESC>` by the
   source's own choice, and an actor's listing line is standing state reprinted
@@ -117,8 +111,7 @@ Zork 1's across is the mistake it exists to prevent.
 
 ## Phase 7 — cellar region & the lit lantern (`Sources/Zork1/Cellar.swift`)
 
-- **All prose is now the original Zork I text**, same policy and same
-  one-constant-per-entity structure as Task 8 above.
+- **Prose is held to the Zork 1 rule at the top of this file**, with the same one-constant-per-entity structure as Task 8 above. The scenery examine texts #407 added to `Prose+Cellar.swift` are the port's own; see Task 8's *Prose* entries.
 - **The cellar region is the classic loop plus the Troll Room (Phase 8)**:
   Cellar (in `ZorkHouse`) → East of Chasm → Gallery (painting) → Studio →
   chimney up to the Kitchen, and now north from the Cellar into the Troll
@@ -190,10 +183,7 @@ Zork 1's across is the mistake it exists to prevent.
 
 ## Phase 8 — the Troll Room (`Sources/Zork1/Cellar.swift`)
 
-- **All prose is now the original Zork I text**, same policy as ever;
-  "troll" the name was always used as-is, and Infocom's sentences now carry
-  through too. The troll's strength (2) and the sword/knife as the weapons
-  that can reach him are the original's data.
+- **Prose is held to the Zork 1 rule at the top of this file**; "troll" the name was always used as-is. The troll's strength (2) and the sword/knife as the weapons that can reach him are the original's data.
 - **The passages beyond the troll are honest stubs.** East (toward the
   round-room side of the dungeon) and west (toward the maze) refuse with
   the troll's block while he lives, and with a collapsed-passages line
@@ -253,8 +243,8 @@ score ranks, and a longer lantern burn. No new rooms this task.
   (extensions on the same `enum Prose`). Pure relocation — the text was
   unchanged, and the one-constant-per-entity structure is the path the
   verbatim swap later flowed through cleanly.
-- **The custom verbs' responses are the original Zork I text**, same as
-  every other line. Infocom's famous joke replies (the hollow voice's
+- **The custom verbs' responses are the original Zork I text**, under the
+  same rule as every other line. Infocom's famous joke replies (the hollow voice's
   "Fool.", the wave-of-nausea, and so on) carry through; the verb
   *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the iconic ones
   and were always used as-is. That still holds for every verb Zork has original
@@ -391,10 +381,7 @@ directory-agnostic; this only organizes the many regions still to come).
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text**, same
-  policy and one-constant-per-entity structure as every prior task
-  (`Prose+RoundRoom.swift`). Room and treasure *names* ("Round Room", "Loud
-  Room", "platinum bar") are the iconic ones, used as-is.
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file**, one constant per entity in `Prose+RoundRoom.swift`, as in every prior task. The scenery examine texts #407 added there are the port's own; see Task 8's *Prose* entries. are the iconic ones, used as-is.
 
 ### Map topology
 
@@ -460,10 +447,7 @@ has been waiting on since Phase 10.4.
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text**, same
-  policy and one-constant-per-entity structure as every prior task
-  (`Prose+Dam.swift`). Room and item *names* ("Dam", "Maintenance Room", "trunk
-  of jewels", "hand-held air pump") are the iconic ones, used as-is.
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file**, one constant per entity in `Prose+Dam.swift`, as in every prior task. The scenery examine texts #407 added there are the port's own; see Task 8's *Prose* entries. are the iconic ones, used as-is.
 
 ### Map topology
 
@@ -554,10 +538,7 @@ candles → read book) that banishes the spirits guarding the crystal skull.
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text**, same
-  policy and one-constant-per-entity structure as every prior task
-  (`Prose+Temple.swift`). Room and item *names* ("Torch Room", "ivory torch",
-  "gold coffin", "crystal skull") are the iconic ones, used as-is.
+- **The region's prose is one constant per entity in `Prose+Temple.swift`**, the structure every prior task uses. Much of it is the source's text, and some of it is the port's own, among them the brass bell's, the gold coffin's and the crystal skull's examine texts, the examine texts of the scenery #407 added, and the line printed when praying at the altar carries the player to the forest, where `V-PRAY` (`gverbs.zil:1046`) prints nothing. Room and item *names* ("Torch Room", "ivory torch", "gold coffin", "crystal skull") are the iconic ones, used as-is.
 
 ### Map topology
 
@@ -589,10 +570,7 @@ candles → read book) that banishes the spirits guarding the crystal skull.
 
 ### Mechanics simplified or deferred
 
-- **`.openFlame` is minted here, read by no one yet.** The trait (a
-  `TraitKey<Bool>`, like `.waterSource`) marks the torch, the lit candles, and a
-  struck match as naked flames; the Gas Room (T8) will read it to tell a safe
-  light from one that ignites the air. Nothing in this task depends on it.
+- **`.openFlame` is minted here.** The trait (a `TraitKey<Bool>`, like `.waterSource`) marks the torch, the lit candles, and a struck match as naked flames; the Gas Room reads it (Phase 10.8) to tell a safe light from one that ignites the air. Nothing in this task depends on it.
 - **The ivory torch is a lit `lightSource` that refuses `.turnOff`** — the
   documented "no always-burning trait" idiom — rather than a bespoke
   ever-burning item.
@@ -610,11 +588,7 @@ candles → read book) that banishes the spirits guarding the crystal skull.
   book at stage 2 banishes the spirits and opens the way south. Letting the
   window lapse resets the sequence. This reproduces the original's timed ritual
   without modeling its exact per-object interrupt bookkeeping.
-- **The candles use a two-fuse burn economy** (dim warning, then out for good),
-  banked while unlit, versus the lantern's three fuses — the candles are a
-  shorter-lived light and don't warrant the extra last-gasp stage. The cave's
-  draught snuffs them (banking their fuel), which is why the ritual's candles must
-  be lit at the gate below the draught, not carried down alight.
+- **The candles use a two-fuse burn economy** (dim warning, then out for good), banked while unlit, versus the lantern's three fuses — the candles are a shorter-lived light and don't warrant the extra last-gasp stage. The cave's draught snuffs them when they are carried (banking their fuel), which is why the ritual's candles must be lit at the gate below the draught, not carried down alight.
 - **Matches are finite and the burning match is a real, short-lived item.**
   Striking a match (host-wired: the matchbook is a `ZorkDam` item, the burning
   match a `ZorkTemple` one) decrements a count of 5, moves the burning match into
@@ -654,13 +628,7 @@ graph.
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text**, same policy
-  and one-constant-per-entity structure as every prior task (`Prose+Mirror.swift`).
-  Room and item *names* ("Mirror Room", "Atlantis Room", "Slide Room", "crystal
-  trident") are the iconic ones, used as-is. The two Mirror Rooms share the name
-  "Mirror Room", and the Small Cave shares "Cave" with the temple's Tiny Cave —
-  duplicate room names are fine (the game's own "Forest" and "Cave" rooms do the
-  same).
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file**, one constant per entity in `Prose+Mirror.swift`, as in every prior task. The scenery examine texts #407 added there are the port's own; see Task 8's *Prose* entries. Room and item *names* ("Mirror Room", "Atlantis Room", "Slide Room", "crystal trident") are the iconic ones, used as-is. The two Mirror Rooms share the name "Mirror Room", and the Small Cave shares "Cave" with the temple's Tiny Cave — duplicate room names are fine (the game's own "Forest" and "Cave" rooms do the same).
 
 ### Map topology
 
@@ -722,11 +690,7 @@ third, the huge diamond, has to be made.
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text**, same policy
-  and one-constant-per-entity structure as every prior task (`Prose+CoalMine.swift`).
-  Room and item *names* ("Coal Mine", "Gas Room", "Machine Room", "huge diamond",
-  "jade figurine", "sapphire-encrusted bracelet") are the iconic ones, used as-is.
-  The four maze rooms all share the name "Coal Mine", as the original's do.
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file**, one constant per entity in `Prose+CoalMine.swift`, as in every prior task. The scenery examine texts #407 added there are the port's own; see Task 8's *Prose* entries. Room and item *names* ("Coal Mine", "Gas Room", "Machine Room", "huge diamond", "jade figurine", "sapphire-encrusted bracelet") are the iconic ones, used as-is. The four maze rooms all share the name "Coal Mine", as the original's do.
 
 ### Map topology
 
@@ -799,10 +763,7 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text.** Iconic *names*
-  (Frigid River, White Cliffs Beach, Sandy Cave, Aragain Falls, On the Rainbow, End of
-  Rainbow, magic boat, red buoy, pile of plastic) were always used as-is; the descriptive
-  bodies now carry the original Zork I text too.
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file.** Iconic *names* (Frigid River, White Cliffs Beach, Sandy Cave, Aragain Falls, On the Rainbow, End of Rainbow, magic boat, red buoy, pile of plastic) were always used as-is. The scenery examine texts #407 added to `Prose+River.swift` are the port's own; see Task 8's *Prose* entries.
 - **The tan label ships** *(closed by #203, which the claim above predated)*. `BOAT-LABEL`
   (`1dungeon.zil:941`) and the second line `IBOAT-FUNCTION` prints on a successful inflate
   (`1actions.zil:2820`) are both here. **The one departure is typographic:** the original's
@@ -886,11 +847,7 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
 
 ### Prose
 
-- **All room, item, and message prose is now the original Zork I text.** Iconic *names* (Maze,
-  Dead End, Grating Room, Cyclops Room, Treasure Room, Strange Passage, cyclops, skeleton
-  key, bag of coins, rusty knife) were always used as-is; the descriptive bodies now carry
-  the original Zork I text too. Every maze passage deliberately shares one name and
-  one description — the sameness is the puzzle.
+- **Room, item, and message prose is held to the Zork 1 rule at the top of this file.** Iconic *names* (Maze, Dead End, Grating Room, Cyclops Room, Treasure Room, Strange Passage, cyclops, skeleton key, bag of coins, rusty knife) were always used as-is. The scenery examine texts #407 added to `Prose+Maze.swift` are the port's own; see Task 8's *Prose* entries. Every maze passage deliberately shares one name and one description — the sameness is the puzzle.
 
 ### Map topology
 
@@ -963,9 +920,7 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
 
 ### Prose
 
-- **All new prose is now the original Zork I text.** Iconic *names* (thief, stiletto, silver
-  chalice, clockwork canary) were always used as-is; descriptions now carry the original
-  Zork I text too.
+- **New prose is held to the Zork 1 rule at the top of this file.** Iconic *names* (thief, stiletto, silver chalice, clockwork canary) were always used as-is.
 
 ### Mechanics — now modeled
 
@@ -1034,8 +989,7 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 
 ### Prose
 
-- **All new prose is now the original Zork I text.** Iconic *names* (clockwork canary, brass
-  bauble, songbird) were always used as-is; descriptions now carry the original Zork I text too.
+- **New prose is held to the Zork 1 rule at the top of this file.** Iconic *names* (clockwork canary, brass bauble, songbird) were always used as-is.
 
 ### Mechanics — now modeled
 
@@ -1093,9 +1047,7 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
 
 ### Prose
 
-- **All new prose is now the original Zork I text.** Iconic *names* (Stone Barrow, ancient map)
-  were always used as-is; the room description, the map, the "map appears" line, and the victory
-  epilogue now carry the original Zork I text too.
+- **New prose is held to the Zork 1 rule at the top of this file.** Iconic *names* (Stone Barrow, ancient map) were always used as-is. The Stone Barrow's description, the map's text, the "map appears" line and the victory epilogue are the source's. The description of the room inside the barrow is the port's own; the epilogue prints in its place.
 
 ### Mechanics — now modeled
 
@@ -1649,8 +1601,8 @@ The verbs and the precedence are the original's. `V-VERBOSE` and `V-BRIEF` in `g
 ### The prose rule, stated before any region entry
 
 **Dungeon is an adaptation, not a reproduction.** That is the sharpest difference
-from every section above. `Sources/Zork1/` reproduces the original Zork I text
-verbatim, one named constant at a time, under the MIT grant recorded in
+from every section above. `Sources/Zork1/`'s rule is to reproduce the original Zork I
+text verbatim, one named constant at a time, under the MIT grant recorded in
 `THIRD_PARTY_NOTICES`; that is what fidelity means there. Dungeon reproduces the
 trilogy only where the trilogy fits the mainframe world, and writes its own prose
 everywhere else. Swapping a trilogy line in unchecked is a defect here, however

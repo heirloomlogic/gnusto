@@ -24,7 +24,7 @@ struct Zork1MazeTests {
     /// the known way to Maze-5 and the skeleton's cache: west, west, up.
     static let toMaze5: [String] = [
         "south", "east", "open window", "west",
-        "take lunch", "take bottle", "west",
+        "open sack", "take lunch and bottle", "west",  // one turn for two keeps the troll's seed
         "take sword", "take lantern", "turn on lantern",
         "push rug", "open trap door", "down",
         "north",

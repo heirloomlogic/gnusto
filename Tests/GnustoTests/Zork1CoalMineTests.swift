@@ -22,8 +22,10 @@ struct Zork1CoalMineTests {
     /// rope (attic); down, kill the troll, into the Round Room.
     static let toRoundRoom: [String] = [
         "south", "east", "open window", "west",
-        "take garlic", "west",
-        "take sword", "take lantern", "turn on lantern",
+        // Opening the sack costs a turn, and taking the sword and the lantern
+        // together gives it back, so the troll's seed still lands.
+        "open sack", "take garlic", "west",
+        "take sword and lantern", "turn on lantern",
         "east", "up", "take rope", "down", "west",
         "push rug", "open trap door", "down",
         "north", "west",
