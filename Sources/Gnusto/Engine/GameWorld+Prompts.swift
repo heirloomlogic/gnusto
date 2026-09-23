@@ -159,7 +159,8 @@ extension GameWorld {
             }
             try SaveFile.write(
                 state, title: definition.title,
-                declaredTimerNames: definition.timers.keys.sorted(), to: url)
+                declaredTimerNames: definition.timers.keys.sorted(),
+                declaredLocations: definition.locations.keys.sorted(), to: url)
             return freeReply(definition.text.saved())
         } catch {
             return freeReply(definition.text.saveFailed())
@@ -169,7 +170,7 @@ extension GameWorld {
     /// Swaps a validated save's state in and shows the player where they are.
     private func performRestore(_ restored: WorldState) -> TurnResult {
         // Already reconciled with what this build declares — see
-        // `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:)`.
+        // `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:declaredLocations:)`.
         state = restored
         undoSnapshot = nil
         pendingClarification = nil

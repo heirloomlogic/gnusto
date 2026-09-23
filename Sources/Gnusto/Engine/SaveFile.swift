@@ -7,9 +7,11 @@ import Foundation
 /// globals by the property they were declared as — and the title-only
 /// fingerprint can't tell two builds of one game apart. So a restore re-binds
 /// what the current definition still declares, drops what it doesn't, and
-/// supplies the pristine placement or autostart schedule for declarations an
-/// older save predates. An author who adds an item or timer, or retires a fuse
-/// or `@Global`, must not thereby void every save their players are holding.
+/// supplies the pristine placement, autostart schedule, and lit, open, locked
+/// and worn state for declarations an older save predates (a room's light
+/// only when the save carries ``declaredLocations``). An author who adds an
+/// item, room or timer, or retires a fuse or `@Global`, must not thereby void
+/// every save their players are holding.
 /// The complementary rule is that a name the definition *does* declare, whose
 /// stored value a rule could not read back, refuses the whole file
 /// (`WorldState.isConsistent(with:)`) — dropping *that* would restore a world
@@ -65,15 +67,21 @@ struct SaveFile: Codable {
     /// Timer names declared by the build that wrote this save. Absent on
     /// legacy files; those fall back to the names present in their schedules.
     let declaredTimerNames: [String]?
+    /// Locations declared by the build that wrote this save. A room has no
+    /// placement to go missing, so this is how `reconcile` tells a room the
+    /// save predates from one it knew. Absent on legacy files; those keep the
+    /// saved `litRooms` as they are.
+    let declaredLocations: [EntityID]?
 
     init(
         format: Int, title: String, state: WorldState,
-        declaredTimerNames: [String]? = nil
+        declaredTimerNames: [String]? = nil, declaredLocations: [EntityID]? = nil
     ) {
         self.format = format
         self.title = title
         self.state = state
         self.declaredTimerNames = declaredTimerNames
+        self.declaredLocations = declaredLocations
     }
 
     /// Just the header, decodable without the state.
@@ -113,11 +121,12 @@ struct SaveFile: Codable {
     /// to owner-only (0600) after the write, since a save can carry a game's
     /// entire progress and the atomic replace creates a fresh inode each time.
     static func write(
-        _ state: WorldState, title: String, declaredTimerNames: [String]? = nil, to url: URL
+        _ state: WorldState, title: String, declaredTimerNames: [String]? = nil,
+        declaredLocations: [EntityID]? = nil, to url: URL
     ) throws {
         let file = SaveFile(
             format: currentFormat, title: title, state: state,
-            declaredTimerNames: declaredTimerNames)
+            declaredTimerNames: declaredTimerNames, declaredLocations: declaredLocations)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         try encoder.encode(file).write(to: url, options: .atomic)
@@ -164,7 +173,8 @@ struct SaveFile: Codable {
         guard file.state.isConsistent(with: definition) else { throw .inconsistent }
         let reconciled = reconcile(
             file.state, with: definition, pristineState: pristineState,
-            declaredTimerNames: file.declaredTimerNames)
+            declaredTimerNames: file.declaredTimerNames,
+            declaredLocations: file.declaredLocations)
         guard reconciled.isConsistent(with: definition) else { throw .inconsistent }
         return reconciled
     }
@@ -183,19 +193,40 @@ struct SaveFile: Codable {
     ///   - pristineState: the post-bootstrap state for this build.
     ///   - declaredTimerNames: the timer roster stored by the build that wrote
     ///     the save, or `nil` for a legacy file.
+    ///   - declaredLocations: the location roster stored by the build that
+    ///     wrote the save, or `nil` for a legacy file.
     /// - Returns: the state to install.
     private static func reconcile(
         _ state: WorldState, with definition: GameDefinition, pristineState: WorldState,
-        declaredTimerNames: [String]?
+        declaredTimerNames: [String]?, declaredLocations: [EntityID]?
     ) -> WorldState {
         var state = state
-        // A placement is present even when it explicitly says `.nowhere`, so a
-        // missing key is the exact signal that the save predates this item.
+        // Bootstrap gives every item a placement, even an explicit `.nowhere`,
+        // so a missing key is the signal that the save predates this item.
         // Take that item's placement from Bootstrap rather than trying to
         // reconstruct map semantics here.
+        var newItems: Set<EntityID> = []
         for (id, placement) in pristineState.placements where state.placements[id] == nil {
+            newItems.insert(id)
             state.place(id, placement)
         }
+        // A room has no placement, so only the saved roster can say which
+        // rooms are new. A legacy file has none and keeps its own room light.
+        let newRooms =
+            declaredLocations.map { Set(definition.locations.keys).subtracting($0) } ?? []
+        // The save's sets say nothing true of an entity it never knew, so
+        // those entities take their membership from the pristine state. A new
+        // worn item keeps its mark through `unwearUnheld()` below, because
+        // Bootstrap places a `startsWorn` item in the player's hands.
+        func adopt(_ set: WritableKeyPath<WorldState, Set<EntityID>>, for ids: Set<EntityID>) {
+            state[keyPath: set].subtract(ids)
+            state[keyPath: set].formUnion(pristineState[keyPath: set].intersection(ids))
+        }
+        adopt(\.litRooms, for: newRooms)
+        adopt(\.litItems, for: newItems)
+        adopt(\.openItems, for: newItems)
+        adopt(\.lockedItems, for: newItems)
+        adopt(\.wornItems, for: newItems)
         // Decoding writes every property at once, funnels included, so the
         // boarding and the worn marks, which `place` keeps in step with a
         // placement, are settled here rather than taken on trust from the
