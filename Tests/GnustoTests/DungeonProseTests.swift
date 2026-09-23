@@ -91,7 +91,7 @@ struct DungeonProseTests {
     /// drugged water at the end of it — the one way to have a cyclops who is
     /// both subdued and still standing in the room. Seed 18.
     private static let toTheSleepingCyclops =
-        intoTheKitchen + ["take bottle", "open sack", "take lunch"]
+        intoTheKitchen + ["take bottle", "open bottle", "open sack", "take lunch"]
         + downTheTrapDoor + ["east", "attack troll with sword"]
         + ["south", "south", "east", "up", "southwest", "east", "south", "northeast"]
         + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]

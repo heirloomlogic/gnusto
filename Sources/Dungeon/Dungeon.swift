@@ -1051,9 +1051,15 @@ struct Dungeon: Game, GameMain {
                 maze.cyclopsWrath = min(-1, -maze.cyclopsWrath)
                 maze.$cyclopsProvoked.trips()
                 try reply(Prose.cyclopsEatsLunch)
-            case house.water:
+            // The water and its bottle are one offer, and the bottle must be
+            // open. The line has him take the bottle, so it goes to the floor,
+            // where the trilogy's `CYCLOPS-FCN` leaves it. (#622)
+            case house.water, house.bottle:
+                try require(house.bottle.holds(house.water), else: Prose.cyclopsWontEatThat)
+                try require(house.bottle.isOpen, else: Prose.bottleNeedsToBeOpen)
                 try require(maze.cyclopsWrath < 0, else: Prose.cyclopsNotThirsty)
                 house.water.vanish()
+                house.bottle.move(to: maze.cyclopsRoom)
                 maze.cyclopsSubdued = true
                 try reply(Prose.cyclopsDrinksAndSleeps)
             case house.garlic:
