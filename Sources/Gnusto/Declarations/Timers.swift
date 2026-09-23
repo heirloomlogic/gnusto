@@ -17,11 +17,11 @@
 /// the world's `after`/each-turn rules): fuses first, then daemons, each
 /// group in name order. They tick on refused turns (world time passes) but
 /// not on parse errors, meta commands, or once the game has ended. A timer
-/// started by a rule ticks at the end of that same turn — so a
+/// started earlier in the turn ticks at the end of that same turn — so a
 /// `fuse(after: 1)` started by a rule fires as that very turn ends. A timer
-/// started from *inside a fuse or daemon body* is a turn behind that: the
-/// tick reads both schedules once before it runs any body, so the new timer
-/// first ticks at the end of the next turn.
+/// started or restarted *while the tick runs* — by a fuse or daemon body, or
+/// by anything a body calls — is a turn behind that: the tick skips it, so it
+/// first ticks at the end of the next turn, wherever its name sorts.
 public struct TimedEvent: Sendable {
     enum Kind: Sendable {
         case fuse(turns: Int)
@@ -87,8 +87,9 @@ public func daemon(
 // MARK: - Rule-body helpers
 
 /// Starts (or restarts, resetting the count of) the named fuse. `turns`
-/// overrides the declared count for this run. Naming an undeclared timer, a
-/// daemon, or an override below one turn is a programmer error and traps.
+/// overrides the declared count for this run. ``TimedEvent`` says which turn
+/// it first counts down on. Naming an undeclared timer, a daemon, or an
+/// override below one turn is a programmer error and traps.
 ///
 /// - Parameters:
 ///   - name: the fuse to start.
@@ -99,7 +100,10 @@ public func startFuse(_ name: String, after turns: Int? = nil) {
         fatalError("Gnusto: startFuse(\"\(name)\", after: \(turns)) — a fuse needs at least one turn.")
     }
     let count = turns ?? declared
-    frame.with { $0.state.activeFuses[key] = count }
+    frame.with { scratch in
+        scratch.state.activeFuses[key] = count
+        scratch.startedDuringTick.insert(key)
+    }
 }
 
 /// Stops the named fuse; it will not fire. A no-op if it isn't running.
@@ -120,14 +124,19 @@ public func fuseRemaining(_ name: String) -> Int? {
     return frame.with { $0.state.activeFuses[key] }
 }
 
-/// Starts the named daemon; it first runs at the end of the current turn when
-/// called from a rule, or at the end of the next turn when called from a fuse
-/// or daemon body (the tick has already read its schedule by then).
+/// Starts the named daemon. ``TimedEvent`` says which turn it first runs on.
+/// A no-op if it is already running.
 ///
 /// - Parameter name: the daemon to start.
 public func startDaemon(_ name: String) {
     let (frame, key) = declaredDaemon(name, in: "startDaemon", else: "startFuse(_:after:)")
-    frame.with { _ = $0.state.activeDaemons.insert(key) }
+    frame.with { scratch in
+        // Only a daemon that was not running is a start. Recording a call on
+        // a running one would make the tick skip a daemon the call left alone.
+        if scratch.state.activeDaemons.insert(key).inserted {
+            scratch.startedDuringTick.insert(key)
+        }
+    }
 }
 
 /// Stops the named daemon. A no-op if it isn't running.
