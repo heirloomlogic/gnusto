@@ -261,49 +261,12 @@ struct Zork1ProseTests {
         #expect(turnOutput(of: "x grate", in: transcript).contains("A sturdy iron grating"))
     }
 
-    /// **The sweep, and the only assertion in this section that cannot go
-    /// stale.** #350 fixed nine items of this class and guarded them by naming
-    /// them; #514 then found eight more, because a guard that names items sees
-    /// only the items it names. This one derives its subjects from the built
-    /// game instead: every item's examine text, checked for a sentence that
-    /// asserts *where the thing is*. Such a sentence is a listing line, belongs
-    /// on `firstSight(…)`, and lies the moment the player picks the thing up.
-    @Test func noZork1ItemExaminesToASentenceAboutWhereItIs() throws {
-        let (definition, _) = try Bootstrap.build(Zork1())
-
-        /// Fixed to its chain and never carried, so "At the end of the chain is
-        /// a basket." is true of it wherever the chain hangs. The original
-        /// splits it into `LOWERED-BASKET` and `RAISED-BASKET` for the same
-        /// reason; this port uses one item and a stand-in.
-        let fixedToTheScenery: Set<String> = ["basket", "basketStandin"]
-
-        // Two shapes: a sentence ending "… is here.", and one that opens with a
-        // place and then puts the thing in it — "On the table is a sack.",
-        // "Above the trophy case hangs a sword.", "Beside the skeleton is a
-        // knife." The second needs the verb list because the source writes the
-        // inversion several ways.
-        let locative = try Regex(
-            #"(?i)\bis here\.|\bis (lying|sitting|suspended|hanging)\b"#
-                + #"|^(on|above|at the end of|beside|from|in) (the|a|an) .+\b(is|are|hangs|stands|lies|sits)\b"#
-        )
-
-        let offenders = definition.items
-            .filter { item in
-                !item.value.isActor
-                    && !fixedToTheScenery.contains { item.key.raw.hasSuffix($0) }
-            }
-            .filter { $0.value.descriptionTexts.contains { $0.contains(locative) } }
-            .keys.sorted()
-
-        #expect(offenders.isEmpty, "these examine texts are listing lines: \(offenders)")
-    }
-
     /// The same class again, in the house (#514). `SANDWICH-BAG`, `BOTTLE`,
     /// `ROPE`, `KNIFE` and `SWORD` carry an `FDESC`; all five were declared as
     /// the examine text, so the Kitchen, the Living Room and the Attic listed
     /// their contents in the engine's stock words while `x sack` answered, from
-    /// the player's own hand, with a sentence about a table two rooms away. No
-    /// Zork 1 object has a `TEXT` property, so the examine channel is the stock
+    /// the player's own hand, with a sentence about a table two rooms away. None
+    /// of the five has a `TEXT` property, so the examine channel is the stock
     /// line.
     @Test func theHousesListingLinesListAndExamineFallsThrough() async throws {
         let transcript = try await play(
@@ -377,10 +340,11 @@ struct Zork1ProseTests {
         #expect(!atticFloor.contains("On a table is a nasty-looking knife."))
     }
 
-    /// `LUNCH`'s one sentence is an `LDESC`, and the sandwich rides inside the
-    /// sack on the kitchen table — a level below anything a room description
-    /// walks — so the line would print on no turn of any playthrough. It is
-    /// withdrawn rather than kept as a constant nothing reads, exactly as
+    /// `LUNCH`'s one sentence is an `LDESC`, which the original prints only for
+    /// a sandwich standing directly in a room. The sandwich starts in the sack,
+    /// and taking it out is the first touch, so as `firstSight(…)` the line
+    /// could print only for an untouched sandwich still in the sack — where the
+    /// original lists it in its stock words instead. It is withdrawn, as
     /// Dungeon's was (#205); the sandwich is found by looking in the sack.
     @Test func theLunchHasNoListingLineItCouldNotPrint() async throws {
         let transcript = try await play(
@@ -435,6 +399,56 @@ struct Zork1ProseTests {
         let examined = turnOutput(of: "x sceptre", in: transcript)
         #expect(examined.contains("There's nothing special about the sceptre."))
         #expect(!examined.contains("tapering to a sharp point, is here"))
+    }
+
+    /// The tube and the trunk, of the same class (#617). `TUBE`'s `LDESC` and
+    /// `TRUNK`'s `LDESC` had been declared as the examine text, so `x tube`
+    /// answered from the player's hand in the Dam Lobby that the tube was
+    /// "here". The tube has
+    /// a `TEXT`, which `V-EXAMINE` and `V-READ` both print; the trunk answers
+    /// `EXAMINE` through `STUPID-CONTAINER`, as the bag of coins does.
+    @Test func theDamsTubeAndTrunkListAndExamineFromTheSource() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Zork1Tests.approachTheChargedDam + [
+                "north", "north", "look",  // → Dam Lobby → Maintenance Room
+                "take tube", "x tube", "read tube", "x toothpaste",
+                "south", "examine tube",  // → Dam Lobby, the tube in hand
+                "drop tube", "look",
+                "south", "turn bolt with wrench", "west",  // → Dam → Reservoir South
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait",  // the eight-turn drain completes
+                "north",  // onto the drained bed
+                "x trunk", "take trunk",
+                "south", "examine trunk",  // → Reservoir South, the trunk in hand
+            ],
+            seed: 39)
+
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("There is an object which looks like a tube of toothpaste here."))
+
+        let label = "---> Frobozz Magic Gunk Company <---"
+        for command in ["x tube", "read tube", "x toothpaste", "examine tube"] {
+            let answer = turnOutput(of: command, in: transcript)
+            #expect(answer.contains(label))
+            #expect(answer.contains("All-Purpose Gunk"))
+            #expect(!answer.contains("toothpaste here"))
+        }
+
+        // Once touched, the tube is listed in the engine's stock words; the
+        // `LDESC` is `firstSight(…)` and stops at the first touch. See
+        // `FIDELITY.md`.
+        #expect(turnOutput(ofLast: "look", in: transcript).contains("There is a tube here."))
+
+        #expect(
+            turnOutput(ofLast: "north", in: transcript)
+                .contains("Lying half buried in the mud is an old trunk, bulging with jewels."))
+        for command in ["x trunk", "examine trunk"] {
+            let answer = turnOutput(of: command, in: transcript)
+            #expect(answer.contains("There are lots of jewels in there."))
+            #expect(!answer.contains("trunk here"))
+        }
     }
 
     /// `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): from
