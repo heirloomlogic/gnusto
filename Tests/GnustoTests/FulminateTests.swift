@@ -746,16 +746,34 @@ struct FulminateTests {
     }
 
     /// And the lab from inside, which calls itself somebody's workshop and
-    /// somebody else's chapel and then puts its own roof in the yard.
+    /// somebody else's chapel and then puts its own roof in the yard. Julian
+    /// works with his back to its door, and Teague puts his head round it.
+    ///
+    /// Short visits, because the blast lands a few turns after the lab is
+    /// reached, and a question asked after it goes to a player who is already
+    /// dead and answers nothing.
     @Test func theCarriageHouseAnswersForTheWordsItCallsItselfBy() async throws {
-        let transcript = try await play(
+        for probe in [
+            ["x workshop", "x chapel", "x walls", "x roof", "x rafters"],
+            ["x vice", "x nail", "x board", "x outline", "x blanket"],
+        ] {
+            let transcript = try await play(Fulminate(), ["south", "west", "north"] + probe)
+            expectEveryNounAnswered(transcript, "\(probe)")
+            #expect(!transcript.contains("You have died"), "\(probe)")
+        }
+
+        let door = try await play(
+            Fulminate(), ["south", "west", "north", "x corner", "x door", "x doorway", "search door"])
+        expectEveryNounAnswered(door)
+        #expect(turnOutput(of: "x door", in: door).contains("Julian works with his back to it"))
+
+        // After the blast the door is a gap, for the turns before the
+        // patrolman takes the player back out through it.
+        let gap = try await play(
             Fulminate(),
-            [
-                "south", "west", "north",
-                "x workshop", "x chapel", "x walls", "x roof", "x rafters",
-                "x vice", "x nail", "x board", "x outline", "x blanket", "x corner",
-            ])
-        expectEveryNounAnswered(transcript)
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["north", "x door", "x gap"])
+        expectEveryNounAnswered(gap)
+        #expect(turnOutput(of: "x door", in: gap).contains("There is no door now"))
     }
 
     /// Dr. Pike's hat is named in five sentences across three rooms and was a

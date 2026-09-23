@@ -904,6 +904,13 @@ struct Fulminate: Game, GameMain {
         "walls", adjectives: "brick", "bare", "scorched",
         synonyms: "wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky")
 
+    /// The side door from inside, which Julian's presence line and Teague's
+    /// arrival both name. The yard side is `carriageHouseOutside`; this one
+    /// reads `blastHappened`, so it is here rather than in ``Fixtures``.
+    let labDoor = Item.scenery(
+        "side door", adjectives: "small",
+        synonyms: "doorway", "gap")
+
     let julian = Actor {
         name("Julian Vane")
         properName
@@ -1892,10 +1899,13 @@ struct Fulminate: Game, GameMain {
         // this door an open and a shut state, and the evening is written around
         // a door nobody shuts — Teague lets himself out of it, Mrs. Kettle goes
         // out of it, and the blast bangs it. A gate no prose can close is a
-        // gate the fiction has to keep explaining.
-        yardDoor.before(.board) {
-            try enter(backYard)
-            try handled()
+        // gate the fiction has to keep explaining. The carriage house's side
+        // door, from inside, is the same case and walks to the same yard.
+        for way in [yardDoor, labDoor] {
+            way.before(.board) {
+                try enter(backYard)
+                try handled()
+            }
         }
 
         // The play-tester went down in the dark, got the pitch-black line, and
@@ -2203,6 +2213,12 @@ struct Fulminate: Game, GameMain {
                 Tools laid out in the order a careful man uses them, and a scorch mark near the vice that is older
                 than tonight.
                 """
+        }
+
+        labDoor.describe {
+            blastHappened
+                ? "There is no door now, only a gap in the brick where it hung, and the yard through it."
+                : "The small side door onto the yard. Julian works with his back to it."
         }
 
         labShell.describe {
@@ -3139,6 +3155,7 @@ struct Fulminate: Game, GameMain {
         cot.starts(in: carriageHouse)
         stovePipe.starts(in: carriageHouse)
         labShell.starts(in: carriageHouse)
+        labDoor.starts(in: carriageHouse)
 
         workbench.starts(in: carriageHouse)
         can.starts(in: carriageHouse)
