@@ -177,9 +177,15 @@ struct StandardParser {
     /// made stable by hand — `sorted(by:)` doesn't guarantee it — so rows of
     /// equal specificity keep their table order.
     let syntaxRules: [SyntaxRule]
+    /// The intents with a row that names the person ahead of the thing —
+    /// `give <person> <thing>`. A person named alone after one of these verbs
+    /// is who is receiving, so a row that stops short of its closing word
+    /// asks for the thing instead.
+    let recipientFirstIntents: Set<Intent>
 
     init(vocabulary: Vocabulary, syntaxRules: [SyntaxRule]) {
         self.vocabulary = vocabulary
+        self.recipientFirstIntents = Set(syntaxRules.filter(\.isRecipientFirst).map(\.intent))
         self.syntaxRules =
             syntaxRules
             .enumerated()
@@ -629,11 +635,6 @@ struct StandardParser {
         var direction: Direction?
         var preposition: String?
         var topicWords: [String]?
-        /// The literal word most recently matched — "about" in `ask <object>
-        /// about <topic>`. Used only to word the question an empty topic slot
-        /// asks; deliberately not promoted to `preposition`, which would
-        /// change what existing games see for `turn lamp on` and its like.
-        var lastLiteral: String?
         /// An object slot waiting for the next literal word to close it.
         var openSlot: SyntaxElement?
 
@@ -654,20 +655,19 @@ struct StandardParser {
         /// against is not on the line. The arithmetic generalizes; what to
         /// *say* does not, so each shape keeps the answer it had.
         func shortOfTheSlot(
-            _ slot: SyntaxElement, suffix: ArraySlice<SyntaxElement>
+            _ slot: SyntaxElement, at index: Int, suffix: ArraySlice<SyntaxElement>
         ) -> FitOutcome {
             guard let next = suffix.first else {
                 return missingSlotOutcome(
-                    slot, displayVerb: displayVerb, tokens: tokens, directPhrase: directPhrase,
-                    directStart: directStart, preposition: preposition, lastLiteral: lastLiteral,
-                    scope: scope, distant: distant)
+                    slot, at: index, of: rule, tokens: tokens, directPhrase: directPhrase,
+                    directStart: directStart, scope: scope, distant: distant)
             }
             if next == .direction, suffix.count == 1 {
                 return missingHalfOfANounAndADirection(
                     displayVerb: displayVerb, tokens: tokens, cursor: cursor, scope: scope,
                     distant: distant)
             }
-            if case .word(let word) = next {
+            if case .word = next {
                 // A suffix measured by width is literal words and directions
                 // and nothing else, so where the player has typed the noun and
                 // left off the rest, one of two things is missing. A direction
@@ -686,8 +686,8 @@ struct StandardParser {
                         })
                 }
                 return missingTheWordThatClosesTheSlot(
-                    slot, word: word, displayVerb: displayVerb, tokens: tokens, cursor: cursor,
-                    scope: scope, distant: distant)
+                    slot, rule: rule, closing: rule.literalRun(from: index + 1), tokens: tokens,
+                    cursor: cursor, scope: scope, distant: distant)
             }
             return .mismatch
         }
@@ -703,8 +703,8 @@ struct StandardParser {
                         split > cursor
                     else {
                         return missingTheWordThatClosesTheSlot(
-                            slot, word: word, displayVerb: displayVerb, tokens: tokens,
-                            cursor: cursor, scope: scope, distant: distant)
+                            slot, rule: rule, closing: rule.literalRun(from: index),
+                            tokens: tokens, cursor: cursor, scope: scope, distant: distant)
                     }
                     record(Array(tokens[cursor..<split]), for: slot, from: cursor)
                     // The word sealing the direct object ahead of a second
@@ -714,7 +714,6 @@ struct StandardParser {
                     }
                     cursor = split + 1
                     openSlot = nil
-                    lastLiteral = word
                 } else {
                     guard cursor < tokens.count,
                         Vocabulary.literal(word, matches: tokens[cursor])
@@ -722,7 +721,6 @@ struct StandardParser {
                         return .mismatch
                     }
                     cursor += 1
-                    lastLiteral = word
                 }
 
             case .directObject, .indirectObject:
@@ -766,7 +764,7 @@ struct StandardParser {
                 // and the row can only decline — where a row that finds out
                 // now still knows which half the player left off.
                 guard split > cursor, fixedSuffix(suffix, standsAt: split, in: tokens) else {
-                    return shortOfTheSlot(element, suffix: suffix)
+                    return shortOfTheSlot(element, at: index, suffix: suffix)
                 }
                 record(Array(tokens[cursor..<split]), for: element, from: cursor)
                 // The suffix is deliberately left to the cases below: consuming
@@ -795,10 +793,8 @@ struct StandardParser {
                 // make every conversation a guessing game about vocabulary.
                 guard cursor < tokens.count else {
                     return missingSlotOutcome(
-                        element, displayVerb: displayVerb, tokens: tokens,
-                        directPhrase: directPhrase, directStart: directStart,
-                        preposition: preposition, lastLiteral: lastLiteral, scope: scope,
-                        distant: distant)
+                        element, at: index, of: rule, tokens: tokens, directPhrase: directPhrase,
+                        directStart: directStart, scope: scope, distant: distant)
                 }
                 // The comma joins object phrases, but a topic is words and
                 // never a list, so here it goes back to being punctuation.
@@ -936,12 +932,26 @@ struct StandardParser {
     ///   - rawInput: the line as the player typed it.
     ///   - scope: what the player can see.
     /// - Returns: the command, the first split's reason for declining, or
-    ///   `.mismatch` where there was no split to try.
+    ///   `.mismatch` where there was no split to try or the words name one
+    ///   thing whole.
     private func fitRecipientFirst(
         _ rule: SyntaxRule, tokens: [String], from cursor: Int, verbPhrase: String,
         rawInput: String, scope: Scope
     ) -> FitOutcome {
         guard tokens.count - cursor >= 2 else { return .mismatch }
+        // A name beats a split, as it beats a list: words that name one thing
+        // whole are one object, and not a person and a gift. `give night
+        // warden` split into "night" and "warden" handed the warden to
+        // herself. A TO row for the same verb asks about the one thing.
+        // Only a success is read, so the noun layer alone answers it. A name
+        // that needs a possessive dropped is not whole: in `give her lantern`
+        // the `her` is the person receiving.
+        let whole = Array(tokens[cursor...])
+        if possessivePrefix(of: whole) == 0,
+            case .success = resolveNoun(whole, in: scope, alsoConsidering: [])
+        {
+            return .mismatch
+        }
 
         /// One gift half placed, whichever door it came through.
         func placed(
@@ -1052,21 +1062,39 @@ struct StandardParser {
     /// What a row does when the literal word that marks the end of an object
     /// slot is not on the line — `hang cloak`, or `wind lamp` where the row is
     /// `wind <object> up`. If the phrase names something here, ask for the
-    /// rest; the answer belongs after the word the player never typed. If it
+    /// rest; the answer belongs after the words the player never typed. If it
     /// fails as a noun, the resolver's reason is a
     /// ``FitOutcome/lastResort(_:)``. Anything else declines and lets the next
     /// rule talk.
+    ///
+    /// A person named after a verb in ``recipientFirstIntents`` is who is
+    /// receiving: `give keeper` asks what to give the keeper, and the answer
+    /// goes in front of the closing words, as `give <answer> to keeper`.
+    ///
+    /// - Parameters:
+    ///   - slot: the slot the closing words would have ended.
+    ///   - rule: the row being fitted.
+    ///   - closing: the literal words the pattern puts behind the slot — `to`,
+    ///     or both words of `out of`.
+    ///   - tokens: the line as typed.
+    ///   - cursor: where the slot's phrase begins.
+    ///   - scope: what the player can see.
+    ///   - distant: the far-sighted fallback set.
+    /// - Returns: the question, the phrase's own failure, or `.mismatch`.
     private func missingTheWordThatClosesTheSlot(
-        _ slot: SyntaxElement, word: String, displayVerb: String, tokens: [String],
+        _ slot: SyntaxElement, rule: SyntaxRule, closing: [String], tokens: [String],
         cursor: Int, scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
         guard slot == .directObject, cursor < tokens.count else { return .mismatch }
         return askingAboutTheRest(of: tokens, from: cursor, scope: scope, distant: distant) {
-            .missingIndirect(
-                verb: displayVerb,
+            let recipient =
+                recipientFirstIntents.contains(rule.intent) && scope.visibleActors.contains($0)
+            return .missingIndirect(
+                verb: rule.displayVerb,
                 objectName: definiteName(of: $0),
-                preposition: word,
-                prefix: tokens + [word])
+                preposition: recipient ? "" : closing.joined(separator: " "),
+                prefix: recipient ? Array(tokens[..<cursor]) : tokens + closing,
+                suffix: recipient ? closing + tokens[cursor...] : [])
         }
     }
 
@@ -1172,11 +1200,15 @@ struct StandardParser {
     /// `ask the butler about` with no butler here is about the butler — through
     /// ``unplaced(_:at:failing:tokens:scope:)``, which keeps the cases where
     /// declining is still right.
+    ///
+    /// The question names every literal word in front of the empty slot, so
+    /// `take garlic out of` asks what to take it "out of" and not "out".
     private func missingSlotOutcome(
-        _ slot: SyntaxElement, displayVerb: String, tokens: [String],
-        directPhrase: [String]?, directStart: Int, preposition: String?, lastLiteral: String?,
-        scope: Scope, distant: Set<EntityID>
+        _ slot: SyntaxElement, at index: Int, of rule: SyntaxRule, tokens: [String],
+        directPhrase: [String]?, directStart: Int, scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
+        let displayVerb = rule.displayVerb
+        let preposition = rule.literalRun(before: index).joined(separator: " ")
         // A topic row need not have an object at all ("think about").
         var objectName: String?
         if let directPhrase {
@@ -1197,7 +1229,7 @@ struct StandardParser {
                 .missingTopic(
                     verb: displayVerb,
                     objectName: objectName,
-                    preposition: lastLiteral ?? "",
+                    preposition: preposition,
                     prefix: tokens))
         }
         guard let objectName else { return .mismatch }
@@ -1205,7 +1237,7 @@ struct StandardParser {
             .missingIndirect(
                 verb: displayVerb,
                 objectName: objectName,
-                preposition: preposition ?? "",
+                preposition: preposition,
                 prefix: tokens))
     }
 

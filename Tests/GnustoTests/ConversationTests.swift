@@ -164,6 +164,19 @@ struct ConversationTests {
 
     // MARK: - Showing
 
+    /// SHOW takes the person first as GIVE does, so `show butler letter` is
+    /// understood and a lone `show butler` asks what to show him.
+    @Test func showingThePersonFirstIsUnderstoodAndAsks() async throws {
+        let transcript = try await play(Manor(), ["show butler lamp", "show butler", "lamp"])
+        #expect(
+            turnOutput(of: "show butler lamp", in: transcript)
+                .contains("The butler shows no interest."))
+        #expect(
+            turnOutput(of: "show butler", in: transcript)
+                .contains("What do you want to show the butler?"))
+        #expect(turnOutput(of: "lamp", in: transcript).contains("The butler shows no interest."))
+    }
+
     @Test func showingSomethingNoRowCoversGetsTheDefault() async throws {
         let transcript = try await play(Manor(), ["show lamp to butler"])
         #expect(transcript.contains("The butler shows no interest."))

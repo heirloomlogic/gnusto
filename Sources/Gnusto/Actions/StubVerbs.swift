@@ -201,6 +201,27 @@ extension StubVerb {
         }
     }
 
+    /// ``optionallyNamed`` without an actor guard, for SIT and LIE, whose rows
+    /// put ON or IN in front of the object. The line is handed that word with
+    /// the name, so `sit in the chest` is not answered with ON. The word is
+    /// `in` where the row the player typed ends in it, and `on` for every other
+    /// row — the two words the engine's own rows spell.
+    static func optionallyResting(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        _ line: @escaping @Sendable (GameText, GameText.RestingPlace?) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject, !object.isPlayer else {
+                return line(text, nil)
+            }
+            let last = command.verbPhrase.split(separator: " ").last.map(String.init) ?? ""
+            let preposition = Vocabulary.canonical(last) == "in" ? "in" : "on"
+            return line(text, .init(object: object.definiteNoun, preposition: preposition))
+        }
+    }
+
     /// ``named``'s guard cascade, without the rows — the renderer on its own.
     ///
     /// Split out because a *custom* verb wants the identical cascade and has no
@@ -249,7 +270,7 @@ extension StubVerb {
     /// The escape hatch, for a reply that needs more of the ``Command`` than the
     /// direct object's name. `give` wants it today, for its second slot.
     ///
-    /// `namesObject` is a parameter here and nowhere else: the other four
+    /// `namesObject` is a parameter here and nowhere else: the other
     /// factories build the line and so know the answer, where this one is handed
     /// a closure it cannot inspect. Assuming `true` would let a `custom` stub
     /// that ignores its direct object pass `everyStubWithAnObjectSlotCanNameIt`
@@ -800,7 +821,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.stand($1) },
 
-        .optionallyNamed(
+        .optionallyResting(
             .sit,
             [
                 ["sit"],
@@ -818,7 +839,7 @@ extension DefaultActions {
         // leaves is lain *in* is not a thing English writes with ON, and a game
         // whose own prose says "lie down in it" would otherwise be inviting a
         // sentence the parser had no row for.
-        .optionallyNamed(
+        .optionallyResting(
             .lie,
             [
                 ["lie"],

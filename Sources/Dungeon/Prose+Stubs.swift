@@ -247,10 +247,10 @@ extension Prose {
             "\($0.sentenceCased) \($0.verb("is", "are")) not something you could stand on."
         }
         stubs.sit = .naming(orBare: "Sitting down would gain you nothing.") {
-            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could sit on."
+            "\($0.object.sentenceCased) \($0.object.verb("is", "are")) not something you could sit \($0.preposition)."
         }
         stubs.lie = .naming(orBare: "Lying down would gain you nothing.") {
-            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could lie on."
+            "\($0.object.sentenceCased) \($0.object.verb("is", "are")) not something you could lie \($0.preposition)."
         }
         stubs.kneel = "You kneel briefly, and get up again."
 

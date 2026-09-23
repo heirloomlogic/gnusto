@@ -559,15 +559,13 @@ struct StubVerbTests {
 
     /// The twelve stubs that carried a `.directObject` slot for a year with no
     /// way to name what filled it: they shipped as `plain`, which hands the
-    /// line nothing at all. Moving them to `optionallyNamed` gives the game
-    /// and its default reply the name.
+    /// line nothing at all. Moving them to `optionallyNamed`, or for `sit` to
+    /// `optionallyResting`, gives the game and its default reply the name.
     ///
-    /// Every probe below is a turn whose output must not move, and they are
-    /// grouped by the three roads `optionallyNamed` splits and `plain` did
-    /// not: an object, a person, and the player. `plain` answered all three
-    /// with one line because it never looked; `optionallyNamed` looks, and
-    /// takes a different branch for each. That the sentence comes out the same
-    /// is what makes this a refactor.
+    /// The probes are grouped by the three roads those factories split and
+    /// `plain` did not: an object, a person, and the player. `plain` answered
+    /// all three with one line because it never looked; the factories look.
+    /// Each probe pins the default reply its turn prints.
     static let theTwelveThatLearnedToName: [(String, String)] = [
         // An object to name.
         ("dig bench", "You have nothing to dig with."),
@@ -578,7 +576,7 @@ struct StubVerbTests {
         ("kiss rod", "That would be presumptuous."),
         ("point at rod", "Pointing at things accomplishes little."),
         ("jump over bench", "You can't jump over the long bench."),
-        ("sit on bench", "There's nothing comfortable to sit on the long bench."),
+        ("sit on bench", "The long bench isn't something to sit on."),
         ("count rod", "You lose count."),
         ("buy rod", "Nothing here is for sale."),
         ("sell rod", "Nobody here is buying."),
@@ -595,7 +593,7 @@ struct StubVerbTests {
         ("kiss rat", "That would be presumptuous."),
         ("point at rat", "Pointing at things accomplishes little."),
         ("jump over rat", "You can't jump over the grey rat."),
-        ("sit on rat", "There's nothing comfortable to sit on the grey rat."),
+        ("sit on rat", "The grey rat isn't something to sit on."),
         ("count rat", "You lose count."),
         ("buy rat", "Nothing here is for sale."),
         ("sell rat", "Nobody here is buying."),

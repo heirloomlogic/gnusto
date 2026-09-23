@@ -108,6 +108,14 @@ struct Zork1ProseTests {
             ])
     }
 
+    /// `lie in the mailbox` answered "Lying down on the small mailbox", because
+    /// the line wrote ON itself. It takes the word from the row now.
+    @Test func lyingInTheMailboxSaysIn() async throws {
+        let turn = turnOutput(
+            of: "lie in mailbox", in: try await play(Zork1(), ["lie in mailbox"]))
+        #expect(turn.contains("Lying down in the small mailbox would only get you filthier."))
+    }
+
     /// And the other half of the same widening: the bare rows, which the source
     /// has no verb for at all, keep a sentence of this game's own.
     @Test func theNamelessRowsStillAnswer() async throws {

@@ -13,7 +13,13 @@ enum ParseError: Error, Equatable {
     /// input line can complete the command as `prefix + answer + suffix`.
     /// ``question`` is where a new one says so, and the compiler will ask.
     case missingObject(verb: String, prefix: [String])
-    case missingIndirect(verb: String, objectName: String, preposition: String, prefix: [String])
+    /// A second object left off. `suffix` is empty except where the object
+    /// the player named is the one that stands *after* the answer: `give the
+    /// keeper` asks for the gift, and the answer goes in front of `to the
+    /// keeper`.
+    case missingIndirect(
+        verb: String, objectName: String, preposition: String, prefix: [String],
+        suffix: [String] = [])
     /// A conversation verb whose topic slot got nothing: "ask butler about".
     /// Carries the object when the row had one, so the question can read
     /// "What do you want to ask the butler about?"
@@ -47,7 +53,7 @@ enum ParseError: Error, Equatable {
             text.noReferent(word)
         case .missingObject(let verb, _):
             text.missingObject(verb)
-        case .missingIndirect(let verb, let objectName, let preposition, _):
+        case .missingIndirect(let verb, let objectName, let preposition, _, _):
             text.missingIndirect(verb, objectName, preposition)
         case .missingTopic(let verb, let objectName, let preposition, _):
             text.missingTopic(verb, objectName, preposition)
@@ -105,10 +111,11 @@ enum ParseError: Error, Equatable {
             nil
         case .missingObject(let verb, let prefix):
             Question(prefix: prefix) { .missingObject(verb: verb, prefix: $0) }
-        case .missingIndirect(let verb, let objectName, let preposition, let prefix):
-            Question(prefix: prefix) {
+        case .missingIndirect(let verb, let objectName, let preposition, let prefix, let suffix):
+            Question(prefix: prefix, suffix: suffix) {
                 .missingIndirect(
-                    verb: verb, objectName: objectName, preposition: preposition, prefix: $0)
+                    verb: verb, objectName: objectName, preposition: preposition, prefix: $0,
+                    suffix: suffix)
             }
         case .missingTopic(let verb, let objectName, let preposition, let prefix):
             Question(prefix: prefix) {

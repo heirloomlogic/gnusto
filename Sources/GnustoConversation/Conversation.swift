@@ -5,12 +5,16 @@ extension Intent {
     #verb("ask", ["ask", .directObject, "about", .topic])
     /// Volunteer a subject to somebody: `tell the butler about the letter`.
     #verb("tell", ["tell", .directObject, "about", .topic])
-    /// Put a thing in front of somebody: `show the letter to the butler`.
+    /// Put a thing in front of somebody: `show the letter to the butler`, or
+    /// `show the butler the letter`.
     ///
-    /// An ordinary two-object row — a thing is a thing, so this needs no
-    /// topic slot. Note the dative (`show butler the letter`) is not
-    /// expressible: two object slots can't sit side by side.
-    #verb("show", ["show", .directObject, "to", .indirectObject])
+    /// Two-object rows — a thing is a thing, so this needs no topic slot. The
+    /// person-first row is the shape GIVE uses, which is also what makes a
+    /// lone `show butler` ask what to show him.
+    #verb(
+        "show",
+        ["show", .directObject, "to", .indirectObject],
+        ["show", .indirectObject, .directObject])
 }
 
 /// A topic-driven conversation layer: per-actor tables of subjects the player

@@ -1388,6 +1388,18 @@ struct DungeonProseTests {
             ])
     }
 
+    /// `sit in the mailbox` and `lie in the mailbox` answered with ON, because
+    /// the lines wrote it themselves. They take the word from the row now.
+    @Test func sittingAndLyingInTheMailboxSayIn() async throws {
+        let transcript = try await play(Dungeon(), ["sit in mailbox", "lie in mailbox"])
+        #expect(
+            turnOutput(of: "sit in mailbox", in: transcript)
+                .contains("The small mailbox is not something you could sit in."))
+        #expect(
+            turnOutput(of: "lie in mailbox", in: transcript)
+                .contains("The small mailbox is not something you could lie in."))
+    }
+
     /// CUT with a tool names the tool, and CUT without one keeps the line it had. (#611)
     @Test func cuttingWithAToolNamesTheTool() async throws {
         let transcript = try await play(
