@@ -1227,17 +1227,13 @@ public actor GameWorld {
         // the player was told nothing happened, so nothing may happen.
         let costsTurn = !intent.isMeta && !frame.with { $0.unhandled }
         if costsTurn {
-            if frame.with({ $0.state.status }) == .playing {
-                let here = frame.with { $0.state.playerLocation }
-                runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
-                runCatching(rules.worldAfter, matching: intent, frame: frame)
-            }
-            // The world's clock ticks last, after the rules have reacted to
-            // the command — and not once the game has ended (re-checked here
-            // because an each-turn rule above may have ended it).
-            if frame.with({ $0.state.status }) == .playing {
-                tickTimers(frame: frame)
-            }
+            // Stage 6's rules run first, then the world's clock ticks. Each
+            // checks the status before every rule or timer body, so neither
+            // runs one once the game has ended.
+            let here = frame.with { $0.state.playerLocation }
+            runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
+            runCatching(rules.worldAfter, matching: intent, frame: frame)
+            tickTimers(frame: frame)
             // The sample the contributed status fields are read against, taken
             // here and nowhere else. Both halves of the position are
             // load-bearing.
@@ -1298,8 +1294,13 @@ public actor GameWorld {
         }
     }
 
+    /// Runs one of stage 6's rule lists, catching each rule's interrupt so a
+    /// refusal in one rule does not skip the next. Like `tickTimers`, it
+    /// checks the status before every rule and stops once the game has
+    /// ended. (#607)
     private func runCatching(_ rules: [Rule], matching intent: Intent, frame: TurnFrame) {
         for rule in rules where rule.matches(intent) {
+            guard frame.with({ $0.state.status }) == .playing else { return }
             do {
                 try rule.body()
             } catch let interrupt as TurnInterrupt {
