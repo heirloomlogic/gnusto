@@ -2230,22 +2230,32 @@ struct DungeonTests {
 
     /// Feeding him works too, and it does **not** open the wall: the drugged
     /// water only puts him to sleep at the foot of the stairs. The hot peppers
-    /// have to come first — the water alone he refuses.
+    /// have to come first — the water alone he refuses. The water is his only
+    /// through an open bottle: stoppered, neither the water nor the bottle can
+    /// be handed over, and opened, `give bottle` is the same offer as `give
+    /// water`. The line says he takes the bottle, so it leaves the player's
+    /// hands for the floor. (#622)
     @Test func theLunchAndTheWaterPutHimToSleepButOpenNoWall() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.intoTheKitchen + ["take bottle", "open sack", "take lunch"]
                 + Self.downTheTrapDoor + ["east", "attack troll with sword"]
                 + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
-                + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
-                + ["up", "down", "north"],
+                + ["give water to cyclops", "give bottle to cyclops", "open bottle"]
+                + ["give water to cyclops", "give lunch to cyclops", "give bottle to cyclops"]
+                + ["inventory", "look", "up", "down", "north"],
             seed: 18)
 
+        #expect(turnOutput(of: "give water to cyclops", in: transcript).hasPrefix("The bottle is closed."))
+        #expect(turnOutput(of: "give bottle to cyclops", in: transcript).hasPrefix("The bottle is closed."))
+        #expect(!turnOutput(of: "inventory", in: transcript).contains("bottle"))
+        #expect(turnOutput(of: "look", in: transcript).contains("bottle"))
         expectInOrder(
             transcript,
             [
                 "apparently is not thirsty",
                 "I love hot peppers",
+                "drinks the water",
                 "falls fast asleep",
                 "Treasure Room",
                 "The north wall is solid rock.",
@@ -2257,7 +2267,7 @@ struct DungeonTests {
     @Test func theShoutStillWorksOnTheSleepingCyclops() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.intoTheKitchen + ["take bottle", "open sack", "take lunch"]
+            Self.intoTheKitchen + ["take bottle", "open bottle", "open sack", "take lunch"]
                 + Self.downTheTrapDoor + ["east", "attack troll with sword"]
                 + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
                 + ["give lunch to cyclops", "give water to cyclops", "odysseus", "north"],
