@@ -2103,10 +2103,7 @@ the committed document rather than out of `dung.355`.
 - **The Treasure Room's granite wall is its north one**, because its **east** wall
   is a passage into the Royal Puzzle's antechamber — a door Zork I has no use for
   and therefore walls up. That east door is a seam this milestone leaves open.
-- **`temple` and `treasure` are magic words.** Said in the Temple, `treasure`
-  puts you in the Treasure Room; said in the Treasure Room, `temple` puts you
-  back. The shared north wall of solid granite is the hint, and the endgame's own
-  question set asks about it. Nothing in the trilogy connects the two rooms.
+- **`temple` and `treasure` are magic words.** Said in the Temple, `treasure` puts you in the Treasure Room; said in the Treasure Room, `temple` puts you back. The shared north wall of solid granite is the hint, and the endgame's own question set asks about it. Nothing in the trilogy connects the two rooms. The word moves you as a walk does, because `TREAS` (`act1.254:1422`) goes through `GOTO`, which pays the room value, and `ROOM-INFO`, which runs the room's `GO-IN` action. So the Treasure Room's `onEnter` rules run for the word as they do for walking in — the 25-point room value, paid once, and the thief's summons home — and a room already seen is described as walking back into it describes it. (#621)
 - **The dead ends are named "Dead End" and described with the trilogy's
   sentence.** `dung.355` gives `DEAD1` and `DEAD2` their long and short strings
   the wrong way round and gives `DEAD3`–`DEAD7` the short string twice, so the

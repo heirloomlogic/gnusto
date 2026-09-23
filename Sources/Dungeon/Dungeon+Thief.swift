@@ -235,8 +235,9 @@ extension Dungeon {
             })
 
         // Walk into his lair and he comes home to it, from wherever on the
-        // prowl he happens to be. Both roads in are covered: up past the
-        // cyclops, and the granite wall's magic word out of the Temple.
+        // prowl he happens to be. An `onEnter` rule runs for a walk and not for
+        // a teleport, which is why the granite wall's magic word out of the
+        // Temple walks you in — see ``Dungeon/graniteRules``.
         //
         // He then stays, because the roam daemon's gate is shut for as long as
         // you are standing in the Treasure Room — see ``Dungeon/thiefTimers``.

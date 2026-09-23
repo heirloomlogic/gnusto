@@ -1128,15 +1128,18 @@ struct Dungeon: Game, GameMain {
         // The two words that use it. Each works in exactly one room and takes
         // you to the other; the Temple is a ``DungeonTemple`` room and the
         // Treasure Room a ``DungeonMaze`` one, so the pair lives here.
+        //
+        // `enter(_:)` rather than `arrive(at:)`, so the Treasure Room's
+        // `onEnter` rules run: the source's `TREAS` moves you as a walk does.
+        // FIDELITY.md's entry for the two words gives the source's reasons.
         let acrossTheGranite: [(Location, Intent, Location)] = [
             (templeQuarter.temple, .treasure, maze.treasureRoom),
             (maze.treasureRoom, .temple, templeQuarter.temple),
         ]
         for (here, word, there) in acrossTheGranite {
             here.before(word) {
-                player.location = there
                 say(Prose.graniteWallCarriesYou)
-                describeSurroundings()
+                try enter(there)
                 try handled()
             }
         }

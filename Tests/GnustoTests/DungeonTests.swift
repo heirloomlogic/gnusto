@@ -2336,6 +2336,37 @@ struct DungeonTests {
             ])
     }
 
+    /// Arriving by the word is a walk into the hoard: it pays the room value
+    /// and summons the thief, as walking in does. The Temple is reached here by
+    /// the mirrors rather than by the stair past the cyclops, so the word is the
+    /// first way into the Treasure Room this game takes, and saying it a second
+    /// time pays nothing more.
+    @Test func theGraniteWordWalksYouIntoTheHoard() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTemple + ["score", "treasure", "score", "temple", "treasure", "score"],
+            seed: 18)
+
+        let arrival = turnOutput(of: "treasure", in: transcript)
+        #expect(arrival.contains("Treasure Room"))
+        #expect(arrival.contains("suspicious-looking individual"))
+        #expect(arrival.contains("discarded bags"))
+        #expect(turnOutput(of: "temple", in: transcript).contains("Temple"))
+        let revisit = turnOutput(ofLast: "treasure", in: transcript)
+        #expect(revisit.contains("Treasure Room"))
+        #expect(!revisit.contains("discarded bags"))
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 40 of a possible 716",
+                "Treasure Room",
+                "Your score is 65 of a possible 716",
+                "Temple",
+                "Treasure Room",
+                "Your score is 65 of a possible 716",
+            ])
+    }
+
     /// The word is inert everywhere the granite wall is not.
     @Test func theGraniteWordDoesNothingElsewhere() async throws {
         let transcript = try await play(Dungeon(), ["treasure", "temple"])
