@@ -763,8 +763,10 @@ struct FulminateTests {
         }
 
         let door = try await play(
-            Fulminate(), ["south", "west", "north", "x corner", "x door", "x doorway", "search door"])
+            Fulminate(),
+            ["south", "west", "north", "x corner", "x door", "x doorway", "search door", "break walls"])
         expectEveryNounAnswered(door)
+        #expect(turnOutput(of: "break walls", in: door).contains("The walls are sturdier"))
         #expect(turnOutput(of: "x door", in: door).contains("Julian works with his back to it"))
 
         // After the blast the door is a gap, for the turns before the

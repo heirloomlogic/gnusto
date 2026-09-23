@@ -902,7 +902,10 @@ struct Fulminate: Game, GameMain {
     // sky is being seen through. (#334)
     let labShell = Item.scenery(
         "walls", adjectives: "brick", "bare", "scorched",
-        synonyms: "wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky")
+        synonyms: "wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky"
+    ) {
+        plural
+    }
 
     /// The side door from inside, which Julian's presence line and Teague's
     /// arrival both name. The yard side is `carriageHouseOutside`; this one
@@ -1899,8 +1902,8 @@ struct Fulminate: Game, GameMain {
         // this door an open and a shut state, and the evening is written around
         // a door nobody shuts — Teague lets himself out of it, Mrs. Kettle goes
         // out of it, and the blast bangs it. A gate no prose can close is a
-        // gate the fiction has to keep explaining. The carriage house's side
-        // door, from inside, is the same case and walks to the same yard.
+        // gate the fiction has to keep explaining. ENTER on the carriage
+        // house's side door, from inside, walks to the same yard.
         for way in [yardDoor, labDoor] {
             way.before(.board) {
                 try enter(backYard)

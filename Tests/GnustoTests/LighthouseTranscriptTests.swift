@@ -489,6 +489,14 @@ struct LighthouseTranscriptTests {
         #expect(turnOutput(of: "x far wall", in: transcript).contains("The sea chest stands square against it"))
     }
 
+    /// Inside the base, `room` is the stone wall, and leaving it walks out to
+    /// the jetty rather than answering "You aren't in the stone wall."
+    @Test func leavingTheRoomByNameWalksOutToTheJetty() async throws {
+        let transcript = try await play(Lighthouse(), ["north", "leave room"], seed: 0)
+        #expect(turnOutput(of: "leave room", in: transcript).contains("Jetty"))
+        #expect(!transcript.contains("You aren't in"))
+    }
+
     /// And the Lamp Room, which needs a light before it can be asked anything.
     /// Short visits, because the lamp holds nine turns at a time.
     @Test func theLampRoomAnswersToItsOwnDescription() async throws {

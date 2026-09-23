@@ -386,6 +386,14 @@ struct Lighthouse: Game {
             try refuse("Brine-swollen, full of oil, and going nowhere. Take what's in it.")
         }
 
+        // Inside the base the wall answers `room`, `tower` and `lighthouse`, so
+        // LEAVE or EXIT with one of those words walks out to the jetty instead
+        // of answering "You aren't in the stone wall."
+        fixtures.wall.before(.disembark) {
+            try enter(jetty)
+            try handled()
+        }
+
         // Lamp fuel: start the burn on lighting, stop it on dousing.
         oilLamp.after(.turnOn) {
             startFuse("lampDims")
