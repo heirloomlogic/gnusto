@@ -451,6 +451,10 @@ public struct Item: Sendable, Equatable {
     /// item — handing a sack to somebody standing in it builds a containment
     /// cycle just as surely as putting the sack in itself.
     ///
+    /// A worn item handed to anyone but the player stops being worn. Handed
+    /// to `player.item`, it stays where it was and stays worn;
+    /// ``moveToPlayer()`` takes it off.
+    ///
     /// - Parameter holder: the entity to hold the item.
     public func move(heldBy holder: Item) {
         let (frame, id) = resolved
@@ -468,7 +472,8 @@ public struct Item: Sendable, Equatable {
 
     /// Moves the item into the player's hands, bypassing the usual actions —
     /// the "you're suddenly holding this" moment (a lit match handed over, a
-    /// summoned object). Clears any worn state, since a held item isn't worn.
+    /// summoned object). A worn item comes off and stays in the player's
+    /// hands; `move(heldBy: player.item)` leaves it worn.
     public func moveToPlayer() {
         let (frame, id) = resolved
         frame.with { scratch in
@@ -480,10 +485,7 @@ public struct Item: Sendable, Equatable {
     /// Removes the item from play.
     public func vanish() {
         let (frame, id) = resolved
-        frame.with { scratch in
-            scratch.state.place(id, .nowhere)
-            scratch.state.wornItems.remove(id)
-        }
+        frame.with { $0.state.place(id, .nowhere) }
     }
 
     /// Puts `other` exactly where this item is — the same room, hands,
