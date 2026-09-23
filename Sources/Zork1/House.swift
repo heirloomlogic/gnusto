@@ -251,6 +251,7 @@ struct ZorkHouse: GameContent {
         name("broken clockwork canary")
         adjectives("broken", "mangled", "clockwork")
         synonyms("canary", "bird")
+        firstSight(Prose.brokenCanaryFirstSight)
         description(Prose.brokenCanary)
     }
 

@@ -125,20 +125,37 @@ extension Prose {
         appears extremely fragile.
         """
 
+    /// The intact bird in the hand: `CANARY`'s `FDESC` (`1dungeon.zil:1188`)
+    /// with its opening clause repaired and the rest verbatim, as ``egg`` is.
+    /// The `FDESC` itself is not declared as the listing line, because the
+    /// canary starts inside the egg on the nest, two levels below the room,
+    /// and the bootstrap warns about a listing line placed there. (#617)
     static let canary = """
-        There is a golden clockwork canary nestled in the egg. It has ruby
-        eyes and a silver beak. Through a crystal window below its left
-        wing you can see intricate machinery inside. It appears to have
-        wound down.
+        A golden clockwork canary. It has ruby eyes and a silver beak.
+        Through a crystal window below its left wing you can see intricate
+        machinery inside. It appears to have wound down.
         """
 
-    static let brokenCanary = """
+    /// `BROKEN-CANARY`'s `FDESC` (`1dungeon.zil:1203`), the listing line. The
+    /// ruined bird starts offstage, where that bootstrap check does not look.
+    static let brokenCanaryFirstSight = """
         There is a golden clockwork canary nestled in the egg. It seems to
         have recently had a bad experience. The mountings for its jewel-like
         eyes are empty, and its silver beak is crumpled. Through a cracked
         crystal window below its left wing you can see the remains of
         intricate machinery. It is not clear what result winding it would
         have, as the mainspring seems sprung.
+        """
+
+    /// The ruined bird in the hand: the same paragraph with its opening clause
+    /// repaired, as ``canary`` is.
+    static let brokenCanary = """
+        A golden clockwork canary. It seems to have recently had a bad
+        experience. The mountings for its jewel-like eyes are empty, and its
+        silver beak is crumpled. Through a cracked crystal window below its
+        left wing you can see the remains of intricate machinery. It is not
+        clear what result winding it would have, as the mainspring seems
+        sprung.
         """
 
     static let eggForcedRuinsCanary = """

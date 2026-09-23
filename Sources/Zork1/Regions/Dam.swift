@@ -204,7 +204,8 @@ struct ZorkDam: GameContent {
 
     let tube = Item {
         name("tube")
-        synonyms("gunk")
+        synonyms("gunk", "toothpaste")
+        firstSight(Prose.tubeFirstSight)
         description(Prose.tube)
         trait(.weight, 5)
     }
