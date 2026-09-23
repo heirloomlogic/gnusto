@@ -2808,15 +2808,7 @@ entry below.
 
 **Mechanics simplified or deferred.**
 
-- **Object containment is room-granular, and the source's is square-granular.**
-  `CPOBJS` is a 64-slot vector swapped into the room's contents on every step
-  (`CPGOTO`, `act3.199:809`), so anything dropped stays in the square it was
-  dropped in. Gnusto has one contents list per room. The card is therefore held
-  offstage until the player first stands in its square, and a `reach` rule
-  (issue #150) is what makes `take card` answer *"the card is squares away from
-  you"* rather than succeeding from across the grid. The consequence not
-  modelled: **an item dropped inside the puzzle can be picked up from any
-  square**, where the source would make you walk back for it.
+- **Object containment is room-granular, and the source's is square-granular.** `CPOBJS` is a 64-slot vector swapped into the room's contents on every step (`CPGOTO`, `act3.199:809`), so anything dropped stays in the square it was dropped in. A push changes `CPUVEC` and leaves `CPOBJS` alone (`CPWALL-OBJECT`, `act3.199:783`), so a wall pushed into a square covers what lies there until the wall moves off it, and the card starts that way, under the block at cell 37 (`dung.355:3116`). Gnusto has one contents list per room, so the port keeps the card's entry of that vector and no other: the grid records the square the card lies in (#619). The card is in the room only while the player stands in that square, and a card under a wall is in the room from no square, as in the source. The port departs from the source where the card lies on open floor in another square. The source shows nothing there. The port lists a stand-in item that says the card lies in another square, and that refuses `take card` with *"the card is squares away from you"* (#150). The consequence not modelled: **any other item dropped inside the puzzle can be picked up from any square**, where the source would make you walk back for it.
 - **`ODESCO` on the gold card is dead text and is not reproduced.** *"Nestled
   inside the niche is an engraved gold card"* prints only for an object inside a
   container, and the card is never in one. There is **no niche** in the mainframe
