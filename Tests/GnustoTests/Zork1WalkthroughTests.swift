@@ -77,6 +77,8 @@ struct Zork1WalkthroughTests {
                 "treasures for the final secret",
                 "Your score is 350 of a possible 350",
                 "rank of Master Adventurer",
+                // `MAP`'s `FDESC`, the listing line for the map in the case.
+                "In the trophy case is an ancient parchment which appears to be a map.",
                 "huge stone door",  // arrive before the Stone Barrow — not yet won
                 "perilous adventure",  // step inside: the barrow epilogue
                 "mastered ZORK: The Great Underground Empire",
@@ -186,7 +188,7 @@ private enum Walkthrough {
     /// reservoir for the trunk (+15), and lift the hand pump.
     static let b2HubBarDam: [String] = [
         "east",  // Kitchen
-        "take garlic",
+        "open sack", "take garlic",
         "up", "take rope", "down",  // attic rope
         "west",  // Living Room
         "open trap door", "down",  // Cellar (thief dead → the trap door reopens)
@@ -409,6 +411,7 @@ private enum Walkthrough {
         "turn on lantern",  // a light in hand once the torch is cased
         "put torch in trophy case",  // +6 → nineteenth treasure → the map appears
         "score",  // 350 — the rank of Master of the Underground
+        "look",  // the map, among the treasures
         "east", "east",  // Kitchen → Behind House
         "south", "west",  // South of House → West of House
         "southwest",  // the map's path → Stone Barrow

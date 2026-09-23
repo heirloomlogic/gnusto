@@ -108,15 +108,7 @@ struct Zork1ThiefTests {
         // take 10 = 70; the take award stays even after he steals it back.
         let transcript = try await play(
             Zork1(),
-            [
-                "south", "east", "open window", "west",
-                "take lunch", "take bottle", "west",
-                "take sword", "take lantern", "turn on lantern",
-                "push rug", "open trap door", "down",
-                "north",
-                "attack troll", "attack troll", "attack troll",
-                "west",  // Maze-1
-                "west", "west", "up",  // Maze-4 → Maze-3 → Maze-5
+            Zork1MazeTests.toMaze5 + [
                 "southwest", "east", "south", "southeast",  // → Cyclops Room
                 "odysseus",  // rout the cyclops, opening the stair up
                 "up",  // Treasure Room

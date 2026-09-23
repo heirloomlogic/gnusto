@@ -1,7 +1,9 @@
-/// Original Zork I prose for the house interior (``ZorkHouse``): kitchen,
-/// living room, attic, and the cellar the trap door drops into, plus the
-/// lantern's fuel-state lines. Transcribed from the MIT-licensed historical
-/// Zork source — see `THIRD_PARTY_NOTICES` at the repo root.
+/// Zork I prose for the house interior (``ZorkHouse``): kitchen, living room,
+/// attic, and the cellar the trap door drops into, plus the lantern's
+/// fuel-state lines. The original text is transcribed from the MIT-licensed
+/// historical Zork source — see `THIRD_PARTY_NOTICES` at the repo root —
+/// beside lines written for the port where the source has none, such as the
+/// (#407) scenery examine lines.
 extension Prose {
     // MARK: - House: interior
 
@@ -33,8 +35,9 @@ extension Prose {
         The window is slightly ajar, but not enough to allow entry.
         """
 
-    /// `SANDWICH-BAG`'s `FDESC`; the sack has no `TEXT`, so `EXAMINE` is the
-    /// engine's stock line. (#514)
+    /// `SANDWICH-BAG`'s `FDESC`. The sack has no `TEXT`, and the port answers
+    /// `EXAMINE` with the engine's stock line where `V-EXAMINE` would look
+    /// inside it (`FIDELITY.md`). (#514)
     static let sackFirstSight = "On the table is an elongated brown sack, smelling of hot peppers."
 
     static let garlic = "A single clove of garlic, papery and pungent."
@@ -50,6 +53,10 @@ extension Prose {
         appears to be nailed shut, a trophy case, and a large oriental rug
         in the center of the room.
         """
+
+    /// `LAMP`'s `FDESC`. Its `LDESC` is withdrawn, as the painting's is
+    /// (`FIDELITY.md`). (#618)
+    static let lanternFirstSight = "A battery-powered brass lantern is on the trophy case."
 
     static let lanternOff = """
         The lamp is turned off.

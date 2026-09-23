@@ -54,11 +54,12 @@ struct ZorkAboveGround: GameContent {
         door
     }
 
-    let mailbox = Item.scenery(
-        "small mailbox",
-        adjectives: "small",
-        description: Prose.mailbox
-    ) {
+    /// Listed, not scenery: `MAILBOX` has no `NDESCBIT`. It has no `TEXT`
+    /// either, so it declares no examine text; `V-EXAMINE` would look inside
+    /// it, which the port does not (`FIDELITY.md`).
+    let mailbox = Item {
+        name("small mailbox")
+        adjectives("small")
         container
         openable
     }
@@ -233,7 +234,10 @@ struct ZorkAboveGround: GameContent {
     let ancientMap = Item {
         name("ancient map")
         adjectives("ancient", "hand", "drawn")
+        // `MAP`'s `FDESC` names a parchment.
+        synonyms("parchment")
         description(Prose.ancientMap)
+        firstSight(Prose.ancientMapFirstSight)
         hidden
     }
 
@@ -490,11 +494,9 @@ struct ZorkAboveGround: GameContent {
             try refuse(Prose.frontDoorRefusal)
         }
 
-        // The `proceed()` acceptance pattern from Task 5: run the built-in
-        // open, then embellish with a line about the leaflet.
-        mailbox.before(.open) {
-            try proceed()
-            say(Prose.mailboxEmbellishment)
+        // `MAILBOX-F`'s one branch (`1actions.zil:2259`).
+        mailbox.before(.take) {
+            try refuse(Prose.mailboxAnchored)
         }
 
         // Not `require`: that helper is hardwired to `refuse` (see

@@ -67,7 +67,6 @@ struct ZorkHouse: GameContent {
         firstSight(Prose.sackFirstSight)
         container
         openable
-        startsOpen
     }
 
     let garlic = Item {
@@ -164,14 +163,15 @@ struct ZorkHouse: GameContent {
 
     /// A real light source with finite fuel: two fuses (dim warning, then
     /// out for good) that run only while it burns — turning it off banks
-    /// the remaining turns. Its lit/unlit examine text is a `describe` rule
-    /// in `rules`, below.
+    /// the remaining turns. Its examine text is a two-state trait on
+    /// `\.isLit`, and its listing line is `LAMP`'s `FDESC`.
     let lantern = Item {
         name("brass lantern")
         adjectives("brass")
         synonyms("lamp")
         lightSource
         description(when: \.isLit, Prose.lanternOn, otherwise: Prose.lanternOff)
+        firstSight(Prose.lanternFirstSight)
     }
 
     /// Fuel remaining on the dim-warning fuse while the lantern is off.

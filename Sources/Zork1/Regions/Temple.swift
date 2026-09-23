@@ -3,10 +3,10 @@ import GnustoScoring
 
 extension TraitKey<Bool> {
     /// An item that carries a live, naked flame — the ivory torch, the lit
-    /// candles, a struck match. Nothing in the engine reads it yet; the Gas
-    /// Room (a later region) will, to tell a safe light source from one that
-    /// sets the air alight. Minted here because the torch and candles are the
-    /// game's first open flames. See `FIDELITY.md`.
+    /// candles, a struck match. The Gas Room (``ZorkCoalMine``) reads it, to
+    /// tell a safe light source from one that sets the air alight. Minted here
+    /// because the torch and candles are the game's first open flames. See
+    /// `FIDELITY.md`.
     public static let openFlame = Self("openFlame", default: false)
 }
 
@@ -67,8 +67,9 @@ struct ZorkTemple: GameContent {
     }
 
     /// The draughty cave between the altar and Hades. A cold draught here snuffs
-    /// any lit candles (the `onEnter` rule below) — the reason the candles must
-    /// be lit *at* the gate for the exorcism, not carried down alight.
+    /// lit candles the player is carrying (the `onEnter` rule below) — the
+    /// reason the candles must be lit *at* the gate for the exorcism, not
+    /// carried down alight.
     let cave = Location {
         name("Cave")
         description(Prose.templeCave)
@@ -95,9 +96,8 @@ struct ZorkTemple: GameContent {
     /// `.turnOff` in a rule, which the rules block below does.
     let torch = Item {
         name("ivory torch")
-        adjectives("ivory")
+        adjectives("ivory", "flaming")
         synonyms("torch")
-        firstSight("An ivory torch, burning, is here.")
         description(Prose.ivoryTorch)
         lightSource
         startsLit
@@ -124,14 +124,21 @@ struct ZorkTemple: GameContent {
         adjectives("black", "prayer")
         synonyms("book", "prayerbook")
         description(Prose.book)
+        firstSight(Prose.bookFirstSight)
     }
 
+    /// Burning from the start, as `CANDLES` carries `ONBIT`. The listing line
+    /// is their `FDESC` while they burn untouched; blown out before anything
+    /// touches them, they get the stock sentence the original prints once
+    /// `CANDLES-FCN` sets `TOUCHBIT`.
     let candles = Item {
         name("pair of candles")
-        adjectives("white", "wax")
+        adjectives("white", "wax", "burning")
         synonyms("candles", "candle")
-        description(Prose.candles)
+        description(when: \.isLit, Prose.candlesBurning, otherwise: Prose.candlesOut)
+        firstSight(when: \.isLit, Prose.candlesFirstSight, otherwise: Prose.candlesListedOut)
         lightSource
+        startsLit
         trait(.openFlame, true)
     }
 
@@ -246,7 +253,10 @@ struct ZorkTemple: GameContent {
     let deadPassage = Item.scenery("passage", description: Prose.deadPassage)
 
     /// (#407) Named by `Prose.altar`.
-    let altarStone = Item.scenery("altar", description: Prose.altarStone)
+    let altarStone = Item.scenery("altar", description: Prose.altarStone) {
+        // `ALTAR` is a `SURFACEBIT` holder, and the book starts on it.
+        surface
+    }
 
     /// (#407) Named by `Prose.altar`.
     let altarHole = Item.scenery("small hole", adjectives: "small", synonyms: "hole", description: Prose.altarHole)
@@ -302,6 +312,23 @@ struct ZorkTemple: GameContent {
     @Global var candlesDieIn = 25
     @Latch var candlesBurnedOut
 
+    /// Starts the candles' burn-down from what is banked.
+    private func startCandleFuses() {
+        if candlesDimIn > 0 { startFuse("candlesDim", after: candlesDimIn) }
+        startFuse("candlesDie", after: candlesDieIn)
+    }
+
+    /// Puts the candles out and banks what is left of their burn-down. Candles
+    /// whose burn-down never started keep the bank they had.
+    private func snuffCandles() {
+        candles.isLit = false
+        guard let dieIn = fuseRemaining("candlesDie") else { return }
+        candlesDimIn = fuseRemaining("candlesDim") ?? 0
+        candlesDieIn = dieIn
+        stopFuse("candlesDim")
+        stopFuse("candlesDie")
+    }
+
     // MARK: - Map
 
     var map: WorldMap {
@@ -353,7 +380,7 @@ struct ZorkTemple: GameContent {
         landOfDead.north(entranceToHades)
 
         // Entities. (The burning match is unplaced — it starts .nowhere.)
-        torch.starts(in: torchRoom)
+        torch.starts(on: marblePedestal)
         railing.starts(in: domeRoom)
         dome.starts(in: domeRoom)
         torchRoomDoorway.starts(in: torchRoom)
@@ -376,7 +403,7 @@ struct ZorkTemple: GameContent {
         lostSouls.starts(in: landOfDead)
         adventurerRemains.starts(in: landOfDead)
         bell.starts(in: temple)
-        book.starts(in: altar)
+        book.starts(on: altarStone)
         candles.starts(in: altar)
         coffin.starts(in: egyptRoom)
         sceptre.starts(inside: coffin)
@@ -389,6 +416,16 @@ struct ZorkTemple: GameContent {
         // The ivory torch never goes out.
         torch.before(.turnOff) {
             try refuse(Prose.torchWontExtinguish)
+        }
+
+        // `TORCH`'s `FDESC` names the pedestal, so it is said only while the
+        // torch is on it. This port's thief can take an untouched torch off the
+        // pedestal, which `ROB` cannot: it takes only what lies loose in a room
+        // (`1actions.zil:3976`). He leaves what he takes loose in a room, so
+        // off the pedestal the line is the stock one for a thing lying there.
+        torch.presence {
+            marblePedestal.holds(torch)
+                ? Prose.torchFirstSight : gameText.itemHere(torch.indefiniteNoun)
         }
 
         // The altar crack is too narrow for the gold coffin — the original's
@@ -416,8 +453,8 @@ struct ZorkTemple: GameContent {
 
         // Ringing the bell. Away from the gate (or once the spirits are gone)
         // it just rings. At the gate it opens the exorcism: the spirits freeze,
-        // the bell goes red hot and drops, any lit candles are snuffed, and a
-        // three-turn window opens (with a twenty-turn cool on the bell).
+        // the bell goes red hot and drops, lit candles in hand are snuffed, and
+        // a three-turn window opens (with a twenty-turn cool on the bell).
         bell.before(.ring) {
             guard player.location == entranceToHades, !ghostsBanished else {
                 try reply(Prose.bellRingsHollow)
@@ -425,17 +462,20 @@ struct ZorkTemple: GameContent {
             guard !bellHot else { try reply(Prose.bellAlreadyRung) }
             bellHot = true
             exorcismStage = 1
-            if candles.isLit {
-                candles.isLit = false
-                candlesDimIn = fuseRemaining("candlesDim") ?? 0
-                candlesDieIn = fuseRemaining("candlesDie") ?? 0
-                stopFuse("candlesDim")
-                stopFuse("candlesDie")
-            }
+            if candles.isLit, candles.isHeld { snuffCandles() }
             bell.move(to: entranceToHades)
             startFuse("exorcismLapse", after: 3)
             startFuse("bellCools", after: 20)
             try reply(Prose.bellRingRedHot)
+        }
+
+        // `CANDLES-FCN` enables `I-CANDLES` on any command that names the
+        // untouched candles, before it looks at the verb (`1actions.zil:2344`).
+        // The candles start burning with no fuse running, and every other
+        // path that lights them starts one.
+        candles.before {
+            guard candles.isLit, !candlesBurnedOut, fuseRemaining("candlesDie") == nil else { return }
+            startCandleFuses()
         }
 
         // Lighting the candles. Needs a live flame in hand — a struck match.
@@ -456,13 +496,18 @@ struct ZorkTemple: GameContent {
             // unnamed one. Without the possession half, `light candles with
             // match` would light them off a match lying on the floor that
             // `light candles` in the same state refuses.
+            // With the torch, `CANDLES-FCN` asks only whether the candles are
+            // lit (`1actions.zil:2372`).
+            if candles.isLit, command.indirectObject == torch {
+                try reply(Prose.candlesAlreadyLighted)
+            }
             let flame = command.indirectObject ?? burningMatch
             try require(
                 flame == burningMatch && player.inventory.contains(burningMatch),
                 else: Prose.candlesNeedFlame)
+            guard !candles.isLit else { try reply(Prose.candlesAlreadyLit) }
             candles.isLit = true
-            if candlesDimIn > 0 { startFuse("candlesDim", after: candlesDimIn) }
-            startFuse("candlesDie", after: candlesDieIn)
+            startCandleFuses()
             if player.location == entranceToHades && exorcismStage == 1 {
                 exorcismStage = 2
                 stopFuse("exorcismLapse")
@@ -472,14 +517,22 @@ struct ZorkTemple: GameContent {
             try reply(Prose.candlesLit)
         }
 
+        // Burning candles in hand after the bell are the ritual's second step,
+        // however they got there (`LLD-ROOM`'s `M-END`, `1actions.zil:1115`):
+        // candles left burning on the ground stay lit through the bell, and
+        // picking them up is the step.
+        entranceToHades.afterEachTurn {
+            guard exorcismStage == 1, candles.isHeld, candles.isLit else { return }
+            exorcismStage = 2
+            stopFuse("exorcismLapse")
+            startFuse("exorcismLapse", after: 3)
+            say(Prose.candlesLitForRitual)
+        }
+
         // Blowing the candles out banks their remaining fuel.
         candles.before(.turnOff) {
             guard candles.isLit else { return }
-            candles.isLit = false
-            candlesDimIn = fuseRemaining("candlesDim") ?? 0
-            candlesDieIn = fuseRemaining("candlesDie") ?? 0
-            stopFuse("candlesDim")
-            stopFuse("candlesDie")
+            snuffCandles()
             try reply(Prose.candlesDie)
         }
 
@@ -494,14 +547,11 @@ struct ZorkTemple: GameContent {
             try reply(Prose.spiritsBanished)
         }
 
-        // The draught in the cave snuffs lit candles as you enter.
+        // The draught in the cave snuffs lit candles in hand as you enter
+        // (`CAVE2-ROOM`, `1actions.zil:2416`, which checks `IN? ,CANDLES ,WINNER`).
         cave.onEnter {
-            guard candles.isLit else { return }
-            candles.isLit = false
-            candlesDimIn = fuseRemaining("candlesDim") ?? 0
-            candlesDieIn = fuseRemaining("candlesDie") ?? 0
-            stopFuse("candlesDim")
-            stopFuse("candlesDie")
+            guard candles.isLit, candles.isHeld else { return }
+            snuffCandles()
             say(Prose.candlesSnuffedByDraft)
         }
     }

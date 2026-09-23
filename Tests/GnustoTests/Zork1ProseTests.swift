@@ -359,7 +359,7 @@ struct Zork1ProseTests {
             Zork1(),
             [
                 "north", "east", "open window", "west",  // → Kitchen
-                "look in sack", "x lunch",
+                "open sack", "look in sack", "x lunch",
             ])
 
         #expect(!transcript.contains("A hot pepper sandwich is here."))
@@ -457,6 +457,126 @@ struct Zork1ProseTests {
             #expect(answer.contains("There are lots of jewels in there."))
             #expect(!answer.contains("trunk here"))
         }
+    }
+
+    // MARK: - Lines and states reproduced from 1dungeon.zil (#618)
+
+    /// `MAILBOX-F` (`1actions.zil:2259`) answers `TAKE` and nothing else, so
+    /// opening the mailbox is `V-OPEN`'s own line: the leaflet named while it
+    /// is inside, and "Opened." once it is gone. The port had added a sentence
+    /// saying a leaflet sat inside to every opening, including the ones after
+    /// the leaflet was taken.
+    @Test func openingTheMailboxNamesTheLeafletOnlyWhileItIsInside() async throws {
+        let transcript = try await play(
+            Zork1(), ["open mailbox", "take leaflet", "close mailbox", "open mailbox"])
+
+        #expect(
+            turnOutput(of: "open mailbox", in: transcript)
+                .contains("Opening the small mailbox reveals a leaflet."))
+        let emptied = turnOutput(ofLast: "open mailbox", in: transcript)
+        #expect(emptied.contains("Opened."))
+        #expect(!emptied.contains("leaflet"))
+        #expect(!transcript.contains("A leaflet sits inside"))
+    }
+
+    /// `MAILBOX` has no `NDESCBIT`, so West of House lists it, and its take
+    /// refusal is `MAILBOX-F`'s one branch. It has no `TEXT` either, so the
+    /// examine text written for the port is gone; see `FIDELITY.md` for what
+    /// `V-EXAMINE` does with a container that the port does not.
+    /// `TRYTAKEBIT` keeps it in `take all` (`gmain.zil:132`), which gets the
+    /// same answer.
+    @Test func theMailboxIsListedAndSecurelyAnchored() async throws {
+        let transcript = try await play(Zork1(), ["look", "take mailbox", "x mailbox", "take all"])
+
+        #expect(turnOutput(of: "look", in: transcript).contains("There is a small mailbox here."))
+        #expect(turnOutput(of: "take mailbox", in: transcript).contains("It is securely anchored."))
+        let examined = turnOutput(of: "x mailbox", in: transcript)
+        #expect(examined.contains("There's nothing special about the small mailbox."))
+        #expect(!examined.contains("rusted"))
+        #expect(
+            turnOutput(of: "take all", in: transcript).contains("small mailbox: It is securely anchored."))
+    }
+
+    /// `SANDWICH-BAG` has no `OPENBIT`, so the sack starts closed and the lunch
+    /// and the garlic are found by opening it.
+    @Test func theSackStartsClosed() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // → Kitchen
+                "look in sack", "open sack",
+            ])
+
+        #expect(turnOutput(of: "look in sack", in: transcript).contains("The brown sack is closed."))
+        let opened = turnOutput(of: "open sack", in: transcript)
+        #expect(opened.contains("Opening the brown sack reveals"))
+        #expect(opened.contains("lunch"))
+        #expect(opened.contains("garlic"))
+        #expect(!opened.contains("It is already open."))
+    }
+
+    /// `LAMP`'s `FDESC` is its listing line until it is taken. Its `LDESC` is
+    /// withdrawn for the painting's reason (`FIDELITY.md`), so a lantern put
+    /// down again is listed in the engine's stock words.
+    @Test func theLanternIsListedByItsFDESCUntilItIsTaken() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // → Kitchen
+                "west",  // → Living Room
+                "take lantern", "drop lantern", "look",
+            ])
+
+        let fdesc = "A battery-powered brass lantern is on the trophy case."
+        #expect(turnOutput(ofLast: "west", in: transcript).contains(fdesc))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("There is a brass lantern here."))
+        #expect(!look.contains(fdesc))
+    }
+
+    /// The torch stands on the pedestal and the book on the altar, as
+    /// `1dungeon.zil` places them, and each is listed by its `FDESC`. The
+    /// candles carry `ONBIT`, so they start burning, which is what their own
+    /// `FDESC` says; `CANDLES-FCN`'s `EXAMINE` branch (`1actions.zil:2399`)
+    /// reads that state.
+    @Test func theTempleListsTheTorchBookAndCandlesInTheSourcesWords() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Zork1TempleTests.toDomeRoom + [
+                "tie rope to railing", "down",  // → Torch Room
+                "x flaming torch", "take torch from pedestal",
+                "south", "south",  // → Temple → Altar
+                "x burning candles", "take book from altar",
+                "take candles", "down",  // → Cave, where the draught blows them out
+                "x candles",
+            ],
+            seed: 0)
+
+        #expect(
+            turnOutput(ofLast: "down", in: transcript)
+                .contains("A gust of wind blows out your candles!"))
+        #expect(
+            transcript.contains("Sitting on the pedestal is a flaming torch, made of ivory."))
+        #expect(!transcript.contains("An ivory torch, burning, is here."))
+        #expect(turnOutput(of: "take torch from pedestal", in: transcript).contains("Taken."))
+        #expect(turnOutput(of: "x flaming torch", in: transcript).contains("The torch is burning."))
+
+        let altar = turnOutput(ofLast: "south", in: transcript)
+        #expect(altar.contains("On the altar is a large black book, open to page 569."))
+        #expect(altar.contains("On the two ends of the altar are burning candles."))
+        #expect(turnOutput(of: "take book from altar", in: transcript).contains("Taken."))
+        #expect(turnOutput(of: "x burning candles", in: transcript).contains("The candles are burning."))
+        #expect(turnOutput(of: "x candles", in: transcript).contains("The candles are out."))
+    }
+
+    /// The map's listing line calls it a parchment, so the parser has to know
+    /// the word. The map appears only at the end of the walkthrough, so this
+    /// asks the vocabulary.
+    @Test func theMapAnswersToTheParchmentItsListingLineNames() throws {
+        let (definition, _) = try Bootstrap.build(Zork1())
+        let map = definition.vocabulary.itemLexicons[EntityID("ZorkAboveGround.ancientMap")]
+        #expect(map?.nouns.contains("map") == true)
+        #expect(map?.nouns.contains("parchment") == true)
     }
 
     /// `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): from

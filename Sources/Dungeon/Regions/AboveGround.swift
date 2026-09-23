@@ -739,10 +739,10 @@ struct DungeonAboveGround: GameContent {
             try refuse(Prose.frontDoorRefusal)
         }
 
-        // Run the built-in open, then say what is inside.
+        // Run the built-in open, then say what is inside, while it is.
         mailbox.before(.open) {
             try proceed()
-            say(Prose.mailboxEmbellishment)
+            if mailbox.holds(leaflet) { say(Prose.mailboxEmbellishment) }
         }
 
         // `reply` rather than `require`: "already moved" owns the whole turn's

@@ -1,7 +1,8 @@
-/// Original Zork I prose for the above-ground region (``ZorkAboveGround``):
-/// the White House exterior, the forest and clearings, and the canyon.
-/// Transcribed from the MIT-licensed historical Zork source — see
-/// `THIRD_PARTY_NOTICES` at the repo root.
+/// Zork I prose for the above-ground region (``ZorkAboveGround``): the White
+/// House exterior, the forest and clearings, and the canyon. The original text
+/// is transcribed from the MIT-licensed historical Zork source — see
+/// `THIRD_PARTY_NOTICES` at the repo root — beside lines written for the port
+/// where the source has none, such as the (#407) scenery examine lines.
 extension Prose {
     // MARK: - AboveGround: house exterior
 
@@ -55,9 +56,7 @@ extension Prose {
 
     static let frontDoorRefusal = "The door cannot be opened."
 
-    static let mailbox = "A small mailbox, its flag long since rusted in place."
-
-    static let mailboxEmbellishment = "A leaflet sits inside, waiting to be read."
+    static let mailboxAnchored = "It is securely anchored."
 
     static let leaflet = """
         "WELCOME TO ZORK!
@@ -258,6 +257,11 @@ extension Prose {
         The map shows a forest with three clearings. The largest clearing
         contains a house. Three paths leave the large clearing. One of
         these paths, leading southwest, is marked "To Stone Barrow".
+        """
+
+    /// `MAP`'s `FDESC`. (#618)
+    static let ancientMapFirstSight = """
+        In the trophy case is an ancient parchment which appears to be a map.
         """
 
     static let ancientMapAppears = """

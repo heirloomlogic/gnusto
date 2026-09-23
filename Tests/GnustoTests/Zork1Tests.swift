@@ -18,7 +18,6 @@ struct Zork1Tests {
             transcript,
             [
                 "Opening the small mailbox reveals a leaflet.",
-                "A leaflet sits inside, waiting to be read.",
                 "WELCOME TO ZORK",
                 "Closed.",
             ])
@@ -837,6 +836,7 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west",
                 "take all",
+                "open sack",
                 "take all from sack",
                 "drop all",
                 "take bottle", "open it", "look in it",
@@ -851,8 +851,9 @@ struct Zork1Tests {
                 // take all: name-sorted, per-object results; the scenery
                 // window is skipped, and so is the water — behind the shut
                 // bottle's glass, it is in view and out of arm's reach. The
-                // sack comes up off the floor packed, so the garlic and the
-                // lunch inside it take a sweep of their own (#510).
+                // sack comes up off the table shut and packed, so once it is
+                // open the garlic and the lunch inside it take a sweep of
+                // their own (#510).
                 "brown sack: Taken.",
                 "glass bottle: Taken.",
                 "clove of garlic: Taken.",
@@ -1258,6 +1259,7 @@ struct Zork1Tests {
             Zork1(),
             [
                 "north", "east", "open window", "west",  // into the Kitchen
+                "open sack",
                 "get garlic from sack", "put garlic in sack",
                 "remove garlic from sack", "put garlic in sack",
                 "get garlic out of sack", "inventory",

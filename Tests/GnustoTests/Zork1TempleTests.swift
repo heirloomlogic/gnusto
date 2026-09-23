@@ -35,16 +35,30 @@ struct Zork1TempleTests {
     static let toDomeRoom: [String] =
         toRoundRoom + ["southeast", "east"]
 
+    /// Down the rope and through the Temple to the Altar, touching nothing on
+    /// the way.
+    private static let toAltar: [String] =
+        toDomeRoom + [
+            "tie rope to railing", "down",  // → Torch Room
+            "south", "south",  // → Temple → Altar
+        ]
+
     /// Detour through the hub to the Dam Lobby for the matchbook, then down the
-    /// rope and through the temple, gathering the bell (Temple) and the book and
-    /// candles (Altar), ending at the Entrance to Hades with the full ritual kit.
-    private static let toHadesWithKit: [String] =
+    /// rope to the Torch Room.
+    private static let toTorchRoomWithMatchbook: [String] =
         toRoundRoom + [
             "north", "northeast", "east", "north",  // → N-S Passage → Deep Canyon → Dam → Dam Lobby
             "take matchbook",
             "south", "south", "southwest", "south",  // → Dam → Deep Canyon → N-S Passage → Round Room
             "southeast", "east",  // → Engravings Cave → Dome Room
             "tie rope to railing", "down",  // → Torch Room
+        ]
+
+    /// From the Torch Room with the matchbook, through the temple, gathering the
+    /// bell (Temple) and the book and candles (Altar), ending at the Entrance to
+    /// Hades with the full ritual kit.
+    private static let toHadesWithKit: [String] =
+        toTorchRoomWithMatchbook + [
             "south", "take bell",  // Temple
             "south", "take book", "take candles",  // Altar
             "down", "down",  // → Cave → Entrance to Hades
@@ -144,6 +158,60 @@ struct Zork1TempleTests {
                 "Land of the Dead",
                 "Taken.",  // the crystal skull
             ])
+    }
+
+    /// The bell puts out only candles in hand, so candles left burning on the
+    /// ground stay lit. Picking them up after the bell is the ritual's second
+    /// step, as `LLD-ROOM`'s end-of-turn check (`1actions.zil:1115`) asks only
+    /// that burning candles be in hand.
+    @Test func burningCandlesTakenUpAfterTheBellCompleteTheRitual() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit + [
+                "light matches", "light candles", "drop candles",
+                "ring bell",
+                "take candles",
+                "read book",
+            ],
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                "becomes red hot and falls to the ground",
+                "flames flicker wildly and appear to dance",
+                "flee through the walls",
+            ])
+    }
+
+    /// With the torch, `CANDLES-FCN` asks only whether the candles are lit
+    /// (`1actions.zil:2372`).
+    @Test func burningCandlesRefuseTheTorchInTheSourcesWords() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toAltar + ["north", "north", "take torch", "south", "south", "light candles with torch"],
+            seed: 0)
+        #expect(
+            turnOutput(of: "light candles with torch", in: transcript)
+                .contains("You realize, just in time, that the candles are already lighted."))
+    }
+
+    /// `TORCH`'s `FDESC` names the pedestal, so it is said only while the torch
+    /// is on it. Here the thief lifts the untouched torch off the pedestal and
+    /// drops it on the floor as he dies.
+    @Test func theTorchLineNamesThePedestalOnlyWhileTheTorchIsOnIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toDomeRoom + ["tie rope to railing", "down"]
+                + Array(repeating: "attack thief with sword", count: 5) + ["look"],
+            seed: 117)
+        #expect(
+            turnOutput(ofLast: "down", in: transcript)
+                .contains("Sitting on the pedestal is a flaming torch, made of ivory."))
+        #expect(transcript.contains("You suddenly notice that the ivory torch vanished."))
+        #expect(transcript.contains("The thief takes a fatal blow"))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("There is an ivory torch here."))
+        #expect(!look.contains("Sitting on the pedestal"))
     }
 
     /// The ritual has a window: ring the bell and then dawdle, and the spirits
@@ -266,28 +334,61 @@ struct Zork1TempleTests {
     }
 
     /// A cold draught in the cave snuffs lit candles — the reason the ritual's
-    /// candles must be lit at the gate below, not carried down alight.
+    /// candles must be lit at the gate below, not carried down alight. They
+    /// start burning (`ONBIT`), so lighting them at the altar is
+    /// `CANDLES-FCN`'s "already lit" (`1actions.zil:2364`).
     @Test func theDraughtSnuffsLitCandles() async throws {
         let transcript = try await play(
             Zork1(),
-            Self.toRoundRoom + [
-                "north", "northeast", "east", "north",  // → Dam Lobby
-                "take matchbook",
-                "south", "south", "southwest", "south",  // → Round Room
-                "southeast", "east",  // → Engravings Cave → Dome Room
-                "tie rope to railing", "down",  // Torch Room
+            Self.toTorchRoomWithMatchbook + [
                 "south", "south",  // → Temple → Altar
-                "take candles", "light matches", "light candles",  // candles burning
+                "take candles", "light matches", "light candles",  // burning since the start
                 "down",  // into the cave — the draught takes them
             ],
             seed: 0)
         expectInOrder(
             transcript,
             [
-                "The candles are lit",  // candlesLit
+                "The candles are already lit.",
                 "gust of wind blows out your candles",  // candlesSnuffedByDraft
                 "Cave",
             ])
+        #expect(!transcript.contains("The candles are lit."))
+    }
+
+    /// `CANDLES-FCN` enables `I-CANDLES` on the first command that names the
+    /// untouched candles (`1actions.zil:2344`), so they burn down from there
+    /// and not from the start of the game.
+    @Test func theCandlesBurnFromTheFirstCommandThatNamesThem() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toAltar + ["take candles", "north"]  // → Temple, clear of the draught
+                + Array(repeating: "wait", count: 25),
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                "The candles won't last long now.",
+                "The flame is extinguished.",
+            ])
+    }
+
+    /// Until something names them, they burn without burning down, and
+    /// leaving them behind keeps them out of the cave's draught, which blows
+    /// out only candles in the player's hands (`CAVE2-ROOM`,
+    /// `1actions.zil:2418`).
+    @Test func untouchedCandlesStayLitAndOutOfTheDraught() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toAltar + Array(repeating: "wait", count: 21) + [
+                "look", "down",  // → Cave, candles left on the altar
+            ],
+            seed: 0)
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("On the two ends of the altar are burning candles."))
+        #expect(!transcript.contains("The candles won't last long now."))
+        #expect(!transcript.contains("gust of wind"))
     }
 
     /// The matchbook is finite: five matches, and then none.

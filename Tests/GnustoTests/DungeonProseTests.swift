@@ -1388,6 +1388,21 @@ struct DungeonProseTests {
             ])
     }
 
+    /// Opening the mailbox adds a line about the leaflet inside it, and only
+    /// while the leaflet is inside it. It had added the line to every opening,
+    /// including the ones after the leaflet was taken. (#618)
+    @Test func theMailboxMentionsTheLeafletOnlyWhileItIsInside() async throws {
+        let transcript = try await play(
+            Dungeon(), ["open mailbox", "take leaflet", "close mailbox", "open mailbox"])
+
+        #expect(
+            turnOutput(of: "open mailbox", in: transcript)
+                .contains("A leaflet sits inside, waiting to be read."))
+        let emptied = turnOutput(ofLast: "open mailbox", in: transcript)
+        #expect(emptied.contains("Opened."))
+        #expect(!emptied.contains("leaflet"))
+    }
+
     /// `sit in the mailbox` and `lie in the mailbox` answered with ON, because
     /// the lines wrote it themselves. They take the word from the row now.
     @Test func sittingAndLyingInTheMailboxSayIn() async throws {
