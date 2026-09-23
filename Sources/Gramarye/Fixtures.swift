@@ -7,13 +7,13 @@ import Gnusto
 /// a puzzle and none is takeable — they exist so that `X DESK` gets an answer
 /// instead of *I don't know the word "desk"*.
 ///
-/// They live in a ``GameContent`` bundle because ten more scenery items would
-/// otherwise be a quarter of the host file. The host places them: a bundle can
-/// only place into rooms it can *name*, and the rooms are ``Gramarye``'s.
+/// They live in a ``GameContent`` bundle because the scenery would otherwise
+/// crowd the host file. The host places them: a bundle can only place into
+/// rooms it can *name*, and the rooms are ``Gramarye``'s.
 ///
 /// What is *not* here is anything whose text depends on host state. The warding
-/// marks read the door and the rubble is revealed by a spell, so both live with
-/// the things they answer to.
+/// marks read the door, the rubble is revealed by a spell and the Undercroft
+/// floor reads the golem, so they live with the things they answer to.
 ///
 /// A note on what is declared and what is derived: a `name` already contributes
 /// its last word as a noun and every earlier word as an adjective, so
@@ -116,6 +116,19 @@ struct Fixtures: GameContent {
             """
             Green, steep, and going down to a road with nobody on it. He was making better
             time than the robes deserved, and there is no sign of him coming back up.
+            """
+    )
+
+    /// Where the intro has the master stop and turn back. The study's way out,
+    /// which `out` and `down` refuse.
+    let threshold = Item.scenery(
+        "threshold",
+        adjectives: "worn",
+        description:
+            """
+            Worn stone, where he stopped, turned back, and told you at some volume
+            where the amulet hangs. You were left to mind the tower, and the tower is
+            this side of it.
             """
     )
 

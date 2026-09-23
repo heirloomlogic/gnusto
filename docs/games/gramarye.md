@@ -443,13 +443,13 @@ that it stay true of a thing the player cannot pick up:
 
 | Room | Items |
 |---|---|
-| Study | desk (holds the book, and its inkwells are the ones the slam rattles), books, study wall, candle, cauldrons, the master (and everything he left with — cloak, staff, hat, robes, letters, the Circle), the hill (and the road the blocked exits refuse) |
+| Study | desk (holds the book, and its inkwells are the ones the slam rattles), books, study wall, candle, cauldrons, the master (and everything he left with — cloak, staff, hat, robes, letters, the Circle), the hill (and the road the blocked exits refuse), the threshold the master stopped at |
 | Long Gallery | the gallery's own cold stonework — not the granite, which owns `wall` and `granite` so that `OPEN WALL` never becomes a disambiguation question |
 | Undercroft | the vaulting (and the cellar's chalky air and old magic), the iron hook |
 
-Two more live with the game because their text reads the world: the **warding marks**,
-whose two states follow the door, and the **rubble**, revealed by the firebolt so the
-ending has something to inventory.
+Others live with the game because their text reads the world: the **warding marks**,
+whose two states follow the door, the **rubble**, revealed by the firebolt so the
+ending has something to inventory, and the Undercroft's **floor** (`flags`, `flagstones`), which has the golem standing on it until the firebolt and the rubble lying across it after.
 
 ---
 
