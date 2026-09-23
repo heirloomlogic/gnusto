@@ -124,17 +124,9 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
     var playerSquare = RoyalPuzzleGrid.entrySquare
 
     /// The square the gold card lies in, on open floor or under a wall. `nil`
-    /// while it is off the puzzle's floor: in a hand, in a container, out of
-    /// the puzzle, or in the slit. The source keeps an object list per square
-    /// (`CPOBJS`); this is the card's entry of it, and the only one the port
-    /// keeps. (#619)
+    /// while it is off the puzzle's floor. The source keeps an object list per
+    /// square (`CPOBJS`); this is the card's entry of it. (#619)
     var cardSquare: Int? = RoyalPuzzleGrid.cardStartSquare
-
-    /// Declared because both halves of `Codable` are written by hand below,
-    /// and the compiler synthesizes the keys only for a half it writes.
-    private enum CodingKeys: String, CodingKey {
-        case cells, playerSquare, cardSquare
-    }
 
     init() {}
 
@@ -153,22 +145,9 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
         if let decoded = try? box.decode(Int.self, forKey: .playerSquare) {
             playerSquare = decoded
         }
-        // A missing key keeps the default. A `null` is a card off the floor.
-        if box.contains(.cardSquare) {
-            cardSquare = try? box.decode(Int.self, forKey: .cardSquare)
-        }
-    }
-
-    /// Written by hand for one field. The synthesized encoder leaves out a
-    /// `nil` optional, and the decoder above reads a missing `cardSquare` as
-    /// the default. Every read of the `@Global` decodes, so a card the player
-    /// had picked up would read as lying in its starting square again on the
-    /// next turn. So `nil` is written as `null`.
-    func encode(to encoder: any Encoder) throws {
-        var box = encoder.container(keyedBy: CodingKeys.self)
-        try box.encode(cells, forKey: .cells)
-        try box.encode(playerSquare, forKey: .playerSquare)
-        try box.encode(cardSquare, forKey: .cardSquare)
+        // The one field that reads a missing key as `nil` rather than as its
+        // default: the synthesized encoder leaves a `nil` out.
+        cardSquare = try? box.decodeIfPresent(Int.self, forKey: .cardSquare)
     }
 
     /// What stands in a square. Out of range reads as marble, so a bad index
@@ -392,40 +371,42 @@ struct DungeonRoyalPuzzle: GameContent {
     // MARK: - The gold card
 
     /// `GCARD`. Ten to find and fifteen to case, and the only points in the
-    /// region — none of its three rooms carries an `RVAL`.
-    ///
-    /// On the puzzle's floor it is in the room only while the player stands
-    /// in its square, as the source's per-square object lists have it. While
-    /// it lies on open floor in another square, ``distantCard`` is in the room
-    /// instead. (#619)
-    let goldCard = Item {
-        name("gold card")
-        adjectives("solid", "engraved")
-        synonyms("card", "pass")
-        description(Prose.goldCard)
+    /// region — none of its three rooms carries an `RVAL`. On the puzzle's
+    /// floor, ``placeTheCard(_:)`` decides when it is in the room.
+    let goldCard = goldCardNamed {
         firstSight(Prose.goldCardInPlace)
         trait(.weight, 4)
         trait(.takeValue, 10)
         trait(.depositValue, 15)
     }
 
-    /// The gold card seen from another square. It is in the room while the
-    /// card lies on open floor in a square the player is not standing in, so
-    /// the room can say the card is elsewhere and `take card` can say how far.
+    /// The gold card seen from another square: the room says it is elsewhere,
+    /// and `take card` says how far. (#619)
     ///
-    /// It is a second item because of the touch gate. A thing's listing line
-    /// prints only until the player first handles it. After that, a card kept
-    /// in the room from every square would be listed as "There is a gold card
-    /// here." in all of them. Nothing handles the stand-in: its `reach` rule
-    /// refuses every verb that has to touch it, and nothing can pick it up.
-    /// (#619)
-    let distantCard = Item.scenery(
-        "gold card",
-        adjectives: "solid", "engraved",
-        synonyms: "card", "pass",
-        description: Prose.goldCard
-    ) {
+    /// A second item because of the touch gate. A thing's listing line prints
+    /// only until the player first handles it, so one card kept in the room
+    /// would be listed as "There is a gold card here." from every square once
+    /// it had been picked up. `alwaysListed` would keep the line, but the card
+    /// would then print it in the trophy case as well, where the stock line
+    /// names the case. Nothing handles the stand-in: its `reach` rule refuses
+    /// every verb that has to touch it, and it is scenery.
+    let distantCard = goldCardNamed {
+        scenery
         firstSight(Prose.goldCardAcrossTheFloor)
+    }
+
+    /// The words and the examine line the card and its stand-in share, so
+    /// `x card` and `take card` find either one the same way.
+    private static func goldCardNamed(@ItemBuilder _ traits: () -> [ItemTrait]) -> Item {
+        Item {
+            name("gold card")
+            adjectives("solid", "engraved")
+            synonyms("card", "pass")
+            description(Prose.goldCard)
+            for trait in traits() {
+                trait
+            }
+        }
     }
 
     // MARK: - The note
@@ -775,10 +756,7 @@ extension DungeonRoyalPuzzle {
             card.before(.read) { try reply(Prose.goldCardText) }
         }
 
-        // Keeps `cardSquare` in step with the card at the end of each turn.
-        // The player is in the card's square and the card is not in the room:
-        // it has left the floor. The card is in the room and has no square: it
-        // has just been dropped, in the player's square. A step or a push
+        // Keeps `cardSquare` in step with a take or a drop. A step or a push
         // moves no card, so `settle` needs none of this.
         puzzle.afterEachTurn {
             var state = grid
@@ -944,8 +922,8 @@ extension DungeonRoyalPuzzle {
     /// card under a wall is in neither. The source keeps an object list per
     /// square and this engine keeps one per room, so each arrival is where
     /// the two are reconciled. That is how the card first appears: the block
-    /// that covers it moves only when the player pushes it, and the push
-    /// leaves the player in the card's square. (#619)
+    /// over it moves only when the player pushes it, and the push leaves the
+    /// player in the card's square. (#619)
     ///
     /// - Parameter state: the grid as the caller has just written it. Passed
     ///   in rather than read back off the global, which would decode
