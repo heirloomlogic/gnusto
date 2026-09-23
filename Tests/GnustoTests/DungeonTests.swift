@@ -1323,11 +1323,31 @@ struct DungeonTests {
                     "examine bank",
                     "east", "north", "examine mud", "examine trunk",
                     "north", "examine tunnel", "examine pump",
-                    "south", "up", "examine beach", "examine walls",
+                    "south", "up", "examine cleft", "examine rocks", "examine walls",
+                    "examine reservoir",
                 ],
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the reservoir and the stream")
+    }
+
+    /// **The Stream is reached on foot.** Its one way in is up from the
+    /// drained reservoir bed, so its description does not put the player on
+    /// the water or offer a beach to land on, and `land` there is the
+    /// on-foot answer. (#623)
+    @Test func theStreamIsDescribedForAPlayerOnFoot() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam + Self.fetchTheWrench
+                + ["turn bolt with wrench", "south", "northwest", "north", "up", "land", "west"],
+            seed: 18)
+
+        let stream = turnOutput(ofLast: "up", in: transcript)
+        #expect(stream.contains("Stream"))
+        #expect(stream.contains("narrow cleft in the rocks"))
+        #expect(!stream.contains("beach"))
+        #expect(turnOutput(of: "land", in: transcript).contains("You are not in anything that needs landing."))
+        #expect(turnOutput(ofLast: "west", in: transcript).contains("You can't go that way."))
     }
 
     // MARK: - Milestone 3: the temple, Hades, the mirrors and the coal mine
@@ -4723,6 +4743,10 @@ struct DungeonTests {
     /// asks the anteroom's sand what it is once the hole has been sealed.
     static let toTheCardSquare = intoThePuzzle + toTheGoldCard
 
+    /// And on to the door square with the card in hand, facing the slit.
+    private static let toTheSlitWithTheCard =
+        toTheCardSquare + ["take card", "push south", "push west", "south"]
+
     /// And the shortest line from the card's square to standing under the
     /// ceiling opening with the good ladder beside it — the win. Thirty-seven
     /// moves, and it uses diagonals throughout, which is why the source gives
@@ -5280,6 +5304,71 @@ struct DungeonTests {
                 "The steel door bars the way.",
                 "Small Square Room",
             ])
+    }
+
+    /// Both faces of the steel door say whether it is open, and the Side
+    /// Room's face has the handle it names. (#623)
+    @Test func bothFacesOfTheSteelDoorFollowTheSlit() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheSlitWithTheCard
+                + ["examine door", "put card in slit", "look at door", "west", "x door", "x handle"],
+            seed: 18)
+
+        #expect(turnOutput(of: "examine door", in: transcript).contains("with no handle on this side"))
+        let openFromThePuzzle = turnOutput(of: "look at door", in: transcript)
+        #expect(openFromThePuzzle.contains("slid open on a passage west"))
+        #expect(!openFromThePuzzle.contains("A slab of steel"))
+        let openFromTheSideRoom = turnOutput(of: "x door", in: transcript)
+        #expect(openFromTheSideRoom.contains("slid open on a passage east"))
+        #expect(!openFromTheSideRoom.contains("The same slab"))
+        #expect(turnOutput(of: "x handle", in: transcript).contains("Its handle is on this side."))
+        expectEveryNounAnswered(transcript, "the steel door's two faces")
+    }
+
+    /// Shut, the Side Room's face is a slab with a handle, and it no longer
+    /// calls itself "the same slab" to a player who has not seen the other
+    /// face. (#623)
+    @Test func theSideRoomsFaceOfTheShutDoorHasAHandle() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheRoyalPuzzle + ["south", "examine door", "examine handle"], seed: 18)
+
+        let door = turnOutput(of: "examine door", in: transcript)
+        #expect(door.contains("with a handle on this side"))
+        #expect(!door.contains("The same slab"))
+        #expect(turnOutput(of: "examine handle", in: transcript).contains("with a handle on this side"))
+    }
+
+    /// `enter door` and `go through door` take the door's exit once the slit
+    /// has opened it, in both directions, and the door still bars the way
+    /// while it is shut. Coming back through it lands the player at the door
+    /// square, as walking east does. (#623)
+    @Test func theOpenSteelDoorIsAWayThroughByName() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheSlitWithTheCard
+                + ["enter door", "put card in slit", "go through door", "enter door", "look"],
+            seed: 18)
+
+        #expect(turnOutput(of: "enter door", in: transcript).contains("The steel door bars the way."))
+        #expect(turnOutput(of: "go through door", in: transcript).contains("Side Room"))
+        let backIn = turnOutput(ofLast: "enter door", in: transcript)
+        #expect(backIn.contains("Room in a Puzzle"))
+        #expect(!backIn.contains("You lower yourself through the hole"))
+        #expect(turnOutput(ofLast: "look", in: transcript).contains("The west wall here has a large opening"))
+    }
+
+    /// The door is the west wall of one square, like the slit beside it, so
+    /// from any other square it is out of reach. (#623)
+    @Test func theSteelDoorIsOutOfReachFromAnotherSquare() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheSlitWithTheCard + ["put card in slit", "north", "enter door"],
+            seed: 18)
+
+        let far = turnOutput(of: "enter door", in: transcript)
+        #expect(far.contains("neither is within reach from here"))
+        #expect(!far.contains("Side Room"))
     }
 
     // MARK: - Milestone 7: every printed noun answers

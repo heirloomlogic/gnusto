@@ -371,9 +371,17 @@ extension Prose {
         sign.
         """
 
-    static let puzzleSteelDoor = """
-        A slab of steel set flush into the marble, with no handle on this side.
-        """
+    /// The door's face inside the puzzle, which the slit opens and nothing
+    /// shuts again.
+    static func puzzleSteelDoor(open: Bool) -> String {
+        open
+            ? """
+            The steel door has slid open on a passage west.
+            """
+            : """
+            A slab of steel set flush into the marble, with no handle on this side.
+            """
+    }
 
     static let puzzleSteelDoorBars = """
         The steel door bars the way.
@@ -388,9 +396,19 @@ extension Prose {
         """
     }
 
-    static let puzzleSideRoomDoor = """
-        The same slab of steel, and on this side of it there is a handle.
-        """
+    /// The door's face in the Side Room, the one with the handle. It says
+    /// nothing about the other face: a player can reach this room from above
+    /// without ever having been in the puzzle. (#623)
+    static func puzzleSideRoomDoor(open: Bool) -> String {
+        open
+            ? """
+            The steel door has slid open on a passage east. Its handle is on this
+            side.
+            """
+            : """
+            A slab of steel set into the east wall, with a handle on this side.
+            """
+    }
 
     // MARK: - Scenery
 
