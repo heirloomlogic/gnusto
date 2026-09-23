@@ -3137,9 +3137,10 @@ struct DungeonTests {
     }
 
     /// The gas kills the player and leaves the steel cage standing in the
-    /// closet. Its listing line says so, and goes on saying so after the player
-    /// has examined it. From outside, the player's own `lift` gets the cage's
-    /// refusal rather than one saying the robot is somewhere else. (#635)
+    /// closet. Its listing line says so, and still says so after the player has
+    /// examined it, because examining does not mark a thing touched. From
+    /// outside, the player's own `lift` gets the cage's refusal rather than one
+    /// saying the robot is somewhere else. (#635)
     @Test func theCageTheGasLeavesStandingIsListedInTheCloset() async throws {
         let transcript = try await play(
             Dungeon(),

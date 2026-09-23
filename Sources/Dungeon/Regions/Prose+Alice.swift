@@ -520,9 +520,9 @@ extension Prose {
         clang that goes on for some while.
         """
 
-    /// Adapted. `RCAGE`'s listing line (`dung.355:5681`) puts a steel cage in
-    /// the middle of the room. The player sees it from outside after the gas
-    /// has killed them. (#635)
+    /// Written fresh. It says what `RCAGE`'s listing line (`dung.355:5681`)
+    /// says, that a steel cage stands in the middle of the room. The player
+    /// sees it from outside after the gas has killed them. (#635)
     static let cageStandingFirstSight = """
         A steel cage stands in the middle of the closet, where it fell.
         """

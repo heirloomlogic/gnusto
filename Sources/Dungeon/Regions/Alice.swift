@@ -415,14 +415,12 @@ struct DungeonAlice: GameContent {
     ///
     /// A player who dies of the gas comes back to find it still standing in
     /// the closet. The closet's description is fixed text and scenery gets no
-    /// stock sentence, so the listing line is what names the cage in the room,
-    /// and `alwaysListed` keeps it there after the player has handled it.
+    /// stock sentence, so the listing line is what names the cage in the room.
     /// (#635)
     let steelCage = Item.scenery(
         "steel cage", adjectives: "steel", synonyms: "cage", "bars", "bar", description: Prose.cageFromOutside
     ) {
         firstSight(Prose.cageStandingFirstSight)
-        alwaysListed
     }
 
     /// The same cage from inside it, which is a different room.
