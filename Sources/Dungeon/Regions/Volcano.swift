@@ -792,7 +792,10 @@ extension DungeonVolcano {
         balloon.describe {
             Prose.balloonExamined(inflated: burningFuel?.name, tied: balloonTied)
         }
-        balloon.before(.take, .push, .pull) { try refuse(Prose.balloonTooHeavy) }
+        balloon.before(.take, .push, .pull) {
+            guard command.directObject == balloon else { return }
+            try refuse(Prose.balloonTooHeavy)
+        }
 
         // A balloon is not steered. Inside the shaft the only headings that
         // mean anything are the two that reach a ledge; on the ground and on a
@@ -832,7 +835,10 @@ extension DungeonVolcano {
         clothBag.describe { bagInflated ? Prose.clothBagInflated : Prose.clothBagSlack }
 
         for part in [clothBag, receptacle] {
-            part.before(.take, .pull) { try reply(Prose.balloonPartIsFixed(part.name)) }
+            part.before(.take, .pull) {
+                guard command.directObject == part else { return }
+                try reply(Prose.balloonPartIsFixed(part.name))
+            }
         }
 
         // The wire is the one part with a verb of its own, so it is the one
@@ -948,7 +954,10 @@ extension DungeonVolcano {
     }
 
     @RuleBuilder fileprivate var dustyRoomRules: Rules {
-        rustyBox.before(.take, .pull, .push) { try reply(Prose.safeIsEmbedded) }
+        rustyBox.before(.take, .pull, .push) {
+            guard command.directObject == rustyBox else { return }
+            try reply(Prose.safeIsEmbedded)
+        }
         rustyBox.before(.open) {
             try reply(rustyBox.isOpen ? Prose.safeHasNoDoor : Prose.safeWillNotOpen)
         }

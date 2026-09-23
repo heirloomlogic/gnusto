@@ -6132,4 +6132,61 @@ struct DungeonTests {
             #expect(item?.customTraits["depositValue"] == .int(deposit), "\(name) case value")
         }
     }
+
+    // MARK: - Taking from a holder that will not be taken (#615)
+
+    /// A holder that refuses to be carried, the route that ends beside it with
+    /// something inside, and what `take <holder>` still answers — `nil` where
+    /// the game's load check answers first.
+    struct Holder: Sendable, CustomTestStringConvertible {
+        let route: [String]
+        let takeFrom: String
+        let takeHolder: String
+        let refusal: String?
+        let seed: UInt64
+        var testDescription: String { takeFrom }
+    }
+
+    static let holders = [
+        Holder(
+            route: toTheWideLedge + lightTheCharge + ["south"], takeFrom: "take crown from box",
+            takeHolder: "take safe", refusal: "imbedded in the wall", seed: 18),
+        Holder(
+            route: toTheVolcano + ["put brick in basket"], takeFrom: "take brick from basket",
+            takeHolder: "take basket", refusal: nil, seed: 18),
+        Holder(
+            route: toTheVolcano + ["board basket", "put newspaper in receptacle"],
+            takeFrom: "take newspaper from receptacle", takeHolder: "take receptacle",
+            refusal: "integral part of the basket", seed: 18),
+        Holder(
+            route: toTheWell + ["put bottle in bucket"], takeFrom: "take bottle from bucket",
+            takeHolder: "take bucket", refusal: nil, seed: 41),
+        Holder(
+            route: toAragainFalls + ["put pump in barrel"], takeFrom: "take pump from barrel",
+            takeHolder: "take barrel", refusal: "far too heavy to move", seed: 18),
+        Holder(
+            route: intoTheKitchen + ["west", "take lamp", "open case", "put lamp in case"],
+            takeFrom: "take lamp from case", takeHolder: "take case", refusal: "fastened to the wall", seed: 18),
+        Holder(
+            route: toTheShaftWithTheTorch + ["put torch in basket"], takeFrom: "take torch from basket",
+            takeHolder: "take basket", refusal: "fastened to the iron chain", seed: 14),
+        Holder(
+            route: toTheShaftWithTheTorch + ["put torch in basket", "lower basket"] + throughTheCoalMaze
+                + ["southwest", "drop all", "southwest", "take torch", "east", "open machine", "put torch in machine"],
+            takeFrom: "take torch from machine", takeHolder: "take machine", refusal: "far too large to carry",
+            seed: 14),
+    ]
+
+    /// An item's `before` rules run for the indirect object too, so a holder
+    /// that refused to be carried refused `take X from` it as well. Each holder
+    /// here now refuses only when it is the thing being taken.
+    @Test(arguments: holders)
+    func takeFromAHolderTakesWhatItHolds(_ holder: Holder) async throws {
+        let transcript = try await play(
+            Dungeon(), holder.route + [holder.takeFrom, holder.takeHolder], seed: holder.seed)
+        #expect(turnOutput(of: holder.takeFrom, in: transcript).contains("Taken."))
+        if let refusal = holder.refusal {
+            #expect(turnOutput(of: holder.takeHolder, in: transcript).contains(refusal))
+        }
+    }
 }

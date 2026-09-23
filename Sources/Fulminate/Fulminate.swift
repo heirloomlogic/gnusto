@@ -1646,7 +1646,9 @@ struct Fulminate: Game, GameMain {
     var rules: Rules {
         // The coat is a container with the case's hinge in it, not luggage.
         // Both refusals point at the pocket, because the pocket is the puzzle.
+        // The guard lets `take receipt from coat` through.
         coat.before(.take) {
+            guard command.directObject == coat else { return }
             try refuse(
                 """
                 It isn't yours and the hall isn't private. Leave it on the stand. The pockets are another question.
@@ -1983,6 +1985,14 @@ struct Fulminate: Game, GameMain {
         }
         cellarSteps.before(.climb) {
             try enter(cellar)
+            try handled()
+        }
+        // The cellar steps are declared at both ends, and the bottom end
+        // climbs back up to the kitchen. `climb down X` and `climb X` are one
+        // intent, so the stub row's words in `verbPhrase` tell them apart.
+        cellarStepsBelow.before(.climb) {
+            try require(command.verbPhrase != "climb down", else: "From here the steps go up.")
+            try enter(kitchen)
             try handled()
         }
         // The one flight that refuses, and it refuses in the words `up` already

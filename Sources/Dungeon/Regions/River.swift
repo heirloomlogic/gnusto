@@ -915,7 +915,10 @@ struct DungeonRiver: GameContent {
         }
 
         // The barrel at the lip of the falls: heavy, damp, and enterable.
-        barrel.before(.take) { try refuse(Prose.barrelTooHeavy) }
+        barrel.before(.take) {
+            guard command.directObject == barrel else { return }
+            try refuse(Prose.barrelTooHeavy)
+        }
         barrel.before(.burn) { try reply(Prose.barrelTooDamp) }
         // The rainbow, from all three rooms that can see it. Solid is a thing
         // you can see about a rainbow, so it says so.

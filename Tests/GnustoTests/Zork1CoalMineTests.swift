@@ -250,7 +250,7 @@ struct Zork1CoalMineTests {
                 "open machine", "put coal in machine", "close machine",
                 "turn switch with torch",  // wrong tool
                 "turn switch with screwdriver",  // the diamond is made
-                "open machine", "take diamond",
+                "open machine", "take diamond from machine",
                 "north",  // Drafty Room
                 "put all in basket",
                 "east", "take all",  // Timber Room, reclaim the lantern
@@ -276,6 +276,22 @@ struct Zork1CoalMineTests {
                 "raised to the top of the shaft",
                 "Your score is 77 of a possible 350",
             ])
+        // `MACHINE-F` refuses TAKE only when the machine is the thing taken.
+        #expect(turnOutput(of: "take diamond from machine", in: transcript).contains("Taken."))
+    }
+
+    /// `BASKET-F` refuses TAKE only when the basket is the thing taken, so
+    /// what is in the basket comes out of it. (#615)
+    @Test func takingFromTheBasketIsNotTakingTheBasket() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMineWithTorchAndScrewdriver + [
+                "west", "north", "east",  // Squeaky → Bat (garlic) → Shaft
+                "put screwdriver in basket", "take screwdriver from basket", "take basket",
+            ],
+            seed: 2)
+        #expect(turnOutput(of: "take screwdriver from basket", in: transcript).contains("Taken."))
+        #expect(turnOutput(of: "take basket", in: transcript).contains("fastened to the iron chain"))
     }
 
     /// The machine grinds anything that isn't coal to a worthless slag and loses
