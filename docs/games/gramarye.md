@@ -67,7 +67,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Scroll — `.scroll(_:)` | **passwall**, inked on brittle parchment, good for one reading. | The scroll is consumed **on success only**. A refused cast leaves the parchment intact, and the game says so on the page. |
 | Four paradigms, one chain | Each spell opens exactly one obstacle, in order: niche, door, wall, golem. | **Four** distinct paradigms, **one** obstacle each, in chain order. Fewer paradigms, or two spells on one obstacle, and the game stops being the proof it exists to be. |
 | Custom trait | `TraitKey<Bool>.combustible` on the golem. | Targeted spells check an author-declared trait, so casting at the wrong thing is a wasted turn rather than a win. |
-| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study — otherwise it waits. It also stands down if the door is already shut. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book — and must not narrate a slam the player performed himself. |
+| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study with the book in reach — otherwise it waits. It stands down for good once the apprentice has shut the door himself. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book — and must not narrate a slam the player performed himself. |
 | No unwinnable state, by any route | `wardedDoor.before(.close)` refuses while the book is out of reach and otherwise closes and says the wards caught; `graniteWall.before(.close)` refuses outright. | **The game cannot be made unwinnable, by the fuse or by the player.** Whatever closes a barrier, whether a rule, a timer or a `close` command, has to leave a way back or refuse. |
 | `@Global` state | `doorSealed`, distinguishing "nothing is wrong yet" from "open again because you unbarred it". | The book's first read is gated on the *event*, not on the door's position — a boolean the door itself cannot supply. |
 | `hidden` / `reveal()` | The scroll in the niche; the amulet behind the golem. | **Two** hidden things, each revealed by a different spell, so reveal is shown twice by two routes. |
@@ -152,7 +152,7 @@ Three rooms in a line, with a magical gate between each pair.
 
 | Room | Notes |
 |---|---|
-| **Study** | Start. The desk with the spellbook on it, the shadowed niche with the scroll in it, the warded door, the warding marks, and the window. Two states — door open, door shut. Everything the player needs to begin is in this room, which is why the fuse waits for them to be in it. |
+| **Study** | Start. The desk with the spellbook on it, the shadowed niche with the scroll in it, the warded door, the warding marks, and the window. Two states — door open, door shut. Everything the player needs to begin is in this room. The fuse seals the door only while they are in it, so that the slam lands in the room its copy is written for, and only with the book in reach; see *The one timer*. |
 | **The Long Gallery** | Between the two gates. Two states — granite wall, or the mist archway that replaced it. Nothing to pick up; the room *is* the obstacle. |
 | **The Undercroft** | The amulet on its hook, and the golem standing in front of it. Two states — golem, or the layer of fired clay the ending inventories. |
 
@@ -171,19 +171,11 @@ WALL` are refused in prose that points at the magic without naming the spell.
 
 One fuse, and it is the inciting incident.
 
-`doorSeals` is armed at bootstrap for two turns. When it fires it checks where the
-apprentice is. **If he is not in the study, it re-arms for one more turn and says
-nothing** — and it will keep doing that indefinitely.
+`doorSeals` is armed at bootstrap for two turns. When it fires it checks where the apprentice is and where the book is. **If he is not in the study, or the book is not within his reach there, it re-arms for one more turn and says nothing** — and it will keep doing that for as long as that holds, unless he shuts the door himself first (below).
 
-That guard is load-bearing, not politeness: the book is on the study desk and the
-niche is beside the study door, so an apprentice sealed into the gallery has no book,
-no cantrip, no scroll and no way back. The door waits until he is on the right side
-of it, however long that takes.
+That guard is load-bearing, not politeness. `unbar` is the only way back through the door, and memorizing it needs the book in hand, so a seal with the book on the far side of the door and no `unbar` already in memory leaves the game unwinnable, and nothing says so: an apprentice caught in the gallery with the book still on the desk would be shut out from it, and one who carried it west, dropped it, and came home would be shut in without it (#614). The fuse does not ask what he has memorized. It waits until he is on the right side of the door with the book.
 
-It also checks the door, and **stands down entirely if the door is already shut**. The
-only way that happens is that the apprentice shut it himself, and the slam's copy — *You
-touched nothing* — is the one thing the game cannot say over his own hand on the door.
-He loses the beat, which is the right price for having pre-empted it.
+Before any of that it checks `doorSealed`, and **stands down for good once the apprentice has shut the door himself**, wherever he is standing and whether or not he has unbarred it since. The slam's copy — *You touched nothing* — is the one thing the game cannot say over his own hand on the door. He loses the beat, which is the right price for having pre-empted it. It asks the flag rather than the door, because from the gallery he can shut the door, memorize and cast `unbar`, and walk back into the study with the door standing open again, while the fuse is still waiting for him there.
 
 His own `CLOSE DOOR` is guarded on the same question the fuse asks, from the other end:
 he declines while the book is on the far side, and shuts it when it is not. See the
