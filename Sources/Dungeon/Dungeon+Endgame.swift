@@ -134,10 +134,10 @@ extension Dungeon {
     /// The herald's fuse, the crypt's, and the sword's daemon.
     @TimerBuilder var endgameTimers: [TimedEvent] {
         // `SCORE-BLESS`. A daemon rather than a rule on the actions that can
-        // move the score, and the difference is not taste: the deposit value of
-        // a treasure is credited by the `Scoring` plugin's own `item.after`
-        // rule, and a `world.after` rule on the same turn reads the score
-        // *before* that has run. The last treasure of the run would arm nothing.
+        // move the score, because those are not the only things that move it:
+        // the `Scoring` plugin also settles deposits in its
+        // `world.afterEachTurn` rule, and timers tick after every each-turn
+        // rule has run.
         //
         // It draws no randomness and stops itself the moment it fires, so the
         // seeded stream and every pinned transcript are untouched.

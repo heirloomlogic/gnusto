@@ -16,8 +16,9 @@ struct PipelineTests {
                 "Taken.",
                 "[itemAfter]",
                 "[locAfter]",
-                "[locEachAfter]",
                 "[worldAfter]",
+                "[locEachAfter]",
+                "[worldEachAfter]",
             ])
     }
 
@@ -29,6 +30,7 @@ struct PipelineTests {
         #expect(!refusedTurn.contains("Taken."))
         #expect(!refusedTurn.contains("[itemAfter]"))
         #expect(!refusedTurn.contains("[locAfter]"))
+        #expect(!refusedTurn.contains("[worldAfter]"))
         // World time still passes on refused turns.
         #expect(refusedTurn.contains("[locEachAfter]"))
     }
@@ -191,6 +193,95 @@ struct PipelineTests {
         #expect(!result.output.contains("[world-kills]"))
         #expect(!result.output.contains("*** You have died ***"))
         #expect(result.isFinished)
+    }
+
+    /// A world `after` rule is skipped on a take that a `before` rule refused,
+    /// that the default action refused, or that a `before` rule answered with
+    /// `reply`, as item and location `after` rules are. The each-turn rules
+    /// still run on all three. (#606)
+    @Test func aWorldAfterRuleSkipsATakeThatDidNotSucceed() async throws {
+        let transcript = try await play(
+            WorldAfterProbeGame(), ["take statue", "take pillar", "take urn"])
+
+        for (command, answer) in [
+            ("take statue", "The statue will not budge."),
+            ("take pillar", "You can't take that."),
+            ("take urn", "You lift the urn and set it back."),
+        ] {
+            let turn = turnOutput(of: command, in: transcript)
+            #expect(turn.contains(answer), "\(command)")
+            #expect(!turn.contains("[WORLD-AFTER"), "\(command)")
+            #expect(!turn.contains("[LOCATION-AFTER]"), "\(command)")
+            expectInOrder(turn, ["[LOCATION-EACH]", "[WORLD-EACH]"])
+        }
+    }
+
+    /// A take that succeeds runs the world `after` rule after the location's
+    /// `after` rule and before the each-turn rules. (#606)
+    @Test func aWorldAfterRuleRunsOnATakeThatSucceeded() async throws {
+        let transcript = try await play(WorldAfterProbeGame(), ["take coin"])
+        let turn = turnOutput(of: "take coin", in: transcript)
+
+        expectInOrder(turn, ["Taken.", "[LOCATION-AFTER]", "[WORLD-AFTER coin]", "[LOCATION-EACH]"])
+    }
+
+    /// On a multi-object take a world `after` rule runs once for each object
+    /// that was taken, sees that object's command, and prints inside that
+    /// object's labelled line. (#606)
+    @Test func aWorldAfterRuleRunsForEachObjectTaken() async throws {
+        let transcript = try await play(WorldAfterProbeGame(), ["take coin and statue"])
+        let turn = turnOutput(of: "take coin and statue", in: transcript)
+
+        #expect(turn.contains("coin: Taken. [LOCATION-AFTER] [WORLD-AFTER coin]"))
+        expectInOrder(turn, ["[WORLD-AFTER coin]", "The statue will not budge.", "[WORLD-EACH]"])
+        #expect(!turn.contains("[WORLD-AFTER statue]"))
+    }
+}
+
+/// The #606 fixture: a statue a `before` rule refuses, a scenery pillar the
+/// default action refuses, an urn a `before` rule answers with `reply`, and a
+/// coin that can be taken. Each kind of rule prints its own marker.
+private struct WorldAfterProbeGame: Game {
+    let title = "World After Probe"
+    let intro = "A hall."
+
+    let hall = Location {
+        name("Hall")
+        description("A marble hall.")
+    }
+
+    let statue = Item {
+        name("statue")
+    }
+
+    let pillar = Item {
+        name("pillar")
+        scenery
+    }
+
+    let urn = Item {
+        name("urn")
+    }
+
+    let coin = Item {
+        name("coin")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        statue.starts(in: hall)
+        pillar.starts(in: hall)
+        urn.starts(in: hall)
+        coin.starts(in: hall)
+    }
+
+    var rules: Rules {
+        statue.before(.take) { try refuse("The statue will not budge.") }
+        urn.before(.take) { try reply("You lift the urn and set it back.") }
+        world.after(.take) { say("[WORLD-AFTER \(command.directObject?.name ?? "none")]") }
+        hall.after(.take) { say("[LOCATION-AFTER]") }
+        hall.afterEachTurn { say("[LOCATION-EACH]") }
+        world.afterEachTurn { say("[WORLD-EACH]") }
     }
 }
 
