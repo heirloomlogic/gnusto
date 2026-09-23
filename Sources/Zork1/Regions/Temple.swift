@@ -496,8 +496,8 @@ struct ZorkTemple: GameContent {
             // unnamed one. Without the possession half, `light candles with
             // match` would light them off a match lying on the floor that
             // `light candles` in the same state refuses.
-            // `CANDLES-FCN` answers the torch before asking what else is
-            // burning (`1actions.zil:2372`).
+            // With the torch, `CANDLES-FCN` asks only whether the candles are
+            // lit (`1actions.zil:2372`).
             if candles.isLit, command.indirectObject == torch {
                 try reply(Prose.candlesAlreadyLighted)
             }
