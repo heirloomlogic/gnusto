@@ -134,7 +134,10 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
     /// `fatalError`s when a stored value fails to decode instead of falling back
     /// to the declared default, and save validation only checks that a `.data`
     /// case is a `.data` case — it cannot tell one payload from another. So
-    /// every field decodes leniently and keeps its default.
+    /// every field decodes leniently: an absent or unreadable value keeps its
+    /// default, and so does a `cardSquare` outside the grid. An absent
+    /// `cardSquare` is a save from before that field, which is why
+    /// ``encode(to:)`` writes a card off the floor as an explicit `null`.
     init(from decoder: any Decoder) throws {
         let box = try decoder.container(keyedBy: CodingKeys.self)
         if let decoded = try? box.decode([RoyalPuzzleCell].self, forKey: .cells),
@@ -145,9 +148,22 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
         if let decoded = try? box.decode(Int.self, forKey: .playerSquare) {
             playerSquare = decoded
         }
-        // The one field that reads a missing key as `nil` rather than as its
-        // default: the synthesized encoder leaves a `nil` out.
-        cardSquare = try? box.decodeIfPresent(Int.self, forKey: .cardSquare)
+        if (try? box.decodeNil(forKey: .cardSquare)) == true {
+            cardSquare = nil
+        } else if let decoded = try? box.decode(Int.self, forKey: .cardSquare),
+            cells.indices.contains(decoded)
+        {
+            cardSquare = decoded
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case cells, playerSquare, cardSquare }
+
+    func encode(to encoder: any Encoder) throws {
+        var box = encoder.container(keyedBy: CodingKeys.self)
+        try box.encode(cells, forKey: .cells)
+        try box.encode(playerSquare, forKey: .playerSquare)
+        try box.encode(cardSquare, forKey: .cardSquare)
     }
 
     /// What stands in a square. Out of range reads as marble, so a bad index
@@ -761,7 +777,7 @@ extension DungeonRoyalPuzzle {
         puzzle.afterEachTurn {
             var state = grid
             let onTheFloor = goldCard.isIn(puzzle)
-            if state.cardSquare == state.playerSquare, !onTheFloor {
+            if state.cardSquare != nil, !cardIsInTheGrid {
                 state.cardSquare = nil
             } else if state.cardSquare == nil, onTheFloor {
                 state.cardSquare = state.playerSquare
@@ -929,7 +945,7 @@ extension DungeonRoyalPuzzle {
     ///   in rather than read back off the global, which would decode
     ///   sixty-four cells again.
     fileprivate func placeTheCard(_ state: RoyalPuzzleGrid) {
-        guard let square = state.cardSquare else { return }
+        guard let square = state.cardSquare, cardIsInTheGrid else { return }
         if square == state.playerSquare {
             goldCard.move(to: puzzle)
             distantCard.vanish()
@@ -940,5 +956,14 @@ extension DungeonRoyalPuzzle {
             goldCard.vanish()
             distantCard.vanish()
         }
+    }
+
+    /// Whether the card is where `cardSquare` can place it: on the puzzle's
+    /// floor, or out of play while the slit has not taken it. A save from
+    /// before `cardSquare` reads it as the starting square whatever became of
+    /// the card, so this is what leaves a card the player holds, one in
+    /// another room, or one the slit took, where it is.
+    fileprivate var cardIsInTheGrid: Bool {
+        goldCard.isIn(puzzle) || (goldCard.location == nil && !doorOpen)
     }
 }

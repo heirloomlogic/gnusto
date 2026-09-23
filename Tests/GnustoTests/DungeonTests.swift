@@ -5051,6 +5051,63 @@ struct DungeonTests {
         #expect(turnOutput(of: "pick up card", in: transcript).contains("Taken."))
     }
 
+    /// A save from before `cardSquare` has no such key in the grid. One made
+    /// before the card was uncovered still finds it under its block. (#619)
+    @Test func aSaveWithoutTheCardsSquareStillFindsTheCard() async throws {
+        let path = try await Self.saveWithoutTheCardsSquare(after: Self.intoThePuzzle)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            Dungeon(), ["restore", path] + Self.toTheGoldCard + ["take card"], seed: 18)
+
+        #expect(turnOutput(ofLast: "push south", in: transcript).contains("There is a solid gold engraved card here."))
+        #expect(turnOutput(of: "take card", in: transcript).contains("Taken."))
+    }
+
+    /// One made with the card in hand leaves it there when the player steps
+    /// back onto the card's starting square. (#619)
+    @Test func aSaveWithoutTheCardsSquareLeavesAHeldCardHeld() async throws {
+        let path = try await Self.saveWithoutTheCardsSquare(
+            after: Self.toTheCardSquare + ["take card", "north"])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(Dungeon(), ["restore", path, "south", "inventory"], seed: 18)
+
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold card"))
+    }
+
+    /// A card off the puzzle's floor is written as an explicit `null`, so it
+    /// is not read back as a save from before `cardSquare`. (#619)
+    @Test func theGridWritesAnOffFloorCardAsNull() throws {
+        var grid = RoyalPuzzleGrid()
+        grid.cardSquare = nil
+        let bytes = try JSONEncoder().encode(grid)
+        #expect(String(decoding: bytes, as: UTF8.self).contains(#""cardSquare":null"#))
+        #expect(try JSONDecoder().decode(RoyalPuzzleGrid.self, from: bytes).cardSquare == nil)
+    }
+
+    /// Plays `commands`, saves, and takes the `cardSquare` key out of the
+    /// saved grid, which is the shape a build from before that field wrote.
+    private static func saveWithoutTheCardsSquare(after commands: [String]) async throws -> String {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-dungeon-\(UUID().uuidString).sav").path
+        _ = try await play(Dungeon(), commands + ["save", path], seed: 18)
+        let url = URL(fileURLWithPath: path)
+        var file = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var state = try #require(file["state"] as? [String: Any])
+        var globals = try #require(state["globals"] as? [Any])
+        let key = try #require(
+            globals.firstIndex { ($0 as? [String: String])?["raw"] == "DungeonRoyalPuzzle.grid" })
+        var value = try #require(globals[key + 1] as? [String: [String: Any]])
+        let bytes = try #require((value["data"]?["bytes"] as? String).flatMap { Data(base64Encoded: $0) })
+        var grid = try #require(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        grid.removeValue(forKey: "cardSquare")
+        value["data"]?["bytes"] = try JSONSerialization.data(withJSONObject: grid).base64EncodedString()
+        globals[key + 1] = value
+        state["globals"] = globals
+        file["state"] = state
+        try JSONSerialization.data(withJSONObject: file).write(to: url, options: .atomic)
+        return path
+    }
+
     /// Outside the puzzle the card is an ordinary thing. Dropped in the Small
     /// Square Room, it is taken from there. (#619)
     @Test func theCardCarriedOutOfThePuzzleIsTakenWhereItIsDropped() async throws {
