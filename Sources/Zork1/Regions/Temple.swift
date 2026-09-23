@@ -487,6 +487,11 @@ struct ZorkTemple: GameContent {
             // unnamed one. Without the possession half, `light candles with
             // match` would light them off a match lying on the floor that
             // `light candles` in the same state refuses.
+            // `CANDLES-FCN` answers the torch before asking what else is
+            // burning (`1actions.zil:2372`).
+            if candles.isLit, command.indirectObject == torch {
+                try reply(Prose.candlesAlreadyLighted)
+            }
             let flame = command.indirectObject ?? burningMatch
             try require(
                 flame == burningMatch && player.inventory.contains(burningMatch),
@@ -501,6 +506,18 @@ struct ZorkTemple: GameContent {
                 try reply(Prose.candlesLitForRitual)
             }
             try reply(Prose.candlesLit)
+        }
+
+        // Burning candles in hand after the bell are the ritual's second step,
+        // however they got there (`LLD-ROOM`'s `M-END`, `1actions.zil:1115`):
+        // candles left burning on the ground stay lit through the bell, and
+        // picking them up is the step.
+        entranceToHades.afterEachTurn {
+            guard exorcismStage == 1, candles.isHeld, candles.isLit else { return }
+            exorcismStage = 2
+            stopFuse("exorcismLapse")
+            startFuse("exorcismLapse", after: 3)
+            say(Prose.candlesLitForRitual)
         }
 
         // Blowing the candles out banks their remaining fuel.

@@ -118,6 +118,62 @@ struct NamedLootGame: Game {
     }
 }
 
+/// One thief, one untouched candidate whose listing line says where it
+/// stands. `whistle` sends the thief to the yard to drop his haul there.
+struct PlinthThiefGame: Game {
+    let title = "Plinth Thief"
+    let intro = ""
+
+    let plaza = Location {
+        name("Plaza")
+        description("Sun and pigeons.")
+    }
+
+    let yard = Location {
+        name("Yard")
+        description("Patchy grass.")
+    }
+
+    let thief = Actor {
+        name("nimble thief")
+        adjectives("nimble")
+    }
+
+    let idol = Item {
+        name("jade idol")
+        adjectives("jade")
+        firstSight("On a plinth stands a jade idol.")
+    }
+
+    let behaviors = ActorBehaviors()
+
+    var map: WorldMap {
+        plaza.east(yard)
+        yard.west(plaza)
+        player.starts(in: plaza)
+        thief.starts(in: plaza)
+        idol.starts(in: plaza)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("whistle", intent: Intent("whistle"))
+    }
+
+    var timers: [TimedEvent] {
+        behaviors.steals(
+            thief, named: "pick", candidates: [idol], chancePerTurn: 100,
+            announcement: .naming { "Featherlight fingers make off with \($0)." })
+    }
+
+    var rules: Rules {
+        world.before(Intent("whistle")) {
+            thief.move(to: yard)
+            thief.dropAll()
+            try reply("The thief bolts east.")
+        }
+    }
+}
+
 struct PickpocketGame: Game {
     let title = "Pickpocket"
     let intro = "Mind your pockets."

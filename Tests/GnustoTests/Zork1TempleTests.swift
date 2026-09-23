@@ -160,6 +160,41 @@ struct Zork1TempleTests {
             ])
     }
 
+    /// The bell puts out only candles in hand, so candles left burning on the
+    /// ground stay lit. Picking them up after the bell is the ritual's second
+    /// step, as `LLD-ROOM`'s end-of-turn check (`1actions.zil:1115`) asks only
+    /// that burning candles be in hand.
+    @Test func burningCandlesTakenUpAfterTheBellCompleteTheRitual() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit + [
+                "light matches", "light candles", "drop candles",
+                "ring bell",
+                "take candles",
+                "read book",
+            ],
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                "becomes red hot and falls to the ground",
+                "flames flicker wildly and appear to dance",
+                "flee through the walls",
+            ])
+    }
+
+    /// `CANDLES-FCN` answers the torch before it asks whether the torch is
+    /// burning (`1actions.zil:2372`).
+    @Test func burningCandlesRefuseTheTorchInTheSourcesWords() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toAltar + ["north", "north", "take torch", "south", "south", "light candles with torch"],
+            seed: 0)
+        #expect(
+            turnOutput(of: "light candles with torch", in: transcript)
+                .contains("You realize, just in time, that the candles are already lighted."))
+    }
+
     /// The ritual has a window: ring the bell and then dawdle, and the spirits
     /// shake off their stillness and the sequence must be started over.
     @Test func theExorcismWindowLapses() async throws {

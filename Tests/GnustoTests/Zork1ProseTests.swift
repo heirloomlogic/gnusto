@@ -483,14 +483,18 @@ struct Zork1ProseTests {
     /// refusal is `MAILBOX-F`'s one branch. It has no `TEXT` either, so the
     /// examine text written for the port is gone; see `FIDELITY.md` for what
     /// `V-EXAMINE` does with a container that the port does not.
+    /// `TRYTAKEBIT` keeps it in `take all` (`gmain.zil:132`), which gets the
+    /// same answer.
     @Test func theMailboxIsListedAndSecurelyAnchored() async throws {
-        let transcript = try await play(Zork1(), ["look", "take mailbox", "x mailbox"])
+        let transcript = try await play(Zork1(), ["look", "take mailbox", "x mailbox", "take all"])
 
         #expect(turnOutput(of: "look", in: transcript).contains("There is a small mailbox here."))
         #expect(turnOutput(of: "take mailbox", in: transcript).contains("It is securely anchored."))
         let examined = turnOutput(of: "x mailbox", in: transcript)
         #expect(examined.contains("There's nothing special about the small mailbox."))
         #expect(!examined.contains("rusted"))
+        #expect(
+            turnOutput(of: "take all", in: transcript).contains("small mailbox: It is securely anchored."))
     }
 
     /// `SANDWICH-BAG` has no `OPENBIT`, so the sack starts closed and the lunch
@@ -563,6 +567,16 @@ struct Zork1ProseTests {
         #expect(turnOutput(of: "take book from altar", in: transcript).contains("Taken."))
         #expect(turnOutput(of: "x burning candles", in: transcript).contains("The candles are burning."))
         #expect(turnOutput(of: "x candles", in: transcript).contains("The candles are out."))
+    }
+
+    /// The map's listing line calls it a parchment, so the parser has to know
+    /// the word. The map appears only at the end of the walkthrough, so this
+    /// asks the vocabulary.
+    @Test func theMapAnswersToTheParchmentItsListingLineNames() throws {
+        let (definition, _) = try Bootstrap.build(Zork1())
+        let map = definition.vocabulary.itemLexicons[EntityID("ZorkAboveGround.ancientMap")]
+        #expect(map?.nouns.contains("map") == true)
+        #expect(map?.nouns.contains("parchment") == true)
     }
 
     /// `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): from

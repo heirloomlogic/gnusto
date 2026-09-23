@@ -207,6 +207,8 @@ extension Prose {
 
     static let candlesAlreadyLit = "The candles are already lit."
 
+    static let candlesAlreadyLighted = "You realize, just in time, that the candles are already lighted."
+
     static let candlesLitForRitual = """
         The flames flicker wildly and appear to dance. The earth beneath
         your feet trembles, and your legs nearly buckle beneath you.

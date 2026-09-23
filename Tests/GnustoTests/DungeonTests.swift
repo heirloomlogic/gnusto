@@ -4446,7 +4446,11 @@ struct DungeonTests {
                 "when the fog lifts, the carcass has disappeared",
                 "reappear: the silver chalice",
                 "His stiletto clatters to the floor",
-                "There is a silver chalice, intricately engraved, here.",
+                // The stock line. The chalice's listing line is its `ODESC1`,
+                // which the mainframe prints whether or not it was touched;
+                // declared as `firstSight`, it stops at the first touch, and
+                // the theft is one (`ROB-ROOM` sets `TOUCHBIT`, `util.16:125`).
+                "There is a silver chalice here.",
                 "There is a stiletto here.",
             ])
 
