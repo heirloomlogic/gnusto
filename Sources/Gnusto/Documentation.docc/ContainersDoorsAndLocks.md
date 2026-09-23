@@ -219,7 +219,7 @@ The alternative is a guard per verb — `before(.take)`, `before(.putIn)`, `befo
 Four things the engine settles:
 
 - **It narrows reach, not sight.** The item is still listed, still named, still examined — which is what makes `take card` answer "it's across the sand" rather than "you can't see any such thing".
-- **What the asker is holding always passes.** A rule keyed to a square can't stop the player opening a box they are carrying.
+- **What the asker carries passes.** In their hands, or on or inside something they are carrying, to any depth, the closure is not asked. A rule keyed to a square can't stop the player opening a box they are carrying, or taking the card out of it.
 - **It runs before any rule does.** An item that answers its own verb — `slot.before(.putIn)` — replies and the default action never runs, so a gate any later would miss exactly the cases that need it. It therefore refuses *ahead* of a verb's own complaints: `take` says "it's across the sand" where it would otherwise have said "You can't take that."
 - **It gates ``Item/isReachable``**, so a `presence { }` line that wants to say "at your feet" versus "across the floor" can read the engine's answer instead of keeping a second copy of the index. That answer costs a scope walk, so a rule in a hot loop is better off reading the game's own position directly.
 

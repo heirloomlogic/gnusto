@@ -50,6 +50,31 @@ struct SplitRoomGame: Game {
         lightSource
     }
 
+    /// Held, and open: the bag the pouch is in. Issue #605.
+    let satchel = Item {
+        name("satchel")
+        container
+    }
+
+    /// Inside the satchel, so that what it holds is two levels below the hand:
+    /// the chalk can be carried back in it.
+    let pouch = Item {
+        name("pouch")
+        container
+    }
+
+    /// The porter's, and holding the apple.
+    let basket = Item {
+        name("basket")
+        container
+    }
+
+    /// In the porter's basket, with a rule that is false at the near end:
+    /// what the porter carries is his to reach, as the player's is theirs.
+    let apple = Item {
+        name("apple")
+    }
+
     /// Held, and the thing that goes into the alcove.
     let coin = Item {
         name("coin")
@@ -69,6 +94,10 @@ struct SplitRoomGame: Game {
         player.starts(in: gallery)
         taper.startsHeld
         coin.startsHeld
+        satchel.startsHeld
+        pouch.starts(inside: satchel)
+        basket.starts(heldBy: porter)
+        apple.starts(inside: basket)
         chalk.starts(in: gallery)
         hasp.starts(in: gallery)
         alcove.starts(in: gallery)
@@ -90,10 +119,12 @@ struct SplitRoomGame: Game {
                 taper: \(taper.isReachable ? "reachable" : "out of reach")
                 porter reaches chalk: \(chalk.isReachable(from: porter) ? "yes" : "no")
                 porter reaches stool: \(stool.isReachable(from: porter) ? "yes" : "no")
+                porter reaches apple: \(apple.isReachable(from: porter) ? "yes" : "no")
                 """)
         }
 
         chalk.reach(otherwise: "The chalk is the length of the gallery away.") { atFarEnd }
+        apple.reach(otherwise: "The apple is at the far end.") { atFarEnd }
         alcove.reach(otherwise: "The alcove is cut into the far wall.") { atFarEnd }
         porter.reach(otherwise: "The porter is too far off to touch.") { atFarEnd }
         taper.reach(otherwise: "The taper is at the far end.") { atFarEnd }

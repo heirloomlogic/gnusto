@@ -95,6 +95,30 @@ struct ReachTests {
         #expect(turnOutput(of: "turn on taper", in: transcript).contains("now on"))
     }
 
+    /// The same exemption reaches into a bag the player carries, to any depth.
+    /// The chalk is taken at the far end, put in the pouch in the satchel and
+    /// carried back; at the near end its rule is false, and it is reachable and
+    /// can be taken out of the pouch anyway. Issue #605.
+    @Test func whatIsInABagThePlayerCarriesPassesItsOwnRule() async throws {
+        let transcript = try await play(
+            SplitRoomGame(),
+            [
+                "stroll", "take chalk", "put chalk in pouch", "stroll", "probe",
+                "take chalk from pouch",
+            ])
+        #expect(turnOutput(of: "probe", in: transcript).contains("chalk: reachable"))
+        let taken = turnOutput(of: "take chalk from pouch", in: transcript)
+        #expect(taken.contains("Taken."))
+        #expect(!taken.contains("length of the gallery"))
+    }
+
+    /// `isReachable(from:)` exempts what the asking actor carries, bag and all:
+    /// the apple in the porter's basket is his to reach from anywhere.
+    @Test func whatIsInABagAnActorCarriesPassesItsOwnRuleForThatActor() async throws {
+        let transcript = try await play(SplitRoomGame(), ["probe"])
+        #expect(turnOutput(of: "probe", in: transcript).contains("porter reaches apple: yes"))
+    }
+
     /// `take all` sweeps the room's floor and its surfaces, intersected with
     /// the *reachable* set, and `reachableItems` is containment-only — it never
     /// consults a `reach { … }` rule. So the chalk

@@ -77,10 +77,13 @@ enum Visibility {
     /// there is no such rule, which is every item of every game that has not
     /// opted in.
     ///
-    /// What the observer is **holding** always passes without asking. A rule
-    /// keyed to a square of a sliding-block floor answers "is this within arm's
-    /// reach of where I stand", and a thing already in the hand is not a
-    /// question — vetoing it would stop the player opening a box they carry.
+    /// What the observer **carries** passes without asking: in their hands,
+    /// or on or inside something they are carrying, to any depth. A rule keyed
+    /// to a square of a sliding-block floor answers "is this within arm's
+    /// reach of where I stand", and a thing the observer is carrying is not a
+    /// question — vetoing it would stop the player opening a box they carry,
+    /// or taking a card back out of their own sack (#605). Whether a closed
+    /// container is in the way is containment's to answer, not this rule's.
     ///
     /// Takes the frame lock for the placement read and then calls the closure
     /// *outside* it: a rule body re-enters the frame through `Ctx.current`, and
@@ -96,7 +99,7 @@ enum Visibility {
         // no reach rule there never is.
         let declared = frame.definition.rules.itemReach
         guard !declared.isEmpty, let rule = declared[id] else { return true }
-        if frame.with({ $0.state.placements[id] == .heldBy(observer) }) { return true }
+        if frame.with({ $0.state.isPossession(id, of: observer) }) { return true }
         return frame.nested(.reach, within: id) { rule.allows() }
     }
 
@@ -109,10 +112,12 @@ enum Visibility {
     /// *other* people are holding stays out, the player included: lifting from
     /// those hands is stealing, which is a plugin's job, exactly as it is for
     /// the player's own reach set.
-    /// A `reach { … }` rule gates this too, and is not told who is asking. The
-    /// rule models a room the map keeps as one place and the game divides by
-    /// hand; a sub-room position the game tracks for the player is the only one
-    /// it tracks, so a thing out of the player's reach is out of everybody's.
+    /// A `reach { … }` rule gates this too. The rule models a room the map
+    /// keeps as one place and the game divides by hand, and its closure is not
+    /// told who is asking, so it gives the actor the answer it gives the player.
+    /// The closure is not asked about what the actor carries, as it is not for
+    /// the player's possessions, so the rule never vetoes a carried thing; a
+    /// closed container around one still keeps it out of reach.
     static func isReachable(_ id: EntityID, from actor: EntityID, frame: TurnFrame) -> Bool {
         inScope(id, observer: actor, frame: frame, descendClosedTransparent: false)
             && reachRuleAllows(id, for: actor, frame: frame)
