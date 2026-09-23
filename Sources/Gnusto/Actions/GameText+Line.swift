@@ -496,17 +496,23 @@ extension GameText {
     /// Something the player tried to sit or lie on or in, and which of the two
     /// words the sentence used.
     ///
+    /// It interpolates as the word and the name together, so `\($0)` reads
+    /// "on the bench" or "in the chest":
+    ///
     /// ```swift
     /// stubs.sit = .naming(orBare: "You sit on the floor.") {
-    ///     "You would rather not sit \($0.preposition) \($0.object)."
+    ///     "You would rather not sit \($0)."
     /// }
     /// ```
-    public struct RestingPlace: DroppableSubject, NamedSubject {
+    public struct RestingPlace: DroppableSubject, NamedSubject, CustomStringConvertible {
         /// What the player named.
         public let object: Noun
         /// `in` where the row the player typed ends in it (`sit in the
         /// chest`), and `on` for every other row.
         public let preposition: String
+
+        /// The word and the name: "on the long bench".
+        public var description: String { "\(preposition) \(object)" }
 
         /// Both numbers and both words, so a template that hard-codes either
         /// is caught.

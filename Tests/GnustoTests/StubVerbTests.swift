@@ -559,15 +559,13 @@ struct StubVerbTests {
 
     /// The twelve stubs that carried a `.directObject` slot for a year with no
     /// way to name what filled it: they shipped as `plain`, which hands the
-    /// line nothing at all. Moving them to `optionallyNamed` gives the game
-    /// and its default reply the name.
+    /// line nothing at all. Moving them to `optionallyNamed`, or for `sit` to
+    /// `optionallyResting`, gives the game and its default reply the name.
     ///
-    /// Every probe below is a turn whose output must not move, and they are
-    /// grouped by the three roads `optionallyNamed` splits and `plain` did
-    /// not: an object, a person, and the player. `plain` answered all three
-    /// with one line because it never looked; `optionallyNamed` looks, and
-    /// takes a different branch for each. That the sentence comes out the same
-    /// is what makes this a refactor.
+    /// The probes are grouped by the three roads those factories split and
+    /// `plain` did not: an object, a person, and the player. `plain` answered
+    /// all three with one line because it never looked; the factories look.
+    /// Each probe pins the default reply its turn prints.
     static let theTwelveThatLearnedToName: [(String, String)] = [
         // An object to name.
         ("dig bench", "You have nothing to dig with."),

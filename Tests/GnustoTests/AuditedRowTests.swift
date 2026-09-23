@@ -84,6 +84,19 @@ struct AuditedRowTests {
                 .contains("The long bench isn't something to sit on."))
     }
 
+    /// A resting place interpolates as its word and its name, so a line
+    /// written `"You can't sit \($0)."` says ON or IN as the player did.
+    @Test func aRestingPlaceInterpolatesAsItsWordAndItsName() {
+        let line = GameText.Line<GameText.RestingPlace?>.naming(orBare: "You sit.") {
+            "You can't sit \($0)."
+        }
+        #expect(
+            GameText.RestingPlace.samples.map { line($0) } == [
+                "You can't sit in \(GameText.Noun.sampleSingular).",
+                "You can't sit on \(GameText.Noun.samplePlural).",
+            ])
+    }
+
     /// The bare halves keep their own sentences, which is what
     /// `naming(orBare:)` is for: `stand` is not a failed `stand on`.
     @Test func theBarePosturesKeepTheirOwnSentences() async throws {
@@ -216,6 +229,16 @@ struct AuditedRowTests {
     func aPersonNamedInFullIsNotSplit(_ line: String, _ question: String) async throws {
         let turn = turnOutput(of: line, in: try await play(AuditLab(), [line]))
         #expect(turn.contains(question))
+    }
+
+    /// `her` is a person as well as a possessive. A phrase that names one
+    /// thing only once `her` is dropped is not read whole, so the split
+    /// places the cook as the one receiving instead of asking who is to have
+    /// the lantern.
+    @Test(arguments: ["give her lantern", "give her the tin lantern", "hand her lantern"])
+    func herAfterGiveIsThePersonReceiving(_ line: String) async throws {
+        let turn = turnOutput(of: line, in: try await play(PronounGame(), ["take lantern", line]))
+        #expect(turn.contains("The cook doesn't want the tin lantern."), "\(turn)")
     }
 
     /// The gift half goes through the direct slot's own resolver, so a list

@@ -932,7 +932,8 @@ struct StandardParser {
     ///   - rawInput: the line as the player typed it.
     ///   - scope: what the player can see.
     /// - Returns: the command, the first split's reason for declining, or
-    ///   `.mismatch` where there was no split to try.
+    ///   `.mismatch` where there was no split to try or the words name one
+    ///   thing whole.
     private func fitRecipientFirst(
         _ rule: SyntaxRule, tokens: [String], from cursor: Int, verbPhrase: String,
         rawInput: String, scope: Scope
@@ -942,8 +943,13 @@ struct StandardParser {
         // whole are one object, and not a person and a gift. `give night
         // warden` split into "night" and "warden" handed the warden to
         // herself. A TO row for the same verb asks about the one thing.
-        // Only a success is read, so the noun layer alone answers it.
-        if case .success = resolveNoun(Array(tokens[cursor...]), in: scope, alsoConsidering: []) {
+        // Only a success is read, so the noun layer alone answers it. A name
+        // that needs a possessive dropped is not whole: in `give her lantern`
+        // the `her` is the person receiving.
+        let whole = Array(tokens[cursor...])
+        if possessivePrefix(of: whole) == 0,
+            case .success = resolveNoun(whole, in: scope, alsoConsidering: [])
+        {
             return .mismatch
         }
 

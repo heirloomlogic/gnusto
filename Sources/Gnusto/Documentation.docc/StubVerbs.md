@@ -56,7 +56,7 @@ Senses: `touch`/`feel`/`rub`, `smell`/`sniff`, `listen (to)`, `taste`/`lick`,
 Body: `eat`, `drink`, `sleep`, `rest`, `wake (up)`.
 
 Social: `talk (to/with)`/`speak (to/with)`, `kiss`/`hug`, `give`/`hand` (either
-`… to …` or the recipient first, `give the troll the sword`, and a person named alone, `give the troll`, is asked what to give them),
+`… to …` or the recipient first, `give the troll the sword`, and `give the troll` with the troll in view asks the player what to give them),
 `yell`/`shout`/`scream`, `wave`, `point at`.
 
 Motion: `climb (up/down/on)`, `jump (over)`, `swim`, `dive`, `stand (up/on)`,
