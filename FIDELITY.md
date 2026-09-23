@@ -2309,12 +2309,8 @@ structure; neither says it in the source's characters.
 
 **Where this game is gentler than its source, and why.**
 
-- **The Cage is lit, and it kills you on a clock.** `dung.355` withholds
-  `RLIGHTBIT` from `CAGED` and gives the room no exit at all. A dark room with no
-  exits and no way to die is a save file the player has to reload; this game
-  lights the cage — it is a cage standing on the floor of a lit closet — and
-  admits the gas the alarm company plainly installed, on a six-turn fuse. The
-  resurrection milestone 1 built is what makes that recoverable.
+- **The Cage is lit, and the gas is on a six-turn fuse.** `dung.355` withholds `RLIGHTBIT` from `CAGED` and gives the room no exit at all. This game lights the cage, because it is a cage standing on the floor of a lit closet. The gas is the source's. `CAGESTR` (`dung.355:557`) announces it as the cage falls, and `SPHERE-FUNCTION` (`act3.199:231`) kills the player with it (`POISON`, `dung.355:609`): at once if the robot is not in the closet, and otherwise when `SPHIN`, a ten-turn clock (`act3.199:242`), runs out. This game starts a six-turn fuse whether the robot is there or not, which is longer than the source allows without the robot and shorter than it allows with it. The resurrection milestone 1 built is what makes that death recoverable.
+- **After the gas death the Dingy Closet is still open, and the steel cage is still standing in it.** In the source both gas deaths call `MUNG-ROOM` on `CAGER` first (`act3.199:246` and `act3.199:257`; the routine is at `rooms.394:1935`). From then on, walking into the closet prints *"You are stopped by a cloud of poisonous gas."* and leaves the player where they were (`rooms.394:1922`), so the sphere is out of reach for the rest of the game. This game does not seal the closet. After the resurrection the steel cage is still standing there with whatever the player dropped inside it, and `robot, lift the cage` lifts it when the robot is in the closet. The closet's description is fixed text and the cage is scenery, so the cage has a listing line of its own, `Prose.cageStandingFirstSight`, which says in new words what `RCAGE`'s listing line says (`dung.355:5681`). The source only places `RCAGE` in the other branch, where the robot takes the sphere and is crushed (`act3.199:254`). (#635)
 - **The cakes survive being bitten.** The source declares one of each. The only
   way out of the small world under the table is the orange-icing cake, so a cake
   eaten to nothing would strand a player four inches high with the spices in

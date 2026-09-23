@@ -520,6 +520,21 @@ extension Prose {
         clang that goes on for some while.
         """
 
+    /// Written fresh. It says what `RCAGE`'s listing line (`dung.355:5681`)
+    /// says, that a steel cage stands in the middle of the room. The player
+    /// sees it from outside after the gas has killed them. (#635)
+    static let cageStandingFirstSight = """
+        A steel cage stands in the middle of the closet, where it fell.
+        """
+
+    /// Written fresh. The same bars as ``cageBars``, seen from the closet
+    /// side. (#635)
+    static let cageFromOutside = """
+        Steel bars, an inch thick and set two inches apart, on every side and
+        across the top. There is no door in it. Whatever opens it will have to
+        lift the whole thing.
+        """
+
     static let cageRoom = """
         You are trapped inside a solid steel cage.
         """
