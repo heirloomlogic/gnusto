@@ -4705,7 +4705,7 @@ struct DungeonTests {
         #expect(grid.cell(at: RoyalPuzzleGrid.ladderSquare) == .sandstone)  // cell 11
         #expect(grid.cell(at: 21) == .goodLadder)  // cell 22
         #expect(grid.cell(at: 33) == .badLadder)  // cell 34
-        #expect(grid.cell(at: RoyalPuzzleGrid.cardSquare) == .sandstone)  // cell 37
+        #expect(grid.cell(at: RoyalPuzzleGrid.cardStartSquare) == .sandstone)  // cell 37
         #expect(grid.cell(at: RoyalPuzzleGrid.doorSquare) == .floor)  // cell 52
 
         // The whole border is fixed marble, which is why the source's push code
@@ -4958,8 +4958,9 @@ struct DungeonTests {
             ])
     }
 
-    /// Containment is room-granular and the puzzle is one room, so the card has
-    /// to be told what a square means. Issue #150's `reach` rule.
+    /// Containment is room-granular and the puzzle is one room. From another
+    /// square the room lists the card's stand-in, and the stand-in's `reach`
+    /// rule refuses. Issues #150 and #619.
     @Test func theCardCannotBeReachedFromAnotherSquare() async throws {
         let transcript = try await play(
             Dungeon(),
@@ -4973,6 +4974,150 @@ struct DungeonTests {
                 "A solid gold card lies in one of the other squares of the puzzle.",
                 "The card is squares away from you, across the sand.",
             ])
+    }
+
+    /// A card dropped on another square lies in that square. From the square
+    /// it started in, the room says it is elsewhere and `take` says it is out
+    /// of reach; in the square it was dropped in, it is listed and taken.
+    /// (#619)
+    @Test func aDroppedCardLiesInTheSquareItWasDroppedIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + ["take card", "north", "drop card", "south", "get card", "north", "pick up card"],
+            seed: 18)
+
+        let away = turnOutput(ofLast: "south", in: transcript)
+        #expect(away.contains("A solid gold card lies in one of the other squares of the puzzle."))
+        #expect(!away.contains("There is a gold card here."))
+        #expect(
+            turnOutput(of: "get card", in: transcript)
+                .contains("The card is squares away from you, across the sand."))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains("There is a gold card here."))
+        #expect(turnOutput(of: "pick up card", in: transcript).contains("Taken."))
+    }
+
+    /// A wall pushed into the square the card lies in covers it: the room
+    /// stops naming it and `take` cannot find it. Pushing that wall out again
+    /// puts the player in the square, and the card is there. (#619)
+    @Test func aWallPushedOntoTheCardCoversItUntilItIsPushedOff() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + [
+                    "take card", "push south", "drop card", "northwest", "southwest",
+                    "push east", "get card", "push east", "pick up card",
+                ],
+            seed: 18)
+
+        #expect(
+            turnOutput(ofLast: "northwest", in: transcript)
+                .contains("A solid gold card lies in one of the other squares of the puzzle."))
+        let covering = turnOutput(of: "push east", in: transcript)
+        #expect(covering.contains("The wall slides forward"))
+        #expect(!covering.contains("gold card"))
+        #expect(turnOutput(of: "get card", in: transcript).contains("You can't see any such thing."))
+        #expect(turnOutput(ofLast: "push east", in: transcript).contains("There is a gold card here."))
+        #expect(turnOutput(of: "pick up card", in: transcript).contains("Taken."))
+    }
+
+    /// UNDO and RESTORE put the card back in the square it lay in, and the
+    /// room and `take` agree about it afterwards. (#619)
+    @Test func undoAndRestoreKeepTheCardsSquare() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-dungeon-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + [
+                    "take card", "north", "drop card", "south", "save", path,
+                    "north", "take card", "undo", "get card",
+                    "restore", path, "look", "north", "pick up card",
+                ],
+            seed: 18)
+
+        // UNDO takes back the second `take`, so the card is lying at the
+        // player's feet again.
+        #expect(turnOutput(of: "undo", in: transcript).contains("There is a gold card here."))
+        #expect(turnOutput(of: "get card", in: transcript).contains("Taken."))
+
+        // RESTORE puts the player back in the card's starting square, with
+        // the card in the square north of it.
+        let restored = turnOutput(ofLast: "look", in: transcript)
+        #expect(restored.contains("A solid gold card lies in one of the other squares of the puzzle."))
+        #expect(!restored.contains("There is a gold card here."))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains("There is a gold card here."))
+        #expect(turnOutput(of: "pick up card", in: transcript).contains("Taken."))
+    }
+
+    /// A save from before `cardSquare` has no such key in the grid. One made
+    /// before the card was uncovered still finds it under its block. (#619)
+    @Test func aSaveWithoutTheCardsSquareStillFindsTheCard() async throws {
+        let path = try await Self.saveWithoutTheCardsSquare(after: Self.intoThePuzzle)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            Dungeon(), ["restore", path] + Self.toTheGoldCard + ["take card"], seed: 18)
+
+        #expect(turnOutput(ofLast: "push south", in: transcript).contains("There is a solid gold engraved card here."))
+        #expect(turnOutput(of: "take card", in: transcript).contains("Taken."))
+    }
+
+    /// One made with the card in hand leaves it there when the player steps
+    /// back onto the card's starting square. (#619)
+    @Test func aSaveWithoutTheCardsSquareLeavesAHeldCardHeld() async throws {
+        let path = try await Self.saveWithoutTheCardsSquare(
+            after: Self.toTheCardSquare + ["take card", "north"])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(Dungeon(), ["restore", path, "south", "inventory"], seed: 18)
+
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold card"))
+    }
+
+    /// A card off the puzzle's floor is written as an explicit `null`, so it
+    /// is not read back as a save from before `cardSquare`. (#619)
+    @Test func theGridWritesAnOffFloorCardAsNull() throws {
+        var grid = RoyalPuzzleGrid()
+        grid.cardSquare = nil
+        let bytes = try JSONEncoder().encode(grid)
+        #expect(String(decoding: bytes, as: UTF8.self).contains(#""cardSquare":null"#))
+        #expect(try JSONDecoder().decode(RoyalPuzzleGrid.self, from: bytes).cardSquare == nil)
+    }
+
+    /// Plays `commands`, saves, and takes the `cardSquare` key out of the
+    /// saved grid, which is the shape a build from before that field wrote.
+    private static func saveWithoutTheCardsSquare(after commands: [String]) async throws -> String {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-dungeon-\(UUID().uuidString).sav").path
+        _ = try await play(Dungeon(), commands + ["save", path], seed: 18)
+        let url = URL(fileURLWithPath: path)
+        var file = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var state = try #require(file["state"] as? [String: Any])
+        var globals = try #require(state["globals"] as? [Any])
+        let key = try #require(
+            globals.firstIndex { ($0 as? [String: String])?["raw"] == "DungeonRoyalPuzzle.grid" })
+        var value = try #require(globals[key + 1] as? [String: [String: Any]])
+        let bytes = try #require((value["data"]?["bytes"] as? String).flatMap { Data(base64Encoded: $0) })
+        var grid = try #require(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        grid.removeValue(forKey: "cardSquare")
+        value["data"]?["bytes"] = try JSONSerialization.data(withJSONObject: grid).base64EncodedString()
+        globals[key + 1] = value
+        state["globals"] = globals
+        file["state"] = state
+        try JSONSerialization.data(withJSONObject: file).write(to: url, options: .atomic)
+        return path
+    }
+
+    /// Outside the puzzle the card is an ordinary thing. Dropped in the Small
+    /// Square Room, it is taken from there. (#619)
+    @Test func theCardCarriedOutOfThePuzzleIsTakenWhereItIsDropped() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare + ["take card"]
+                + Self.cardSquareToTheWayOut + ["up", "drop card", "pick up card"],
+            seed: 18)
+
+        #expect(turnOutput(of: "pick up card", in: transcript).contains("Taken."))
     }
 
     // MARK: - Milestone 7: the two ways out
@@ -5125,7 +5270,7 @@ struct DungeonTests {
         // And the card is on the roster both he and the trophy case read, so
         // wanting it needs no rule of its own.
         let (definition, _) = try Bootstrap.build(game)
-        let card = definition.items.values.first { $0.name == "gold card" }
+        let card = definition.items[EntityID("DungeonRoyalPuzzle.goldCard")]
         #expect(card?.customTraits["takeValue"] != nil, "the card has to be worth stealing")
     }
 

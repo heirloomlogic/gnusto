@@ -100,8 +100,9 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
     /// Source cell 11 — the one square the good ladder has to end up in.
     /// `CPEXIT` hardcodes it (`act3.199:718`); no other adjacency wins.
     static let ladderSquare = 10
-    /// Source cell 37 — the square under the movable block, where the card is.
-    static let cardSquare = 36
+    /// Source cell 37 — the square under the movable block, where the card
+    /// starts.
+    static let cardStartSquare = 36
     /// Source cell 52 — the slit and the steel door.
     static let doorSquare = 51
 
@@ -122,13 +123,21 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
     var cells = RoyalPuzzleGrid.initialCells
     var playerSquare = RoyalPuzzleGrid.entrySquare
 
+    /// The square the gold card lies in, on open floor or under a wall. `nil`
+    /// while it is off the puzzle's floor. The source keeps an object list per
+    /// square (`CPOBJS`); this is the card's entry of it. (#619)
+    var cardSquare: Int? = RoyalPuzzleGrid.cardStartSquare
+
     init() {}
 
     /// A stale save has to degrade rather than trap: `Global`'s getter
     /// `fatalError`s when a stored value fails to decode instead of falling back
     /// to the declared default, and save validation only checks that a `.data`
     /// case is a `.data` case — it cannot tell one payload from another. So
-    /// every field decodes leniently and keeps its default.
+    /// every field decodes leniently: an absent or unreadable value keeps its
+    /// default, and so does a `cardSquare` outside the grid. An absent
+    /// `cardSquare` is a save from before that field, which is why
+    /// ``encode(to:)`` writes a card off the floor as an explicit `null`.
     init(from decoder: any Decoder) throws {
         let box = try decoder.container(keyedBy: CodingKeys.self)
         if let decoded = try? box.decode([RoyalPuzzleCell].self, forKey: .cells),
@@ -139,6 +148,22 @@ struct RoyalPuzzleGrid: Codable, Sendable, GlobalValue {
         if let decoded = try? box.decode(Int.self, forKey: .playerSquare) {
             playerSquare = decoded
         }
+        if (try? box.decodeNil(forKey: .cardSquare)) == true {
+            cardSquare = nil
+        } else if let decoded = try? box.decode(Int.self, forKey: .cardSquare),
+            cells.indices.contains(decoded)
+        {
+            cardSquare = decoded
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case cells, playerSquare, cardSquare }
+
+    func encode(to encoder: any Encoder) throws {
+        var box = encoder.container(keyedBy: CodingKeys.self)
+        try box.encode(cells, forKey: .cells)
+        try box.encode(playerSquare, forKey: .playerSquare)
+        try box.encode(cardSquare, forKey: .cardSquare)
     }
 
     /// What stands in a square. Out of range reads as marble, so a bad index
@@ -362,15 +387,42 @@ struct DungeonRoyalPuzzle: GameContent {
     // MARK: - The gold card
 
     /// `GCARD`. Ten to find and fifteen to case, and the only points in the
-    /// region — none of its three rooms carries an `RVAL`.
-    let goldCard = Item {
-        name("gold card")
-        adjectives("solid", "engraved")
-        synonyms("card", "pass")
-        description(Prose.goldCard)
+    /// region — none of its three rooms carries an `RVAL`. On the puzzle's
+    /// floor, ``placeTheCard(_:)`` decides when it is in the room.
+    let goldCard = goldCardNamed {
+        firstSight(Prose.goldCardInPlace)
         trait(.weight, 4)
         trait(.takeValue, 10)
         trait(.depositValue, 15)
+    }
+
+    /// The gold card seen from another square: the room says it is elsewhere,
+    /// and `take card` says how far. (#619)
+    ///
+    /// A second item because of the touch gate. A thing's listing line prints
+    /// only until the player first handles it, so one card kept in the room
+    /// would be listed as "There is a gold card here." from every square once
+    /// it had been picked up. `alwaysListed` would keep the line, but the card
+    /// would then print it in the trophy case as well, where the stock line
+    /// names the case. Nothing handles the stand-in: its `reach` rule refuses
+    /// every verb that has to touch it, and it is scenery.
+    let distantCard = goldCardNamed {
+        scenery
+        firstSight(Prose.goldCardAcrossTheFloor)
+    }
+
+    /// The words and the examine line the card and its stand-in share, so
+    /// `x card` and `take card` find either one the same way.
+    private static func goldCardNamed(@ItemBuilder _ traits: () -> [ItemTrait]) -> Item {
+        Item {
+            name("gold card")
+            adjectives("solid", "engraved")
+            synonyms("card", "pass")
+            description(Prose.goldCard)
+            for trait in traits() {
+                trait
+            }
+        }
     }
 
     // MARK: - The note
@@ -486,12 +538,6 @@ struct DungeonRoyalPuzzle: GameContent {
     /// in prose and starts drawing diagrams.
     @Latch var hasPushed
 
-    /// Whether the card has been brought into the room's containment. The
-    /// source keeps a separate object list per square (`CPOBJS`); Gnusto's
-    /// containment is room-granular, so the card joins the room the first time
-    /// the player stands in its square. Issue #150.
-    @Latch var cardUncovered
-
     var verbs: [SyntaxRule] { [.pushWall] }
 
     // MARK: - Map
@@ -569,12 +615,15 @@ extension DungeonRoyalPuzzle {
         // the source's `GO-IN` hook does it: down the hole puts you under the
         // opening, and the steel door puts you at the door square.
         puzzle.onEnter {
+            var state = grid
             if command.direction == .east {
-                grid.playerSquare = RoyalPuzzleGrid.doorSquare
+                state.playerSquare = RoyalPuzzleGrid.doorSquare
             } else {
-                grid.playerSquare = RoyalPuzzleGrid.entrySquare
+                state.playerSquare = RoyalPuzzleGrid.entrySquare
                 say(Prose.puzzleDropIn)
             }
+            grid = state
+            placeTheCard(state)
         }
 
         hole.describe {
@@ -605,7 +654,7 @@ extension DungeonRoyalPuzzle {
             switch state.playerSquare {
             case RoyalPuzzleGrid.entrySquare:
                 paragraphs.append(Prose.puzzleCeilingOpening)
-            case RoyalPuzzleGrid.cardSquare:
+            case RoyalPuzzleGrid.cardStartSquare:
                 paragraphs.append(Prose.puzzleFloorDepressed)
             case RoyalPuzzleGrid.doorSquare:
                 paragraphs.append(Prose.puzzleDoorWall(open: doorOpen))
@@ -714,23 +763,29 @@ extension DungeonRoyalPuzzle {
 
     /// The card, the slit, and the ladder the player can put a hand on.
     @RuleBuilder fileprivate var cardRules: Rules {
-        // Containment is room-granular and the puzzle is one room, so the room
-        // has to say what a square means. Issue #150.
-        goldCard.reach(otherwise: Prose.goldCardOutOfReach) {
-            grid.playerSquare == RoyalPuzzleGrid.cardSquare
+        // The stand-in is in the room only while the card is in another
+        // square, so it is never within reach.
+        distantCard.reach(otherwise: Prose.goldCardOutOfReach) { false }
+
+        // `read` needs no reach, so the engraving reads from any square.
+        for card in [goldCard, distantCard] {
+            card.before(.read) { try reply(Prose.goldCardText) }
         }
 
-        // The half a reach rule cannot answer: which line the room listing
-        // prints. Asked of the square directly rather than through
-        // `isReachable`, which would run this same closure *and* walk the scope
-        // graph to confirm what placement already guarantees — the card is only
-        // ever in `puzzle`, and this only ever runs while the player is there.
-        goldCard.presence {
-            grid.playerSquare == RoyalPuzzleGrid.cardSquare
-                ? Prose.goldCardInPlace : Prose.goldCardAcrossTheFloor
+        // Keeps `cardSquare` in step with a take or a drop. A step or a push
+        // moves no card, so `settle` needs none of this.
+        puzzle.afterEachTurn {
+            var state = grid
+            let onTheFloor = goldCard.isIn(puzzle)
+            if state.cardSquare != nil, !cardIsInTheGrid {
+                state.cardSquare = nil
+            } else if state.cardSquare == nil, onTheFloor {
+                state.cardSquare = state.playerSquare
+            } else {
+                return
+            }
+            grid = state
         }
-
-        goldCard.before(.read) { try reply(Prose.goldCardText) }
 
         slit.reach(otherwise: Prose.puzzleSlitOutOfReach) {
             grid.playerSquare == RoyalPuzzleGrid.doorSquare
@@ -842,8 +897,8 @@ extension DungeonRoyalPuzzle {
         }
     }
 
-    /// How a step and a push both end: commit the grid, pick up the card if the
-    /// player has just landed on it, redraw, and finish the turn.
+    /// How a step and a push both end: commit the grid, put the card or its
+    /// stand-in where the player can now see it, redraw, and finish the turn.
     ///
     /// Nothing in the engine rolls a turn back, so a body that mutated the grid
     /// and then fell through would print "You can't do that." over a world that
@@ -854,7 +909,7 @@ extension DungeonRoyalPuzzle {
     /// - Throws: always.
     fileprivate func settle(_ state: RoyalPuzzleGrid) throws -> Never {
         grid = state
-        uncoverTheCard(at: state.playerSquare)
+        placeTheCard(state)
         // Still in the same room: the heading would claim an arrival that never
         // happened.
         describeSurroundings(withRoomName: false)
@@ -878,16 +933,37 @@ extension DungeonRoyalPuzzle {
         say(Prose.puzzleClimbOut)
     }
 
-    /// The card joins the room's contents the first time the player stands in
-    /// its square. The source keeps an object list per square and this engine
-    /// keeps one per room, so arrival is where the two are reconciled.
+    /// Puts the card in the room while the player stands in its square, and
+    /// the stand-in there while the card lies on open floor in another. A
+    /// card under a wall is in neither. The source keeps an object list per
+    /// square and this engine keeps one per room, so each arrival is where
+    /// the two are reconciled. That is how the card first appears: the block
+    /// over it moves only when the player pushes it, and the push leaves the
+    /// player in the card's square. (#619)
     ///
-    /// - Parameter square: where the player has just landed. Passed in rather
-    ///   than read back off the global, which both callers have just written:
-    ///   re-reading it would decode sixty-four cells to recover one `Int` they
-    ///   are already holding.
-    fileprivate func uncoverTheCard(at square: Int) {
-        guard square == RoyalPuzzleGrid.cardSquare, $cardUncovered.trips() else { return }
-        goldCard.move(to: puzzle)
+    /// - Parameter state: the grid as the caller has just written it. Passed
+    ///   in rather than read back off the global, which would decode
+    ///   sixty-four cells again.
+    fileprivate func placeTheCard(_ state: RoyalPuzzleGrid) {
+        guard let square = state.cardSquare, cardIsInTheGrid else { return }
+        if square == state.playerSquare {
+            goldCard.move(to: puzzle)
+            distantCard.vanish()
+        } else if state.cell(at: square) == .floor {
+            goldCard.vanish()
+            distantCard.move(to: puzzle)
+        } else {
+            goldCard.vanish()
+            distantCard.vanish()
+        }
+    }
+
+    /// Whether the card is where `cardSquare` can place it: on the puzzle's
+    /// floor, or out of play while the slit has not taken it. A save from
+    /// before `cardSquare` reads it as the starting square whatever became of
+    /// the card, so this is what leaves a card the player holds, one in
+    /// another room, or one the slit took, where it is.
+    fileprivate var cardIsInTheGrid: Bool {
+        goldCard.isIn(puzzle) || (goldCard.location == nil && !doorOpen)
     }
 }

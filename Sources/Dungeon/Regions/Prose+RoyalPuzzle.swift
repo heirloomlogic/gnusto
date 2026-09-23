@@ -314,9 +314,8 @@ extension Prose {
         There is a solid gold engraved card here.
         """
 
-    /// The half a reach rule cannot answer: which line the room listing prints.
-    /// Containment is room-granular and the puzzle is one room, so from any
-    /// other square the card has to be described as being elsewhere in it.
+    /// The listing line of the card's stand-in, which is in the room while the
+    /// card lies in another square of the puzzle. (#619)
     static let goldCardAcrossTheFloor = """
         A solid gold card lies in one of the other squares of the puzzle.
         """
