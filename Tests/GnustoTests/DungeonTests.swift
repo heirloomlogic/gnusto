@@ -3111,6 +3111,25 @@ struct DungeonTests {
             ])
     }
 
+    /// The Cage is a room of its own with no exits, so whatever the player
+    /// sets down inside it has to leave with them when the robot lifts the
+    /// cage. The floor it lay on is the closet's, so that is where it stays.
+    /// (#620)
+    @Test func whatIsDroppedInTheCageIsLeftOnTheClosetFloor() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "northwest", "robot, north", "north", "robot, south", "south",
+                    "take sphere", "drop sphere", "robot, lift cage", "take sphere",
+                ],
+            seed: 41)
+
+        let lift = turnOutput(of: "robot, lift cage", in: transcript)
+        expectInOrder(lift, ["with a scream of tearing steel", "Dingy Closet", "white crystal sphere"])
+        #expect(turnOutput(ofLast: "take sphere", in: transcript).contains("Taken."))
+    }
+
     /// Ordered to fetch it instead, the robot springs the trap on itself and
     /// does not mind. An order never reaches stage 4, so that half of the trap
     /// has to be a `before` rule where the player's half is an `after` one.
