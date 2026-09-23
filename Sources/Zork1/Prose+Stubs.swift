@@ -281,7 +281,7 @@ extension Prose {
         // ground; `lie on the mailbox` is about the mailbox, and the ground's
         // sentence is not true of it.
         stubs.lie = .naming(orBare: "You'd only get up again filthy.") {
-            "Lying down on \($0) would only get you filthier."
+            "Lying down \($0.preposition) \($0.object) would only get you filthier."
         }
         // Invented: no `KNEEL` in `gsyntax.zil`. "Nobody is impressed." counted
         // the room's occupants from a line that cannot see one, same as

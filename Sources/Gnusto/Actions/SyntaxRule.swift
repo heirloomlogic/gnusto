@@ -43,6 +43,11 @@ public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
         case .directObject, .indirectObject, .topic: nil
         }
     }
+
+    /// The word, where this is a literal one.
+    var literal: String? {
+        if case .word(let word) = self { word } else { nil }
+    }
 }
 
 /// One row of the verb table: a pattern of literal words and slots, and the
@@ -216,6 +221,28 @@ public struct SyntaxRule: Sendable {
             case .topic: "<topic>"
             }
         }.joined(separator: " ")
+    }
+
+    /// The literal words standing together from `index` on — `out of` in
+    /// `take <object> out of <second object>`, read from `out`.
+    ///
+    /// - Parameter index: the position of the first literal.
+    /// - Returns: that literal and every literal directly behind it, or an
+    ///   empty array if `index` holds no literal.
+    func literalRun(from index: Int) -> [String] {
+        elements[index...].prefix { $0.literal != nil }.compactMap(\.literal)
+    }
+
+    /// The literal words standing directly in front of the element at
+    /// `index`, leaving out the ``leadingWords`` that name the verb — `out
+    /// of` ahead of the second slot of `take <object> out of <second
+    /// object>`, and nothing ahead of the topic of `think about <topic>`.
+    ///
+    /// - Parameter index: the position of the element they stand in front of.
+    /// - Returns: the literals, in pattern order.
+    func literalRun(before index: Int) -> [String] {
+        elements[leadingWords.count..<index].reversed().prefix { $0.literal != nil }
+            .compactMap(\.literal).reversed()
     }
 
     /// How many tokens the pattern still requires after `index`, or `nil` if

@@ -313,7 +313,7 @@ struct EveryNameableStubGame: Game {
             "You jump over \($0)."
         }
         text.stubs.sit = .naming(orBare: "You sit on nothing in particular.") {
-            "You sit on \($0)."
+            "You sit \($0.preposition) \($0.object)."
         }
         text.stubs.count = .naming(orBare: "You count nothing in particular.") {
             "You count \($0)."

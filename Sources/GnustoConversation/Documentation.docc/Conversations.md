@@ -50,13 +50,11 @@ bundle's namespace.
 |---|---|---|
 | `ask the butler about the murder` | `.ask` | this library's |
 | `tell the butler about the letter` | `.tell` | this library's |
-| `show the letter to the butler` | `.show` | this library's |
+| `show the letter to the butler`, `show the butler the letter` | `.show` | this library's |
 | `hello`, `hi` | `.greet` | this library's |
 | `talk to the butler`, `speak with the butler` | `.talk` | the engine's stub, promoted here |
 
-SHOW is an ordinary two-object row — a thing is a thing, so it needs no topic
-slot. The dative is not expressible, since two object slots can't sit side by
-side, so `show butler the letter` is not a sentence this game speaks.
+SHOW has two-object rows — a thing is a thing, so it needs no topic slot. One of them names the person first, the shape GIVE uses, so `show butler the letter` is understood and a lone `show butler` asks what to show him.
 
 TALK is nobody's to mint. `Intent.talk` is one of the engine's stub verbs, so
 `talk to X`, `talk with X`, `talk X`, `speak to X` and `speak with X` all parse

@@ -749,18 +749,23 @@ public struct GameText: Sendable {
         "What do you want to \($0.verb)?"
     }
 
-    /// A verb missing its second object — answerable on the next line.
-    public var missingIndirect: Line<Prompt> = .naming {
-        "What do you want to \($0.verb) \($0.object ?? "") \($0.preposition)?"
-    }
+    /// A verb missing its second object — answerable on the next line. The
+    /// preposition is empty where the object named is the person receiving,
+    /// on a verb with a person-first row: "What do you want to give the
+    /// keeper?"
+    public var missingIndirect: Line<Prompt> = askingForTheRest
 
     /// A verb missing its topic — answerable on the next line. The object and
     /// the word introducing the subject are both optional, so one line covers
     /// "ask the butler about", "think about", and a bare "mutter".
-    public var missingTopic: Line<Prompt> = .naming {
+    public var missingTopic: Line<Prompt> = askingForTheRest
+
+    /// The one wording ``missingIndirect`` and ``missingTopic`` share: each
+    /// part the prompt has, and no space for a part it lacks.
+    private static let askingForTheRest: Line<Prompt> = .naming {
         let object = $0.object.map { " \($0)" } ?? ""
-        let about = $0.preposition.isEmpty ? "" : " \($0.preposition)"
-        return "What do you want to \($0.verb)\(object)\(about)?"
+        let preposition = $0.preposition.isEmpty ? "" : " \($0.preposition)"
+        return "What do you want to \($0.verb)\(object)\(preposition)?"
     }
 
     /// A verb that takes a noun and a direction, given only the noun —
@@ -1090,14 +1095,16 @@ extension GameText {
             "You can't stand on \($0)."
         }
         /// Sitting with nowhere to sit. The bare `sit` names nothing; `sit on`
-        /// and `sit in` name the object.
-        public var sit: Line<Noun?> = .naming(orBare: "There's nothing comfortable to sit on.") {
-            "There's nothing comfortable to sit on \($0)."
+        /// and `sit in` name the object and the word the player used.
+        public var sit: Line<RestingPlace?> = .naming(
+            orBare: "There's nothing comfortable to sit on."
+        ) {
+            "\($0.object.sentenceCased) \($0.object.verb("isn't", "aren't")) something to sit \($0.preposition)."
         }
-        /// Lying down, on the floor or on something. The bare `lie` and `lie
-        /// down` name nothing.
-        public var lie: Line<Noun?> = .naming(orBare: "The floor doesn't look inviting.") {
-            "You can't lie down on \($0)."
+        /// Lying down, on the floor or on or in something. The bare `lie` and
+        /// `lie down` name nothing.
+        public var lie: Line<RestingPlace?> = .naming(orBare: "The floor doesn't look inviting.") {
+            "You can't lie down \($0.preposition) \($0.object)."
         }
         /// Kneeling.
         public var kneel: Line<Nothing> = "You kneel. Nothing takes notice."

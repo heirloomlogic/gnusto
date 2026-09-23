@@ -51,7 +51,7 @@ struct AuditedRowTests {
             ["sit in sack", "stand on bench", "lie on bench", "lie down on bench"])
         #expect(
             turnOutput(of: "sit in sack", in: transcript)
-                .contains("There's nothing comfortable to sit on the canvas sack."))
+                .contains("The canvas sack isn't something to sit in."))
         #expect(
             turnOutput(of: "stand on bench", in: transcript)
                 .contains("You can't stand on the long bench."))
@@ -62,6 +62,26 @@ struct AuditedRowTests {
             turnOutput(of: "lie down on bench", in: transcript)
                 .contains("You can't lie down on the long bench."))
         #expect(!transcript.contains("I didn't understand"))
+    }
+
+    /// `sit in sack` and `lie in sack` answered with "on", because the lines
+    /// wrote the word themselves. They now take it from the row the player
+    /// typed.
+    @Test func sittingAndLyingInAnswerWithIn() async throws {
+        let transcript = try await play(
+            AuditLab(), ["sit in sack", "lie in sack", "lie down in sack", "sit on bench"])
+        #expect(
+            turnOutput(of: "sit in sack", in: transcript)
+                .contains("The canvas sack isn't something to sit in."))
+        #expect(
+            turnOutput(of: "lie in sack", in: transcript)
+                .contains("You can't lie down in the canvas sack."))
+        #expect(
+            turnOutput(of: "lie down in sack", in: transcript)
+                .contains("You can't lie down in the canvas sack."))
+        #expect(
+            turnOutput(of: "sit on bench", in: transcript)
+                .contains("The long bench isn't something to sit on."))
     }
 
     /// The bare halves keep their own sentences, which is what
@@ -142,6 +162,24 @@ struct AuditedRowTests {
                 .contains("You put the gold coin on the long bench."))
     }
 
+    // MARK: - take X out of
+
+    /// `take coin out of` asked "…out?", because the question was built from
+    /// the one word that closes the first slot. It names both words now, and
+    /// the answer still completes the sentence.
+    @Test func aQuestionAfterTwoWordsNamesBothOfThem() async throws {
+        let transcript = try await play(
+            AuditLab(),
+            ["put coin in sack", "take coin out of", "sack", "put coin in sack", "get coin out of"])
+        #expect(
+            turnOutput(of: "take coin out of", in: transcript)
+                .contains("What do you want to take the gold coin out of?"))
+        #expect(turnOutput(of: "sack", in: transcript).contains("Taken."))
+        #expect(
+            turnOutput(of: "get coin out of", in: transcript)
+                .contains("What do you want to get the gold coin out of?"))
+    }
+
     // MARK: - give
 
     /// `give warden coin` was "I didn't understand that sentence." Two noun
@@ -153,6 +191,31 @@ struct AuditedRowTests {
         #expect(turnOutput(of: "give warden coin", in: transcript).contains(expected))
         #expect(turnOutput(of: "hand warden coin", in: transcript).contains(expected))
         #expect(!transcript.contains("I didn't understand"))
+    }
+
+    /// A person named alone after GIVE is who is receiving, not what is
+    /// given. `give warden` asked what to give the warden *to*, and the answer
+    /// then gave the warden to the coin.
+    @Test func aLonePersonAfterGiveIsTheRecipient() async throws {
+        let transcript = try await play(AuditLab(), ["give warden", "coin"])
+        #expect(
+            turnOutput(of: "give warden", in: transcript)
+                .contains("What do you want to give the night warden?"))
+        #expect(
+            turnOutput(of: "coin", in: transcript)
+                .contains("The night warden doesn't want the gold coin."))
+    }
+
+    /// The whole name is read before it is split in two. `give night warden`
+    /// was the warden given to herself: "night" named her as the recipient and
+    /// "warden" named her again as the gift.
+    @Test(arguments: [
+        ("give night warden", "What do you want to give the night warden?"),
+        ("hand warden", "What do you want to hand the night warden?"),
+    ])
+    func aPersonNamedInFullIsNotSplit(_ line: String, _ question: String) async throws {
+        let turn = turnOutput(of: line, in: try await play(AuditLab(), [line]))
+        #expect(turn.contains(question))
     }
 
     /// The gift half goes through the direct slot's own resolver, so a list

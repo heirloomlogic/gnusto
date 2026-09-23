@@ -493,6 +493,31 @@ extension GameText {
         }
     }
 
+    /// Something the player tried to sit or lie on or in, and which of the two
+    /// words the sentence used.
+    ///
+    /// ```swift
+    /// stubs.sit = .naming(orBare: "You sit on the floor.") {
+    ///     "You would rather not sit \($0.preposition) \($0.object)."
+    /// }
+    /// ```
+    public struct RestingPlace: DroppableSubject, NamedSubject {
+        /// What the player named.
+        public let object: Noun
+        /// `in` where the row the player typed ends in it (`sit in the
+        /// chest`), and `on` for every other row.
+        public let preposition: String
+
+        /// Both numbers and both words, so a template that hard-codes either
+        /// is caught.
+        public static var samples: [Self] {
+            [
+                .init(object: Noun.sampleSingular, preposition: "in"),
+                .init(object: Noun.samplePlural, preposition: "on"),
+            ]
+        }
+    }
+
     /// A place, and the thing the player is riding through it.
     ///
     /// The odd one out, and the asymmetry is the point: ``place`` is a plain
@@ -572,6 +597,21 @@ extension GameText.Line where Object == GameText.InstrumentUse? {
     public static func naming(
         orBare bare: String,
         _ line: @escaping @Sendable (GameText.InstrumentUse) -> String
+    ) -> Self {
+        .init { $0.map(line) ?? bare }
+    }
+}
+
+extension GameText.Line where Object == GameText.RestingPlace? {
+    /// A line that can also answer a bare command, used by SIT and LIE.
+    ///
+    /// - Parameters:
+    ///   - bare: the sentence for a command that named nothing.
+    ///   - line: builds the sentence for the place and the word the row used.
+    /// - Returns: the line.
+    public static func naming(
+        orBare bare: String,
+        _ line: @escaping @Sendable (GameText.RestingPlace) -> String
     ) -> Self {
         .init { $0.map(line) ?? bare }
     }
