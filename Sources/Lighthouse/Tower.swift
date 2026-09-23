@@ -33,7 +33,7 @@ struct Tower: GameContent {
     let beacon = Item.scenery(
         "beacon",
         adjectives: "great", "brass",
-        synonyms: "beam", "light", "reservoir", "carriage", "ring"
+        synonyms: "beam", "light", "reservoir", "carriage", "ring", "center"
     ) {
         lightSource
         description(
@@ -73,7 +73,8 @@ struct Tower: GameContent {
 
     /// The same synonym list as the base's stone flight, deliberately: two
     /// staircases in one game should answer to the same words and let the room
-    /// decide which one the player means.
+    /// decide which one the player means. The one word left off is `center`,
+    /// which this room's description gives to the beacon.
     let stairs = Item.scenery(
         "spiral stairs",
         adjectives: "iron",

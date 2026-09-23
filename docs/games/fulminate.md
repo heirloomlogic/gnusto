@@ -483,9 +483,8 @@ on it.** The 2026-07-31 round counted 261 unknown-word replies over 59 distinct 
 game had printed itself, because the walk covered only the room descriptions and never
 fired a timed event. Three things close that class, and a rewrite has all three:
 
-- a scenery item, where the noun is a stable thing a room owns — the six in
-  `Sources/Fulminate/Fixtures.swift`, plus the yard's fire and the lab's shell, which
-  read `blastHappened` and so live in the host;
+- a scenery item, where the noun is a stable thing a room owns — the scenery in
+  `Sources/Fulminate/Fixtures.swift`, and in the host the items whose text or presence turns on the blast, such as the yard's fire, the lab's shell and the lab's side door;
 - a synonym, where the noun is a facet of something that already exists. Watch for a word
   declared as an **adjective**: the tokenizer will never accept one as the last word of a
   phrase, so `hat`, `marble`, `pine` and `doctor` were unreachable words the prose printed;

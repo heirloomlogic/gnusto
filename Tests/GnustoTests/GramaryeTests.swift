@@ -564,11 +564,13 @@ struct GramaryeTests {
             [
                 "x tower", "x master", "x desk", "x cloak", "x staff", "x letters",
                 "x hat", "x circle", "x cauldrons", "x robes", "x hill", "x road",
+                "x threshold",
             ],
             seed: 0)
 
         expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x desk", in: transcript).contains("exactly the size of the book"))
+        #expect(turnOutput(of: "x threshold", in: transcript).contains("where he stopped, turned back"))
     }
 
     /// The Study, whose description carries the noun the entire first puzzle is
@@ -626,11 +628,15 @@ struct GramaryeTests {
             Self.toTheUndercroft
                 + [
                     "x cellar", "x air", "x magic", "x hook", "x clay", "x golem", "x vault",
+                    "x floor",
                     "cast firebolt at golem", "x rubble", "x shards", "x amulet",
+                    "x flags", "search flags",
                 ],
             seed: 0)
 
         expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x hook", in: transcript).contains("bent up at the tip"))
+        #expect(turnOutput(of: "x floor", in: transcript).contains("The golem stands on them"))
+        #expect(turnOutput(of: "x flags", in: transcript).contains("under an even layer of what used to be a golem"))
     }
 }

@@ -104,6 +104,30 @@ struct OperaHouse: Game {
     let doorways = Item.scenery(
         "doorway", synonyms: "doorways", "doorway", description: "There are doorways south and west.")
 
+    /// The cloakroom's own nouns. `room` and `cloakroom` answer with the
+    /// walls, the way the foyer's `hall` answers with the hall.
+    let cloakroomWalls = Item.scenery(
+        "walls",
+        synonyms: "wall", "room", "cloakroom", "holes", "hole",
+        description:
+            """
+            Bare now, and pocked with holes where the other hooks were screwed
+            in. Only one hook remains.
+            """
+    ) {
+        plural
+    }
+
+    let cloakroomDoor = Item.scenery(
+        "door", synonyms: "exit",
+        description: "A plain door in the east wall, and the only way out.")
+
+    /// The bar's own noun. It answers only once the bar is lit: in the dark
+    /// nothing in the bar is in scope, this included.
+    let barRoom = Item.scenery(
+        "bar", adjectives: "rough", "empty",
+        description: "Rough, and completely empty. Whoever ran it took everything but the sawdust.")
+
     let message = Item.scenery(
         "scrawled message",
         adjectives: "scrawled",
@@ -153,6 +177,9 @@ struct OperaHouse: Game {
         player.starts(in: foyer)
         cloak.startsWorn
         hook.starts(in: cloakroom)
+        cloakroomWalls.starts(in: cloakroom)
+        cloakroomDoor.starts(in: cloakroom)
+        barRoom.starts(in: bar)
         message.starts(in: bar)
         hallFittings.starts(in: foyer)
         chandeliers.starts(in: foyer)
@@ -196,6 +223,21 @@ struct OperaHouse: Game {
             }
             disturbances += 1
             try refuse("In the dark? You could easily disturb something!")
+        }
+
+        // The cloakroom's and the bar's own nouns name the room, so LEAVE or
+        // EXIT with one of them walks out, to the foyer, instead of answering
+        // "You aren't in the walls." The cloakroom door is also a way through
+        // by name, for ENTER and GO THROUGH.
+        for way in [cloakroomWalls, barRoom] {
+            way.before(.disembark) {
+                try enter(foyer)
+                try handled()
+            }
+        }
+        cloakroomDoor.before(.disembark, .board) {
+            try enter(foyer)
+            try handled()
         }
 
         bar.afterEachTurn {

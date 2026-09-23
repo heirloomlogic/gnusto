@@ -231,6 +231,13 @@ struct Gramarye: Game, GameMain {
         hidden
     }
 
+    /// The floor the second state of the Undercroft names and the rubble lies
+    /// across. Its text reads whether the golem is still standing on it, so it
+    /// lives here rather than in ``Fixtures``.
+    let undercroftFloor = Item.scenery(
+        "floor",
+        synonyms: "flags", "flag", "flagstones", "flagstone")
+
     // MARK: - Composition
 
     /// The nouns the tower's prose prints and nothing else answered to. A
@@ -423,6 +430,11 @@ struct Gramarye: Game, GameMain {
                 \(cellar) Between here and there, the floor wears an even layer of what used to
                 be a golem.
                 """
+        }
+        undercroftFloor.describe {
+            golem.isIn(undercroft)
+                ? "Old flagstones, chalky like everything else down here. The golem stands on them as if it had been laid with them."
+                : "Somewhere under an even layer of what used to be a golem, the flagstones are presumably still there."
         }
         wardingMarks.describe {
             wardedDoor.isOpen
@@ -657,6 +669,7 @@ struct Gramarye: Game, GameMain {
         graniteWall.starts(in: gallery)
         golem.starts(in: undercroft)
         rubble.starts(in: undercroft)
+        undercroftFloor.starts(in: undercroft)
 
         // Where the prose says these are. The intro's one instruction is "The
         // master's spellbook is on the desk"; the niche's whole job is to be
@@ -675,6 +688,7 @@ struct Gramarye: Game, GameMain {
         fixtures.cauldrons.starts(in: study)
         fixtures.master.starts(in: study)
         fixtures.hill.starts(in: study)
+        fixtures.threshold.starts(in: study)
         fixtures.galleryStone.starts(in: gallery)
         fixtures.vault.starts(in: undercroft)
         fixtures.hook.starts(in: undercroft)

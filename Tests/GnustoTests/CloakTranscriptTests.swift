@@ -143,6 +143,42 @@ struct CloakTranscriptTests {
             ])
     }
 
+    /// The cloakroom and the lit bar, held to the foyer's rule (#616). The bar
+    /// is asked only once the cloak is hung, because in the dark nothing in
+    /// the bar is in scope.
+    @Test func theCloakroomAndTheBarAnswerEveryNounTheyPrint() async throws {
+        let transcript = try await play(
+            OperaHouse(),
+            [
+                "west", "x walls", "x wall", "x room", "x holes", "x door", "x exit",
+                "search walls", "search door",
+                "hang cloak on hook", "east", "south", "x bar", "search bar",
+            ])
+        expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x walls", in: transcript).contains("Only one hook remains."))
+        #expect(turnOutput(of: "x exit", in: transcript).contains("the only way out"))
+        #expect(turnOutput(of: "x bar", in: transcript).contains("completely empty"))
+    }
+
+    /// The rooms' own nouns name the rooms, so LEAVE and EXIT with one of them
+    /// walk out to the foyer rather than answering "You aren't in the walls."
+    /// The walls are plural, and in the dark `x bar` finds nothing.
+    @Test func leavingARoomByItsOwnNounWalksOut() async throws {
+        let transcript = try await play(
+            OperaHouse(),
+            [
+                "south", "x bar", "north",
+                "west", "break walls", "leave cloakroom", "west", "go through door",
+                "west", "hang cloak on hook", "east", "south", "leave bar",
+            ])
+        #expect(!transcript.contains("You aren't in"))
+        #expect(turnOutput(of: "x bar", in: transcript).contains("You can't see any such thing."))
+        #expect(turnOutput(of: "break walls", in: transcript).contains("The walls are sturdier"))
+        for command in ["leave cloakroom", "go through door", "leave bar"] {
+            #expect(turnOutput(of: command, in: transcript).contains("Foyer of the Opera House"), "\(command)")
+        }
+    }
+
     @Test func quitReportsTheScore() async throws {
         let transcript = try await play(OperaHouse(), ["quit"])
         #expect(transcript.contains("Your score is 0 of a possible 2, in 0 turns."))

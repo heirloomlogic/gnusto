@@ -79,7 +79,7 @@ struct Lighthouse: Game {
     let shelf = Item.scenery(
         "stone shelf",
         adjectives: "worn",
-        synonyms: "ledge", "slab",
+        synonyms: "ledge", "slab", "spot",
         description:
             """
             A slab set into the wall at hand height, and one spot on it is
@@ -257,6 +257,7 @@ struct Lighthouse: Game {
         fixtures.stairs.starts(in: base)
         fixtures.rope.starts(in: storeroom)
         fixtures.stores.starts(in: storeroom)
+        fixtures.farWall.starts(in: storeroom)
     }
 
     // MARK: - Timers
@@ -383,6 +384,14 @@ struct Lighthouse: Game {
         // the room.
         chest.before(.take) {
             try refuse("Brine-swollen, full of oil, and going nowhere. Take what's in it.")
+        }
+
+        // Inside the base the wall answers `room`, `tower` and `lighthouse`, so
+        // LEAVE or EXIT with one of those words walks out to the jetty instead
+        // of answering "You aren't in the stone wall."
+        fixtures.wall.before(.disembark) {
+            try enter(jetty)
+            try handled()
         }
 
         // Lamp fuel: start the burn on lighting, stop it on dousing.
