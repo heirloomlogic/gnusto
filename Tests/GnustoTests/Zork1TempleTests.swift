@@ -183,8 +183,8 @@ struct Zork1TempleTests {
             ])
     }
 
-    /// `CANDLES-FCN` answers the torch before it asks whether the torch is
-    /// burning (`1actions.zil:2372`).
+    /// With the torch, `CANDLES-FCN` asks only whether the candles are lit
+    /// (`1actions.zil:2372`).
     @Test func burningCandlesRefuseTheTorchInTheSourcesWords() async throws {
         let transcript = try await play(
             Zork1(),
@@ -193,6 +193,25 @@ struct Zork1TempleTests {
         #expect(
             turnOutput(of: "light candles with torch", in: transcript)
                 .contains("You realize, just in time, that the candles are already lighted."))
+    }
+
+    /// `TORCH`'s `FDESC` names the pedestal, so it is said only while the torch
+    /// is on it. Here the thief lifts the untouched torch off the pedestal and
+    /// drops it on the floor as he dies.
+    @Test func theTorchLineNamesThePedestalOnlyWhileTheTorchIsOnIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toDomeRoom + ["tie rope to railing", "down"]
+                + Array(repeating: "attack thief with sword", count: 5) + ["look"],
+            seed: 117)
+        #expect(
+            turnOutput(ofLast: "down", in: transcript)
+                .contains("Sitting on the pedestal is a flaming torch, made of ivory."))
+        #expect(transcript.contains("You suddenly notice that the ivory torch vanished."))
+        #expect(transcript.contains("The thief takes a fatal blow"))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("There is an ivory torch here."))
+        #expect(!look.contains("Sitting on the pedestal"))
     }
 
     /// The ritual has a window: ring the bell and then dawdle, and the spirits

@@ -284,19 +284,10 @@ public struct Item: Sendable, Equatable {
         }
     }
 
-    /// True if the player has ever picked up or moved the item, or a
-    /// `GnustoActors` thief has stolen it.
+    /// True if the player has ever picked up or moved the item.
     public var isTouched: Bool {
         let (frame, id) = resolved
         return frame.with { $0.state.touched.contains(id) }
-    }
-
-    /// Marks the item touched without the player handling it. `GnustoActors`
-    /// calls this for a theft, so a listing line that says where the loot
-    /// stood stops printing once the thief has moved it.
-    package func markTouched() {
-        let (frame, id) = resolved
-        frame.with { _ = $0.state.touched.insert(id) }
     }
 
     /// True if a `hidden` item has been revealed. Always true for an item

@@ -98,7 +98,6 @@ struct ZorkTemple: GameContent {
         name("ivory torch")
         adjectives("ivory", "flaming")
         synonyms("torch")
-        firstSight(Prose.torchFirstSight)
         description(Prose.ivoryTorch)
         lightSource
         startsLit
@@ -417,6 +416,16 @@ struct ZorkTemple: GameContent {
         // The ivory torch never goes out.
         torch.before(.turnOff) {
             try refuse(Prose.torchWontExtinguish)
+        }
+
+        // `TORCH`'s `FDESC` names the pedestal, so it is said only while the
+        // torch is on it. This port's thief can take an untouched torch off the
+        // pedestal, which `ROB` cannot: it takes only what lies loose in a room
+        // (`1actions.zil:3976`). He leaves what he takes loose in a room, so
+        // off the pedestal the line is the stock one for a thing lying there.
+        torch.presence {
+            marblePedestal.holds(torch)
+                ? Prose.torchFirstSight : gameText.itemHere(torch.indefiniteNoun)
         }
 
         // The altar crack is too narrow for the gold coffin — the original's

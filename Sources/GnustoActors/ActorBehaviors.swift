@@ -204,9 +204,6 @@ public struct ActorBehaviors: GamePlugin {
             // player last saw it, not as the thief's pocket now holds it.
             let noun = loot.definiteNoun
             loot.move(heldBy: actor)
-            // Zork's `ROB` and `STEAL-JUNK` and Dungeon's `ROB-ROOM` all set
-            // `TOUCHBIT` on what they take.
-            loot.markTouched()
             if player.location.isLit {
                 say(announcement(noun))
             }

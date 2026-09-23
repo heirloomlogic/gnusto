@@ -111,17 +111,6 @@ struct ActorBehaviorTests {
         #expect(!transcript.contains("the Ozymandias"))
     }
 
-    /// A theft touches the loot, as `ROB` and `STEAL-JUNK` set `TOUCHBIT`
-    /// (`1actions.zil:3966`, `:3986`) and Dungeon's `ROB-ROOM` does the same:
-    /// the listing line names the plinth, and the idol is not on it any more.
-    @Test func stolenLootLosesItsListingLine() async throws {
-        let transcript = try await play(PlinthThiefGame(), ["look", "whistle", "east"], seed: 0)
-        #expect(transcript.contains("Featherlight fingers make off with the jade idol."))
-        let yard = turnOutput(of: "east", in: transcript)
-        #expect(yard.contains("There is a jade idol here."))
-        #expect(!yard.contains("On a plinth stands a jade idol."))
-    }
-
     @Test func aThiefNeverStealsFromHimself() async throws {
         let transcript = try await play(
             PickpocketGame(),
