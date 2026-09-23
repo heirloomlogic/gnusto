@@ -79,7 +79,7 @@ struct Lighthouse: Game {
     let shelf = Item.scenery(
         "stone shelf",
         adjectives: "worn",
-        synonyms: "ledge", "slab",
+        synonyms: "ledge", "slab", "spot",
         description:
             """
             A slab set into the wall at hand height, and one spot on it is
@@ -257,6 +257,7 @@ struct Lighthouse: Game {
         fixtures.stairs.starts(in: base)
         fixtures.rope.starts(in: storeroom)
         fixtures.stores.starts(in: storeroom)
+        fixtures.farWall.starts(in: storeroom)
     }
 
     // MARK: - Timers

@@ -51,7 +51,7 @@ would teach nothing the first one didn't.
 The one thing that rule does not cover is scenery, and scenery is not an exception
 to it — it is the price of the prose. Every noun a room description prints has to
 be a noun the parser knows, or the room reads as unfinished. So the game carries
-eleven items nobody has to touch, and the eight below the tower live in a bundle
+items nobody has to touch, and the ones below the tower live in a bundle
 of their own (`Fixtures`) rather than in the host, precisely so that the file an
 author reads to learn the idioms stays the length it advertises.
 
@@ -98,8 +98,8 @@ the total is a warning on startup and a red test, not a game that quietly ships 
 maximum it can never reach.
 
 **Two bundles, for two different reasons.** `Tower` is a bundle because a *region*
-wants to own its declarations; `Fixtures` is a bundle because eight scenery items
-would otherwise be a third of the host file. Both are `GameContent`, and the
+wants to own its declarations; `Fixtures` is a bundle because the scenery
+would otherwise swamp the host file. Both are `GameContent`, and the
 second is there to say that "a region" is only the most obvious reason to want one.
 A rewrite may fold `Fixtures` back into the host if it can do so without doubling
 the host's length; it may not fold `Tower` in, because the cross-bundle seam is the
@@ -398,10 +398,10 @@ the `Fixtures` bundle, and — for the Lamp Room — in `Tower`.
 - **lighthouse** (`tower`), from the jetty — *Stone, tapered, whitewashed to the
   gallery rail, and dark at the top where it has no business being dark. From out
   on the water it is the first thing anyone looks for.*
-- **stone wall** (`stone`, `walls`, and `tower`/`lighthouse` from inside — the
+- **stone wall** (`stone`, `walls`, `room`, and `tower`/`lighthouse` from inside — the
   view from within a lighthouse is its wall) — *Blocks the length of your forearm, laid in a circle thick enough that
   the weather out there is a rumor in here.*
-- **stone stairs** (`treads`, `rail`, `steps`, `staircase`) — *They climb into the
+- **stone stairs** (`treads`, `rail`, `steps`, `staircase`, `center`) — *They climb into the
   dark and go on climbing. Every tread is hollowed at the center, and the rail is
   bright along its whole length where a hand has gone.*
 - **coiled rope** (`coils`, `pegs`) — *Hung on pegs by size, largest to the left.
@@ -409,6 +409,7 @@ the `Fixtures` bundle, and — for the Lamp Room — in `Tower`.
 - **stores** (`tar`, `brine`, `gear`, `supplies`) — *Tar and brine and forty years
   of things put where they go. Nobody on this rock has had to look for anything in
   a long while.*
+- **far wall** (`walls`, `stone`), in the storeroom — *Bare stone. The sea chest stands square against it, where it has stood long enough that nobody remembers the wall without it.*
 - **glass** (`panes`, `windows`) — *Curved panes in a brass frame, every
   one of them clean on the inside. The salt on the outside is nobody's fault and
   nobody's to fix.*
@@ -416,13 +417,13 @@ the `Fixtures` bundle, and — for the Lamp Room — in `Tower`.
   Somewhere out in it is water, and somewhere on the water are people who would
   like to know where this rock is.*
 - **spiral stairs** (same words as the stone flight below, so the room decides
-  which one you meant), in the Lamp Room — *Iron, and narrow enough
+  which one you meant, except `center`, which the Lamp Room gives to the beacon), in the Lamp Room — *Iron, and narrow enough
   that two people meeting on them would have to settle it between themselves.
   Hollowed at the center, the same as the stone ones below.*
 
 The parts of things answer through the things themselves: `teeth` is the key,
 `wick` is the lamp, `clasp` and `wire` are the chest, `handle` and the bare noun
-`oil` are the can, and `reservoir`, `carriage` and `ring` are the beacon.
+`oil` are the can, `reservoir`, `carriage` and `ring` are the beacon (and so is `center`, where the Lamp Room puts it), and `spot` is the shelf.
 
 ### The keeper
 

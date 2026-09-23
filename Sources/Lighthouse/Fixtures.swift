@@ -10,9 +10,9 @@ import Gnusto
 /// They live in a ``GameContent`` bundle for a reason worth naming, because it
 /// is a second use of the same idiom the ``Tower`` demonstrates: the Tower is a
 /// bundle because a *region* wants to own its declarations, and this is a bundle
-/// because eight scenery items would otherwise be a third of the host file. A
-/// bundle is a place to put declarations, and "a region" is only the most
-/// obvious reason to want one.
+/// because the scenery would otherwise swamp the host file. A bundle is a
+/// place to put declarations, and "a region" is only the most obvious reason
+/// to want one.
 ///
 /// The host places these. A bundle can only place into rooms it can *name*, and
 /// the only rooms it can store are its own — so these belong to ``Lighthouse``'s
@@ -84,7 +84,7 @@ struct Fixtures: GameContent {
     let wall = Item.scenery(
         "stone wall",
         adjectives: "round",
-        synonyms: "stone", "walls", "tower", "lighthouse",
+        synonyms: "stone", "walls", "tower", "lighthouse", "room",
         description:
             """
             Blocks the length of your forearm, laid in a circle thick enough that
@@ -94,7 +94,7 @@ struct Fixtures: GameContent {
 
     let stairs = Item.scenery(
         "stone stairs",
-        synonyms: "stair", "staircase", "steps", "step", "treads", "tread", "rail",
+        synonyms: "stair", "staircase", "steps", "step", "treads", "tread", "rail", "center",
         description:
             """
             They climb into the dark and go on climbing. Every tread is hollowed
@@ -112,6 +112,19 @@ struct Fixtures: GameContent {
             """
             Hung on pegs by size, largest to the left. Somebody put them in that
             order and everybody since has kept them in it.
+            """
+    )
+
+    /// The storeroom's own wall, which its description puts the chest
+    /// against. The base's `wall` is a separate item because a single item
+    /// occupies one room.
+    let farWall = Item.scenery(
+        "far wall",
+        synonyms: "walls", "stone",
+        description:
+            """
+            Bare stone. The sea chest stands square against it, where it has stood
+            long enough that nobody remembers the wall without it.
             """
     )
 

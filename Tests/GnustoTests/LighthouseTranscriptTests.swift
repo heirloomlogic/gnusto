@@ -474,19 +474,23 @@ struct LighthouseTranscriptTests {
                 "north",
                 "x stairs", "x treads", "x rail", "x wall", "x stone",
                 "x lighthouse", "x tower", "x shelf", "x storeroom", "x door",
+                "x spot", "x center", "x room",
                 "take key", "x key", "x teeth",
                 "unlock door with key", "open door", "east",
                 "x rope", "x coils", "x pegs", "x tar", "x brine", "x stores",
-                "x chest", "x clasp", "x wire",
+                "x chest", "x clasp", "x wire", "x far wall", "search far wall",
                 "open chest", "x lamp", "x wick", "x can", "x oil", "x handle",
             ],
             seed: 0)
 
         expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x spot", in: transcript).contains("one spot on it is polished"))
+        #expect(turnOutput(of: "x center", in: transcript).contains("hollowed at the center"))
+        #expect(turnOutput(of: "x far wall", in: transcript).contains("The sea chest stands square against it"))
     }
 
     /// And the Lamp Room, which needs a light before it can be asked anything.
-    /// Two visits, because the lamp holds nine turns at a time.
+    /// Short visits, because the lamp holds nine turns at a time.
     @Test func theLampRoomAnswersToItsOwnDescription() async throws {
         let route = Self.toTheOpenChest + ["take lamp", "west", "up", "light lamp"]
         for probe in [
@@ -496,6 +500,11 @@ struct LighthouseTranscriptTests {
             let transcript = try await play(Lighthouse(), route + probe, seed: 0)
             expectEveryNounAnswered(transcript, "\(probe)")
         }
+
+        // Up here `center` is the beacon, which the room puts there. Below, it
+        // is the stone stairs' treads.
+        let center = try await play(Lighthouse(), route + ["x center"], seed: 0)
+        #expect(turnOutput(of: "x center", in: center).contains("The great beacon, cold and dark"))
     }
 
     /// The keeper's own lines name her leg, and she is the only person here.
