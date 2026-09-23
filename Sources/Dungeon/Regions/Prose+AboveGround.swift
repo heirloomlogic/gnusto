@@ -354,22 +354,37 @@ extension Prose {
         In the bird's nest is \(eggBody) Its hinged lid stands open.
         """
 
-    /// Verbatim Zork I.
+    /// The intact bird in the hand: the listing paragraph both sources give it
+    /// (`GCANA`'s `ODESCO`, Zork I's `FDESC`) with its opening clause repaired
+    /// and the rest verbatim, as ``egg`` is. Why the paragraph is not also the
+    /// listing line is in `FIDELITY.md`. (#617)
     static let canary = """
-        There is a golden clockwork canary nestled in the egg. It has ruby
-        eyes and a silver beak. Through a crystal window below its left
-        wing you can see intricate machinery inside. It appears to have
-        wound down.
+        A golden clockwork canary. It has ruby eyes and a silver beak.
+        Through a crystal window below its left wing you can see intricate
+        machinery inside. It appears to have wound down.
         """
 
-    /// Verbatim Zork I.
-    static let brokenCanary = """
+    /// The ruined bird's listing line: `BCANA`'s `ODESCO`, which is Zork I's
+    /// `FDESC` for it too. It starts offstage inside ``brokenEgg``, where that
+    /// bootstrap check does not look.
+    static let brokenCanaryFirstSight = """
         There is a golden clockwork canary nestled in the egg. It seems to
         have recently had a bad experience. The mountings for its jewel-like
         eyes are empty, and its silver beak is crumpled. Through a cracked
         crystal window below its left wing you can see the remains of
         intricate machinery. It is not clear what result winding it would
         have, as the mainspring seems sprung.
+        """
+
+    /// The ruined bird in the hand: the same paragraph with its opening clause
+    /// repaired, as ``canary`` is.
+    static let brokenCanary = """
+        A golden clockwork canary. It seems to have recently had a bad
+        experience. The mountings for its jewel-like eyes are empty, and its
+        silver beak is crumpled. Through a cracked crystal window below its
+        left wing you can see the remains of intricate machinery. It is not
+        clear what result winding it would have, as the mainspring seems
+        sprung.
         """
 
     /// Verbatim Zork I.

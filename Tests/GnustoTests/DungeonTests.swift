@@ -682,6 +682,7 @@ struct DungeonTests {
             [
                 "north", "north", "up", "take egg", "open egg",
                 "examine egg", "examine canary", "inventory", "score",
+                "down", "drop egg", "look",
             ])
 
         expectInOrder(
@@ -701,6 +702,17 @@ struct DungeonTests {
         // game rather than merely opened, and nothing answers to it after.
         #expect(turnOutput(of: "up", in: transcript).contains("hinged and closed"))
         #expect(!turnOutput(of: "examine egg", in: transcript).contains("hinged and closed"))
+
+        // The ruined bird's paragraph opens by saying it is nestled in the egg,
+        // so it is the listing line, printed while the bird sits untouched in
+        // the dropped wreck; EXAMINE is the paragraph without that clause.
+        // (#617)
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("There is a golden clockwork canary nestled in the egg. It seems to"))
+        let examined = turnOutput(of: "examine canary", in: transcript)
+        #expect(examined.contains("A golden clockwork canary. It seems to have recently had a bad"))
+        #expect(!examined.contains("nestled in the egg"))
     }
 
     /// The forfeit stated in points. Force the egg, carry the wreck home, and
