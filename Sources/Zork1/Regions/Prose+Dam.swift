@@ -148,8 +148,17 @@ extension Prose {
 
     static let screwdriver = "An ordinary screwdriver."
 
-    static let tube = """
+    /// `TUBE`'s `LDESC`, the tube's listing line.
+    static let tubeFirstSight = """
         There is an object which looks like a tube of toothpaste here.
+        """
+
+    /// `TUBE`'s `TEXT`, which `V-EXAMINE` and `V-READ` both print. The source
+    /// breaks the label after its first line and indents the second, so it is
+    /// written as a form.
+    static let tube = """
+          ---> Frobozz Magic Gunk Company <---
+                    All-Purpose Gunk
         """
 
     // MARK: - Reservoir items
@@ -158,9 +167,9 @@ extension Prose {
 
     static let trunkFirstSight = "Lying half buried in the mud is an old trunk, bulging with jewels."
 
-    static let trunk = """
-        There is an old trunk here, bulging with assorted jewels.
-        """
+    /// `STUPID-CONTAINER`'s `EXAMINE` line, which `TRUNK-F` calls with
+    /// "jewels". `TRUNK` has no `TEXT`.
+    static let trunk = "There are lots of jewels in there."
 
     // MARK: - Button replies
 

@@ -281,6 +281,7 @@ struct DungeonHouse: GameContent {
         name("broken clockwork canary")
         adjectives("broken", "golden", "gold", "clockwork", "mechanical")
         synonyms("canary", "bird")
+        firstSight(Prose.brokenCanaryFirstSight)
         description(Prose.brokenCanary)
     }
 

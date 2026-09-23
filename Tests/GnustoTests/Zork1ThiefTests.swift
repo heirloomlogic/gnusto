@@ -41,7 +41,7 @@ struct Zork1ThiefTests {
             Zork1(),
             [
                 "north", "north", "up", "take egg", "open egg",
-                "look in egg", "examine canary", "score",
+                "look in egg", "down", "drop egg", "look", "examine canary", "score",
             ],
             seed: 1)
         expectInOrder(
@@ -53,6 +53,16 @@ struct Zork1ThiefTests {
                 "recently had a bad experience",  // the broken canary's own description
                 "Your score is 5 of a possible 350",  // the shell scored 5; the canary, nothing
             ])
+
+        // The ruined bird's `FDESC` is its listing line, printed while it sits
+        // untouched in the dropped egg. EXAMINE is the same paragraph without
+        // the clause that says where it is. (#617)
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("There is a golden clockwork canary nestled in the egg. It seems to"))
+        let examined = turnOutput(of: "examine canary", in: transcript)
+        #expect(examined.contains("A golden clockwork canary. It seems to have recently had a bad"))
+        #expect(!examined.contains("nestled in the egg"))
     }
 
     @Test func theThiefTakesTheEggYouOffer() async throws {
