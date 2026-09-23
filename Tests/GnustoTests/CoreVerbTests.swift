@@ -34,7 +34,8 @@ struct CoreVerbTests {
         // take
         "take rod", "get rod", "grab rod", "hold rod", "carry rod",
         "pick up rod", "pick rod up", "take rod from sack", "take rod off bench",
-        "take rod out of sack",
+        "take rod out of sack", "get rod from sack", "get rod off bench",
+        "get rod out of sack", "remove rod from sack",
         // drop
         "drop cloak", "discard cloak", "put down cloak", "put cloak down",
         // examine
@@ -123,6 +124,27 @@ struct CoreVerbTests {
     @Test(arguments: CoreVerbTests.everyCoreCommand)
     func everyCoreVerbAnswers(_ command: String) async throws {
         try await Self.expectTheRowAnswered(command)
+    }
+
+    // MARK: - GET and REMOVE with a source
+
+    /// Zork's `gsyntax.zil` makes GET and REMOVE synonyms of TAKE, so each of these takes the rod from where the previous command put it. Each case asserts both the stock reply and the inventory, so a row that parsed but did not move the rod still fails. (#611)
+    @Test(arguments: [
+        ("put rod in sack", "get rod from sack"),
+        ("put rod on bench", "get rod off bench"),
+        ("put rod in sack", "get rod out of sack"),
+        ("put rod in sack", "remove rod from sack"),
+    ])
+    func getAndRemoveTakeFromASource(_ setup: String, _ command: String) async throws {
+        let transcript = try await play(CoreLab(), ["take rod", setup, command, "inventory"])
+        #expect(turnOutput(of: command, in: transcript).contains("Taken."), "\(transcript)")
+        #expect(turnOutput(of: "inventory", in: transcript).contains("brass rod"), "\(transcript)")
+    }
+
+    /// The source row is more specific than `remove <object>`, and it must not take that row's place: REMOVE with nothing after the object still takes clothing off. (#611)
+    @Test func removeAloneStillTakesClothingOff() async throws {
+        let transcript = try await play(CoreLab(), ["remove hat"])
+        #expect(turnOutput(of: "remove hat", in: transcript).contains("You take off the straw hat."))
     }
 
     // MARK: - The same rows, spelled with a preposition's synonym

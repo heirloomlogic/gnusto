@@ -1251,4 +1251,20 @@ struct Zork1Tests {
                 "Reservoir",
             ])
     }
+
+    /// `gsyntax.zil:480` makes GET and REMOVE synonyms of TAKE, so each of the three sentences in the kitchen takes the garlic out of the sack. (#611)
+    @Test func getAndRemoveTakeTheGarlicOutOfTheSack() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "east", "open window", "west",  // into the Kitchen
+                "get garlic from sack", "put garlic in sack",
+                "remove garlic from sack", "put garlic in sack",
+                "get garlic out of sack", "inventory",
+            ])
+        for command in ["get garlic from sack", "remove garlic from sack", "get garlic out of sack"] {
+            #expect(turnOutput(of: command, in: transcript).contains("Taken."), "\(command): \(transcript)")
+        }
+        #expect(turnOutput(of: "inventory", in: transcript).contains("clove of garlic"))
+    }
 }

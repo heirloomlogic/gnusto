@@ -779,6 +779,24 @@ struct DungeonEndgameTests {
         #expect(transcript.contains("You have died"))
     }
 
+    /// A mirror named as the tool is not the thing struck. The source cannot
+    /// even parse it: every verb that reaches `MIRROR-FUNCTION`'s break
+    /// wants a weapon or a carried object in that slot (`dung.354:4050`,
+    /// `:4011`).
+    @Test func aMirrorNamedAsTheToolStaysWhole() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + [
+                "down", "north", "drop lamp", "south", "push red button",
+                "north", "north", "in", "cut pole with first mirror",
+                "attack pole with first mirror",
+            ],
+            seed: Self.seed)
+
+        #expect(transcript.contains("with the first mirror would accomplish nothing"))
+        #expect(!transcript.contains("The glass goes down in a sheet"))
+    }
+
     // MARK: - The Dungeon Master
 
     /// Three questions drawn from eight, and the door opens on the third right
@@ -932,6 +950,21 @@ struct DungeonEndgameTests {
 
         #expect(transcript.contains("The Dungeon Master nods and stands where he is."))
         #expect(transcript.contains("You have died"))
+    }
+
+    /// He kills you for striking him, not for being named as the tool.
+    /// `MASTER-FUNCTION` answers `ATTAC` (`act4.231:791`), and ATTACK's tool
+    /// slot wants a held weapon (`dung.354:3797`), so he is never in it.
+    @Test func theDungeonMasterNamedAsTheToolKillsNobody() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + [
+                "north", "cut sword with dungeon master",
+            ],
+            seed: Self.seed)
+
+        #expect(transcript.contains("with the dungeon master would accomplish nothing"))
+        #expect(!transcript.contains("You have died"))
     }
 
     /// `set dial to four` is the source's own spelling, and it went missing for a

@@ -494,11 +494,16 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.burn($1) },
 
-        .named(
+        // The stock line tells the player they have nothing to cut with, so
+        // the next thing they type names a blade. Zork's only CUT row is the
+        // `with` one (`gsyntax.zil:149`).
+        .instrumented(
             .cut,
             [
                 ["cut", .directObject],
+                ["cut", .directObject, "with", .indirectObject],
                 ["slice", .directObject],
+                ["slice", .directObject, "with", .indirectObject],
             ],
             reach: .directObject
         ) { $0.stubs.cut($1) },

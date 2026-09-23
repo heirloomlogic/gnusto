@@ -74,7 +74,7 @@ struct StubVerbTests {
         "hit rat", "hit rat with rod", "fight rat", "kick bench",
         "break rod", "smash rod", "destroy rod",
         "burn rod", "burn rod with flask", "light rod with flask",
-        "cut rod", "slice rod",
+        "cut rod", "cut rod with flask", "slice rod", "slice rod with flask",
         "dig", "dig bench", "dig bench with rod",
         "pull rod", "drag rod", "turn rod", "rotate rod",
         "squeeze rod", "shake rod", "knock bench", "knock on bench",
@@ -130,6 +130,7 @@ struct StubVerbTests {
     /// A two-object stub must answer the command the player actually gave, rather than using a one-object line that implies the second object was absent. Each literal independently pins which noun fills which role.
     @Test(arguments: [
         ("burn rod with flask", "You can't set fire to the brass rod with the glass flask."),
+        ("cut rod with flask", "You can't cut the brass rod with the glass flask."),
         ("dig bench with rod", "You can't dig the long bench with the brass rod."),
         ("fill flask with rod", "You can't fill the glass flask with the brass rod."),
         ("tie rod to bench", "You can't tie the brass rod to the long bench."),
@@ -209,7 +210,8 @@ struct StubVerbTests {
 
     /// The richer renderer still sits behind the direct-object reach guard. A named instrument must not make the stock line run for an unreachable object.
     @Test(arguments: [
-        "burn coin with rod", "dig coin with rod", "fill coin with rod", "tie coin to rod",
+        "burn coin with rod", "cut coin with rod", "dig coin with rod", "fill coin with rod",
+        "tie coin to rod",
     ])
     func anInstrumentedStubStillChecksReachFirst(_ command: String) async throws {
         let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
@@ -500,8 +502,9 @@ struct StubVerbTests {
     /// Adding an indirect object must not bypass the direct-player cascade. DIG keeps the nameless half it used before; the always-named lines keep the shared refusal.
     @Test func instrumentedStubsKeepTheirPlayerGuards() async throws {
         let transcript = try await play(
-            StubLab(), ["burn me with rod", "dig me with rod", "fill me with rod", "tie me to rod"])
-        for command in ["burn me with rod", "fill me with rod", "tie me to rod"] {
+            StubLab(),
+            ["burn me with rod", "cut me with rod", "dig me with rod", "fill me with rod", "tie me to rod"])
+        for command in ["burn me with rod", "cut me with rod", "fill me with rod", "tie me to rod"] {
             #expect(
                 turnOutput(of: command, in: transcript).contains("Best leave yourself out of it."),
                 "\(command): \(transcript)")

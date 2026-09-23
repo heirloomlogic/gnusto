@@ -120,6 +120,12 @@ extension DefaultActions {
                 ["take", .directObject, "from", .indirectObject],
                 ["take", .directObject, "off", .indirectObject],
                 ["take", .directObject, "out", "of", .indirectObject],
+                // GET and REMOVE are TAKE synonyms in Zork (`gsyntax.zil:480`).
+                // A bare `remove cloak` still reaches `doff`.
+                ["get", .directObject, "from", .indirectObject],
+                ["get", .directObject, "off", .indirectObject],
+                ["get", .directObject, "out", "of", .indirectObject],
+                ["remove", .directObject, "from", .indirectObject],
             ],
             reach: .directObject
         ) { try take($0, frame: $1) },

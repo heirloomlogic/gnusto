@@ -959,9 +959,12 @@ extension GameText {
             }
             return "You can't set fire to \($0.object) with \(instrument)."
         }
-        /// Cutting or slicing something.
-        public var cut: Line<Noun> = .naming {
-            "You have nothing to cut \($0) with."
+        /// Cutting or slicing something, optionally with an instrument.
+        public var cut: Line<InstrumentUse> = .naming {
+            guard let instrument = $0.instrument else {
+                return "You have nothing to cut \($0.object) with."
+            }
+            return "You can't cut \($0.object) with \(instrument)."
         }
         /// Digging, with or without a tool. The bare `dig` names nothing.
         public var dig: Line<InstrumentUse?> = .naming(orBare: "You have nothing to dig with.") {
