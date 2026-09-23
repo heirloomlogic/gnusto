@@ -2350,6 +2350,11 @@ struct DungeonTests {
         let arrival = turnOutput(of: "treasure", in: transcript)
         #expect(arrival.contains("Treasure Room"))
         #expect(arrival.contains("suspicious-looking individual"))
+        #expect(arrival.contains("discarded bags"))
+        #expect(turnOutput(of: "temple", in: transcript).contains("Temple"))
+        let revisit = turnOutput(ofLast: "treasure", in: transcript)
+        #expect(revisit.contains("Treasure Room"))
+        #expect(!revisit.contains("discarded bags"))
         expectInOrder(
             transcript,
             [
