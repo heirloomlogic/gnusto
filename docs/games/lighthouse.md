@@ -482,7 +482,7 @@ Stock lines that would be false here, and only here. Everything else the engine 
 
 > `pour can into beacon`, `put can in beacon`, `fill beacon with can`, or `fill beacon` — Oil and flame go in together. Light the beacon with the can in hand.
 
-This one points rather than wins. `light beacon` is the move that pours the oil, and its line narrates the pouring; letting `pour` or `fill` win as well would give the winning rule a second verb and light a beacon the player only asked to fill.
+`put … in` is a core verb and not a stub. It is listed here because the same rule answers it, and its stock refusal, "You can't put things in that.", is false of the beacon in the same way. This one points rather than wins. `light beacon` is the move that pours the oil, and its line narrates the pouring; letting `pour` or `fill` win as well would give the winning rule a second verb and light a beacon the player only asked to fill.
 
 > `climb stairs` / `climb up stairs` in the base, and `climb stairs` / `climb down stairs` in the Lamp Room — no line of its own: the player walks the flight, as `up` or `down` walks it.
 

@@ -447,6 +447,7 @@ struct DungeonHouse: GameContent {
         }
 
         trophyCase.before(.take) {
+            guard command.directObject == trophyCase else { return }
             try refuse(Prose.trophyCaseFastened)
         }
 

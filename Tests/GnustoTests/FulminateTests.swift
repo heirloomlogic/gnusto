@@ -1003,10 +1003,17 @@ struct FulminateTests {
 
         // And back up them from the bottom, which is a second declaration of
         // the same flight and used to answer "You put a hand on the cellar
-        // steps and think better of it." with `up` walking them. (#615)
+        // steps and think better of it." with `up` walking them. `climb down`
+        // from the bottom refuses and stays in the cellar. (#615)
         let cellar = try await play(
             Fulminate(),
-            ["south", "open drawer", "take flashlight", "turn on flashlight", "down", "climb steps"])
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down", "climb down steps",
+                "climb steps",
+            ])
+        let down = turnOutput(of: "climb down steps", in: cellar)
+        #expect(down.contains("From here the steps go up."))
+        #expect(!down.contains("Kitchen"))
         let climb = turnOutput(of: "climb steps", in: cellar)
         #expect(!climb.contains("think better of it"))
         #expect(climb.contains("Kitchen"))

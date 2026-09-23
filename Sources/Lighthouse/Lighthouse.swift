@@ -425,8 +425,10 @@ struct Lighthouse: Game {
         // only said its own would print both.
         //
         // POUR, PUT … IN and FILL of the can into the beacon point at `light
-        // beacon`, the move that pours it. For POUR this rule runs ahead of the
-        // can's own, because the indirect object's rules run first.
+        // beacon`, the move that pours it. PUT … IN is a core verb and not a
+        // stub, but its stock refusal is false here in the same way. For POUR
+        // this rule runs ahead of the can's own, because the indirect object's
+        // rules run first.
         tower.beacon.before(.fill, .pour, .putIn) {
             let (vessel, oil) =
                 command.intent == .fill

@@ -6160,6 +6160,17 @@ struct DungeonTests {
         Holder(
             route: toAragainFalls + ["put pump in barrel"], takeFrom: "take pump from barrel",
             takeHolder: "take barrel", refusal: "far too heavy to move", seed: 18),
+        Holder(
+            route: intoTheKitchen + ["west", "take lamp", "open case", "put lamp in case"],
+            takeFrom: "take lamp from case", takeHolder: "take case", refusal: "fastened to the wall", seed: 18),
+        Holder(
+            route: toTheShaftWithTheTorch + ["put torch in basket"], takeFrom: "take torch from basket",
+            takeHolder: "take basket", refusal: "fastened to the iron chain", seed: 14),
+        Holder(
+            route: toTheShaftWithTheTorch + ["put torch in basket", "lower basket"] + throughTheCoalMaze
+                + ["southwest", "drop all", "southwest", "take torch", "east", "open machine", "put torch in machine"],
+            takeFrom: "take torch from machine", takeHolder: "take machine", refusal: "far too large to carry",
+            seed: 14),
     ]
 
     /// An item's `before` rules run for the indirect object too, so a holder

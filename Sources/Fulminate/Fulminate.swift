@@ -1988,8 +1988,10 @@ struct Fulminate: Game, GameMain {
             try handled()
         }
         // The cellar steps are declared at both ends, and the bottom end
-        // climbs back up to the kitchen.
+        // climbs back up to the kitchen. `climb down X` and `climb X` are one
+        // intent, so the stub row's words in `verbPhrase` tell them apart.
         cellarStepsBelow.before(.climb) {
+            try require(command.verbPhrase != "climb down", else: "From here the steps go up.")
             try enter(kitchen)
             try handled()
         }
