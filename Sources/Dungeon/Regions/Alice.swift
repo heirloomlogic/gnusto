@@ -412,8 +412,18 @@ struct DungeonAlice: GameContent {
     /// `RCAGE`. The cage as it looks from *outside* — from the Dingy Closet,
     /// which is where the robot has to be able to see it. Offstage until the
     /// alarm fires.
+    ///
+    /// A player who dies of the gas comes back to find it still standing in
+    /// the closet. The closet's description is fixed text and scenery gets no
+    /// stock sentence, so the listing line is what names the cage in the room,
+    /// and `alwaysListed` keeps it there after the player has handled it.
+    /// (#635)
     let steelCage = Item.scenery(
-        "steel cage", adjectives: "steel", synonyms: "cage", "bars", "bar", description: Prose.cageBars)
+        "steel cage", adjectives: "steel", synonyms: "cage", "bars", "bar", description: Prose.cageFromOutside
+    ) {
+        firstSight(Prose.cageStandingFirstSight)
+        alwaysListed
+    }
 
     /// The same cage from inside it, which is a different room.
     let cageBars = Item.scenery(
@@ -848,10 +858,11 @@ struct DungeonAlice: GameContent {
         // one you are standing inside.
         // The Cage has no way back in, so what lies on its floor goes to the
         // closet with the player; the source strands it. See `FIDELITY.md`. (#620)
+        // The player's own hands are no more use on it from the closet side
+        // than from inside, and the robot may be standing right there. (#635)
         steelCage.before(.take, .raise, .push, .pull, .open) {
-            guard command.actor == robot, robot.isIn(dingyCloset) else {
-                try refuse(Prose.robotIsNotHere)
-            }
+            guard command.actor == robot else { try refuse(Prose.cageWontBudge) }
+            try require(robot.isIn(dingyCloset), else: Prose.robotIsNotHere)
             stopFuse("cageGas")
             steelCage.replace(with: mangledCage)
             for item in cage.contents where item.isTakable {

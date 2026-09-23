@@ -2664,6 +2664,17 @@ struct DungeonTests {
     /// And up it, into the tea party.
     private static let toTheTeaRoom = toTheWell + upTheWell
 
+    /// Back to the tea party after a death, from the Living Room with the lamp
+    /// lit and the bottle in hand. The triangular button has to have been
+    /// pressed already, so the Round Room's exits hold still, and the bottle is
+    /// refilled at the dam on the way, because the water that lifts the bucket
+    /// is spent every trip.
+    private static let fromTheLivingRoomBackToTheTeaRoom =
+        ["open trap door", "down", "east", "north", "east"]
+        + ["northwest", "east", "fill bottle", "south", "south"]
+        + ["north", "southeast", "east", "east"]
+        + upTheWell
+
     /// The Bank hangs off the Gallery, which is two rooms south of the Cellar
     /// and needs no fight and no seed.
     private static let toTheBank = intoTheCellar + ["south", "south", "west"]
@@ -3014,16 +3025,11 @@ struct DungeonTests {
                 // the rest of what was in your hands; the lamp is the exception
                 // and is waiting in the living room.
                 + ["east", "north", "north", "take bottle", "east", "west"]
-                + ["west", "take lamp", "turn on lamp", "open trap door", "down"]
-                + ["east", "north", "east"]
-                // Round Room, still, so northwest is northwest. Fill the bottle
-                // at the dam and come back for the Engravings Cave.
-                + ["northwest", "east", "fill bottle", "south", "south"]
-                + ["north", "southeast", "east", "east"]
+                + ["west", "take lamp", "turn on lamp"]
                 // The bucket is waiting at the bottom of the well, as it would
                 // have been if the trip had ended in a climb rather than a
                 // flask.
-                + Self.upTheWell
+                + Self.fromTheLivingRoomBackToTheTeaRoom
                 + ["take red cake", "eat eat-me cake", "east"]
                 + ["throw red cake in pool", "take tin", "score"],
             seed: 41)
@@ -3128,6 +3134,35 @@ struct DungeonTests {
         let lift = turnOutput(of: "robot, lift cage", in: transcript)
         expectInOrder(lift, ["with a scream of tearing steel", "Dingy Closet", "white crystal sphere"])
         #expect(turnOutput(ofLast: "take sphere", in: transcript).contains("Taken."))
+    }
+
+    /// The gas kills the player and leaves the steel cage standing in the
+    /// closet. Its listing line says so, and goes on saying so after the player
+    /// has examined it. From outside, the player's own `lift` gets the cage's
+    /// refusal rather than one saying the robot is somewhere else. (#635)
+    @Test func theCageTheGasLeavesStandingIsListedInTheCloset() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "northwest", "robot, north", "north", "push triangular button",
+                    "robot, south", "south", "take sphere", "drop sphere",
+                    "wait", "wait", "wait", "wait",
+                ]
+                // The resurrection puts you in the forest. The bottle is by the
+                // climbable tree and the lamp in the living room.
+                + ["north", "east", "take bottle", "west", "east", "west", "west", "take lamp"]
+                + Self.fromTheLivingRoomBackToTheTeaRoom
+                + ["northwest", "north", "south", "look", "examine cage", "look", "lift cage"],
+            seed: 41)
+
+        #expect(transcript.contains("The gas does what the gas was installed to do."))
+        let look = turnOutput(of: "look", in: transcript)
+        expectInOrder(look, ["Dingy Closet", "A steel cage stands in the middle of the closet", "robot"])
+        #expect(turnOutput(of: "examine cage", in: transcript).contains("There is no door in it."))
+        #expect(turnOutput(ofLast: "look", in: transcript).contains("A steel cage stands in the middle"))
+        #expect(
+            turnOutput(of: "lift cage", in: transcript).contains("you are not going to be the one who moves it"))
     }
 
     /// Ordered to fetch it instead, the robot springs the trap on itself and
