@@ -369,8 +369,9 @@ struct StandardParser {
         }
 
         // Try each candidate rule; remember the most specific near-miss, the
-        // most specific row whose only unfilled slot was a direction, and the
-        // rows that would fit if the player had typed their trailing particle.
+        // most specific row whose only unfilled slot was a direction, the rows
+        // that would fit if the player had typed their trailing particle, and
+        // the most specific last resort.
         var bestFailure: ParseError?
         var emptyDirection: ParsedCommand?
         /// Rows whose trailing particle is missing, with the words to write in.
@@ -571,9 +572,10 @@ struct StandardParser {
         /// want to pick the oil lamp up?") named a slot that was not in the
         /// pattern and could not be filled by any answer.
         ///
-        /// Weaker than every other outcome, near misses included: the row is
-        /// reading a word the player did not type, so anything that read what
-        /// they *did* type wins.
+        /// Loses to a command, an empty direction and a near miss from the
+        /// line as typed: the row is reading a word the player did not type,
+        /// so those readings of what they *did* type win. A re-fit that fits
+        /// or near-misses beats a ``lastResort(_:)``.
         case impliedSuffix([String])
         case mismatch
         case nearMiss(ParseError)
@@ -583,7 +585,8 @@ struct StandardParser {
         /// reason, which is about the player's noun (#610): `lock hook` with
         /// the hook in another room is owed "You can't see any such thing."
         ///
-        /// Weaker than every other outcome but a plain mismatch, because the
+        /// Loses to a command, an empty direction, a near miss, and a re-fit
+        /// with an implied particle that fits or near-misses, because the
         /// reading is a guess: `give warden them` read whole as the thing to
         /// give fails, where the recipient-first row places `warden` and says
         /// what is wrong with `them`. It beats only "I didn't understand that
@@ -1095,9 +1098,10 @@ struct StandardParser {
     /// noun is the player's noun and not the row's grammar (#610). The row
     /// declines instead where what went wrong may be a question for some
     /// other row: an `.unmatchedSyntax` error, which says the words run on
-    /// into grammar; a multi-object keyword or a list, which are not one noun
-    /// and which these questions have no words for; and an empty phrase, which
-    /// names nothing to report on.
+    /// into grammar or are two names with no word between them; a
+    /// multi-object keyword or a list, which are not one noun and which these
+    /// questions have no words for; and an empty phrase, which names nothing
+    /// to report on.
     ///
     /// - Parameters:
     ///   - phrase: the object's tokens.
@@ -1547,6 +1551,7 @@ struct StandardParser {
         let resolved = resolveNoun(tokens, in: scope, alsoConsidering: distant)
         guard case .failure(.notInScope) = resolved,
             hasSyntaxBesideANoun(tokens, scope: scope, distant: distant)
+                || namesTwoThingsSideBySide(tokens, scope: scope, distant: distant)
         else {
             return resolved
         }
@@ -1620,6 +1625,21 @@ struct StandardParser {
             }
         }
         return false
+    }
+
+    /// Whether a phrase is two names with no word between them: `cloak hook`
+    /// with the cloak and the hook both in view. Each half names something, so
+    /// what is wrong is the missing word and not what the player can see. A
+    /// complete name anywhere in the game's lexicon wins first, as it does in
+    /// ``hasSyntaxBesideANoun(_:scope:distant:)``.
+    private func namesTwoThingsSideBySide(
+        _ tokens: [String], scope: Scope, distant: Set<EntityID>
+    ) -> Bool {
+        guard !isKnownNounPhrase(tokens) else { return false }
+        return tokens.indices.dropFirst().contains { split in
+            namesSomething(Array(tokens[..<split]), in: scope, alsoConsidering: distant)
+                && namesSomething(Array(tokens[split...]), in: scope, alsoConsidering: distant)
+        }
     }
 
     /// Whether a phrase picks out anything the player can name — one thing,

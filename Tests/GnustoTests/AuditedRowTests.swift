@@ -206,6 +206,16 @@ struct AuditedRowTests {
         #expect(turnOutput(of: "take coin", in: transcript).contains(expected))
     }
 
+    /// Two things in view with no word joining them are a sentence the parser
+    /// cannot read, not two things the player cannot see. Issue #610.
+    @Test func twoThingsInViewWithNoWordBetweenThemAreNotOutOfSight() async throws {
+        let expected = "I didn't understand that sentence."
+        let door = try await play(LockedDoorGame(), ["unlock door key"])
+        #expect(turnOutput(of: "unlock door key", in: door).contains(expected))
+        let rock = try await play(GuardpostGame(), ["n", "throw rock troll"])
+        #expect(turnOutput(of: "throw rock troll", in: rock).contains(expected))
+    }
+
     /// The gift half reports its own failure the same way — an unbound `them`
     /// here, which is the one thing that can go wrong in that slot in a room
     /// where everything else is standing in front of you.

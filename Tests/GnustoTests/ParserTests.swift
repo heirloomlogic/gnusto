@@ -159,6 +159,17 @@ struct ParserTests {
                 == .failure(.unknownWord("grue")))
     }
 
+    /// Two names in view with no word between them are a malformed sentence,
+    /// and not something the player cannot see. With the hook out of view, the
+    /// line is about the hook again. Issue #610.
+    @Test(arguments: ["hang cloak hook", "take cloak hook"])
+    func twoNamesInViewWithNothingBetweenThemAreAMalformedSentence(_ input: String) throws {
+        let parser = try Self.makeParser()
+        let foyerScope = Scope(visibleItems: [EntityID("cloak")])
+        #expect(parser.parse(input, scope: Self.fullScope) == .failure(.unmatchedSyntax))
+        #expect(parser.parse(input, scope: foyerScope) == .failure(.notInScope))
+    }
+
     @Test func malformedTailClassificationCoversPronounsAndIndirectObjects() throws {
         let parser = try Self.makeParser()
         let pronounScope = Scope(
