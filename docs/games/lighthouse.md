@@ -75,7 +75,7 @@ column is what has to remain true no matter how the story is rewritten.
 | `@Global` and `@Latch` state | `tideStage`, a `@Global` read by the jetty's live description; `keeperGreeted`, a `@Latch` gating the briefing. | One number that live prose reads, and one flag that fires a line exactly once. Both save and restore. |
 | Content bundle | `Tower` owns the Lamp Room and the beacon; `Fixtures` owns the scenery. | The goal lives in a bundle and the fuel for it lives in the host. The seam is the demonstration. |
 | Cross-bundle rule | Lighting the beacon is the host's rule, because it checks for the oil can found downstairs. | The winning rule stays the host's. A bundle that could win on its own proves nothing about bundles. |
-| Promoted stubs | Four stub verbs the game contradicts — `pour`/`empty` on the can, `burn` on the lamp and the beacon, `swim`/`dive` on the jetty. | A stub line the game has just called false gets a rule. Per entity, with `reply`/`refuse`, never a wholesale re-skin. |
+| Promoted stubs | The stub verbs the game contradicts, listed under [The stub verbs this game contradicts](#the-stub-verbs-this-game-contradicts) — among them `climb` on the stairs, which walks the flight (`enter`, then `handled()`, which is a `reply` with no line of its own). | A stub line the game has just called false gets a rule. Per entity, with `reply`/`refuse`, never a wholesale re-skin. |
 | Plugins | `GnustoScoring` (stateful, in `content`) and `GnustoActors` (logic-only, spliced into `timers`). | **Both** kinds of plugin, wired the two different ways. |
 | Scoring | Five for reaching the storeroom, twenty for the beacon. | `maxScore` stays the sum of its declared awards — checked at bootstrap against the `Scoring` award table — and there are **two** of them, one for progress, one for the win. |
 
@@ -363,11 +363,7 @@ back down.* (Unlit: *It is pitch black. You can't see a thing.*)
 - **brass key** — *A stubby brass key, green at the teeth.*
 - **storeroom door** — *Stout, salt-swollen, and hung to open inward, which is how
   you hang a door on a rock.*
-- **heavy chest** — *A brine-swollen sea chest, its clasp mended twice with
-  copper wire — both times by somebody who meant it to last.* It will not be
-  carried: *Brine-swollen, full of oil, and going nowhere. Take what's in it.*
-  Being a fixture, it has no floor listing either — the storeroom's own
-  description says where it sits, and saying so twice was the shelf's old bug.
+- **heavy chest** — *A brine-swollen sea chest, its clasp mended twice with copper wire — both times by somebody who meant it to last.* It will not be carried: *Brine-swollen, full of oil, and going nowhere. Take what's in it.* That refusal answers `take chest` and not `take lamp from chest` or `take all from chest`, which take what is in it. Being a fixture, it has no floor listing either — the storeroom's own description says where it sits, and saying so twice was the shelf's old bug.
 - **oil lamp** — *A dented brass lamp, its wick trimmed square — the keeper's
   trim. It sloshes; there is oil in it yet. A wick kept like this burns from the
   top every time it is lit: snuff it and strike it fresh, and it gives you the
@@ -478,11 +474,21 @@ Every `TALK TO KEEPER` after that:
 
 ### The stub verbs this game contradicts
 
-Four stock lines that would be false here, and only here. Everything else the
-engine says for `sing` or `pray` stands.
+Stock lines that would be false here, and only here. Everything else the engine says for `sing` or `pray` stands.
 
-> `pour can` / `empty can` — Not on the floor. That oil has one place to go
-> tonight.
+> `pour can` / `empty can` — Not on the floor. That oil has one place to go tonight.
+
+> `pour can into` or `on` anything but the beacon — That oil has one place to go tonight.
+
+> `pour can into beacon`, `put can in beacon`, `fill beacon with can`, or `fill beacon` — Oil and flame go in together. Light the beacon with the can in hand.
+
+This one points rather than wins. `light beacon` is the move that pours the oil, and its line narrates the pouring; letting `pour` or `fill` win as well would give the winning rule a second verb and light a beacon the player only asked to fill.
+
+> `climb stairs` / `climb up stairs` in the base, and `climb stairs` / `climb down stairs` in the Lamp Room — no line of its own: the player walks the flight, as `up` or `down` walks it.
+
+> `climb down stairs` in the base — From here the stairs go up.
+
+> `climb up stairs` in the Lamp Room — From here the stairs go down.
 
 > `burn lamp` — That is what it is for. Light it.
 
@@ -543,12 +549,7 @@ branch.
    in the work might reasonably harry a stranger while her light is dark. If she
    reads too calm at the keyboard, the pressure goes into her diction — the
    reminder losing words, never gaining a clock.
-2. **Should the game re-skin any stock text for register?** It re-skins none.
-   Four stub verbs are promoted per-entity because their stock lines are *untrue*
-   here; the rest of the ~47 answer in the engine's voice, which is a lighthouse
-   keeper's rock speaking as a parser. That is a register mismatch and not a
-   falsehood, and fixing it would mean a `text: GameText` block and a contract row
-   of its own — a different demonstration from the one this game makes.
+2. **Should the game re-skin any stock text for register?** It re-skins none. The stub verbs listed under [The stub verbs this game contradicts](#the-stub-verbs-this-game-contradicts) are promoted per-entity because their stock lines are *untrue* here; the rest answer in the engine's voice, which is a lighthouse keeper's rock speaking as a parser. That is a register mismatch and not a falsehood, and fixing it would mean a `text: GameText` block and a contract row of its own — a different demonstration from the one this game makes.
 
 ### Settled
 

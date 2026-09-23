@@ -581,4 +581,82 @@ struct LighthouseTranscriptTests {
         #expect(!transcript.contains("There's nothing here to dive into."))
         #expect(turnOutput(of: "swim", in: transcript).contains("The sea is right there"))
     }
+
+    // MARK: - Rules that answered the wrong command (#615)
+
+    /// An item's `before` rules run for the indirect object too, so the chest's
+    /// refusal to be carried used to answer `take lamp from chest` — the very
+    /// thing its own line told the player to do.
+    @Test func takingFromTheChestIsNotTakingTheChest() async throws {
+        let one = try await play(
+            Lighthouse(), Self.toTheOpenChest + ["take lamp from chest", "take chest"], seed: 0)
+        let lamp = turnOutput(of: "take lamp from chest", in: one)
+        #expect(lamp.contains("Taken."))
+        #expect(!lamp.contains("going nowhere"))
+        #expect(turnOutput(of: "take chest", in: one).contains("going nowhere"))
+
+        let all = try await play(Lighthouse(), Self.toTheOpenChest + ["take all from chest"], seed: 0)
+        let both = turnOutput(of: "take all from chest", in: all)
+        #expect(both.contains("oil can: Taken."))
+        #expect(both.contains("oil lamp: Taken."))
+        #expect(!both.contains("going nowhere"))
+    }
+
+    /// Naming the beacon as the oil's destination used to be refused: POUR as
+    /// if the player were tipping the can on the floor, PUT and FILL WITH with
+    /// stock refusals, and bare FILL by saying there was nothing to fill the
+    /// beacon from with the can in hand. Each now points at `light beacon`, and
+    /// `light beacon` still wins.
+    @Test func oilForTheBeaconPointsAtLightingIt() async throws {
+        let asks = ["pour oil into beacon", "fill beacon with oil", "put can in reservoir", "fill beacon"]
+        let transcript = try await play(
+            Lighthouse(),
+            Self.toTheOpenChest + ["take lamp", "take can", "light lamp", "west", "up"] + asks + ["light beacon"],
+            seed: 0)
+
+        for command in asks {
+            let answer = turnOutput(of: command, in: transcript)
+            #expect(answer.contains("Light the beacon with the can in hand."), "\(command)")
+            #expect(!answer.contains("Not on the floor"), "\(command)")
+            #expect(!answer.contains("nothing here to fill"), "\(command)")
+            #expect(!answer.contains("You can't"), "\(command)")
+        }
+        #expect(turnOutput(of: "light beacon", in: transcript).contains("comes up roaring"))
+
+        // Named somewhere else, the can is still refused — but not as if the
+        // player had tipped it at the floor.
+        let chest = try await play(
+            Lighthouse(), Self.toTheOpenChest + ["take can", "pour oil into chest", "pour can"], seed: 0)
+        let named = turnOutput(of: "pour oil into chest", in: chest)
+        #expect(named.contains("That oil has one place to go tonight."))
+        #expect(!named.contains("Not on the floor"))
+        #expect(turnOutput(of: "pour can", in: chest).contains("Not on the floor."))
+    }
+
+    /// The base says the stairs climb into the dark above, and `climb stairs`
+    /// said they could not be climbed. Each flight now walks the way its exit
+    /// does — into the dark without a light, and described as an arrival with
+    /// one — and refuses the direction it does not go.
+    @Test func theStairsClimbTheWayTheExitsGo() async throws {
+        let dark = try await play(Lighthouse(), ["north", "climb stairs"], seed: 0)
+        #expect(turnOutput(of: "climb stairs", in: dark).contains("It is pitch black."))
+
+        let transcript = try await play(
+            Lighthouse(),
+            Self.toTheOpenChest
+                + ["take lamp", "light lamp", "west"]
+                + ["climb up stairs", "climb up stairs", "climb down stairs", "climb down stairs", "climb stairs"],
+            seed: 0)
+
+        #expect(!transcript.contains("You can't climb"))
+        expectInOrder(
+            transcript,
+            [
+                "> climb up stairs", "Lamp Room", "Glass on every side",
+                "> climb up stairs", "From here the stairs go down.",
+                "> climb down stairs", "Base of the Lighthouse",
+                "> climb down stairs", "From here the stairs go up.",
+                "> climb stairs", "Lamp Room",
+            ])
+    }
 }

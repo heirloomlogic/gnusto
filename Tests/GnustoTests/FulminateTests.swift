@@ -1000,6 +1000,16 @@ struct FulminateTests {
                 .contains("The back stairs are the household's."))
         // Down, and the cellar is unlit, so the proof it walked is the dark.
         #expect(turnOutput(of: "climb cellar steps", in: kitchen).contains("It is pitch black."))
+
+        // And back up them from the bottom, which is a second declaration of
+        // the same flight and used to answer "You put a hand on the cellar
+        // steps and think better of it." with `up` walking them. (#615)
+        let cellar = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down", "climb steps"])
+        let climb = turnOutput(of: "climb steps", in: cellar)
+        #expect(!climb.contains("think better of it"))
+        #expect(climb.contains("Kitchen"))
     }
 
     /// Swept rather than filed, and C11's defect one room over: the carriage
@@ -1181,6 +1191,19 @@ struct FulminateTests {
         let inventory = turnOutput(of: "inventory", in: transcript)
         #expect(inventory.contains("drugstore receipt"))
         #expect(!inventory.contains("overcoat"))
+    }
+
+    /// An item's `before` rules run for the indirect object too, so the coat's
+    /// refusal to be carried used to answer `take receipt from coat` — the
+    /// pocket its own line points the player at. (#615)
+    @Test func takingFromTheCoatIsNotTakingTheCoat() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21) + ["search coat", "take receipt from coat", "inventory"])
+        let take = turnOutput(of: "take receipt from coat", in: transcript)
+        #expect(take.contains("Taken."))
+        #expect(!take.contains("Leave it on the stand."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("drugstore receipt"))
     }
 
     /// The TIME verb has been reading a watch since turn one. It is on the

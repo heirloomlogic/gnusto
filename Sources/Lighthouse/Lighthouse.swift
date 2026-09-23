@@ -381,8 +381,9 @@ struct Lighthouse: Game {
 
         // The chest is furniture, and the storeroom's description says so. A
         // takeable one would let the player carry the room's own prose out of
-        // the room.
+        // the room. The guard lets `take lamp from chest` through.
         chest.before(.take) {
+            guard command.directObject == chest else { return }
             try refuse("Brine-swollen, full of oil, and going nowhere. Take what's in it.")
         }
 
@@ -391,6 +392,20 @@ struct Lighthouse: Game {
         // of answering "You aren't in the stone wall."
         fixtures.wall.before(.disembark) {
             try enter(jetty)
+            try handled()
+        }
+
+        // CLIMB on either flight walks it, the way `up` and `down` do, and
+        // refuses the way the flight does not go. `climb down X` and `climb X`
+        // are one intent, so the stub row's words in `verbPhrase` tell them apart.
+        fixtures.stairs.before(.climb) {
+            try require(command.verbPhrase != "climb down", else: "From here the stairs go up.")
+            try enter(tower.lampRoom)
+            try handled()
+        }
+        tower.stairs.before(.climb) {
+            try require(command.verbPhrase != "climb up", else: "From here the stairs go down.")
+            try enter(base)
             try handled()
         }
 
@@ -404,11 +419,26 @@ struct Lighthouse: Game {
             stopFuse("lampDies")
         }
 
-        // Three stub verbs whose stock lines are false in this game, promoted
-        // where they're wrong and left alone everywhere else. `reply`/`refuse`
-        // rather than `say`, because the stage-4 default says its line — a rule
-        // that only said its own would print both.
+        // Stub verbs whose stock lines are false in this game, promoted where
+        // they're wrong and left alone everywhere else. `reply`/`refuse` rather
+        // than `say`, because the stage-4 default says its line — a rule that
+        // only said its own would print both.
+        //
+        // POUR, PUT … IN and FILL of the can into the beacon point at `light
+        // beacon`, the move that pours it. For POUR this rule runs ahead of the
+        // can's own, because the indirect object's rules run first.
+        tower.beacon.before(.fill, .pour, .putIn) {
+            let (vessel, oil) =
+                command.intent == .fill
+                ? (command.directObject, command.indirectObject)
+                : (command.indirectObject, command.directObject)
+            guard vessel == tower.beacon, oil == nil || oil == oilCan else { return }
+            try reply("Oil and flame go in together. Light the beacon with the can in hand.")
+        }
         oilCan.before(.pour, .empty) {
+            guard command.indirectObject == nil else {
+                try refuse("That oil has one place to go tonight.")
+            }
             try refuse("Not on the floor. That oil has one place to go tonight.")
         }
         oilLamp.before(.burn) {

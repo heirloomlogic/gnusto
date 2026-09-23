@@ -574,7 +574,10 @@ struct DungeonAlice: GameContent {
     // MARK: - The well
 
     @RuleBuilder private var wellRules: Rules {
-        bucket.before(.take, .push, .pull) { try refuse(Prose.bucketRefusesToBeTaken) }
+        bucket.before(.take, .push, .pull) {
+            guard command.directObject == bucket else { return }
+            try refuse(Prose.bucketRefusesToBeTaken)
+        }
 
         // The bucket is a lift, not a wheelbarrow. Without this the engine
         // carries a boarded vehicle wherever its passenger walks — which is
