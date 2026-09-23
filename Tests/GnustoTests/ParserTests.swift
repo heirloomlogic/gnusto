@@ -132,6 +132,33 @@ struct ParserTests {
         #expect(parser.parse(input, scope: Self.fullScope) == .failure(.unmatchedSyntax))
     }
 
+    /// Grammar *ahead* of the noun is the same malformed sentence as grammar
+    /// behind it. A verb with no `with` row puts `with cloak` in its object
+    /// slot, and the worn cloak came back as a thing the player cannot see.
+    /// Issue #610.
+    @Test(
+        arguments: [
+            "x with cloak",
+            "dig with cloak",
+            "hit with cloak",
+            "take east cloak",
+        ])
+    func knownSyntaxAheadOfAResolvedObjectIsAMalformedSentence(_ input: String) throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse(input, scope: Self.fullScope) == .failure(.unmatchedSyntax))
+    }
+
+    /// Only a phrase whose remainder names something is grammar's fault. Where
+    /// the object is out of sight or unknown, that is still the answer.
+    @Test func leadingSyntaxDiagnosisPreservesNounErrors() throws {
+        let parser = try Self.makeParser()
+        let foyerScope = Scope(visibleItems: [EntityID("cloak")])
+        #expect(parser.parse("dig with hook", scope: foyerScope) == .failure(.notInScope))
+        #expect(
+            parser.parse("dig with grue", scope: Self.fullScope)
+                == .failure(.unknownWord("grue")))
+    }
+
     @Test func malformedTailClassificationCoversPronounsAndIndirectObjects() throws {
         let parser = try Self.makeParser()
         let pronounScope = Scope(

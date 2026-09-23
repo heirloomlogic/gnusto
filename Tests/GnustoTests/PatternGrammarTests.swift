@@ -6,11 +6,11 @@ import Testing
 /// Phase 6 pattern grammar: `SyntaxRule` rows as free-form patterns of
 /// literal words and slots.
 struct PatternGrammarTests {
-    static func makeParser() throws -> StandardParser {
+    static func makeParser(extraRules: [SyntaxRule] = []) throws -> StandardParser {
         let (definition, _) = try Bootstrap.build(WorkshopGame())
         return StandardParser(
             vocabulary: definition.vocabulary,
-            syntaxRules: definition.syntaxRules)
+            syntaxRules: definition.syntaxRules + extraRules)
     }
 
     static let scope = Scope(visibleItems: [
@@ -474,6 +474,68 @@ struct PatternGrammarTests {
         let parsed = try parser.parse("give the brass lamp to gnome", scope: Self.scope).get()
         #expect(parsed.directObject == EntityID("lamp"))
         #expect(parsed.indirectObject == EntityID("gnome"))
+    }
+
+    // MARK: - A row that asks keeps the noun's own error
+
+    /// The workshop's rows, plus the two shapes that ask for a *last* slot on
+    /// a verb word no other row answers to — so what they do is not covered by
+    /// a row that reads the same line another way.
+    static func makeAskingParser() throws -> StandardParser {
+        try makeParser(extraRules: [
+            SyntaxRule("stow", .directObject, "in", .indirectObject, intent: Intent("stow")),
+            SyntaxRule("quiz", .directObject, "about", .topic, intent: Intent("quiz")),
+        ])
+    }
+
+    /// The shapes that ask for the rest of a sentence — the second object, the
+    /// direction, the word that closes the slot, the topic — resolve the object
+    /// they would name first. When one object noun fails, the row reports why
+    /// rather than declining into "I didn't understand that sentence." Issue
+    /// #610.
+    @Test(arguments: ["give crate", "hurl crate", "shift crate", "stow crate in", "quiz crate about"])
+    func aRowThatWouldAskReportsAnObjectThatIsNotHere(_ line: String) throws {
+        let parser = try Self.makeAskingParser()
+        #expect(parser.parse(line, scope: Self.emptyScope) == .failure(.notInScope))
+    }
+
+    @Test(arguments: ["give anvil", "hurl anvil", "shift anvil", "stow anvil in", "quiz anvil about"])
+    func aRowThatWouldAskReportsAWordItDoesNotKnow(_ line: String) throws {
+        let parser = try Self.makeAskingParser()
+        #expect(parser.parse(line, scope: Self.scope) == .failure(.unknownWord("anvil")))
+    }
+
+    /// Two crates in view: the row asks which, and the answer splices in ahead
+    /// of the noun like any other.
+    @Test(arguments: [
+        ["give", "crate"], ["hurl", "crate"], ["shift", "crate"], ["stow", "crate", "in"],
+        ["quiz", "crate", "about"],
+    ])
+    func aRowThatWouldAskAsksWhichObjectFirst(_ tokens: [String]) throws {
+        let parser = try Self.makeAskingParser()
+        let result = parser.parse(tokens.joined(separator: " "), scope: Self.scope)
+        guard case .failure(.ambiguous(let names, let prefix, let suffix)) = result else {
+            Issue.record("expected an ambiguity, got \(result)")
+            return
+        }
+        #expect(Set(names) == ["the wooden crate", "the iron crate"])
+        #expect(prefix == [tokens[0]])
+        #expect(suffix == Array(tokens.dropFirst()))
+    }
+
+    @Test func theWhichQuestionIsAnsweredAndTheRowAsksOn() async throws {
+        let transcript = try await play(WorkshopGame(), ["give crate", "iron"])
+        expectInOrder(
+            transcript, ["Which do you mean:", "What do you want to give the iron crate to?"])
+    }
+
+    /// A phrase that names something in view is not reported as unseen just
+    /// because grammar runs on behind it. Two crates are still something, and
+    /// so is `all`.
+    @Test(arguments: ["take crate with lamp", "take all with lamp"])
+    func grammarBehindAnAmbiguousNounOrAKeywordIsAMalformedSentence(_ line: String) throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse(line, scope: Self.scope) == .failure(.unmatchedSyntax))
     }
 
     @Test func malformedPatternsAreFatalTogether() {

@@ -195,6 +195,17 @@ struct AuditedRowTests {
         #expect(!transcript.contains("I didn't understand"))
     }
 
+    /// The same rule for a line that names one object to a verb whose rows all
+    /// want a second. `give coin` with the coin in another room is about the
+    /// coin, and says so in TAKE's words. Issue #610.
+    @Test(arguments: ["give", "lock", "unlock", "throw", "hang"])
+    func aOneObjectLineReportsScopeAsTakeDoes(_ verb: String) async throws {
+        let transcript = try await play(AuditLab(), ["drop coin", "out", "\(verb) coin", "take coin"])
+        let expected = "You can't see any such thing."
+        #expect(turnOutput(of: "\(verb) coin", in: transcript).contains(expected))
+        #expect(turnOutput(of: "take coin", in: transcript).contains(expected))
+    }
+
     /// The gift half reports its own failure the same way — an unbound `them`
     /// here, which is the one thing that can go wrong in that slot in a room
     /// where everything else is standing in front of you.

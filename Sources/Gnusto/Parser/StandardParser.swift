@@ -197,7 +197,7 @@ struct StandardParser {
     /// places here walk token positions and none of them is linear:
     /// ``fitRecipientFirst(_:tokens:from:verbPhrase:rawInput:scope:)`` tries
     /// every split of the words after the verb and resolves *both* halves,
-    /// ``hasSyntaxTail(afterNounIn:scope:distant:)`` resolves a fresh prefix at
+    /// ``hasSyntaxBesideANoun(_:scope:distant:)`` resolves a fresh prefix at
     /// every syntax word, and ``resolveGroup(_:at:in:scope:distant:)`` offers
     /// each comma group whole before splitting it. They share one shape — cost
     /// superlinear in the token count — and they are all reached from here, so
@@ -378,6 +378,7 @@ struct StandardParser {
         /// miss, so on a line something near-misses the work would be thrown
         /// away — and `put the cloak` is exactly such a line.
         var implied: [(rule: SyntaxRule, particles: [String])] = []
+        var lastResort: ParseError?
         for rule in candidates {
             switch fit(rule, tokens: tokens, rawInput: rawInput, scope: scope) {
             case .command(let parsed):
@@ -393,6 +394,9 @@ struct StandardParser {
             case .impliedSuffix(let particles):
                 implied.append((rule, particles))
                 continue
+            case .lastResort(let error):
+                lastResort = lastResort ?? error
+                continue
             }
         }
 
@@ -404,7 +408,8 @@ struct StandardParser {
         // cloak on?" from the row that has somewhere to put it, not a silent
         // WEAR from the row that reads the particle as understood.
         if let bestFailure { return .failure(bestFailure) }
-        return impliedReading(implied, tokens: tokens, rawInput: rawInput, scope: scope)
+        return impliedReading(
+            implied, tokens: tokens, rawInput: rawInput, scope: scope, lastResort: lastResort)
     }
 
     /// The last reading tried: a row with the words the player left off written
@@ -421,25 +426,31 @@ struct StandardParser {
     ///   - tokens: the line as typed.
     ///   - rawInput: the line as the player typed it.
     ///   - scope: what the player can see.
+    ///   - lastResort: the first ``FitOutcome/lastResort(_:)`` a row reported
+    ///     on the line as typed.
     /// - Returns: the first row that fits with its particle written in, or the
     ///   first reason one had for declining — which beats `unmatchedSyntax`,
-    ///   because `pick the gramophone` is about the gramophone.
+    ///   because `pick the gramophone` is about the gramophone. A last resort
+    ///   comes behind both, and beats only `unmatchedSyntax`.
     private func impliedReading(
         _ implied: [(rule: SyntaxRule, particles: [String])],
-        tokens: [String], rawInput: String, scope: Scope
+        tokens: [String], rawInput: String, scope: Scope, lastResort: ParseError?
     ) -> Result<ParsedCommand, ParseError> {
         var failure: ParseError?
+        var lastResort = lastResort
         for (rule, particles) in implied {
             switch fit(rule, tokens: tokens + particles, rawInput: rawInput, scope: scope) {
             case .command(let parsed):
                 return .success(parsed)
             case .nearMiss(let error):
                 failure = failure ?? error
+            case .lastResort(let error):
+                lastResort = lastResort ?? error
             case .emptyDirection, .impliedSuffix, .mismatch:
                 continue
             }
         }
-        return .failure(failure ?? .unmatchedSyntax)
+        return .failure(failure ?? lastResort ?? .unmatchedSyntax)
     }
 
     /// The words after the comma, read as a command in the addressee's own
@@ -566,6 +577,18 @@ struct StandardParser {
         case impliedSuffix([String])
         case mismatch
         case nearMiss(ParseError)
+        /// A row that read the **rest of the line** as its object, because
+        /// nothing stands where its pattern says the object ends — and the
+        /// object did not resolve. The payload is the resolver's
+        /// reason, which is about the player's noun (#610): `lock hook` with
+        /// the hook in another room is owed "You can't see any such thing."
+        ///
+        /// Weaker than every other outcome but a plain mismatch, because the
+        /// reading is a guess: `give warden them` read whole as the thing to
+        /// give fails, where the recipient-first row places `warden` and says
+        /// what is wrong with `them`. It beats only "I didn't understand that
+        /// sentence."
+        case lastResort(ParseError)
     }
 
     /// Walks the rule's elements over the tokens: literal words must appear
@@ -633,8 +656,8 @@ struct StandardParser {
             guard let next = suffix.first else {
                 return missingSlotOutcome(
                     slot, displayVerb: displayVerb, tokens: tokens, directPhrase: directPhrase,
-                    preposition: preposition, lastLiteral: lastLiteral, scope: scope,
-                    distant: distant)
+                    directStart: directStart, preposition: preposition, lastLiteral: lastLiteral,
+                    scope: scope, distant: distant)
             }
             if next == .direction, suffix.count == 1 {
                 return missingHalfOfANounAndADirection(
@@ -770,8 +793,9 @@ struct StandardParser {
                 guard cursor < tokens.count else {
                     return missingSlotOutcome(
                         element, displayVerb: displayVerb, tokens: tokens,
-                        directPhrase: directPhrase, preposition: preposition,
-                        lastLiteral: lastLiteral, scope: scope, distant: distant)
+                        directPhrase: directPhrase, directStart: directStart,
+                        preposition: preposition, lastLiteral: lastLiteral, scope: scope,
+                        distant: distant)
                 }
                 // The comma joins object phrases, but a topic is words and
                 // never a list, so here it goes back to being punctuation.
@@ -1025,24 +1049,75 @@ struct StandardParser {
     /// What a row does when the literal word that marks the end of an object
     /// slot is not on the line — `hang cloak`, or `wind lamp` where the row is
     /// `wind <object> up`. If the phrase names something here, ask for the
-    /// rest; the answer belongs after the word the player never typed.
-    /// Anything else declines and lets the next rule talk.
+    /// rest; the answer belongs after the word the player never typed. If it
+    /// fails as a noun, the resolver's reason is a
+    /// ``FitOutcome/lastResort(_:)``. Anything else declines and lets the next
+    /// rule talk.
     private func missingTheWordThatClosesTheSlot(
         _ slot: SyntaxElement, word: String, displayVerb: String, tokens: [String],
         cursor: Int, scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        guard slot == .directObject, cursor < tokens.count,
-            case .success(let id) = resolve(
-                Array(tokens[cursor...]), in: scope, alsoConsidering: distant)
-        else {
-            return .mismatch
-        }
-        return .nearMiss(
+        guard slot == .directObject, cursor < tokens.count else { return .mismatch }
+        return askingAboutTheRest(of: tokens, from: cursor, scope: scope, distant: distant) {
             .missingIndirect(
                 verb: displayVerb,
-                objectName: definiteName(of: id),
+                objectName: definiteName(of: $0),
                 preposition: word,
-                prefix: tokens + [word]))
+                prefix: tokens + [word])
+        }
+    }
+
+    /// Reads the rest of the line as the object a row is about to ask about:
+    /// the question if it names one thing, the resolver's reason as a
+    /// ``FitOutcome/lastResort(_:)`` if it fails as a noun, and a decline
+    /// where ``unplaced(_:at:failing:tokens:scope:)`` says to.
+    private func askingAboutTheRest(
+        of tokens: [String], from cursor: Int, scope: Scope, distant: Set<EntityID>,
+        question: (EntityID) -> ParseError
+    ) -> FitOutcome {
+        let phrase = Array(tokens[cursor...])
+        switch resolve(phrase, in: scope, alsoConsidering: distant) {
+        case .success(let id):
+            return .nearMiss(question(id))
+        case .failure(let error):
+            guard
+                let reason = unplaced(
+                    phrase, at: cursor, failing: error, tokens: tokens, scope: scope)
+            else { return .mismatch }
+            return .lastResort(reason)
+        }
+    }
+
+    /// The error a row that was about to ask for the rest of a sentence
+    /// reports when the object it would have named does not resolve.
+    ///
+    /// The resolver's own reason, positioned, because a phrase that fails as a
+    /// noun is the player's noun and not the row's grammar (#610). The row
+    /// declines instead where what went wrong may be a question for some
+    /// other row: an `.unmatchedSyntax` error, which says the words run on
+    /// into grammar; a multi-object keyword or a list, which are not one noun
+    /// and which these questions have no words for; and an empty phrase, which
+    /// names nothing to report on.
+    ///
+    /// - Parameters:
+    ///   - phrase: the object's tokens.
+    ///   - start: where the phrase begins in `tokens`.
+    ///   - error: what the resolver said about it.
+    ///   - tokens: the line as typed.
+    ///   - scope: what the player can name, which decides whether `them` is a
+    ///     keyword.
+    /// - Returns: the error to report, or nil where the row should decline.
+    private func unplaced(
+        _ phrase: [String], at start: Int, failing error: ParseError, tokens: [String],
+        scope: Scope
+    ) -> ParseError? {
+        guard !phrase.isEmpty, error != .unmatchedSyntax,
+            keywordSplit(of: phrase, in: scope) == nil,
+            listSegments(of: phrase[...]) == nil
+        else {
+            return nil
+        }
+        return positioned(error, tokens: tokens, phrase: phrase, at: start)
     }
 
     /// What a `<verb> <object> <direction>` row does when the line does not end
@@ -1055,7 +1130,9 @@ struct StandardParser {
     /// - a phrase that names something here (`push the sandstone wall`): ask
     ///   which way, and the answer appends, because the direction is the last
     ///   thing this pattern wants.
-    /// - anything else: decline, and let the next rule or the scope error talk.
+    /// - a phrase that fails as a noun: the resolver's reason, as a
+    ///   ``FitOutcome/lastResort(_:)``.
+    /// - anything else: decline, and let the next rule talk.
     ///
     /// Only reached where the direction genuinely ends the pattern. A row that
     /// puts something behind it has more missing than one question can name, so
@@ -1074,15 +1151,9 @@ struct StandardParser {
         if tokens.count - cursor == 1, vocabulary.directions[tokens[cursor]] != nil {
             return .mismatch
         }
-        guard
-            case .success(let id) = resolve(
-                Array(tokens[cursor...]), in: scope, alsoConsidering: distant)
-        else {
-            return .mismatch
+        return askingAboutTheRest(of: tokens, from: cursor, scope: scope, distant: distant) {
+            .missingDirection(verb: displayVerb, objectName: definiteName(of: $0), prefix: tokens)
         }
-        return .nearMiss(
-            .missingDirection(
-                verb: displayVerb, objectName: definiteName(of: id), prefix: tokens))
     }
 
     /// The near-miss for a pattern whose final slot got no tokens: "put cloak
@@ -1092,25 +1163,32 @@ struct StandardParser {
     /// A *direct* slot never arrives: nothing before it can have been filled
     /// either, so `fit` has already asked "What do you want to take?" for every
     /// shape at once.
+    ///
+    /// An object that fails to resolve is reported rather than declined —
+    /// `ask the butler about` with no butler here is about the butler — through
+    /// ``unplaced(_:at:failing:tokens:scope:)``, which keeps the cases where
+    /// declining is still right.
     private func missingSlotOutcome(
         _ slot: SyntaxElement, displayVerb: String, tokens: [String],
-        directPhrase: [String]?, preposition: String?, lastLiteral: String?,
+        directPhrase: [String]?, directStart: Int, preposition: String?, lastLiteral: String?,
         scope: Scope, distant: Set<EntityID>
     ) -> FitOutcome {
-        if slot == .topic {
-            // A topic row need not have an object at all ("think about"). One
-            // that has an object it can't resolve stays quiet and lets the
-            // next rule — or the scope error — do the talking.
-            var objectName: String?
-            if let directPhrase {
-                guard
-                    case .success(let id) = resolve(
-                        directPhrase, in: scope, alsoConsidering: distant)
-                else {
-                    return .mismatch
-                }
+        // A topic row need not have an object at all ("think about").
+        var objectName: String?
+        if let directPhrase {
+            switch resolve(directPhrase, in: scope, alsoConsidering: distant) {
+            case .success(let id):
                 objectName = definiteName(of: id)
+            case .failure(let error):
+                guard
+                    let reason = unplaced(
+                        directPhrase, at: directStart, failing: error, tokens: tokens,
+                        scope: scope)
+                else { return .mismatch }
+                return .nearMiss(reason)
             }
+        }
+        if slot == .topic {
             return .nearMiss(
                 .missingTopic(
                     verb: displayVerb,
@@ -1118,17 +1196,13 @@ struct StandardParser {
                     preposition: lastLiteral ?? "",
                     prefix: tokens))
         }
-        if let directPhrase,
-            case .success(let id) = resolve(directPhrase, in: scope, alsoConsidering: distant)
-        {
-            return .nearMiss(
-                .missingIndirect(
-                    verb: displayVerb,
-                    objectName: definiteName(of: id),
-                    preposition: preposition ?? "",
-                    prefix: tokens))
-        }
-        return .mismatch
+        guard let objectName else { return .mismatch }
+        return .nearMiss(
+            .missingIndirect(
+                verb: displayVerb,
+                objectName: objectName,
+                preposition: preposition ?? "",
+                prefix: tokens))
     }
 
     /// Fills an `ambiguous` error's answer-insertion context: the reply's
@@ -1472,7 +1546,7 @@ struct StandardParser {
         }
         let resolved = resolveNoun(tokens, in: scope, alsoConsidering: distant)
         guard case .failure(.notInScope) = resolved,
-            hasSyntaxTail(afterNounIn: tokens, scope: scope, distant: distant)
+            hasSyntaxBesideANoun(tokens, scope: scope, distant: distant)
         else {
             return resolved
         }
@@ -1520,27 +1594,46 @@ struct StandardParser {
         return outOfSight(tokens, among: scope.elsewhereActors, answerableIn: distant)
     }
 
-    /// Whether a phrase starts by naming something and then continues as
-    /// sentence structure: `cloak with key`, `cloak open door`, or `cloak e`.
-    /// A complete name anywhere in the game's lexicon wins first, even when it
-    /// is out of scope, so a name such as `cup of tea` keeps the scope error.
-    private func hasSyntaxTail(
-        afterNounIn tokens: [String], scope: Scope, distant: Set<EntityID>
+    /// Whether a phrase names something and has sentence structure beside it:
+    /// `cloak with key`, `cloak open door` or `cloak e` behind the noun, and
+    /// `with cloak` ahead of it (#610) — the shape a verb with no `with` row
+    /// gets when its one slot takes the whole of `dig with cloak`. A complete
+    /// name anywhere in the game's lexicon wins first, even when it is out of
+    /// scope, so a name such as `cup of tea` keeps the scope error.
+    private func hasSyntaxBesideANoun(
+        _ tokens: [String], scope: Scope, distant: Set<EntityID>
     ) -> Bool {
         // A complete noun name wins even when its first word also belongs to
         // grammar, and even when that noun is presently out of scope.
         guard !isKnownNounPhrase(tokens) else { return false }
         guard let first = tokens.first else { return false }
-        if tokens.count == 1 { return isSyntaxWord(first) }
+        if isSyntaxWord(first) {
+            let rest = Array(tokens.dropFirst())
+            if rest.isEmpty || namesSomething(rest, in: scope, alsoConsidering: distant) {
+                return true
+            }
+        }
 
         for split in tokens.indices.dropFirst() where isSyntaxWord(tokens[split]) {
-            if case .success = resolveNoun(
-                Array(tokens[..<split]), in: scope, alsoConsidering: distant)
-            {
+            if namesSomething(Array(tokens[..<split]), in: scope, alsoConsidering: distant) {
                 return true
             }
         }
         return false
+    }
+
+    /// Whether a phrase picks out anything the player can name — one thing,
+    /// several it cannot choose between, or a group keyword. Two crates in
+    /// view are still something the player can see, and so is `all`, so
+    /// grammar beside either is the sentence's fault and not theirs.
+    private func namesSomething(
+        _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID>
+    ) -> Bool {
+        if spellsKeyword(tokens, in: scope) { return true }
+        switch resolveNoun(tokens, in: scope, alsoConsidering: distant) {
+        case .success, .failure(.ambiguous): return true
+        case .failure: return false
+        }
     }
 
     /// Whether the complete phrase names any item in the game's lexicon,
