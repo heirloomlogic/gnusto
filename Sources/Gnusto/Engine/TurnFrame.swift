@@ -26,6 +26,12 @@ struct Scratch: Sendable {
     /// prints a line that says nothing happened, so it costs what nothing
     /// costs: no each-turn rules, no timers, no move.
     var unhandled = false
+    /// The timers started while the timer tick runs, or nil outside the tick.
+    /// ``startFuse(_:after:)`` adds every fuse it starts or restarts;
+    /// ``startDaemon(_:)`` adds a daemon only when it was not already
+    /// running. The tick skips every name in the set, so a timer started
+    /// during the tick first ticks on the next turn, whatever its name.
+    var startedDuringTick: Set<String>?
     /// How many `describe { }` / `presence { }` closures are on the stack —
     /// see ``Reentry/liveText``. Nesting, not calls per turn: a room described
     /// once a turn for twenty turns never leaves 1.

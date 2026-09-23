@@ -127,6 +127,46 @@ struct HeartbeatGame: Game {
     }
 }
 
+/// Timers a fuse body restarts in the middle of a tick (#609). The fuses `a`
+/// and `c` fire on the first tick. `a` restarts `b`, which sorts after it, and
+/// `c` restarts `a2`, which sorts before it, both with the same count. `c`
+/// also stops and restarts the `pulse` daemon, which runs after every fuse.
+struct RestartTickGame: Game {
+    let title = "Restart Tick"
+    let intro = "Four fuses burn."
+
+    let room = Location {
+        name("Fuse Room")
+        description("Four fuses and a pulse.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+    }
+
+    var timers: [TimedEvent] {
+        fuse("a", after: 1, autostart: true) {
+            say("A restarts b.")
+            startFuse("b", after: 2)
+        }
+        fuse("a2", after: 5, autostart: true) {
+            say("A2 fires.")
+        }
+        fuse("b", after: 5, autostart: true) {
+            say("B fires.")
+        }
+        fuse("c", after: 1, autostart: true) {
+            say("C restarts a2 and the pulse.")
+            startFuse("a2", after: 2)
+            stopDaemon("pulse")
+            startDaemon("pulse")
+        }
+        daemon("pulse", autostart: true) {
+            say("Pulse.")
+        }
+    }
+}
+
 /// Invalid timer declarations: a duplicate name and a fuse with a zero count,
 /// both fatal, reported together.
 struct BadTimersGame: Game {

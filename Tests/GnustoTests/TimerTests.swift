@@ -108,6 +108,31 @@ struct TimerTests {
         #expect(look.contains("Drip."))
     }
 
+    @Test func aFuseRestartedInsideATickWaitsForTheNextTickWhateverItsName() async throws {
+        // `a` restarts `b` (which sorts after it) and `c` restarts `a2`
+        // (which sorts before it), both `after: 2`, on the same tick. Neither
+        // restarted fuse is counted down again on that tick, so both fire at
+        // the end of the third turn.
+        let transcript = try await play(RestartTickGame(), ["wait", "wait", "wait"])
+        let turns = transcript.components(separatedBy: "> wait")
+        #expect(turns[1].contains("A restarts b."))
+        #expect(turns[1].contains("C restarts a2 and the pulse."))
+        #expect(!turns[2].contains("B fires."))
+        #expect(!turns[2].contains("A2 fires."))
+        #expect(turns[3].contains("B fires."))
+        #expect(turns[3].contains("A2 fires."))
+    }
+
+    @Test func aDaemonRestartedInsideATickWaitsForTheNextTick() async throws {
+        // `c` stops and restarts the running `pulse` daemon. A timer a body
+        // starts first runs on the next tick, so the pulse skips this one.
+        let transcript = try await play(RestartTickGame(), ["wait", "wait"])
+        let turns = transcript.components(separatedBy: "> wait")
+        #expect(turns[1].contains("C restarts a2 and the pulse."))
+        #expect(!turns[1].contains("Pulse."))
+        #expect(turns[2].contains("Pulse."))
+    }
+
     // MARK: - Daemons
 
     @Test func daemonRunsFromItsStartTurnUntilStopped() async throws {

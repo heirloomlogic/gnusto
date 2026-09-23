@@ -1315,10 +1315,11 @@ public actor GameWorld {
     /// One tick of the world's clock: every running fuse counts down (and
     /// fires at zero), then every running daemon runs — fuses first, each
     /// group in name order, so firing order is deterministic. Both schedules
-    /// are read **once, before any body runs**, so a timer a body starts is
-    /// not on this tick's list and first ticks next turn — the same answer
-    /// for a fuse and a daemon, whichever kind of body started it, and never
-    /// one that depends on where its name sorts. (Draining new starts to a
+    /// are read **once, before any body runs**, and a timer started or
+    /// restarted while the tick runs is skipped for the rest of it (see
+    /// `Scratch.startedDuringTick`). So a timer a body starts first ticks next
+    /// turn — the same answer for a fuse and a daemon, whichever kind of body
+    /// started it, and wherever its name sorts. (Draining new starts to a
     /// fixpoint instead would let a fuse that restarts itself `after: 1` loop
     /// inside one turn.) Each name is re-checked against the live schedule
     /// before it acts, because an earlier body may have stopped it this very
@@ -1327,14 +1328,18 @@ public actor GameWorld {
     /// each-turn rules, and the tick stops as soon as one of them ends the
     /// game.
     private func tickTimers(frame: TurnFrame) {
-        let (fuses, daemons) = frame.with {
-            ($0.state.activeFuses.keys.sorted(), $0.state.activeDaemons.sorted())
+        let (fuses, daemons) = frame.with { scratch in
+            scratch.startedDuringTick = []
+            return (scratch.state.activeFuses.keys.sorted(), scratch.state.activeDaemons.sorted())
         }
+        defer { frame.with { $0.startedDuringTick = nil } }
         for name in fuses {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name] else { continue }
             let fires = frame.with { scratch -> Bool in
-                guard let remaining = scratch.state.activeFuses[name] else { return false }
+                guard scratch.startedDuringTick?.contains(name) != true,
+                    let remaining = scratch.state.activeFuses[name]
+                else { return false }
                 if remaining > 1 {
                     scratch.state.activeFuses[name] = remaining - 1
                     return false
@@ -1349,7 +1354,9 @@ public actor GameWorld {
         for name in daemons {
             guard frame.with({ $0.state.status }) == .playing else { return }
             guard let event = definition.timers[name],
-                frame.with({ $0.state.activeDaemons.contains(name) })
+                frame.with({
+                    $0.state.activeDaemons.contains(name) && $0.startedDuringTick?.contains(name) != true
+                })
             else { continue }
             runCatching(event, named: name, frame: frame)
         }
