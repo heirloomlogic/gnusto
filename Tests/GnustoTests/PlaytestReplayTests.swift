@@ -337,6 +337,22 @@ struct PlaytestReplayTests {
         #expect(try text(at: probe.appendingPathComponent("commands.txt")) == "west\n")
     }
 
+    /// A replay refused before it runs leaves no probe directory behind.
+    @Test func aRefusedReplayLeavesNoProbe() async throws {
+        let (root, tools) = try table(OperaHouse())
+        defer { try? FileManager.default.removeItem(at: root) }
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        await #expect(throws: PlaytestError.self) {
+            _ = try await replay.call(["commands": ["west"], "seed": -1])
+        }
+        await #expect(throws: PlaytestError.self) {
+            _ = try await replay.call(["commands": ["script mine"]])
+        }
+
+        #expect(!FileManager.default.fileExists(atPath: replayProbe(root).path))
+    }
+
     /// A replay that could not make its probe directory still answers, and says
     /// in its answer that it left no file to cite.
     @Test func aReplayThatLeftNoProbeSaysSo() async throws {

@@ -1531,18 +1531,18 @@ enum PlaytestTools {
                 if let named = arguments["savesFrom"]?.stringValue {
                     savesFrom = try await sessions.savesSource(named)
                 }
-                let probe: Result<URL, PlaytestError>
-                do throws(PlaytestError) {
-                    probe = .success(try await sessions.replayProbe())
-                } catch {
-                    probe = .failure(error)
-                }
                 let outcome = try await PlaytestReplay.run(
                     prepared: game,
                     commands: commands,
                     seed: try seed(arguments),
                     expect: arguments["expect"]?.stringValue,
-                    probe: probe,
+                    probe: {
+                        do throws(PlaytestError) {
+                            return .success(try await sessions.replayProbe())
+                        } catch {
+                            return .failure(error)
+                        }
+                    },
                     savesFrom: savesFrom)
                 return PlaytestToolResult(
                     text: outcome.rendered, structured: outcome.json)
@@ -1598,9 +1598,9 @@ enum PlaytestTools {
             "probeError": [
                 "type": "string",
                 "description": .string(
-                    "Why no probe directory was written: it could not be made, or its "
-                        + "files could not be written into it. Absent when transcriptPath "
-                        + "is present."),
+                    "Why this replay has no probe to cite: its directory could not be "
+                        + "made, or commands.txt and transcript.txt were not both written "
+                        + "into it. Absent when transcriptPath is present."),
             ],
             "commandsPath": [
                 "type": "string",

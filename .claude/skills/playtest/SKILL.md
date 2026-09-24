@@ -462,6 +462,8 @@ which is the frame the route stopped on, and restoring to it. The finding then c
 `startedFrom`, and the route name is what turns a list that only means something at the
 landing into one anybody can run.
 
+That restore is refused, with nothing moved, if a line after the checkpoint saved a game into the tester's label. The refusal names that line. The tester then opens a fresh session with the same `start` and plays the reproducer there.
+
 Everything below is what is left once that case is gone: a **tester's own** mid-session
 `save`.
 

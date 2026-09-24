@@ -1549,6 +1549,19 @@ actor PlaytestSession {
                 session began. Nothing moved.
                 """)
         }
+        // Ahead of the ring check, so that going back past a save is refused in
+        // words that name the line, whether or not the ring holds the target.
+        guard target >= lastSaveLine else {
+            throw PlaytestError(
+                """
+                Can't go back to line \(target): line \(lastSaveLine) saved a game into \
+                label \(label)'s saves. Going back past it would leave that slot there, where \
+                another probe under the label may be using it, although this session's \
+                command list would no longer save it. Nothing moved. Go back to line \
+                \(lastSaveLine) or later, or open a fresh session.
+                """)
+        }
+
         let dropped = Array(turns[target...])
         let usable = ring.first { $0.line == target && $0.pending == .none }
         guard usable != nil || !pinned else {
@@ -1561,17 +1574,6 @@ actor PlaytestSession {
                 would land in a world that never happened. Nothing moved. Open a fresh \
                 session and replay \(commandsURL.path) up to line \(target) if you need \
                 this.
-                """)
-        }
-
-        guard target >= lastSaveLine else {
-            throw PlaytestError(
-                """
-                Can't go back to line \(target): line \(lastSaveLine) saved a game into \
-                label \(label)'s saves. Going back past it would leave that slot there, where \
-                another probe under the label may be using it, although this session's \
-                command list would no longer save it. Nothing moved. Go back to line \
-                \(lastSaveLine) or later, or open a fresh session.
                 """)
         }
 

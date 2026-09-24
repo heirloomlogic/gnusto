@@ -118,11 +118,12 @@ enum PlaytestReplay {
     ///   - seed: the seed to pin. A finding names one; 0 is
     ///     `bin/playtest-replay`'s default and a session's.
     ///   - expect: an excerpt to look for, or `nil` to read the transcript.
-    ///   - probe: a fresh directory to leave `commands.txt` and `transcript.txt`
-    ///     in, the reason the server could not make one, or `nil` to run without
-    ///     leaving a receipt. The server passes one of the first two; the suite
-    ///     passes `nil` where the files are not the subject. A failure runs the
-    ///     replay anyway and is carried to ``Outcome/probeError``.
+    ///   - probe: makes a fresh directory to leave `commands.txt` and
+    ///     `transcript.txt` in, or says why it could not; `nil` runs without
+    ///     leaving a receipt, which the suite does where the files are not the
+    ///     subject. Called only after the replay has run, so a refused list
+    ///     leaves no empty directory. A failure is carried to
+    ///     ``Outcome/probeError``.
     ///   - savesFrom: a directory of `.gnusto` slots this replay may read — a
     ///     label's `saves/`, or a probe's `saves-in/` — or `nil` for a clean
     ///     start. Copied in, never written back — see
@@ -134,7 +135,8 @@ enum PlaytestReplay {
     ///   the evidence went, and what was staged to get there.
     static func run(
         prepared: PreparedGame, commands: [String], seed: UInt64, expect: String?,
-        probe: Result<URL, PlaytestError>? = nil, savesFrom: URL? = nil
+        probe: (@Sendable () async -> Result<URL, PlaytestError>)? = nil,
+        savesFrom: URL? = nil
     ) async throws -> Outcome {
         guard commands.count <= commandLimit else {
             throw PlaytestError(
@@ -188,11 +190,14 @@ enum PlaytestReplay {
         let blocks = Self.blocks(in: transcript)
         var written: URL?
         var probeError: String?
-        switch probe {
+        switch await probe?() {
         case .success(let directory):
             written = Self.write(commands, transcript, seed: seed, staged: staged, to: directory)
             if written == nil {
-                probeError = "couldn't write commands.txt and transcript.txt into \(directory.path)"
+                probeError = """
+                    \(directory.path) was made, but commands.txt and transcript.txt were not \
+                    both written into it, so nothing in it is evidence
+                    """
             }
         case .failure(let error):
             probeError = error.description
