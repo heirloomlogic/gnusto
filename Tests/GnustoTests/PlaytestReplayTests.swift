@@ -56,10 +56,12 @@ struct PlaytestReplayTests {
 
     /// A tool table over a root the test can then read, for the rows whose
     /// subject is what they left on disk.
-    private func table(_ game: some Game) throws -> (root: URL, tools: [PlaytestTool]) {
-        let root = FileManager.default.temporaryDirectory
+    private func table(
+        _ game: some Game,
+        root: URL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        return (
+    ) throws -> (root: URL, tools: [PlaytestTool]) {
+        (
             root,
             PlaytestTools.table(
                 for: try PreparedGame(game),
@@ -314,6 +316,62 @@ struct PlaytestReplayTests {
             _ = try await open.call(
                 ["label": .string(PlaytestSessions.replayLabel), "seed": 0])
         }
+    }
+
+    /// `.replays` is one tree for every round a checkout ever runs, so it has no
+    /// probe ceiling. At 999 probes a label is full; a replay past that used to
+    /// drop `transcript=` from its answer without saying so.
+    @Test func aReplayPastNineHundredNinetyNineProbesStillLeavesOne() async throws {
+        let (root, tools) = try table(OperaHouse())
+        defer { try? FileManager.default.removeItem(at: root) }
+        let replay = try #require(tools.first { $0.name == "replay" })
+        for n in 1...999 {
+            try FileManager.default.createDirectory(
+                at: replayProbe(root, n), withIntermediateDirectories: true)
+        }
+
+        let result = try await replay.call(["commands": ["west"]])
+
+        let probe = replayProbe(root, 1000)
+        #expect(result.text.contains("transcript=\(probe.path)/transcript.txt"))
+        #expect(try text(at: probe.appendingPathComponent("commands.txt")) == "west\n")
+    }
+
+    /// A replay refused before it runs leaves no probe directory behind.
+    @Test func aRefusedReplayLeavesNoProbe() async throws {
+        let (root, tools) = try table(OperaHouse())
+        defer { try? FileManager.default.removeItem(at: root) }
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        await #expect(throws: PlaytestError.self) {
+            _ = try await replay.call(["commands": ["west"], "seed": -1])
+        }
+        await #expect(throws: PlaytestError.self) {
+            _ = try await replay.call(["commands": ["script mine"]])
+        }
+
+        #expect(!FileManager.default.fileExists(atPath: replayProbe(root).path))
+    }
+
+    /// A replay that could not make its probe directory still answers, and says
+    /// in its answer that it left no file to cite.
+    @Test func aReplayThatLeftNoProbeSaysSo() async throws {
+        // The play-test root is a plain file, so no directory can be made under it.
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try Data().write(to: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (_, tools) = try table(OperaHouse(), root: root)
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        let result = try await replay.call(["commands": ["west"]])
+
+        #expect(!result.text.contains("transcript="))
+        #expect(result.text.contains("no probe written:"))
+        #expect(result.text.contains("Cloakroom"))
+        let structured = try #require(result.structured)
+        #expect(structured["transcriptPath"] == nil)
+        #expect(structured["probeError"]?.stringValue?.isEmpty == false)
     }
 
     /// The two refusals, each of which runs nothing.

@@ -389,7 +389,14 @@ struct PlaytestSessionTests {
         let refusal = await #expect(throws: PlaytestError.self) {
             try await session.rewind(turns: 3)
         }
+        #expect(refusal?.description.contains("line 3 saved a game") == true)
         #expect(refusal?.description.contains("Nothing moved") == true)
+        // Line 2 left the save prompt open, so the ring has no usable snapshot
+        // there; the refusal still names the line that saved.
+        let promptRefusal = await #expect(throws: PlaytestError.self) {
+            try await session.rewind(turns: 2)
+        }
+        #expect(promptRefusal?.description.contains("line 3 saved a game") == true)
         #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["deep"])
         _ = try await session.rewind(turns: 1)
         _ = try await session.move(commands: ["restore", "deep"], allowPrompts: true)
@@ -720,8 +727,10 @@ struct PlaytestSessionTests {
         // The batch halts on the armed filename prompt, so the checkpoint stands
         // at a line whose snapshot is unusable — `GameWorld.restore(_:mode:)` closes
         // questions on purpose — and the only way back is a replay, which this
-        // session may not do.
-        _ = try await session.move(commands: ["save"], allowPrompts: false)
+        // session may not do. The save comes before the mark, so the refusal is
+        // this one and not the one for going back past a save.
+        _ = try await session.move(commands: ["save", "slot"], allowPrompts: true)
+        _ = try await session.move(commands: ["restore"], allowPrompts: false)
         #expect(await session.isPinned())
         _ = try await session.checkpoint("armed")
         _ = try await session.move(commands: ["slot", "look"], allowPrompts: true)
@@ -732,7 +741,7 @@ struct PlaytestSessionTests {
         #expect(refusal?.description.contains("save or restore") == true)
         #expect(refusal?.description.contains("Nothing moved") == true)
         // Nothing moved: the record is whole.
-        #expect(try text(at: session.commandsURL) == "save\nslot\nlook\n")
+        #expect(try text(at: session.commandsURL) == "save\nslot\nrestore\nslot\nlook\n")
     }
 
     /// The refusals that are about arithmetic rather than about safety.
@@ -1721,6 +1730,20 @@ struct PlaytestSessionTests {
         let empty = try await session.recall(from: 50, to: 60, grep: nil)
         #expect(empty.contains("nothing in lines 50–60"))
         #expect(empty.contains("3 recorded lines"))
+    }
+
+    /// `from: 0` is how a session with no deep start asks for its opening, and
+    /// the answer says nothing about a deep start it was never given.
+    @Test func recallFromTheOpeningWithoutADeepStartClaimsNone() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "cold-recall", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["west"], allowPrompts: false)
+
+        let all = try await session.recall(from: 0, to: 100, grep: nil)
+        #expect(!all.contains("deep start"))
+        #expect(all.contains("Foyer of the Opera House"))
+        #expect(all.contains("> west"))
     }
 
     @Test func recallRefusesABackwardsRange() async throws {

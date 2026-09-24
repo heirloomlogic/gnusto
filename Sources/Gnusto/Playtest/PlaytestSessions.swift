@@ -45,6 +45,7 @@ actor PlaytestSessions {
     static let defaultMaxSessions = 32
 
     /// The most probes one label may hold, matching `bin/playtest-replay`.
+    /// ``replayLabel`` has no limit: see ``replayProbe()``.
     private static let probeLimit = 999
 
     /// The game every session plays.
@@ -112,10 +113,7 @@ actor PlaytestSessions {
     ///     `saves/` before the session exists, or `nil` for the ordinary clean
     ///     start. Resolve it with ``savesSource(_:)``. The slots land in the
     ///     label rather than the probe, so every probe under it can `restore`
-    ///     them — which is the point: a round that ships pre-cut saves names
-    ///     one source and each tester's own `open` stages it, where before an
-    ///     operator had to hand-copy the files into directories whose names
-    ///     the workflow had not chosen yet.
+    ///     them.
     ///   - start: the name of a route under `.playtest/<Game>/routes/` to play
     ///     before the tester's first turn, or `nil` for a session opening at
     ///     turn zero. The route is read and seed-checked before a probe exists,
@@ -268,14 +266,30 @@ actor PlaytestSessions {
     /// lock serves both allocators — two verifiers replaying at the same instant
     /// cannot take the same probe, for the same reason two testers cannot.
     ///
-    /// - Returns: the fresh probe directory, or `nil` if one could not be made.
-    func replayProbe() -> URL? {
+    /// **No probe limit.** A session label belongs to one tester and holds at
+    /// most ``probeLimit`` probes. ``replayLabel`` is one directory for every
+    /// `replay` in every round the checkout runs, and the harness keeps it from
+    /// round to round, so a limit there would be reached in ordinary use.
+    ///
+    /// - Throws: ``PlaytestError`` when no directory could be made. The caller
+    ///   runs the replay anyway and reports the reason.
+    /// - Returns: the fresh probe directory.
+    func replayProbe() throws(PlaytestError) -> URL {
         let labelDirectory = Self.directory(forLabel: Self.replayLabel, under: root)
-        guard
-            (try? FileManager.default.createDirectory(
-                at: labelDirectory, withIntermediateDirectories: true)) != nil
-        else { return nil }
-        return try? Self.allocateProbe(in: labelDirectory).1
+        do {
+            try FileManager.default.createDirectory(
+                at: labelDirectory, withIntermediateDirectories: true)
+        } catch {
+            throw PlaytestError("Couldn't create \(labelDirectory.path): \(error)")
+        }
+        // The scan starts past the entries already there, so a tree of
+        // thousands of probes is not walked from 1 on every call. Any start is
+        // correct: the `mkdir` lock is what makes a number unique, and the scan
+        // moves up past every one that is taken.
+        let entries =
+            (try? FileManager.default.contentsOfDirectory(atPath: labelDirectory.path))?.count
+            ?? 0
+        return try Self.allocateProbe(in: labelDirectory, from: entries + 1, limit: .max).1
     }
 
     /// The saves directory of an existing label, for a `replay` or an `open`
@@ -655,19 +669,31 @@ actor PlaytestSessions {
     /// evidence and evidence that quietly became somebody else's session is
     /// worse than evidence that was lost noisily.
     ///
-    /// - Parameter labelDirectory: the label's directory, already created.
-    /// - Throws: ``PlaytestError`` when the label is full.
+    /// - Parameters:
+    ///   - labelDirectory: the label's directory, already created.
+    ///   - first: the first probe number to try.
+    ///   - limit: the highest probe number to try.
+    /// - Throws: ``PlaytestError`` when the label is full, or when a probe
+    ///   directory could not be made for a reason other than already existing.
     /// - Returns: the probe's name and its directory.
-    private static func allocateProbe(in labelDirectory: URL) throws -> (String, URL) {
-        for number in 1...probeLimit {
+    private static func allocateProbe(
+        in labelDirectory: URL, from first: Int = 1, limit: Int = probeLimit
+    ) throws(PlaytestError) -> (String, URL) {
+        for number in first...limit {
             let name = String(format: "probe-%03d", number)
             let directory = labelDirectory.appendingPathComponent(name, isDirectory: true)
             // `withIntermediateDirectories: false` is what makes this a lock:
             // with it true, an existing directory is a success.
-            if (try? FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: false)) != nil
-            {
+            do {
+                try FileManager.default.createDirectory(
+                    at: directory, withIntermediateDirectories: false)
                 return (name, directory)
+            } catch {
+                // Nothing there means the failure was not a lost race, and the
+                // next number would fail the same way.
+                guard FileManager.default.fileExists(atPath: directory.path) else {
+                    throw PlaytestError("Couldn't create \(directory.path): \(error)")
+                }
             }
         }
         throw PlaytestError(
