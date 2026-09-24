@@ -1026,12 +1026,14 @@ public actor GameWorld {
     }
 
     /// Merges everything one object's run said into a single
-    /// `brass lantern: Taken.` line.
+    /// `brass lantern: Taken.` line. The labeled line is prose even when the
+    /// run said an aside, such as a heading from a rule's
+    /// `describeSurroundings()`.
     private func label(outputFrom start: Int, as name: String, frame: TurnFrame) {
         frame.with { scratch in
             let said = scratch.output[start...].joined(separator: " ")
-            scratch.output.removeSubrange(start...)
             scratch.asides.subtract(start..<scratch.output.count)
+            scratch.output.removeSubrange(start...)
             if !said.isEmpty {
                 scratch.output.append("\(name): \(said)")
             }

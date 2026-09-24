@@ -502,7 +502,8 @@ final class TurnFrame: Sendable {
     ///   - aside: true for a paragraph that frames play rather than describing
     ///     the world: a room's heading, the engine's own confirmations, the
     ///     opening's intro and banner, the death prompt. The player sees it
-    ///     like any other paragraph. ``TurnResult/prose`` leaves it out.
+    ///     like any other paragraph. ``TurnResult/prose`` leaves it out,
+    ///     unless a multi-object run folds it into a labeled line.
     func say(_ text: String, aside: Bool = false) {
         with { scratch in
             if aside { scratch.asides.insert(scratch.output.count) }

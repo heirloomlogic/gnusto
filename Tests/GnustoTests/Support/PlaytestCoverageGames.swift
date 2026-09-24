@@ -160,6 +160,33 @@ struct BlurbGame: Game {
     }
 }
 
+/// A `take all` whose first object's rule prints a room heading mid-run, as
+/// Dungeon's sphere does. The run is folded into one labeled line, and the
+/// heading's position must not stay marked as an aside for whatever the turn
+/// says next.
+struct HeadingInARunGame: Game {
+    let title = "Heading in a Run"
+    let intro = "Two things on a table."
+
+    let parlour = Location {
+        name("Parlour")
+        description("A small parlour.")
+    }
+
+    let ball = Item { name("ball") }
+    let coin = Item { name("coin") }
+
+    var map: WorldMap {
+        player.starts(in: parlour)
+        ball.starts(in: parlour)
+        coin.starts(in: parlour)
+    }
+
+    var rules: Rules {
+        ball.after(.take) { describeSurroundings() }
+    }
+}
+
 /// Two rooms under one display name.
 ///
 /// Dungeon's seven rooms called "Coal Mine", shrunk to the two it takes to

@@ -461,6 +461,20 @@ struct PlaytestCoverageTests {
         #expect(!(try await ids(session).contains("noun:game@Slab Room")))
     }
 
+    /// A heading said inside one object's run of `take all` is folded into
+    /// that object's labeled line, which is prose. The next object's line
+    /// lands where the heading stood before the fold and must stay prose too.
+    @Test func aHeadingFoldedIntoALabeledLineLeavesTheNextLineProse() async throws {
+        let world = try GameWorld(
+            game: HeadingInARunGame(), seed: 0,
+            saveDirectory: FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString))
+        _ = await world.begin()
+        let prose = await world.perform("take all").prose
+        #expect(prose.contains("ball: Taken. Parlour"))
+        #expect(prose.contains("coin: Taken."))
+    }
+
     // MARK: - Exits
 
     /// A direction a room described and nobody took is an item, and going that
