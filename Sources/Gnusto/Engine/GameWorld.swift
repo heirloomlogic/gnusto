@@ -33,9 +33,9 @@ public struct TurnResult: Sendable {
     /// a free reply or a meta intent, which are the engine answering by
     /// itself.
     let paragraphs: [String]
-    /// The positions in ``paragraphs`` said as asides — see
-    /// ``TurnFrame/say(_:aside:)``.
-    let asides: Set<Int>
+    /// What ``prose`` reads in place of a paragraph, by position — see
+    /// `Scratch.asides`.
+    let asides: [Int: String]
 
     /// `output` without the paragraphs the engine said around play rather
     /// than in it, and empty for a free reply or a meta intent. The play-test
@@ -44,8 +44,8 @@ public struct TurnResult: Sendable {
     /// asks about pays nothing for it.
     var prose: String {
         guard !asides.isEmpty else { return paragraphs.joined(separator: "\n\n") }
-        return paragraphs.enumerated().filter { !asides.contains($0.offset) }
-            .map(\.element).joined(separator: "\n\n")
+        return paragraphs.indices.map { asides[$0] ?? paragraphs[$0] }
+            .filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
     // Round-trip questions (disambiguation, save/restore filenames) are
     // pending state on the GameWorld actor: the next input line answers
@@ -1026,15 +1026,19 @@ public actor GameWorld {
     }
 
     /// Merges everything one object's run said into a single
-    /// `brass lantern: Taken.` line. The labeled line is prose even when the
-    /// run said an aside, such as a heading from a rule's
-    /// `describeSurroundings()`.
+    /// `brass lantern: Taken.` line. If the run said an aside, such as a
+    /// heading from a rule's `describeSurroundings()`, the line's prose is
+    /// the line without it.
     private func label(outputFrom start: Int, as name: String, frame: TurnFrame) {
         frame.with { scratch in
-            let said = scratch.output[start...].joined(separator: " ")
-            scratch.asides.subtract(start..<scratch.output.count)
+            let run = scratch.output.indices[start...]
+            let said = run.map { scratch.output[$0] }.joined(separator: " ")
+            let prose = run.filter { scratch.asides[$0] == nil }
+                .map { scratch.output[$0] }.joined(separator: " ")
+            for index in run { scratch.asides[index] = nil }
             scratch.output.removeSubrange(start...)
             if !said.isEmpty {
+                if prose != said { scratch.asides[start] = prose.isEmpty ? "" : "\(name): \(prose)" }
                 scratch.output.append("\(name): \(said)")
             }
         }
@@ -1102,7 +1106,7 @@ public actor GameWorld {
             isFinished: state.status.isFinal,
             status: statusLine(),
             paragraphs: [],
-            asides: [])
+            asides: [:])
     }
 
     /// The once-per-turn `before` upkeep — `world.beforeEachTurn` and the

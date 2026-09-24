@@ -462,8 +462,9 @@ struct PlaytestCoverageTests {
     }
 
     /// A heading said inside one object's run of `take all` is folded into
-    /// that object's labeled line, which is prose. The next object's line
-    /// lands where the heading stood before the fold and must stay prose too.
+    /// that object's labeled line, and the line's prose leaves it out, as
+    /// Dungeon's sphere would otherwise queue `x cage`. The next object's
+    /// line lands where the heading stood before the fold and stays prose.
     @Test func aHeadingFoldedIntoALabeledLineLeavesTheNextLineProse() async throws {
         let world = try GameWorld(
             game: HeadingInARunGame(), seed: 0,
@@ -471,7 +472,8 @@ struct PlaytestCoverageTests {
                 .appendingPathComponent(UUID().uuidString))
         _ = await world.begin()
         let prose = await world.perform("take all").prose
-        #expect(prose.contains("ball: Taken. Parlour"))
+        #expect(prose.contains("ball: Taken. A small parlour."))
+        #expect(!prose.contains("Parlour"))
         #expect(prose.contains("coin: Taken."))
     }
 
