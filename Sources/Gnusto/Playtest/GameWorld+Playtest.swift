@@ -377,8 +377,8 @@ struct PlaytestSurvey: Sendable {
     let rooms: [Room]
     /// Every declared timer, in name order.
     let timers: [Timer]
-    /// The words that lead a verb the engine backs with behavior — the ~31
-    /// intents of `SyntaxRule.coreTable`, plus whatever the game reclaimed.
+    /// The words that lead a verb the engine backs with behavior — the intents
+    /// of `SyntaxRule.coreTable`, plus whatever the game reclaimed.
     let coreVerbs: [String]
     /// The words that lead a stub verb: a word with one line of prose and no
     /// mechanic. `SyntaxRule.stubTable`.

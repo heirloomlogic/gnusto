@@ -193,7 +193,7 @@ string in the game's own voice.
 ## Worked examples
 
 - `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`, both declared in its award table so the bootstrap can check `maxScore`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
-- `Sources/Zork1/Zork1.swift` — the host that wires four first-party plugins over entities from three content bundles.
+- `Sources/Zork1/Zork1.swift` — the host that wires `GnustoActors`, `GnustoDangerousDark`, `GnustoMeleeCombat` and `GnustoScoring` over entities declared in its own content bundles.
 - `Sources/Gramarye/Gramarye.swift` — a small original game built entirely around `GnustoSpellcasting`, with one puzzle per casting paradigm.
 - `Sources/Fulminate/Fulminate.swift` — the mystery demo, built around `GnustoClock`: an evening on a wall clock with three alarms bracketing it. Its story and mechanics contract live in `docs/games/fulminate.md`.
 - `Sources/KindlyDeep/` — a survival-and-companion host: `GnustoActors.follows` for a mule who trails you, is parked by a crawl he cannot fit through, and rejoins through a door, plus `GnustoScoring.awardOnce` on each of its five beats.

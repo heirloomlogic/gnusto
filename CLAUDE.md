@@ -29,7 +29,7 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~2,410 tests, ~25s
+swift test                                    # the whole suite, ~25s
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
@@ -230,16 +230,7 @@ sensitive. See `TestingYourGame.md`, "Sweep for tests that pass by luck".
   Turn order → `TheTurnPipeline.md`.
 - Actors → `ActorsAndVehicles.md`. Plugins/bundles → `Plugins.md`, `ContentBundles.md`.
 - Tests → `TestingYourGame.md`.
-- The built-in verb table is two declaration arrays, one per file, each stating its
-  intent once and deriving the rest. `Actions/CoreVerbs.swift` holds `cores` — the
-  ~31 intents the engine backs with behavior — and derives `SyntaxRule.coreTable`,
-  `builtInIntents`, `engineIntents` and the stage-4 dispatch from it; the handler
-  bodies stay in `Actions/DefaultActions.swift`. `Actions/StubVerbs.swift` holds
-  `stubs` — ~52 intents that are words with one line of prose and no mechanic — and
-  derives `stubTable` and `stubIntents`; their copy is `GameText.stubs`.
-  `SyntaxRule.standardTable` is both tables. The intent constants are split the same
-  way: core in `Actions/Command.swift`, stub in `Actions/StubVerbs.swift`. Stock
-  lines are `Actions/GameText.swift`.
+- The built-in verb table is two declaration arrays, one per file, each stating its intent once and deriving the rest. `Actions/CoreVerbs.swift` holds `cores` — the intents the engine backs with behavior, the engine-level ones included — and derives `SyntaxRule.coreTable`, `builtInIntents`, `engineIntents` and the stage-4 dispatch from it; the handler bodies stay in `Actions/DefaultActions.swift`. `Actions/StubVerbs.swift` holds `stubs` — the intents that are words with one line of prose and no mechanic — and derives `stubTable` and `stubIntents`; their copy is `GameText.stubs`. `SyntaxRule.standardTable` is both tables. The intent constants are split the same way: core in `Actions/Command.swift`, stub in `Actions/StubVerbs.swift`. Stock lines are `Actions/GameText.swift`.
 
 ## The shape of a game
 
@@ -397,11 +388,7 @@ computed `static var`, which rebuilds it on every read.
   not a silent zero. The bootstrap adds the table to every treasure's
   `.takeValue`/`.depositValue` and warns when the total misses `maxScore`. Content that
   declares nothing (an empty table, no valued treasures) opts out.
-- **Meta intents and parse failures cost no turn** (`Command.metaIntents`,
-  `freeReply`). A test that counts turns by counting commands will be wrong the
-  moment one of them fails to parse. This is the single most common test-timing bug.
-  A **stub verb does** cost a turn, so `sing` or `xyzzy` is not a free line — use
-  `frotz` when a test needs a guaranteed parse error.
+- **Meta intents and parse failures cost no turn** (`Intent.metaIntents`, `freeReply`). A test that counts turns by counting commands will be wrong the moment one of them fails to parse. This is the single most common test-timing bug. A **stub verb does** cost a turn, so `sing` or `xyzzy` is not a free line — use `frotz` when a test needs a guaranteed parse error.
 - **A custom verb nothing answers is also free.** A declared intent with no action,
   no matching rule and no stub line reaches stage 4's last resort: `text.cantDoThat`
   ("You can't do that."), thrown as `TurnInterrupt.unhandled`, which skips the `after`
@@ -410,14 +397,7 @@ computed `static var`, which rebuilds it on every read.
 - **Overriding a stub verb is silent; overriding a core verb warns — unless the row acknowledges it.** Both warnings are keyed off `cores`, the verb-row one through `SyntaxRule.coreTable` and the `actions`-row one through `DefaultActions.builtInIntents`, so `action(.dig)` or a rule on `.attack` costs you nothing. When the shadowing is the point, say so where it happens: `action(.score, overriding: true) { … }` silences that row's built-in-override warning and only that one — dispatch, precedence and the reach guard are unchanged, and every other diagnostic the game earns still prints. It matters because `GameMain` writes the whole report to stderr before the intro, so an unacknowledged override is a line of author diagnostics on every player's screen. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that only `say`s prints *both* lines.
 - **To change a stub's words, assign the line; a row buys the whole default.** A closure row is guarded at stage 4 by the `reach:` *it* declares and never by the standard table's, and that column defaults to `.notNeeded` — so `action(.squeeze) { try reply(…) }` gives up the reach guard along with the object's rendered name, its number agreement and the `yourself`/`somebodyElse` guards. `text.stubs.squeeze = …` keeps all four and is what the play-test survey measures. A row means *this game has behavior here*; if all it has is a sentence, assign the sentence. The line takes either spelling — `text.stubs.sit = "…"` or `text.stubs.sit = .naming(orBare: "…") { "You can't sit \($0)." }`, where `$0` is a `RestingPlace` that reads "on the bench" or "in the chest" as the player typed it — so wanting the object's name has stopped being a reason to reach for a row. A plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not `text.stubs.attack`.
 - **A custom verb has no stub line to assign, so its sentence is a row — but the row can be a *line* rather than a closure.** `action(.wind, reach: .directObject, say: Prose.cannotWind)`, `action(_:reach:overriding:naming:)` and `action(_:orBare:reach:overriding:guardsActors:naming:)` are the three shapes, one per `StubVerb` factory, and they route the verb through the stub path: the object's rendered `Noun`, its number agreement and the `yourself`/`somebodyElse` guards, none of which `action(.wind) { try reply(…) }` can have. The **reach guard both forms declare the same way** — `action(.show, reach: .bothObjects) { … }` — because a custom intent has no `reach:` column anywhere else, and it defaults to `.notNeeded`, so neither spelling tightens a verb silently; Dungeon's basket is raised from the far end of a shaft and a `.directObject` default broke that walkthrough. What the two do on a verb the *engine* already declares differs, and that is the point: a line reclaims the verb's answer and not its physics, so the standard table's column stands, while a closure goes on deciding the whole question for itself and is guarded only by the `reach:` it writes down. The line is a **floor**, said with `say` and not `reply`, so `after` rules still run and a `before` rule still promotes itself above it. On an *engine stub* intent it works and warns: `text.stubs.<verb>` is the same sentence and keeps the rows.
-- **UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS can't be overridden at all.** The
-  engine answers them before the pipeline, so no rule sees them and `action(.save)`
-  never runs. That's `DefaultActions.engineIntents`, and declaring one now warns
-  rather than failing silently. The last two hand a *different line* back to the
-  parser rather than acting themselves: `again`/`g` re-parses `WorldState.lastCommand`
-  and costs whatever that costs, and `oops <word>` rewrites the word the parser last
-  refused. Neither is recorded as a last command, which is what makes AGAIN
-  non-recursive by construction rather than by a depth counter.
+- **The engine-level verbs can't be overridden at all.** They are the `.engineLevel` rows in `cores`, collected as `DefaultActions.engineIntents`: UNDO, SAVE, AGAIN, OOPS, the description modes and the rest. The engine answers them before the pipeline, so no rule sees them and `action(.save)` never runs, and declaring an action for one warns rather than failing silently. AGAIN and OOPS hand a *different line* back to the parser rather than acting themselves: `again`/`g` re-parses `WorldState.lastCommand` and costs whatever that costs, and `oops <word>` rewrites the word the parser last refused. Neither is recorded as a last command, which is what makes AGAIN non-recursive by construction rather than by a depth counter.
 - **`search X` / `find X` / `look for X` all mean `.lookIn`**, which refuses in a
   fixed order: `cantReach` for something out of reach, `cantSearchActor` for a
   person, then `nothingToSearch` ("You find nothing of interest in the X") for

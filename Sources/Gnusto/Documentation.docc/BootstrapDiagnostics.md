@@ -156,7 +156,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `item "lamp" gives one sentence to firstSight(…) and description(…); the room listing is spent on first touch and EXAMINE is not, so examining it while it is held will assert where it is lying.` | The two channels are read at different times: the listing line prints until the item is touched, the examine text prints forever. One sentence that says where the thing lies is true on the first and false on the second. Write two sentences. |
 | `actor "troll" declares the item trait "container"; actors hold things via their inventory, and it will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `startsUnlocked`, `capacity`, `surfaceCapacity`, and a `lockedBy` map entry — the message reads `actor "troll" declares a lockedBy entry; …` for that one, since there is no `lockable` trait to declare. Legal, almost never meant; the actor is left as declared rather than stripped of the trait. |
 | `actor "troll" declares the item trait "alwaysListed"; an actor's listing line is never spent on a first touch, so there is nothing for the trait to keep.` | ``alwaysListed`` buys an *item* out of the listing channel's touch gate, and an actor was never behind that gate — a person is still news on every look. Its own sentence rather than a row in the list above, because the trait is inert on an actor rather than item-like. Remove it. |
-| `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO, RESTART, SAVE, RESTORE, AGAIN and OOPS are answered before any stage runs. Nothing can override them. |
+| `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO and the other engine-level verbs listed in <doc:AddingCustomVerbs> are answered before any stage runs. Nothing can override them. |
 | `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb with a *closure* row or a rule is silent: a stub has no behavior to shadow, so the warning would be noise. The *line* form is the one exception, next row. See <doc:StubVerbs>. A deliberate override says so at the declaration — `action(.score, overriding: true) { … }` — which silences this warning for that row alone and changes nothing about dispatch, precedence or the reach guard. It is an acknowledgement, not a suppression switch: the two rows below still fire for an acknowledged line, a row for `undo` still warns that the engine answers it first, and every diagnostic the rest of the game earns is untouched. It is what keeps an author-facing warning off a released game's stderr, which `GameMain` writes before the intro. |
 | `default line for intent "sing" replaces the engine's stub verb; assign text.stubs.sing instead, which keeps the verb's own guards.` | `action(.sing, say: …)` on an intent the engine already answers with a stub. The line works, but `text.stubs.sing = …` is the same sentence and keeps the verb's reach guard, the object's rendered name and the `yourself`/`somebodyElse` guards. |
 | `the default line for intent "wind" names its object, but the verb row "wind" takes none; that command would answer with a parse error. Use action(.wind, orBare:naming:), which asks for both halves.` | A `naming:` line is built out of the object's name and has nothing to say without one, so a bare row for the same verb would fall through to the parser's failure and cost a turn. Give the bare half its own sentence with `orBare:`. |
@@ -189,23 +189,9 @@ side, including the fixture games in `Tests/GnustoTests/Support/`.
 
 ## `GNUSTO_STACK_REPORT`
 
-The bootstrap runs on a thread the engine sizes at 16 MB rather than on whatever
-stack it was called from, because the stack it costs scales with the whole
-declaration surface and a Swift Testing body has 512 KB of its own. Setting
-`GNUSTO_STACK_REPORT` prints what a boot actually used, one line per game, on
-stderr:
+The bootstrap runs on a thread the engine sizes at 16 MB rather than on whatever stack it was called from, because the stack it costs scales with the whole declaration surface and a Swift Testing body has 512 KB of its own. Setting `GNUSTO_STACK_REPORT` prints what a boot actually used, one line per game, on stderr.
 
-```
-$ GNUSTO_STACK_REPORT=1 swift run Dungeon
-Gnusto: Dungeon bootstrapped using 340 KB of the 16384 KB bootstrap stack.
-```
-
-It is a flag in the manner of `GNUSTO_PLAIN`, so any value counts, including an
-empty one. Deliberately not a warning: stack usage varies with build mode,
-platform and address-space layout, and a machine-dependent figure in the list
-above would fire on some machines and not others. Dungeon is 23 content bundles
-and some 800 declarations, which is the sense of scale to read 340 KB against.
-See <doc:SplittingAGameAcrossFiles>.
+It is a flag in the manner of `GNUSTO_PLAIN`, so any value counts, including an empty one. Deliberately not a warning: stack usage varies with build mode, platform and address-space layout, and a machine-dependent figure in the list above would fire on some machines and not others. <doc:SplittingAGameAcrossFiles> shows the line for Dungeon, the largest game in this repository.
 
 ## Topics
 

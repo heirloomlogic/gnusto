@@ -614,8 +614,8 @@ struct Dungeon: Game, GameMain {
     /// and splitting worked by lowering the peak rather than raising the roof.
     ///
     /// **Issue #174 is fixed** — `Bootstrap.build` runs on a 16 MB thread the
-    /// engine sizes, against a measured Dungeon peak of 355 KB — so none of these
-    /// splits is required any more. They stay because a hundred-line rule list
+    /// engine sizes, far above Dungeon's measured peak — so none of these splits
+    /// is required any more. They stay because a hundred-line rule list
     /// reads worse than two fifty-line ones, which was always the better reason.
     @RuleBuilder private var mainframeRules: Rules {
         // Lighting the candles. They need a live flame named, and the two the

@@ -23,12 +23,12 @@ struct BootstrapStackTests {
     /// killing the suite.
     static let cooperativeStack = 512 << 10
 
-    /// Eleven times the largest bootstrap ever measured, and half the ladder — a
+    /// Several times the largest bootstrap measured, and half the ladder — a
     /// reading at ``StackProbe/ladderDepth`` is a floor, not a measurement, so the
     /// two assertions cannot both be live at once unless this stays under it. Far
-    /// enough from 355 KB that build mode, platform and address-space layout cannot
-    /// flake it; close enough that an order-of-magnitude regression fails here
-    /// rather than in a signal.
+    /// enough above Dungeon's peak that build mode, platform and address-space
+    /// layout cannot flake it; close enough that an order-of-magnitude regression
+    /// fails here rather than in a signal.
     static let ceiling = StackProbe.ladderDepth / 2
 
     @Test("the worker is granted the stack it asks for")
