@@ -147,10 +147,7 @@ actor PlaytestSession {
     nonisolated let savesAtOpen: [String: Data]
 
     /// The last recorded line that changed a slot in ``saveDirectory``, or `0`.
-    /// ``truncate(to:naming:)`` refuses to go back past it: the slot would stay
-    /// for a later `restore` the command list never saved, and it is not this
-    /// session's to delete, since another probe under the label may have
-    /// restored it or saved over it since.
+    /// ``truncate(to:naming:)`` will not go back past it, and says why.
     private var lastSaveLine = 0
 
     /// What `open` copied into ``saveDirectory`` before this session existed,
@@ -1246,11 +1243,11 @@ actor PlaytestSession {
     ///
     /// The one honest caveat is a session that used the player's own `save` or
     /// `restore`. The replay starts from ``savesAtOpen``, and a rewind will not
-    /// drop a line that saved, so the recorded lines account for the changes
-    /// this session made to the label's saves. They do not account for another
-    /// probe under the same label writing there while this one ran. A mismatch
-    /// there may be about the slots rather than about the driver. The message
-    /// says so when it applies.
+    /// go back past a line that saved a game, so the recorded lines
+    /// account for the changes this session made to the label's saves. They do
+    /// not account for another probe under the same label writing there while
+    /// this one ran. A mismatch there may be about the slots rather than about
+    /// the driver. The message says so when it applies.
     ///
     /// Exporting does not end the session. The next `move` reopens the
     /// transcript and rewrites it from the blocks in hand, so a tester that
@@ -1561,11 +1558,10 @@ actor PlaytestSession {
         guard target >= lastSaveLine else {
             throw PlaytestError(
                 """
-                Can't go back to line \(target): line \(lastSaveLine) saved a game. The slot \
-                would stay in label \(label)'s saves for a later restore this command list \
-                never saved, and it is not this session's to delete, because another probe \
-                under the label may be using it. Nothing moved. Go back to line \
-                \(lastSaveLine) or later, or open a fresh session.
+                Can't go back to line \(target): line \(lastSaveLine) saved a game, and the \
+                slot would stay in label \(label)'s saves, where another probe may be using \
+                it, for a restore this command list never saved. Nothing moved. Go back to \
+                line \(lastSaveLine) or later, or open a fresh session.
                 """)
         }
 
