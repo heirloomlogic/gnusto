@@ -15,12 +15,7 @@ this needs. The schedule is settled at `init`, and so is the prose — with one
 subject passed at the moment it is spoken: the death line is handed the vehicle
 the player was aboard, because a sentence about being found has to say where.
 
-The daemon counts consecutive turns *ending* in darkness, wherever they are
-spent. Lingering is lethal and movement is not, so a lightless dash toward the
-stairs can still work. Any reachable light resets the count to zero. Dark turn 1
-prints the warning; dark turns 2 through `graceTurns + 1` are a silent grace;
-from dark turn `graceTurns + 2` on, every turn rolls `chance(lethality)` to be
-eaten. The warning turn is safe, which is the classic fairness contract.
+The daemon counts consecutive turns *ending* in darkness, wherever they are spent, and a move counts the same as a wait. A lightless dash toward the stairs is safe if no more than `graceTurns + 1` of its turns end in the dark. Any reachable light resets the count to zero. Dark turn 1 prints the warning; dark turns 2 through `graceTurns + 1` are a silent grace; from dark turn `graceTurns + 2` on, every turn rolls `chance(lethality)` to be eaten. The warning turn is safe, which is the classic fairness contract.
 
 UNDO after a death does not bring the warning back. The count is a `@Global`, so UNDO returns it to its value before the fatal turn, and a next turn that also ends in the dark is a dice turn again. UNDO rewinds the seeded random stream too, so typing the fatal turn's command again rolls the same death. A turn that ends in the light resets the count. In Zork 1 the line printed after that UNDO reads like a warning, but it is the room's own dark line: Zork points `text.pitchBlack` at the grue sentence.
 
@@ -69,7 +64,7 @@ static let grueDeath = GameText.Line<GameText.Noun?>.naming(
 }
 ```
 
-**The death this daemon deals is the lingering one**, and the line has to be true of that. The first dark turn only warns, and the dice wait for dark turn `graceTurns + 2` — the third dark turn at the default grace of one, and never earlier than dark turn 2, because dark turn 1 is the warning's own arm however low `graceTurns` goes. So a death here lands on a turn spent lingering in a dark the player has already been warned about, rather than on the turn they walked into it. Zork has two death sentences, both for moves, and this is the second of them: `V-WALK` (`gverbs.zil:1578`) says *"You have walked into the slavering fangs of a lurking grue!"* and fires only on a **blocked** move in the dark, which is a branch this library does not have; `GOTO` (`:2110-2114`) names the vehicle you are sitting in, or says "room". Both halves are the game's words — the stock line names no place at all, because a library that has not seen the game should not decide what to call the place somebody was taken from.
+**The death this daemon deals is the lingering one**, and the line has to be true of that. The first dark turn only warns, and the dice wait for dark turn `graceTurns + 2` — the third dark turn at the default grace of one, and never earlier than dark turn 2, because dark turn 1 is the warning's own arm however low `graceTurns` goes. So a death here lands on a turn spent lingering in a dark the player has already been warned about, rather than on the turn the dark began, whether that later turn is a move or a wait. Zork has two death sentences, both for moves, and this is the second of them: `V-WALK` (`gverbs.zil:1578`) says *"You have walked into the slavering fangs of a lurking grue!"* and fires only on a **blocked** move in the dark, which is a branch this library does not have; `GOTO` (`:2110-2114`) names the vehicle you are sitting in, or says "room". Both halves are the game's words — the stock line names no place at all, because a library that has not seen the game should not decide what to call the place somebody was taken from.
 
 `warning` is said *once* per turn, through the engine's `sayOnceThisTurn(_:)`.
 A game that also points `text.pitchBlack` at the same sentence — Zork does,

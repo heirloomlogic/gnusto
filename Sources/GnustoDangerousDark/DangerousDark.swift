@@ -13,9 +13,10 @@ import Gnusto
 /// ```
 ///
 /// The daemon counts consecutive turns *ending* in darkness, wherever
-/// they're spent — lingering is lethal, movement is not — so the warning
-/// turn is a guarantee (the classic fairness contract) and a lightless dash
-/// toward daylight can still succeed. Any reachable light resets the count.
+/// they're spent, and a move counts the same as a wait. The warning turn is a
+/// guarantee (the classic fairness contract), and a lightless dash toward
+/// daylight is safe if no more than `graceTurns + 1` of its turns end in the
+/// dark. Any reachable light resets the count.
 ///
 /// Death is a **dice roll** once the grace runs out: the first dark turn only
 /// warns, a configurable grace of guaranteed-safe turns follows, and then every
@@ -109,7 +110,8 @@ public struct DangerousDark: GameContent {
     /// never earlier than dark turn 2, because dark turn 1 is the warning's own
     /// arm however low `graceTurns` goes. So a
     /// death here lands on a turn spent lingering in a dark the player has
-    /// already been warned about, rather than on the turn they walked into it.
+    /// already been warned about, rather than on the turn the dark began —
+    /// whether that later turn is a move or a wait.
     /// Zork has two death sentences, and both belong to moves. `V-WALK`
     /// (`gverbs.zil:1578`) says "You have walked into the slavering fangs of a
     /// lurking grue!" and fires only on a *blocked* move in the dark, a mechanic
