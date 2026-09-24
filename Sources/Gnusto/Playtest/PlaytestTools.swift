@@ -578,13 +578,14 @@ enum PlaytestTools {
                 in the process leaves the evidence behind and the session can \
                 be replayed. One label per tester: probes under a label share \
                 its save slots, and two testers sharing a label share each \
-                other's saves. Pass `savesFrom` when the round has cut you a \
-                save to start from: the slots are copied into your label's \
-                saves before the game boots, so `restore` reaches them from \
-                this session and from every later probe under the same label. \
-                Pass `start` when the round has a deep start for you: the server \
-                plays that route silently before your first turn and the opening \
-                you get back is where it lands, not turn zero. You are never \
+                other's saves. Pass `savesFrom` to bring in saved games from \
+                another label or from a directory of .gnusto slots: they are \
+                copied into your label's saves before the game boots, so \
+                `restore` reaches them from this session and from every later \
+                probe under the same label. Pass `start` when the round has a \
+                deep start for you: the server plays that route silently before \
+                your first turn and the opening you get back is where it lands, \
+                not turn zero. You are never \
                 shown the commands, and you are not charged for them — the queue \
                 is rebuilt at the landing, so it names what is in the room you \
                 are standing in. The queue of things the game has already shown \
@@ -639,19 +640,21 @@ enum PlaytestTools {
                         "type": "string",
                         "description": .string(
                             "Where this session's first saved games come from: a play "
-                                + "label, or — anything holding a slash — the path of a "
-                                + "directory of .gnusto slots. They are copied into your "
-                                + "own label's saves before the game boots, so `restore` "
-                                + "finds them by name here and in every later probe under "
-                                + "the label. Without it a round that cut you a save to "
-                                + "start from cannot hand it over, and the game answers "
-                                + "\"Restore failed.\" to the slot you were told to ask "
-                                + "for. The copy is one way and never overwrites: a slot "
-                                + "your label already holds under the same name is left "
-                                + "exactly as it is, and a `save` here lands in your label "
-                                + "and can never reach the source. The result lists what "
-                                + "you can now restore — check the name you were given is "
-                                + "in it before you spend a turn on it."),
+                                + "label, or — anything holding a slash or starting with ~ "
+                                + "— the path of a directory of .gnusto slots, such as the "
+                                + "saves-in/ directory beside an earlier replay's "
+                                + "transcript. They are copied into your own label's saves "
+                                + "before the game boots, so `restore` finds them by name "
+                                + "here and in every later probe under the label. Use it "
+                                + "for a slot another label saved; without it the game "
+                                + "answers \"Restore failed.\" to that slot's name. A deep "
+                                + "start is `start`, not a save. The copy is one way and "
+                                + "never overwrites: a slot your label already holds under "
+                                + "the same name is left exactly as it is, and a `save` "
+                                + "here lands in your label and can never reach the "
+                                + "source. The result lists what you can now restore — "
+                                + "check the slot you want is in it before you spend a "
+                                + "turn on it."),
                     ],
                     "start": [
                         "type": "string",
@@ -1198,7 +1201,10 @@ enum PlaytestTools {
                 back drops the turns after the mark from this session's command \
                 list (they are kept beside the transcript as branch-NNN.txt), so \
                 whatever you file afterwards still replays from the first line. \
-                Marking the same name twice moves it.
+                Coming back is refused, and nothing moves, when a line after the \
+                mark saved a game into your label's saves: the slot would stay \
+                there while the command list no longer saves it. Marking the \
+                same name twice moves it.
                 """,
             inputSchema: [
                 "type": "object",
@@ -1250,8 +1256,10 @@ enum PlaytestTools {
                 queue and the move counter all return to that line, and the turns \
                 after it leave this session's command list — kept beside the \
                 transcript as branch-NNN.txt, so the branch you abandoned is \
-                still evidence. This is the harness, not the game's RESTORE verb; \
-                type that at the game if what you want to test is the game's own \
+                still evidence. Refused, with nothing moved, when a line after \
+                the mark saved a game into your label's saves; the answer names \
+                that line. This is the harness, not the game's RESTORE verb; type \
+                that at the game if what you want to test is the game's own \
                 restore.
                 """,
             inputSchema: [
@@ -1291,7 +1299,10 @@ enum PlaytestTools {
                 they are numbered everywhere else. Goes back at most \
                 \(PlaytestSession.snapshotRing) lines — the history it keeps in \
                 memory is bounded — so mark a place with checkpoint before you \
-                wander off if you may want to come back from further away.
+                wander off if you may want to come back from further away. \
+                Refused, with nothing moved, when one of those lines saved a game \
+                into your label's saves: the answer names that line, and you can \
+                go back to it or later.
                 """,
             inputSchema: [
                 "type": "object",
@@ -1458,10 +1469,13 @@ enum PlaytestTools {
                 `savesFrom` set to the label that wrote the slot, or to the path of \
                 a `saves-in/` directory beside an earlier probe's transcript — \
                 without it the game answers "Restore failed." and the verdict you \
-                get back is about the harness, not about the finding. Every call writes its own probe directory and \
-                answers with `transcript=<path>`: quote that path in whatever you \
-                file, because a frame you read here and cited nowhere is a claim \
-                the next reader cannot check.
+                get back is about the harness, not about the finding. Every call \
+                writes its own probe directory and answers with \
+                `transcript=<path>`: quote that path in whatever you file, because \
+                a frame you read here and cited nowhere is a claim the next reader \
+                cannot check. If the directory or its files could not be written, \
+                the answer has no `transcript=` and says `no probe written:` and \
+                why.
                 """,
             inputSchema: [
                 "type": "object",
@@ -1517,12 +1531,18 @@ enum PlaytestTools {
                 if let named = arguments["savesFrom"]?.stringValue {
                     savesFrom = try await sessions.savesSource(named)
                 }
+                let probe: Result<URL, PlaytestError>
+                do throws(PlaytestError) {
+                    probe = .success(try await sessions.replayProbe())
+                } catch {
+                    probe = .failure(error)
+                }
                 let outcome = try await PlaytestReplay.run(
                     prepared: game,
                     commands: commands,
                     seed: try seed(arguments),
                     expect: arguments["expect"]?.stringValue,
-                    probe: await sessions.replayProbe(),
+                    probe: probe,
                     savesFrom: savesFrom)
                 return PlaytestToolResult(
                     text: outcome.rendered, structured: outcome.json)
@@ -1572,8 +1592,15 @@ enum PlaytestTools {
                 "description": .string(
                     "Where this replay's transcript was written. Written once and never "
                         + "rewritten, so it is the evidence a reader follows later — cite "
-                        + "it in whatever you file. Absent only if the write failed, which "
-                        + "does not fail the replay."),
+                        + "it in whatever you file. Absent only when no probe could be "
+                        + "written, which does not fail the replay; probeError then says why."),
+            ],
+            "probeError": [
+                "type": "string",
+                "description": .string(
+                    "Why no probe directory was written: it could not be made, or its "
+                        + "files could not be written into it. Absent when transcriptPath "
+                        + "is present."),
             ],
             "commandsPath": [
                 "type": "string",
@@ -2152,6 +2179,15 @@ extension PlaytestReplay.Outcome {
             staged.map { " saves-from=\($0.label) slots=\($0.restorable.joined(separator: ","))" }
             ?? ""
         var lines = [headline + transcriptTrailer + stagedTrailer]
+        // Second, where the path would have been, so a caller about to cite the
+        // path finds the reason it is missing instead.
+        if let probeError {
+            lines.append(
+                """
+                no probe written: \(probeError). This replay left no file to cite; quote \
+                its command list and seed instead.
+                """)
+        }
         // Said here as well as in the tool description, because the reader who
         // needs it is reading a bad answer rather than re-reading the schema
         // that produced it. This is the one refusal in the tree that is about
@@ -2197,6 +2233,9 @@ extension PlaytestReplay.Outcome {
                 .string(probe.appendingPathComponent("transcript.txt").path)
             entry["commandsPath"] =
                 .string(probe.appendingPathComponent("commands.txt").path)
+        }
+        if let probeError {
+            entry["probeError"] = .string(probeError)
         }
         if let staged {
             entry["savesStaged"] = .array(staged.restorable.map { .string($0) })

@@ -389,6 +389,7 @@ struct PlaytestSessionTests {
         let refusal = await #expect(throws: PlaytestError.self) {
             try await session.rewind(turns: 3)
         }
+        #expect(refusal?.description.contains("line 3 saved a game") == true)
         #expect(refusal?.description.contains("Nothing moved") == true)
         #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["deep"])
         _ = try await session.rewind(turns: 1)
@@ -1721,6 +1722,20 @@ struct PlaytestSessionTests {
         let empty = try await session.recall(from: 50, to: 60, grep: nil)
         #expect(empty.contains("nothing in lines 50–60"))
         #expect(empty.contains("3 recorded lines"))
+    }
+
+    /// `from: 0` is how a session with no deep start asks for its opening, and
+    /// the answer says nothing about a deep start it was never given.
+    @Test func recallFromTheOpeningWithoutADeepStartClaimsNone() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "cold-recall", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["west"], allowPrompts: false)
+
+        let all = try await session.recall(from: 0, to: 100, grep: nil)
+        #expect(!all.contains("deep start"))
+        #expect(all.contains("Foyer of the Opera House"))
+        #expect(all.contains("> west"))
     }
 
     @Test func recallRefusesABackwardsRange() async throws {

@@ -94,6 +94,11 @@ enum PlaytestReplay {
         /// cite. `nil` when no directory was offered or the write failed.
         let probe: URL?
 
+        /// Why no probe was written, when one was asked for and none landed:
+        /// the directory could not be made, or the files could not be written
+        /// into it. `nil` when ``probe`` is set or none was asked for.
+        let probeError: String?
+
         /// The save slots copied in before the game booted, or `nil` for the
         /// ordinary clean start. See ``PlaytestSessions/StagedSlots``.
         let staged: PlaytestSessions.StagedSlots?
@@ -114,9 +119,10 @@ enum PlaytestReplay {
     ///     `bin/playtest-replay`'s default and a session's.
     ///   - expect: an excerpt to look for, or `nil` to read the transcript.
     ///   - probe: a fresh directory to leave `commands.txt` and `transcript.txt`
-    ///     in, or `nil` to run without leaving a receipt. The server always
-    ///     passes one; the suite passes `nil` where the files are not the
-    ///     subject.
+    ///     in, the reason the server could not make one, or `nil` to run without
+    ///     leaving a receipt. The server passes one of the first two; the suite
+    ///     passes `nil` where the files are not the subject. A failure runs the
+    ///     replay anyway and is carried to ``Outcome/probeError``.
     ///   - savesFrom: a directory of `.gnusto` slots this replay may read — a
     ///     label's `saves/`, or a probe's `saves-in/` — or `nil` for a clean
     ///     start. Copied in, never written back — see
@@ -128,7 +134,7 @@ enum PlaytestReplay {
     ///   the evidence went, and what was staged to get there.
     static func run(
         prepared: PreparedGame, commands: [String], seed: UInt64, expect: String?,
-        probe: URL? = nil, savesFrom: URL? = nil
+        probe: Result<URL, PlaytestError>? = nil, savesFrom: URL? = nil
     ) async throws -> Outcome {
         guard commands.count <= commandLimit else {
             throw PlaytestError(
@@ -180,14 +186,26 @@ enum PlaytestReplay {
         let transcript = io.transcript
 
         let blocks = Self.blocks(in: transcript)
+        var written: URL?
+        var probeError: String?
+        switch probe {
+        case .success(let directory):
+            written = Self.write(commands, transcript, seed: seed, staged: staged, to: directory)
+            if written == nil {
+                probeError = "couldn't write commands.txt and transcript.txt into \(directory.path)"
+            }
+        case .failure(let error):
+            probeError = error.description
+        case nil:
+            break
+        }
         return Outcome(
             transcript: transcript,
             lines: commands.count,
             finished: await world.hasEnded(),
             verdict: expect.map { Self.verdict(on: $0, in: blocks) },
-            probe: probe.flatMap {
-                Self.write(commands, transcript, seed: seed, staged: staged, to: $0)
-            },
+            probe: written,
+            probeError: probeError,
             staged: staged,
             restoreWasUnreachable: Self.restoreWasUnreachable(commands, staged: staged))
     }

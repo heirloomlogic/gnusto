@@ -733,9 +733,13 @@ actor PlaytestSession {
         // the firewall bug `chunkRegions` fixed. Raised rather than refused: a
         // tester asking for line 1 is making an honest mistake, and a hard error
         // costs it a call to recover from something the tool can simply do.
+        //
+        // Only a session with a prefix is told about one. Without a prefix,
+        // `from: 0` is how a tester asks for the opening, which the next block
+        // reads on its own.
         let floor = max(from, prefixCount + 1)
         let clamped =
-            floor > from
+            prefixCount > 0 && floor > from
             ? "[playtest] session=\(id): lines 1–\(prefixCount) are the deep start this "
                 + "session was given and are not readable here; recalling from \(floor).\n"
             : ""
@@ -1563,10 +1567,11 @@ actor PlaytestSession {
         guard target >= lastSaveLine else {
             throw PlaytestError(
                 """
-                Can't go back to line \(target): line \(lastSaveLine) saved a game, and the \
-                slot would stay in label \(label)'s saves, where another probe may be using \
-                it, for a restore this command list never saved. Nothing moved. Go back to \
-                line \(lastSaveLine) or later, or open a fresh session.
+                Can't go back to line \(target): line \(lastSaveLine) saved a game into \
+                label \(label)'s saves. Going back past it would leave that slot there, where \
+                another probe under the label may be using it, although this session's \
+                command list would no longer save it. Nothing moved. Go back to line \
+                \(lastSaveLine) or later, or open a fresh session.
                 """)
         }
 
