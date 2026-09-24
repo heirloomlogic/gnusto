@@ -141,6 +141,15 @@ actor PlaytestSession {
     /// described there as one tester's namespace rather than one run's.
     nonisolated let saveDirectory: URL
 
+    /// The saved games ``saveDirectory`` held when this session was made, keyed
+    /// by file name, for ``export()`` to replay against. Taken after `open`
+    /// staged any `savesFrom` slots and before a route or a tester's line ran.
+    nonisolated let savesAtOpen: [String: Data]
+
+    /// The last recorded line that changed a slot in ``saveDirectory``, or `0`.
+    /// ``truncate(to:naming:)`` will not go back past it, and says why.
+    private var lastSaveLine = 0
+
     /// What `open` copied into ``saveDirectory`` before this session existed,
     /// or `nil` for the ordinary clean start.
     ///
@@ -536,6 +545,7 @@ actor PlaytestSession {
         self.prepared = prepared
         self.directory = directory
         self.saveDirectory = saveDirectory
+        self.savesAtOpen = Self.savedGames(in: saveDirectory)
         self.staged = staged
         self.routeName = route?.name
         self.prefixCount = route.map { $0.prefix.count } ?? 0
@@ -1232,10 +1242,12 @@ actor PlaytestSession {
     /// — after everything has been written, so nothing is lost to the failure.
     ///
     /// The one honest caveat is a session that used the player's own `save` or
-    /// `restore`: those reach a file outside the run, which another probe under
-    /// the same label may have rewritten since, so a mismatch there may be about
-    /// the slot rather than about the driver. The message says so when it
-    /// applies.
+    /// `restore`. The replay starts from ``savesAtOpen``, and a rewind will not
+    /// go back past a line that saved a game, so the recorded lines
+    /// account for the changes this session made to the label's saves. They do
+    /// not account for another probe under the same label writing there while
+    /// this one ran. A mismatch there may be about the slots rather than about
+    /// the driver. The message says so when it applies.
     ///
     /// Exporting does not end the session. The next `move` reopens the
     /// transcript and rewrites it from the blocks in hand, so a tester that
@@ -1261,8 +1273,8 @@ actor PlaytestSession {
         // has to run.
         let lines = Self.commandLines(in: try read(commandsURL))
         let recorded = try read(transcriptURL)
-        let replayed = await replay(lines, status: footer)
-        let plain = await replay(lines, status: nil)
+        let replayed = try await replay(lines, status: footer)
+        let plain = try await replay(lines, status: nil)
         try write(plain, to: transcriptWithoutStatusURL)
 
         let verified = recorded == replayed
@@ -1292,10 +1304,11 @@ actor PlaytestSession {
                 test, so a reproducer filed from this session may not reproduce.
                 \(Self.firstDifference(recorded, replayed))\
                 \(pinned
-                    ? "\n\nThis session used the player's own save or restore, which reaches "
-                        + "a file outside the run: another probe under label \(label) may have "
-                        + "rewritten a slot since, in which case the difference is about the "
-                        + "slot and not about the driver. Check the diverging turn.\n"
+                    ? "\n\nThis session used the player's own save or restore. The replay "
+                        + "starts from the saved games label \(label) held when this session "
+                        + "opened, and another probe under that label may have written to it "
+                        + "while this one was playing, in which case the difference is about "
+                        + "the slots and not about the driver. Check the diverging turn.\n"
                     : "\n")
                 \(files)
                 """)
@@ -1320,19 +1333,46 @@ actor PlaytestSession {
     /// The same commands through a real `REPL`, returning what
     /// `ScriptedIOHandler` recorded.
     ///
-    /// The session's own save directory, not a scratch one: a run that typed
-    /// `save` and then `restore` only reproduces against the slots it wrote.
+    /// The save directory is a throwaway holding ``savesAtOpen``, deleted on
+    /// the way out. It cannot be ``saveDirectory``: by now the session's own
+    /// `save` has written a slot there, and the save prompt lists the slots it
+    /// finds (#495), so a replayed `save` would print `(saved: slot1)` where the
+    /// session printed the bare prompt. Starting from ``savesAtOpen``, the
+    /// replay's prompts list what the session's listed, a `restore` reads the
+    /// slot the replay's own `save` wrote, and no replayed `save` can overwrite
+    /// a tester's slot.
     ///
     /// - Parameters:
     ///   - commands: the lines to feed.
     ///   - status: the footer to append, or `nil` for the plain transcript the
     ///     suite sees.
+    /// - Throws: ``PlaytestError`` when the saved games can't be copied in.
     /// - Returns: the transcript.
-    private func replay(_ commands: [String], status: StatusFooter?) async -> String {
-        let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saveDirectory)
+    private func replay(_ commands: [String], status: StatusFooter?) async throws -> String {
+        let saves = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-export-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: saves) }
+        do {
+            try FileManager.default.createDirectory(
+                at: saves, withIntermediateDirectories: true)
+            for (file, bytes) in savesAtOpen {
+                try bytes.write(to: saves.appendingPathComponent(file))
+            }
+        } catch {
+            throw PlaytestError("Couldn't copy the saved games into \(saves.path): \(error).")
+        }
+        let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saves)
         let io = ScriptedIOHandler(lines: commands)
         await REPL(world: world, io: io, status: status).run()
         return io.transcript
+    }
+
+    /// The saved games in `directory`, keyed by file name. A slot that can't
+    /// be read is left out.
+    private static func savedGames(in directory: URL) -> [String: Data] {
+        SaveStore.existingSaves(in: directory).reduce(into: [:]) { held, slot in
+            held[slot.url.lastPathComponent] = try? Data(contentsOf: slot.url)
+        }
     }
 
     // MARK: - Going back
@@ -1512,6 +1552,16 @@ actor PlaytestSession {
                 would land in a world that never happened. Nothing moved. Open a fresh \
                 session and replay \(commandsURL.path) up to line \(target) if you need \
                 this.
+                """)
+        }
+
+        guard target >= lastSaveLine else {
+            throw PlaytestError(
+                """
+                Can't go back to line \(target): line \(lastSaveLine) saved a game, and the \
+                slot would stay in label \(label)'s saves, where another probe may be using \
+                it, for a restore this command list never saved. Nothing moved. Go back to \
+                line \(lastSaveLine) or later, or open a fresh session.
                 """)
         }
 
@@ -1936,7 +1986,15 @@ actor PlaytestSession {
         // the same world. ``StatusFooter/turnCost(_:audit:movesBefore:)`` is
         // that rule, written once for both drivers. (#350)
         let movesBefore = lastMoves
+        // Only an answer to the save prompt or its overwrite question writes a
+        // slot, so only those lines read the directory on either side.
+        let savesBefore =
+            pending == .saveFilename || pending == .confirmSaveOverwrite
+            ? Self.savedGames(in: saveDirectory) : nil
         let (result, audit) = await world.performAudited(line)
+        if let savesBefore, Self.savedGames(in: saveDirectory) != savesBefore {
+            lastSaveLine = index
+        }
         let fields = await world.statusFields()
         let turnCost = StatusFooter.turnCost(result, audit: audit, movesBefore: movesBefore)
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
