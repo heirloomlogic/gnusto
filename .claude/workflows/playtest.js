@@ -592,7 +592,7 @@ You are working on the ${projectName} repo. The package under test is at \`${pkg
 and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
 Read these before you do anything else:
-- \`${refPath}/playtester-brief.md\` — the doctrine, the judgement kernel K1..K13, and
+- \`${refPath}/playtester-brief.md\` — the doctrine, the judgement kernel, and
   what is never a finding. This is your oracle when the design doc is silent.
 - \`${refPath}/finding-contract.md\` — what a finding must carry.
 ${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the map, the timeline, the solution. Its "free to change" / "not free to change" lists decide what is even arguable.` : `- There is NO design doc for ${game}. Read \`${gameSourceDir}/${game}.swift\` instead: its type doc comment lists the idioms the game exists to demonstrate, which is the nearest thing to a contract, and \`maxScore\` plus the score line is a machine-checkable win oracle.`}${conventionsPath ? `
@@ -1757,7 +1757,9 @@ Two reproducers do not start clean, and each has one field that says so.
 **One taken from a deep start** cannot go through \`replay\` at all, which always boots at
 turn zero. Take a \`checkpoint\` on the turn your session opens — that is the frame the
 route stopped on — and \`restore\` to it to re-run a trimmed list from exactly where you
-began. **Put the route name in the finding's \`startedFrom\` field**, or the verifier
+began. If a line after the checkpoint saved a game, that restore is refused and names the
+line; open a fresh session with the same \`start\` and play the list there instead.
+**Put the route name in the finding's \`startedFrom\` field**, or the verifier
 replays your commands from turn zero, where they mean something else or nothing at all.
 
 **One that begins \`restore\`** needs the save you wrote: pass

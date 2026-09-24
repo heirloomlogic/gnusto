@@ -965,9 +965,9 @@ actor PlaytestSession {
         /// is the numerator of the round's room coverage and `survey`'s room
         /// roster is the denominator; before the ID travelled, the two were in
         /// different key spaces and one of them could not represent the answer.
-        /// Dungeon declares 143 rooms under 126 distinct names, so a
+        /// Dungeon declares 195 rooms under 138 distinct names, so a
         /// name-keyed record charged a tester who walked all seven Coal Mines
-        /// with one room and left seventeen rooms permanently uncountable.
+        /// with one room and left fifty-seven rooms permanently uncountable.
         ///
         /// **Every room the session ever stood in, whether or not the turns
         /// survived a rewind.** The 2026-08-17 round reported Vane's Study as

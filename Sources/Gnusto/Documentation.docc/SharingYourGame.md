@@ -57,7 +57,7 @@ swift build --product Zork1
 
 ## Environment variables
 
-Seven variables configure a running game, two report on one, and one replaces the game with a play-test server. All are optional — a game with none of them set behaves exactly as it always has.
+These variables configure a running game, report on one, or replace it with a play-test server (`GNUSTO_MCP`). All are optional — a game with none of them set behaves exactly as it always has.
 
 | Variable | Effect |
 |---|---|
@@ -66,8 +66,9 @@ Seven variables configure a running game, two report on one, and one replaces th
 | `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. A path that can't be opened (a directory, an unwritable location) is a complaint on stderr, and the session plays on without recording. |
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
-| `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by ``GameMain`` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |
+| `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | score=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by ``GameMain`` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |
 | `GNUSTO_PLAYTEST_DIR` | Where play-test sessions write. Defaults to `.context/playtest`. Same reason as `GNUSTO_SAVE_DIR`: a harness driving a checkout it doesn't own has to keep its output away from yours. |
+| `GNUSTO_PLAYTEST_ROUTES` | Where play-test sessions look for committed deep starts. Replaces `.playtest` in `.playtest/<Game>/routes/`; the `<Game>/routes/` part of the path stays. `bin/playtest-routes`, `bin/playtest-preflight` and `bin/playtest-replay --start` read it too. See <doc:PlayTesting#Deep-starts>. |
 | `GNUSTO_MCP_MAX_SESSIONS` | How many play-test sessions may hold a live world at once. Defaults to 32. Over the cap the oldest is evicted to its command list and replays itself on next use, so an evicted session answers exactly as it did before — it just costs more to ask. |
 | `GNUSTO_STACK_REPORT` | Prints how much of the bootstrap's 16 MB stack the game's declarations actually used, one line per boot, on stderr. A flag, not a setting. Diagnostic — see <doc:SplittingAGameAcrossFiles#Split-for-reading-not-for-the-stack>. |
 | `GNUSTO_MCP` | Serves the play-test protocol over stdio instead of playing, the same as the `--mcp` flag. A flag, not a setting. For a client that can set an environment but not an argument vector — see <doc:PlayTesting>. |

@@ -74,15 +74,16 @@ lines(mentioning: "keeper", in: transcript)
 
 ## Sweep the vocabulary
 
-Two assertions check something no hand-written needle does: whether the game answers for the words it printed.
+Two assertions check whether the game answers for the words it printed. You write the probe: walk the rooms and `examine` each noun their prose names. The assertions read the transcript that comes back.
 
 ```swift
+let probe = ["examine table", "examine window", "north", "examine door"]
 let transcript = try await play(MyGame(), probe, seed: 0)
 expectEveryNounAnswered(transcript, "\(probe)")
 expectNoAmbiguity(transcript, "\(probe)")
 ```
 
-`expectEveryNounAnswered` walks the nouns the prose printed and fails on any the parser does not know. A named thing the parser has never heard of reads to a player as a bug in the game, and it is the commonest defect there is, because adding a noun to a description costs nothing and adding the scenery item is a separate thought. `expectNoAmbiguity` fails when a phrase the game itself printed makes the parser ask which one you meant.
+`expectEveryNounAnswered` fails if the transcript contains either stock answer to a noun the parser can't use: `I don't know the word` for a word outside the vocabulary, and `can't see any such thing` for known words that name nothing in scope. A named thing the parser has never heard of reads to a player as a bug in the game, and it is the commonest defect there is, because adding a noun to a description costs nothing and adding the scenery item is a separate thought. The check matches those two phrases as the engine words them, so a game that rewrites `unknownWord` or `cantSeeAnySuchThing` in its ``GameText`` loses that half of the check. `expectNoAmbiguity` fails when the transcript contains `Which do you mean` — when a phrase the probe typed matched more than one thing.
 
 The third of the family reads the game's text rather than a transcript, and is about voice rather than correctness. `expectNoEngineStubLineSurvives(in:game:)` reflects over your `text.stubs` and records an issue for every line still worded exactly as the engine ships it:
 

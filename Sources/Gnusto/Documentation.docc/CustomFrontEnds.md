@@ -224,7 +224,7 @@ and never reaches ``GameWorld/perform(_:)``, so no fuse or daemon advances.
 front-end concerns by construction — the world simulation cannot see them, so a
 tester's notes cost no turns.
 
-``REPL/init(world:io:transcriptURL:status:environment:)`` takes two optional output settings. `transcriptURL` records from the first turn. `status` appends the one-line `[status] room=… | moves=… | turn=cost|free` footer described in `docs/playtesting.md`. Both default to `nil`, and that default is the safety argument: the test suite builds its REPLs without either argument, so no environment variable can enable recording at launch or add a status footer. ``GameMain`` is the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and passes what it found.
+``REPL/init(world:io:transcriptURL:status:environment:)`` takes two optional output settings. `transcriptURL` records from the first turn. `status` appends the one-line `[status] room=… | moves=… | score=… | turn=cost|free` footer described in `docs/playtesting.md`. Both default to `nil`, and that default is the safety argument: the test suite builds its REPLs without either argument, so no environment variable can enable recording at launch or add a status footer. ``GameMain`` is the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and passes what it found.
 
 The `environment` argument defaults to the process environment. A mid-session `script` command uses its `GNUSTO_TRANSCRIPT_DIR` value to resolve a bare transcript name; pass an explicit environment to keep those recordings in a test's own directory.
 

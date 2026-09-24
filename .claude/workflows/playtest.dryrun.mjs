@@ -1426,7 +1426,7 @@ check(
 // The room key space. The 2026-08-18 Dungeon round published "119 of 195 rooms
 // visited" from a numerator of display names and a denominator an agent had
 // retyped out of `Sources/`. Neither half could be repaired on its own: names
-// are not unique, so seventeen of that game's 143 rooms could not be counted at
+// are not unique, so fifty-seven of that game's 195 rooms could not be counted at
 // all whatever the two sides were matched with. These assert the whole path:
 // the survey tool -> the roster -> the collator's ids -> the critic's line.
 const surveyPrompt = promptFor((p) => /^survey:/.test(String(p.label || '')))

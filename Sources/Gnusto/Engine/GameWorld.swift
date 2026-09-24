@@ -430,7 +430,7 @@ public actor GameWorld {
     /// the ordinary words rather than replayed into a world that has moved on.
     ///
     /// It costs whatever the repeated command costs, because it *is* that
-    /// command: a repeated LOOK is free and a repeated TAKE is a move.
+    /// command: LOOK costs a turn, so a repeated LOOK does too.
     ///
     /// Bounded without a counter: ``WorldState/lastCommand`` is written only
     /// for a command that is neither engine-level nor meta, so the line it

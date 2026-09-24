@@ -87,7 +87,9 @@ at all.
 first line. Copy that path into your finding whenever the frame you are quoting
 came from a replay rather than from your own session — it is the file that holds
 the turn, and a quote with no file behind it cannot be checked by anyone who
-wasn't there.
+wasn't there. If the server could not write the probe, the first line has no
+`transcript=` and the second begins `no probe written:` with the reason. Then
+quote the command list and the seed instead.
 
 ## The judgement kernel
 

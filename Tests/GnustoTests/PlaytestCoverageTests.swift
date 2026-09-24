@@ -1224,9 +1224,9 @@ struct PlaytestCoverageTests {
     ///
     /// This is the fault that made the 2026-08-18 Dungeon round's "119 of 195
     /// rooms visited" unrepairable: the numerator was display names and the
-    /// denominator was a room roster, and Dungeon's 143 rooms carry 126 distinct
+    /// denominator was a room roster, and Dungeon's 195 rooms carry 138 distinct
     /// names. A tester who walked all seven Coal Mines contributed one entry,
-    /// and seventeen rooms could not be represented at all. The record is keyed
+    /// and fifty-seven rooms could not be represented at all. The record is keyed
     /// by ``EntityID`` now, and this is the assertion that keeps it that way —
     /// the name is still carried, and is still a duplicate, so a record that
     /// quietly went back to keying on it fails here rather than a round later.

@@ -209,9 +209,10 @@ suite runs on pushes to main, not on PRs.
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
 `GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, `GNUSTO_STATUS=1` appends
-a `[status] room=… | moves=… | turn=cost|free | …` line to every turn (a `REPL`
-argument, not an environment read — the suite is unaffected), and a line starting `//`
-or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
+a `[status] room=… | moves=… | score=… | turn=cost|free | …` line to every turn (a
+`REPL` argument, not an environment read — the suite is unaffected), and a line
+starting `//` or `#` is a tester comment that never reaches the parser. See
+`docs/playtesting.md`.
 
 `GNUSTO_SEED` also seeds the **suite**: it supplies the seed for every `play(_:_:)` call
 that passed none of its own, and leaves the calls that did pin one alone. That is what
