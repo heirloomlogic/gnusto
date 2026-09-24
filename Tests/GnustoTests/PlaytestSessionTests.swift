@@ -374,24 +374,27 @@ struct PlaytestSessionTests {
             SaveStore.existingSaveNames(in: second.saveDirectory) == ["deep", "later"])
     }
 
-    /// A rewind takes back the saves the lines it writes off made, so a
-    /// `restore` after it reads what the recorded lines saved and the export
-    /// still verifies.
-    @Test func aRewindTakesBackTheSavesItWritesOff() async throws {
+    /// A rewind will not drop a line that saved. The slot may be what another
+    /// probe under the label restored, so it stays, and a session that went
+    /// back past the save would restore a slot its command list never saved.
+    @Test func aRewindWillNotGoBackPastASave() async throws {
         let harness = try Harness(OperaHouse())
         let session = try await harness.sessions.open(label: "rewound", seed: 0)
         _ = try await session.opening()
-        _ = try await session.move(commands: ["west", "save", "kept"], allowPrompts: true)
-        let kept = session.saveDirectory.appendingPathComponent("kept.gnusto")
-        let bytes = try Data(contentsOf: kept)
-        _ = try await session.move(
-            commands: ["east", "save", "kept", "yes", "save", "slot1"], allowPrompts: true)
+        _ = try await session.move(commands: ["west", "save", "deep", "east"], allowPrompts: true)
+        let other = try await harness.sessions.open(label: "rewound", seed: 0)
+        _ = try await other.opening()
+        _ = try await other.move(commands: ["restore", "deep"], allowPrompts: true)
 
-        _ = try await session.rewind(turns: 6)
-        #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["kept"])
-        #expect(try Data(contentsOf: kept) == bytes)
-        _ = try await session.move(commands: ["restore", "slot1"], allowPrompts: true)
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await session.rewind(turns: 3)
+        }
+        #expect(refusal?.description.contains("Nothing moved") == true)
+        #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["deep"])
+        _ = try await session.rewind(turns: 1)
+        _ = try await session.move(commands: ["restore", "deep"], allowPrompts: true)
         #expect(try await session.export().verified)
+        #expect(try await other.export().verified)
     }
 
     // MARK: - Checkpoints, restores and rewinds

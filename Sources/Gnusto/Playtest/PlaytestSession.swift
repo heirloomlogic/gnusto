@@ -146,11 +146,12 @@ actor PlaytestSession {
     /// staged any `savesFrom` slots and before a route or a tester's line ran.
     nonisolated let savesAtOpen: [String: Data]
 
-    /// Every slot a line of this session saved into, by recorded-line index,
-    /// with what the file held before it (`nil` for a slot the line made).
-    /// ``truncate(to:naming:)`` writes those bytes back for the lines it drops,
-    /// so a rewind takes back a `save` as it takes back the rest of the turn.
-    private var saveWrites: [(line: Int, file: String, before: Data?)] = []
+    /// The last recorded line that changed a slot in ``saveDirectory``, or `0`.
+    /// ``truncate(to:naming:)`` refuses to go back past it: the slot would stay
+    /// for a later `restore` the command list never saved, and it is not this
+    /// session's to delete, since another probe under the label may have
+    /// restored it or saved over it since.
+    private var lastSaveLine = 0
 
     /// What `open` copied into ``saveDirectory`` before this session existed,
     /// or `nil` for the ordinary clean start.
@@ -1244,12 +1245,12 @@ actor PlaytestSession {
     /// — after everything has been written, so nothing is lost to the failure.
     ///
     /// The one honest caveat is a session that used the player's own `save` or
-    /// `restore`. The replay starts from ``savesAtOpen``, and a rewind puts
-    /// back the slots its dropped lines saved into, so the recorded lines
-    /// account for the changes this session made to the label's saves. They do
-    /// not account for another probe under the same label writing there while
-    /// this one ran. A mismatch there may be about the slots rather than about
-    /// the driver. The message says so when it applies.
+    /// `restore`. The replay starts from ``savesAtOpen``, and a rewind will not
+    /// drop a line that saved, so the recorded lines account for the changes
+    /// this session made to the label's saves. They do not account for another
+    /// probe under the same label writing there while this one ran. A mismatch
+    /// there may be about the slots rather than about the driver. The message
+    /// says so when it applies.
     ///
     /// Exporting does not end the session. The next `move` reopens the
     /// transcript and rewrites it from the blocks in hand, so a tester that
@@ -1557,22 +1558,16 @@ actor PlaytestSession {
                 """)
         }
 
-        // The slots a dropped line saved into go back to what they held, newest
-        // first, so a `restore` after this reads what the kept lines saved.
-        for write in saveWrites.reversed() where write.line > target {
-            let url = saveDirectory.appendingPathComponent(write.file)
-            do {
-                if let before = write.before {
-                    try before.write(to: url)
-                } else {
-                    try FileManager.default.removeItem(at: url)
-                }
-            } catch {
-                throw PlaytestError(
-                    "Couldn't put back the saved game \(url.path) as it was at line \(target): \(error).")
-            }
+        guard target >= lastSaveLine else {
+            throw PlaytestError(
+                """
+                Can't go back to line \(target): line \(lastSaveLine) saved a game. The slot \
+                would stay in label \(label)'s saves for a later restore this command list \
+                never saved, and it is not this session's to delete, because another probe \
+                under the label may be using it. Nothing moved. Go back to line \
+                \(lastSaveLine) or later, or open a fresh session.
+                """)
         }
-        saveWrites.removeAll { $0.line > target }
 
         let branch = writeBranch(dropped)
         turns.removeSubrange(target...)
@@ -2001,12 +1996,8 @@ actor PlaytestSession {
             pending == .saveFilename || pending == .confirmSaveOverwrite
             ? Self.savedGames(in: saveDirectory) : nil
         let (result, audit) = await world.performAudited(line)
-        if let savesBefore {
-            saveWrites.removeAll { $0.line >= index }
-            for (file, bytes) in Self.savedGames(in: saveDirectory)
-            where savesBefore[file] != bytes {
-                saveWrites.append((line: index, file: file, before: savesBefore[file]))
-            }
+        if let savesBefore, Self.savedGames(in: saveDirectory) != savesBefore {
+            lastSaveLine = index
         }
         let fields = await world.statusFields()
         let turnCost = StatusFooter.turnCost(result, audit: audit, movesBefore: movesBefore)
