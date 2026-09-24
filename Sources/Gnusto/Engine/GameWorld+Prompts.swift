@@ -176,7 +176,7 @@ extension GameWorld {
         pendingClarification = nil
         let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
-            frame.say(definition.text.restored())
+            frame.say(definition.text.restored(), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)

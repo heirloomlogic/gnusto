@@ -416,6 +416,67 @@ struct PlaytestCoverageTests {
         #expect(try await ids(session).allSatisfy { !$0.contains("word") })
     }
 
+    /// A room heading is a label, not prose. Walking back into the Foyer prints
+    /// its name on a line of its own, and "Foyer of the Opera House" would queue
+    /// `x house`, a word Cloak of Darkness does not know (#625).
+    @Test func aRoomHeadingIsNotANoun() async throws {
+        let session = try await session(OperaHouse())
+        _ = try await session.move(commands: ["west", "east"], allowPrompts: false)
+        #expect(!(try await ids(session).contains("noun:house@Foyer of the Opera House")))
+    }
+
+    /// The engine's answers at the save prompt are not about the world. The
+    /// refusal "Paths aren't allowed here; enter a plain name." would queue
+    /// `x name` (#625).
+    @Test func aSavePromptsRefusalIsNotANoun() async throws {
+        let session = try await session(OperaHouse())
+        _ = try await session.move(commands: ["save", "a/b"], allowPrompts: true)
+        #expect(try await ids(session).allSatisfy { !$0.hasPrefix("noun:name@") })
+    }
+
+    /// VERSION prints the banner, which is the program talking about itself.
+    /// Cloak's tagline would queue `x demonstration`.
+    @Test func theVersionBannerIsNotANoun() async throws {
+        let session = try await session(OperaHouse())
+        _ = try await session.move(commands: ["version"], allowPrompts: false)
+        #expect(try await ids(session).allSatisfy { !$0.hasPrefix("noun:demonstration@") })
+    }
+
+    /// RESTART prints the opening again, and the intro is not the starting
+    /// room's queue on the second opening either.
+    @Test func aRestartsIntroIsNotTheStartingRoomsQueue() async throws {
+        let session = try await session(BlurbGame())
+        _ = try await session.move(commands: ["restart"], allowPrompts: true)
+        let ids = try await ids(session)
+        for blurb in ["cathedral", "harbour", "city", "plague"] {
+            #expect(!ids.contains("noun:\(blurb)@Doorway"), "the intro's \(blurb) reached the queue")
+        }
+    }
+
+    /// The death prompt offers to "RESTORE a saved game", and that is not a
+    /// game to examine in the room the player died in.
+    @Test func theDeathPromptIsNotANoun() async throws {
+        let session = try await session(MorgueGame())
+        _ = try await session.move(commands: ["take poison"], allowPrompts: true)
+        #expect(!(try await ids(session).contains("noun:game@Slab Room")))
+    }
+
+    /// A heading said inside one object's run of `take all` is folded into
+    /// that object's labeled line, and the line's prose leaves it out, as
+    /// Dungeon's sphere would otherwise queue `x cage`. The next object's
+    /// line lands where the heading stood before the fold and stays prose.
+    @Test func aHeadingFoldedIntoALabeledLineLeavesTheNextLineProse() async throws {
+        let world = try GameWorld(
+            game: HeadingInARunGame(), seed: 0,
+            saveDirectory: FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString))
+        _ = await world.begin()
+        let prose = await world.perform("take all").prose
+        #expect(prose.contains("ball: Taken. A small parlour."))
+        #expect(!prose.contains("Parlour"))
+        #expect(prose.contains("coin: Taken."))
+    }
+
     // MARK: - Exits
 
     /// A direction a room described and nobody took is an item, and going that

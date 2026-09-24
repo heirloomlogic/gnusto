@@ -112,9 +112,10 @@ enum RoomDescriber {
             if let vehicle {
                 frame.say(
                     frame.definition.text.locationInVehicle(
-                        roomName, frame.definiteNoun(of: vehicle)))
+                        roomName, frame.definiteNoun(of: vehicle)),
+                    aside: true)
             } else {
-                frame.say(roomName)
+                frame.say(roomName, aside: true)
             }
         }
         if verbose {

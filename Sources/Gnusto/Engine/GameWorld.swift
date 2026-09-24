@@ -29,6 +29,24 @@ public struct TurnResult: Sendable {
     public let isFinished: Bool
     /// The status line to display alongside the output.
     public let status: StatusLine
+    /// The paragraphs ``prose`` is read from: the turn's output, or none for
+    /// a free reply or a meta intent, which are the engine answering by
+    /// itself.
+    let paragraphs: [String]
+    /// What ``prose`` reads in place of a paragraph, by position — see
+    /// `Scratch.asides`.
+    let asides: [Int: String]
+
+    /// `output` without the paragraphs the engine said around play rather
+    /// than in it, and empty for a free reply or a meta intent. The play-test
+    /// coverage ledger reads nouns from this, so a heading or a prompt does
+    /// not become a thing to examine. Computed on request, so a turn nobody
+    /// asks about pays nothing for it.
+    var prose: String {
+        guard !asides.isEmpty else { return paragraphs.joined(separator: "\n\n") }
+        return paragraphs.indices.map { asides[$0] ?? paragraphs[$0] }
+            .filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
     // Round-trip questions (disambiguation, save/restore filenames) are
     // pending state on the GameWorld actor: the next input line answers
     // them, so the driver never needs to know a question is open.
@@ -220,8 +238,9 @@ public actor GameWorld {
     public func begin() -> TurnResult {
         let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
-            frame.say(definition.intro)
-            frame.say(definition.text.banner(definition.title, definition.tagline))
+            frame.say(definition.intro, aside: true)
+            frame.say(
+                definition.text.banner(definition.title, definition.tagline), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -1007,12 +1026,19 @@ public actor GameWorld {
     }
 
     /// Merges everything one object's run said into a single
-    /// `brass lantern: Taken.` line.
+    /// `brass lantern: Taken.` line. If the run said an aside, such as a
+    /// heading from a rule's `describeSurroundings()`, the line's prose is
+    /// the line without it.
     private func label(outputFrom start: Int, as name: String, frame: TurnFrame) {
         frame.with { scratch in
-            let said = scratch.output[start...].joined(separator: " ")
+            let run = scratch.output.indices[start...]
+            let said = run.map { scratch.output[$0] }.joined(separator: " ")
+            let prose = run.filter { scratch.asides[$0] == nil }
+                .map { scratch.output[$0] }.joined(separator: " ")
+            for index in run { scratch.asides[index] = nil }
             scratch.output.removeSubrange(start...)
             if !said.isEmpty {
+                if prose != said { scratch.asides[start] = prose.isEmpty ? "" : "\(name): \(prose)" }
                 scratch.output.append("\(name): \(said)")
             }
         }
@@ -1031,7 +1057,7 @@ public actor GameWorld {
         pendingClarification = nil
         let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
-            frame.say(definition.text.undone())
+            frame.say(definition.text.undone(), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -1078,7 +1104,9 @@ public actor GameWorld {
         return TurnResult(
             output: message,
             isFinished: state.status.isFinal,
-            status: statusLine())
+            status: statusLine(),
+            paragraphs: [],
+            asides: [:])
     }
 
     /// The once-per-turn `before` upkeep — `world.beforeEachTurn` and the
@@ -1271,7 +1299,7 @@ public actor GameWorld {
             DefaultActions.score(frame)
         }
         if frame.with({ $0.state.status }) == .dead {
-            frame.say(frame.definition.text.deathPrompt())
+            frame.say(frame.definition.text.deathPrompt(), aside: true)
         }
     }
 
@@ -1681,7 +1709,11 @@ public actor GameWorld {
         return TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
             isFinished: scratch.state.status.isFinal,
-            status: statusLine())
+            status: statusLine(),
+            // A meta intent talks to the program, not the world: SCORE and
+            // VERSION are the engine answering by itself, as a free reply is.
+            paragraphs: scratch.command?.intent.isMeta == true ? [] : scratch.output,
+            asides: scratch.asides)
     }
 
     private func displayName(of id: EntityID) -> String {
