@@ -494,6 +494,23 @@ const TRANSCRIPT = 'transcript.txt'
 const BRANCH = 'branch-*.txt'
 const CLOSING = 'closing.json'
 
+// Where this round starts, for the one tree whose name cannot say so. The session
+// server writes every sessionless `replay` to `${REPLAY_TREE}/probe-NNN`, one flat
+// tree shared by every round and every game in the checkout, and a replay carries
+// no label, so no glob can tell this round's probes from last week's. Counting the
+// whole tree credited every earlier round's replays to this round's testers (#627).
+//
+// Time can tell them apart. The Preflight agent opens and finishes a session under
+// `PREFLIGHT_LABEL` before any other agent is dispatched, and `finish` writes its
+// `closing.json`. So the `${REPLAY_TREE}` recipes count only what is `-newer` than
+// that file. Which probe it is comes from the transcript path `finish` returned,
+// not from a guessed number: a rerun under the same round id gets `probe-002`, and
+// `probe-001` may be an aborted run's session that never wrote a closing record.
+// When the file is missing, the recipes print `unknown` and the report says the
+// count is unknown. What the floor cannot exclude is a replay another round or an
+// operator made in the same window, and the report says that too.
+const PREFLIGHT_LABEL = labelFor('preflight')
+
 // How to replay, said once for both ground blocks. It differs between them only in
 // where it sits — after the briefs for an agent that judges prose, straight after the
 // header for one that doesn't — so the drift between two copies would be invisible
@@ -1007,15 +1024,16 @@ const COLLATOR_SCHEMA = {
         'sessions', 'branches', 'replays', 'replayProbes',
         'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes',
         'harnessReplays', 'harnessProbes',
-        'all', 'prefixTurns',
+        'all', 'prefixTurns', 'replaysUnknown',
       ],
       description:
         'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493, and the 2026-08-18 round reported 11,238 while 32,987 typed commands sat in trees nothing globbed.',
       properties: {
         sessions: { type: 'integer', description: 'In the testers\' canonical transcripts.' },
         branches: { type: 'integer', description: 'In branch-NNN.txt files — turns really played, then rewound out of the transcript.' },
-        replays: { type: 'integer', description: 'In the replay probes the session server writes under `.replays/`. These are the TESTERS\': `replay` is an MCP tool and only a live play session can call it. A verifier has no session and replays through the CLI, which lands under its verify label instead.' },
-        replayProbes: { type: 'integer', description: 'How many `.replays/` probe directories exist.' },
+        replays: { type: 'integer', description: 'In the replay probes the session server writes under `.replays/`, counting only the ones written after this round\'s preflight session finished. Credited to the testers: the round hands the `replay` tool to its play-phase agents and to no other. A replay another round or an operator made in this checkout after that point is counted too, because a replay carries no label. A verifier replays through the CLI, which lands under its verify label instead.' },
+        replayProbes: { type: 'integer', description: 'How many `.replays/` probe directories were written after this round\'s preflight session finished.' },
+        replaysUnknown: { type: 'boolean', description: 'True if either `.replays/` recipe printed `unknown` because the preflight closing record it counts from is missing. `replays` and `replayProbes` are then 0 and mean nothing.' },
         playReplays: { type: 'integer', description: 'In the testers\' own `bin/playtest-replay` probes, under their play labels.' },
         playProbes: { type: 'integer', description: 'How many probe directories exist under the play labels.' },
         verifyReplays: { type: 'integer', description: 'In the verifiers\' `bin/playtest-replay` probes, under their verify labels. Usually the largest single number here.' },
@@ -1309,7 +1327,7 @@ const DIVERGENCE_CYCLE = ['commit', 'abstain', 'defer']
 phase('Preflight')
 
 const preflight = await agent(
-  `${groundMin(labelFor('preflight'))}
+  `${groundMin(PREFLIGHT_LABEL)}
 
 You are checking one thing before this round dispatches: that the game's own MCP
 server is reachable from this session. Do not play, do not read prose, do not report
@@ -1319,17 +1337,18 @@ findings.
 2. If it returns nothing, try twice more — a server that was still starting when the
    session began can answer a later attempt, and on one recorded round the tools
    arrived on the fourth try once the build tree was warm.
-3. If they resolve, \`open\` a session with \`label: "${labelFor('preflight')}"\`,
+3. If they resolve, \`open\` a session with \`label: "${PREFLIGHT_LABEL}"\`,
    \`seed: ${seed}\`, then \`finish\` it immediately with a one-line summary.
 
 Report \`toolsResolved: false\` if the search never returned the tools, and
 \`toolsResolved: true\` only if you opened and finished a session. Put the tool names
-you actually got in \`toolNames\`. If \`finish\` returned no \`roomsVisited\`, say so in
+you actually got in \`toolNames\`, and the \`transcript\` path \`finish\` returned in
+\`transcript\`. If \`finish\` returned no \`roomsVisited\`, say so in
 \`note\` — that is a server frozen at an older commit, and a round dispatched against
 one collates nothing.`,
   {
     // The display label, which is what the progress tree and the dry run's stub
-    // key on — `labelFor('preflight')` above is the replay label, a different
+    // key on — `PREFLIGHT_LABEL` above is the replay label, a different
     // thing that happens to name the same agent.
     label: `preflight:${game}`,
     phase: 'Preflight',
@@ -1347,6 +1366,7 @@ one collates nothing.`,
           items: { type: 'string' },
           description: 'The tool names ToolSearch actually returned, copied exactly. Empty if it returned nothing.',
         },
+        transcript: { type: 'string', description: 'The `transcript` path `finish` returned, copied exactly.' },
         note: { type: 'string', description: 'Only if something needs saying: an empty search, a finish with no roomsVisited, an error message.' },
       },
     },
@@ -1378,6 +1398,14 @@ if (!preflight || !preflight.toolsResolved) {
 // and it used to be read only on the failure path, so a preflight that reached a
 // stale-but-answering server reported it into a field nothing looked at.
 if (preflight.note) log(`Preflight note: ${preflight.note}`)
+
+// The floor for the `${REPLAY_TREE}` recipes: this run's own preflight closing record.
+// A path that does not name a probe under `PREFLIGHT_LABEL` gives a floor file that
+// cannot exist, so the recipes print `unknown` rather than count from a stale probe.
+const floorProbe = (String(preflight.transcript || '')
+  .match(new RegExp(`/${PREFLIGHT_LABEL.replace(/\./g, '\\.')}/(probe-\\d+)/${TRANSCRIPT}$`)) || [])[1]
+const REPLAY_FLOOR = `${SCRATCH}/${PREFLIGHT_LABEL}/${floorProbe || 'probe-unreported'}/${CLOSING}`
+if (!floorProbe) log(`Preflight returned no transcript path under ${PREFLIGHT_LABEL}, so the ${REPLAY_TREE} turn count will be unknown.`)
 
 // ---------------------------------------------------------------------------
 // Phase 1 — Survey
@@ -2598,7 +2626,8 @@ function visitedRooms(ids) {
 function countedTurns(turns) {
   const t = turns || {}
   const testers =
-    (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0) + (t.replays || 0)
+    (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0)
+    + (t.replaysUnknown ? 0 : t.replays || 0)
   const verifiers = t.verifyReplays || 0
   const harness = t.harnessReplays || 0
   // `prefixTurns` rides through on the spread and is added to nothing: a deep start
@@ -2687,8 +2716,8 @@ Report:
 
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${BRANCH}" -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -path "*/${REPLAY_TREE}/${PROBE}/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -type d -path "*/${REPLAY_TREE}/${PROBE}" | wc -l
+      test -f ${REPLAY_FLOOR} && find ${SCRATCH} -path "*/${REPLAY_TREE}/${PROBE}/${TRANSCRIPT}" -newer ${REPLAY_FLOOR} -exec grep -h 'turn=cost' {} + | wc -l || echo unknown
+      test -f ${REPLAY_FLOOR} && find ${SCRATCH} -type d -path "*/${REPLAY_TREE}/${PROBE}" -name "${PROBE}" -newer ${REPLAY_FLOOR} | wc -l || echo unknown
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
@@ -2712,10 +2741,23 @@ Report:
   \`0\`, which is a shell error wearing the costume of a count. The two
   \`${REPLAY_TREE}\` recipes used to start inside that tree and did exactly this on
   every round whose verifiers had not replayed yet. If \`find\` does print
-  \`No such file or directory\` — for \`${SCRATCH}\` itself, now the only way it
-  can — that is not a zero either: report it in \`note\` and say the scratch tree
-  is missing, because the round then wrote nothing anywhere and every other number
-  here is meaningless too.
+  \`No such file or directory\`, that is not a zero either. For \`${SCRATCH}\`
+  itself, report it in \`note\` and say the scratch tree is missing, because the
+  round then wrote nothing anywhere and every other number here is meaningless too.
+  The two \`${REPLAY_TREE}\` lines check their floor file first and print
+  \`unknown\` when it is missing. If either prints \`unknown\`, set
+  \`replaysUnknown: true\`, report \`0\` for \`replays\` and \`replayProbes\`, and
+  say in \`note\` that \`${REPLAY_FLOOR}\` was missing. The report then says the
+  count is unknown instead of printing the zero.
+
+  The floor is there because \`${REPLAY_TREE}\` is the one tree with no round in its
+  name. Every sessionless \`replay\` in this checkout lands in it, from every round
+  and every game, so the two recipes that read it count only what is \`-newer\` than
+  the \`closing.json\` this round's preflight session wrote before any tester was
+  dispatched. Keep the \`test -f\` and \`-newer\` clauses when you run them; without
+  the second the count includes every earlier round's replays. The \`-name\` clause
+  on the directory count keeps a probe's own \`saves-in\` directory from counting as
+  a second probe.
 
   None of them is a rounding error. One round held 102 real turns in six branch
   files. The \`play\` and \`verify\` four are \`bin/playtest-replay\` runs — a tester
@@ -2799,12 +2841,13 @@ const roomTallyPromise = collatorPromise.then((collated) => ({
   sessionsUnfinished: (collated && collated.sessionsUnfinished) || [],
   words: (collated && collated.words) || [],
   turns: countedTurns(collated && collated.turns),
+  collatorNote: (collated && collated.note) || '',
 }))
 
 const criticThunk = async () => {
   const {
     visited, worked, offRoster, neverVisited, forksNobodyTook, sessionsFinished,
-    sessionsUnfinished, words, turns, timers,
+    sessionsUnfinished, words, turns, timers, collatorNote,
   } = await roomTallyPromise
   const unknownWordTotal = words.reduce((n, w) => n + (w.count || 0), 0)
 
@@ -2893,8 +2936,8 @@ truth and they win over anything here.
   is worth a sentence.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an action the ledger judged committing and every session declined, which is a coverage gap nothing else in the harness can see. **Read it as an upper bound.** The flag is raised before the command is typed, from what the tester was holding and what the game had said about the thing — so a row here may turn out to be a free refusal. Name the ones you believe, say which you do not, and make one a target for next round.
-- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label.${turns.prefixTurns ? ` Of the ${turns.sessions} in the session transcripts, ${turns.prefixTurns} are the deep starts the server played before anybody's first line — the harness walking, not a tester, and inside the seats' own labels rather than beside them.` : ''} **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
-- There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replaysUnknown ? `an **unknown** number in probes under \`${SCRATCH}/${REPLAY_TREE}/\`, because \`${REPLAY_FLOOR}\`, the preflight closing record they are counted from, was missing — so the tester figure and the total are floors, and those turns sit in the residual below` : `${turns.replays} across ${turns.replayProbes} probes written under \`${SCRATCH}/${REPLAY_TREE}/\` after this round's preflight session finished`}, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label.${turns.prefixTurns ? ` Of the ${turns.sessions} in the session transcripts, ${turns.prefixTurns} are the deep starts the server played before anybody's first line — the harness walking, not a tester, and inside the seats' own labels rather than beside them.` : ''} **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. The \`${REPLAY_TREE}/\` tree is shared by every round and game in this checkout and a replay carries no label, so its share is bounded by time rather than by name: a replay another round or an operator made while this round ran is counted here too. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of, or an earlier round's or another game's artifacts in this checkout, their \`${REPLAY_TREE}/\` probes included. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
+${collatorNote ? `- The collator's note, verbatim: ${collatorNote}\n` : ''}- There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. ${tracker ? 'Every confirmed finding is filed; this round edits nothing.' : `**Issue filing is disabled for this round.** Write each confirmed issue body into the report under its own heading, per \`${refPath}/issue-shape.md\`, for review. Do not create GitHub issues.`}

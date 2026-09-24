@@ -75,3 +75,28 @@ test('every argument measuring keeps existing output and exit code unchanged', (
   assert.equal(result.stderr, '')
   assert.match(result.stdout, /distinct rooms entered/)
 })
+
+// Issue #627 item 3. Every producer writes a `[status]` footer under the opening
+// text, and it reads `turn=free` because the opening is not a turn. It is not a
+// command either, so "free commands" must not count it.
+test('free commands leaves out the opening footer', (t) => {
+  const dir = probe(t, {
+    commands: 'west\n// a note\neast\ninventory\n',
+    transcript: [
+      'Opening text.',
+      '[status] room=Foyer | moves=0 | turn=free',
+      '> west',
+      '[status] room=Cloakroom | moves=1 | turn=cost',
+      '> east',
+      '[status] room=Foyer | moves=2 | turn=cost',
+      '> inventory',
+      '[status] room=Foyer | moves=2 | turn=free',
+      '',
+    ].join('\n'),
+  })
+  const result = run([dir])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /^free commands\s+: 1$/m)
+  assert.match(result.stdout, /^turns charged\s+: 2$/m)
+  assert.match(result.stdout, /^distinct rooms entered\s+: 2$/m)
+})
