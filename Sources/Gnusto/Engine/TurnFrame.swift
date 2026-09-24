@@ -10,6 +10,10 @@ struct Scratch: Sendable {
     /// rewrites a multi-object run's entries into one joined line, and a
     /// sentence folded into that line would stop being findable.
     var said: Set<String> = []
+    /// The positions in `output` of the paragraphs said as asides — see
+    /// ``TurnFrame/say(_:aside:)``. ``GameWorld/label(outputFrom:as:frame:)``
+    /// drops the ones it folds into a labeled line, which is prose.
+    var asides: Set<Int> = []
     /// Actors whose unconscious flag clears only when this turn commits.
     var recoveringActors: Set<EntityID> = []
     var command: Command?
@@ -491,14 +495,23 @@ final class TurnFrame: Sendable {
         return command
     }
 
-    func say(_ text: String) {
+    /// Adds a paragraph to the turn's output.
+    ///
+    /// - Parameters:
+    ///   - text: the paragraph.
+    ///   - aside: true for a paragraph that frames play rather than describing
+    ///     the world: a room's heading, the engine's own confirmations, the
+    ///     opening's intro and banner, the death prompt. The player sees it
+    ///     like any other paragraph. ``TurnResult/prose`` leaves it out.
+    func say(_ text: String, aside: Bool = false) {
         with { scratch in
+            if aside { scratch.asides.insert(scratch.output.count) }
             scratch.output.append(text)
             scratch.said.insert(text)
         }
     }
 
-    /// ``say(_:)``, unless this turn has already said exactly `text`.
+    /// ``say(_:aside:)``, unless this turn has already said exactly `text`.
     func sayOnceThisTurn(_ text: String) {
         with { scratch in
             guard scratch.said.insert(text).inserted else { return }

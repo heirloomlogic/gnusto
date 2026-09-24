@@ -642,7 +642,7 @@ struct CoverageLedger: Sendable {
     /// as one room and types the command in the wrong place. An item's
     /// ``CoverageItem/why`` says `Dead End`, because that is the name the
     /// tester read on the status line. The one exception is a `why` that
-    /// *contrasts* two rooms: ``watchForDisplacement(output:room:line:)``
+    /// *contrasts* two rooms: ``watchForDisplacement(prose:room:line:)``
     /// labels both ends, since "last printed in Dead End and is printed in
     /// Dead End" is not a sentence anyone can act on.
     private var roomLabels: [EntityID: String] = [:]
@@ -717,46 +717,17 @@ struct CoverageLedger: Sendable {
     /// for the turn twice, once in the tester and once in the verifier refuting
     /// what it filed.
     ///
-    /// The behaviour was known before it was understood: ``AviaryGame``'s intro
-    /// is deliberately noun-free so that the opening-queue assertion is "about
-    /// the room rather than about the intro", which is this defect written down
-    /// as a fixture workaround.
+    /// The engine says the intro and the banner as asides, so
+    /// ``TurnResult/prose`` is already the room part. The same is true of a
+    /// RESTART, which reaches ``observe(command:audit:output:prose:room:moves:line:turnCost:)``
+    /// as an ordinary line.
     ///
     /// - Parameters:
-    ///   - output: the opening text, without the status footer.
+    ///   - prose: the opening's ``TurnResult/prose``, rendered.
     ///   - room: the room the status line named.
-    mutating func observeOpening(output: String, room: LedgerRoom) {
+    mutating func observeOpening(prose: String, room: LedgerRoom) {
         visit(room)
-        harvest(
-            output: Self.roomBlock(in: output, room: room.name),
-            room: room, depth: 1, bornOfExamine: false, line: 0)
-    }
-
-    /// The tail of the opening that describes the starting room.
-    ///
-    /// The room heading is the seam: the engine prints it on a line of its own
-    /// immediately before the description, so everything from there down is the
-    /// room and everything above it is the intro and the banner. The *last*
-    /// such line rather than the first, because a blurb is free to mention the
-    /// room by name and the heading is the one nearest the description.
-    ///
-    /// A game whose opening never prints the heading — one starting in the dark
-    /// — falls back to the whole text. Over-harvesting is the survivable error
-    /// here, since a wrong queue item costs one turn; harvesting nothing leaves
-    /// the first room with no frontier at all, and the explorer with nothing to
-    /// work down.
-    private static func roomBlock(in output: String, room: String) -> String {
-        let heading = room.trimmingCharacters(in: .whitespaces)
-        guard !heading.isEmpty else { return output }
-        let lines = output.components(separatedBy: "\n")
-        guard
-            let start = lines.lastIndex(where: {
-                $0.trimmingCharacters(in: .whitespaces) == heading
-            })
-        else {
-            return output
-        }
-        return lines[start...].joined(separator: "\n")
+        harvest(prose: prose, room: room, depth: 1, bornOfExamine: false, line: 0)
     }
 
     /// Records one command and what it printed.
@@ -771,6 +742,8 @@ struct CoverageLedger: Sendable {
     ///   - command: the line as the tester typed it.
     ///   - audit: what the parser made of it.
     ///   - output: what the turn printed, without the status footer.
+    ///   - prose: `output` without its asides, which is what nouns and exits
+    ///     are read from — see ``TurnResult/prose``.
     ///   - room: the room the status line named *after* the turn.
     ///   - moves: the move counter after the turn.
     ///   - line: the line's 1-based index in `commands.txt`.
@@ -782,6 +755,7 @@ struct CoverageLedger: Sendable {
         command: String,
         audit: TurnAudit,
         output: String,
+        prose: String,
         room: LedgerRoom,
         moves: Int,
         line: Int,
@@ -819,17 +793,14 @@ struct CoverageLedger: Sendable {
             }
         }
 
-        // A parse failure prints the *engine* talking, not the game: "I don't know
-        // the word 'grout'" would otherwise queue `x word` as a thing to examine.
-        // Nothing else is lost by skipping it — a line the parser refused ran no
-        // rules, no fuse and no daemon, so the only text in it is the refusal.
-        if audit.understood || audit.answeredPrompt {
-            harvest(
-                output: output, room: room, depth: depth,
-                bornOfExamine: audit.intent == .examine, line: line)
-        }
+        // Prose, not output: a room heading, a save prompt's refusal or a parse
+        // failure's "I don't know the word 'grout'" is the engine talking, and
+        // would otherwise queue `x house`, `x name` or `x word` (#625).
+        harvest(
+            prose: prose, room: room, depth: depth,
+            bornOfExamine: audit.intent == .examine, line: line)
         watchForTimers(audit: audit, output: output, room: room, moves: moves, line: line)
-        watchForDisplacement(output: output, room: room, line: line)
+        watchForDisplacement(prose: prose, room: room, line: line)
 
         if audit.intent == .examine, let subject = audit.directObject {
             objects[subject]?.vocabulary.formUnion(Self.words(in: output))
@@ -1107,13 +1078,13 @@ struct CoverageLedger: Sendable {
 
     // MARK: - Reading the prose
 
-    /// Reads one block of output for new loose ends.
+    /// Reads one block of prose for new loose ends.
     private mutating func harvest(
-        output: String, room: LedgerRoom, depth: Int, bornOfExamine: Bool, line: Int
+        prose: String, room: LedgerRoom, depth: Int, bornOfExamine: Bool, line: Int
     ) {
-        guard !output.isEmpty else { return }
+        guard !prose.isEmpty else { return }
         let roomLabel = label(of: room)
-        for word in Self.words(in: output) {
+        for word in Self.words(in: prose) {
             guard let direction = Self.directions[word] else { continue }
             let itemID = Self.exitID(direction, in: roomLabel)
             guard walked[room.id]?[direction] == nil else { continue }
@@ -1134,7 +1105,7 @@ struct CoverageLedger: Sendable {
         }
 
         var raised = 0
-        for word in Self.nounCandidates(in: output) {
+        for word in Self.nounCandidates(in: prose) {
             guard !namedWords.contains(word), raised < Self.nounsPerBlock else { continue }
             let itemID = "\(CoverageItem.Kind.noun.rawValue):\(word)@\(roomLabel)"
             guard positions[itemID] == nil else { continue }
@@ -1200,9 +1171,9 @@ struct CoverageLedger: Sendable {
     }
 
     /// Looks for something named here that was last named somewhere else.
-    private mutating func watchForDisplacement(output: String, room: LedgerRoom, line: Int) {
-        guard !output.isEmpty else { return }
-        let printed = Set(Self.contentWords(in: output))
+    private mutating func watchForDisplacement(prose: String, room: LedgerRoom, line: Int) {
+        guard !prose.isEmpty else { return }
+        let printed = Set(Self.contentWords(in: prose))
         for record in objects.values {
             guard printed.contains(record.label), !record.held, !record.namedSinceSeen,
                 !record.lastPrintedRoom.isEmpty, record.lastPrintedRoom.id != room.id

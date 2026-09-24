@@ -67,8 +67,8 @@ struct PlaytestRoute: Sendable {
     ///
     /// A route ends wherever its last command left the player. `take keys`
     /// prints `Taken.`, which tells a tester nothing about where it is standing
-    /// and gives ``CoverageLedger/observeOpening(output:room:)`` no room heading
-    /// to harvest — so the opening queue would be seeded from two words. One
+    /// and gives ``CoverageLedger/observeOpening(prose:room:)`` no room
+    /// description to harvest — so the opening queue would be seeded from two words. One
     /// `look` makes every route land the same way regardless of who wrote it,
     /// and it is recorded in the session's `turns` like any other line, so the
     /// transcript stays byte-identical to a REPL fed the same list.

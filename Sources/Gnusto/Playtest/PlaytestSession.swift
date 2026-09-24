@@ -228,12 +228,17 @@ actor PlaytestSession {
     /// session that has no prefix.
     private var landing: (text: String, status: String)?
 
-    /// The last command's output, rendered and without its footer — what
-    /// ``CoverageLedger/observeOpening(output:room:)`` needs at the prefix
-    /// boundary, where there is no `begin()` result to read it from. The room it
-    /// wants alongside is ``CoverageLedger/currentRoom``, which is the same
-    /// value one field further along and does not need copying out.
+    /// The last command's output, rendered and without its footer — the
+    /// landing text at the prefix boundary, where there is no `begin()` result
+    /// to read it from.
     private var lastOutput = ""
+
+    /// The same line's ``TurnResult/prose``, rendered — what
+    /// ``CoverageLedger/observeOpening(prose:room:)`` needs at the prefix
+    /// boundary. The room it wants alongside is
+    /// ``CoverageLedger/currentRoom``, which is the same value one field
+    /// further along and does not need copying out.
+    private var lastProse = ""
 
     /// Whether a world has ever been built here. The one thing that tells a
     /// first play apart from a rehydration, which otherwise run the identical
@@ -1850,7 +1855,7 @@ actor PlaytestSession {
         landing = (text: lastOutput, status: statusLine)
         let room = ledger.currentRoom
         ledger = CoverageLedger(divergence: divergence)
-        ledger.observeOpening(output: lastOutput, room: room)
+        ledger.observeOpening(prose: lastProse, room: room)
         // And so does every tally the ledger cannot roll back. The route is the
         // harness's mileage, not this session's, and a round that counted it
         // would report eight seats carrying a ninety-room start as having
@@ -1930,7 +1935,8 @@ actor PlaytestSession {
         // The ledger reads the rendered text for the same reason the `opening`
         // field does: `<br>` is a marker, not a word, and a queue item named
         // after one would be an obligation to examine punctuation.
-        ledger.observeOpening(output: openingOutput, room: LedgerRoom(result.status))
+        ledger.observeOpening(
+            prose: TextWrap.plain(result.prose), room: LedgerRoom(result.status))
         visit(result.status)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
@@ -2000,15 +2006,17 @@ actor PlaytestSession {
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
         recorder?.record(command: line, output: annotated)
 
-        // Rendered once. `<br>` is a marker rather than a word, and both the
-        // ledger and the prefix boundary read the same words on a different
-        // channel from the recorder's — folding it twice a turn would be the
-        // only per-turn work this file does twice.
+        // Rendered once each. `<br>` is a marker rather than a word, and both
+        // the ledger and the prefix boundary read the same words on a different
+        // channel from the recorder's — folding either twice a turn would be
+        // the only per-turn work this file does twice.
         let plain = TextWrap.plain(result.output)
+        let prose = TextWrap.plain(result.prose)
         ledger.observe(
             command: line,
             audit: audit,
             output: plain,
+            prose: prose,
             room: LedgerRoom(result.status),
             moves: result.status.moves,
             line: index,
@@ -2024,6 +2032,7 @@ actor PlaytestSession {
         // rendered output after `run` has returned it. The room it landed in
         // needs no field of its own: the ledger has just been told it.
         lastOutput = plain
+        lastProse = prose
         lastMoves = result.status.moves
         finished = result.isFinished
         pending = await world.awaiting()
