@@ -9,11 +9,13 @@ import Gnusto
 /// let actors = ActorBehaviors()
 ///
 /// var timers: [TimedEvent] {
-///     actors.roams(thief, named: "thief.roam",
-///                  rooms: [cellar, gallery, studio])
-///     actors.steals(thief, named: "thief.steal",
-///                   candidates: [painting],
-///                   announcement: { "A shadow relieves you of the \($0)." })
+///     actors.roams(
+///         thief, named: "thief.roam",
+///         rooms: [cellar, gallery, studio])
+///     actors.steals(
+///         thief, named: "thief.steal",
+///         candidates: [painting],
+///         announcement: .naming { "A shadow relieves you of \($0)." })
 /// }
 /// ```
 ///

@@ -777,8 +777,8 @@ struct StubVerbTests {
     /// The sweep every stub floor is measured by, measured itself.
     ///
     /// `engineVoicedStubLines` reflects over ``GameText/StubReplies`` rather
-    /// than listing it, which is what lets a forty-eighth stub be compared the
-    /// day it lands — and is also how such a sweep goes quietly vacuous. A
+    /// than listing it, which is what lets a new stub be compared the day it
+    /// lands — and is also how such a sweep goes quietly vacuous. A
     /// reflection loop that matches nothing reports nothing and passes.
     ///
     /// So it is asked the one question with a knowable answer: handed the

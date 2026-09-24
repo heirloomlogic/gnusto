@@ -69,9 +69,8 @@ public typealias TopicBuilder = GnustoBuilder<TopicEntry>
 ///     overriding the table's own `again:`. See
 ///     ``Conversation/topics(of:for:fallback:again:_:)`` for the rules.
 ///   - id: a stable key for the heard set. Give one to a row whose keywords or
-///     gates you expect to edit after release, to a row on an actor who shares
-///     a display name with another, or to two rows that should retire
-///     together. Also the only way to name a row for
+///     gates you expect to edit after release, or to two rows that should
+///     retire together. Also the only way to name a row for
 ///     ``Conversation/hasHeard(_:from:)``.
 ///   - file: the file this row was declared in, so the keyword trap names it.
 ///   - declaredOn: the line this row was declared on, for the same reason.

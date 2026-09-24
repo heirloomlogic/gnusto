@@ -1,8 +1,8 @@
 import Gnusto
 import GnustoMeleeCombat
 
-/// The stub floor: what the game answers for the ~49 verbs the parser knows and
-/// no mechanic in this dungeon is behind.
+/// The stub floor: what the game answers for the verbs the parser knows and no
+/// mechanic in this dungeon is behind.
 ///
 /// The play-test round (#233, box 12) found the game answering seventeen of them
 /// in its own voice and the rest in the engine's, so a plain modern narrator

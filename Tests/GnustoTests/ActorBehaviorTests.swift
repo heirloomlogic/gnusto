@@ -98,11 +98,6 @@ struct ActorBehaviorTests {
         #expect(!transcript.contains("make off with the green gem"))
     }
 
-    /// The thief's own bag is in his reach set now, so nothing but an explicit
-    /// guard stops him robbing himself: six stealable candidates, six
-    /// announcements, and no line printed twice however long he loiters. The
-    /// satchel is the case a one-level guard misses — once it is his, the ruby
-    /// inside it is still within his reach and must stop counting as loot.
     /// The announcement is handed the item's rendered noun, article and all,
     /// so a proper name arrives bare rather than as "the Ozymandias".
     @Test func theAnnouncementRendersTheLootsOwnArticle() async throws {
@@ -111,6 +106,19 @@ struct ActorBehaviorTests {
         #expect(!transcript.contains("the Ozymandias"))
     }
 
+    /// The plugin's doc-comment example, run: the line writes no article, and
+    /// the painting arrives as "the oil painting".
+    @Test func theDocExampleAnnouncesTheTheft() async throws {
+        let transcript = try await play(ShadowThiefGame(), Array(repeating: "wait", count: 8), seed: 0)
+        #expect(transcript.contains("A shadow relieves you of the oil painting."))
+        #expect(!transcript.contains("the the"))
+    }
+
+    /// The thief's own bag is in his reach set now, so nothing but an explicit
+    /// guard stops him robbing himself: six stealable candidates, six
+    /// announcements, and no line printed twice however long he loiters. The
+    /// satchel is the case a one-level guard misses — once it is his, the ruby
+    /// inside it is still within his reach and must stop counting as loot.
     @Test func aThiefNeverStealsFromHimself() async throws {
         let transcript = try await play(
             PickpocketGame(),

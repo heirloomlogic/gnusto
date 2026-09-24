@@ -1351,8 +1351,8 @@ struct DungeonProseTests {
     // MARK: - The floor speaks in the game's voice (#233, box 12)
 
     /// **The sweep, and the only assertion here that cannot go stale.** Every
-    /// other test in this section names one verb; a forty-eighth stub arriving
-    /// in the engine tomorrow would slip past all of them. The shared helper
+    /// other test in this section names one verb; a new stub arriving in the
+    /// engine tomorrow would slip past all of them. The shared helper
     /// derives its own completeness from ``GameText/StubReplies`` rather than
     /// from a list here that would have to be kept up.
     ///

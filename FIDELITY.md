@@ -127,18 +127,7 @@ entry below is grouped by the task that introduced it.
   out, so a lamp dying at the player's feet still explains the blackout. A
   burned-out lantern refuses `turn on` with `Prose.lanternSpent`, and nothing
   in the slice replaces it.
-- **The grue rolls the dice** *(closed in the fidelity pass — was a deterministic
-  linger clock)*, like the original: a warning on the first consecutive turn *ending*
-  in darkness (the kept fairness beat — the grue never eats you on the turn the dark
-  begins), one silent grace turn, then from the third dark turn on it rolls
-  `chance(lethality)` (Zork 1 uses 50%) to be eaten each turn; any lit turn resets the
-  count. The daemon lives in the `GnustoDangerousDark` plugin (`graceTurns` and
-  `lethality` are knobs); Zork 1 passes its own prose in. The warning and death prose are
-  original — the famous "likely to be eaten by a grue" sentence is Infocom's and is
-  deliberately not reproduced ("grue" the name is fair game under the names-vs-prose line
-  above). Because death is now a roll, the dark-lingering transcripts are seed-pinned (the
-  cost of the dice); the warning still guarantees a safe first dark turn even after an UNDO
-  revive.
+- **The grue rolls the dice, but not on the original's trigger** *(closed in the fidelity pass — was a deterministic linger clock)*. The port counts consecutive turns *ending* in darkness, whether the player moved that turn or stood still: a warning on the first (the kept fairness beat — the grue never eats you on the turn the dark begins), one silent grace turn, then from the third dark turn on a `chance(lethality)` roll each turn; any lit turn resets the count. The daemon lives in the `GnustoDangerousDark` plugin (`graceTurns` and `lethality` are knobs); Zork 1 keeps the plugin's defaults, one grace turn and 50%, and passes its own prose in. **The original keeps no count, and its grue never kills a player who stays put.** It kills only on a move, at `PROB 80`: in `GOTO` (`gverbs.zil:2095-2115`) when the player moves from a dark room into another dark room, and in `V-WALK` (`gverbs.zil:1560-1578`) when the player tries a direction with no exit while in the dark. So the danger falls on different turns. In the original, the grue never touches a player who stands in the dark, however long they stay, and their first move from one dark room into another is already an 80% death. Here, waiting in the dark kills at 50% a turn from the third dark turn, and the first two dark turns are safe, moves included. A blocked move in the dark kills nobody here (see "The grue has two deaths" below). The warning is `DESCRIBE-ROOM`'s dark line, *"It is pitch black. You are likely to be eaten by a grue."* (`gverbs.zil:1637-1640`), which Zork 1 also sets as `text.pitchBlack`, and the death line is `GOTO`'s (see "The grue has two deaths" below). Because death is a roll, the dark-lingering transcripts are seed-pinned (the cost of the dice). **UNDO after a grue death does not restore the warning.** The dark-turn count is a `@Global`, so UNDO puts it back one turn and the next dark turn rolls again; the seeded random stream is rewound as well, so the same command rolls the same death. The sentence printed after that UNDO reads like the warning because it is the room's `pitchBlack` line. (#628)
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single
@@ -1561,7 +1550,7 @@ literal lied — and three of them assert the old sentence is gone.
 
 `Tests/GnustoTests/Zork1ProseTests.swift`. The sweep,
 `noEngineStubLineSurvivesInZork1`, is the twin of Dungeon's and derives its
-completeness from `Mirror` over `GameText.StubReplies`, so a forty-eighth stub
+completeness from `Mirror` over `GameText.StubReplies`, so a new stub
 cannot arrive unvoiced. The rest reach the player through the real pipeline —
 including `theFloorKeepsTheReachGuardTheRowsGaveAway`, which is what the mechanism
 change bought back. The seed-0 350-point walkthrough is unmoved: no stub verb
@@ -1656,6 +1645,7 @@ from `Prose.gnomePaid`'s own *"the west end of the ledge"*.
   precedent. Full reasoning in `docs/games/dungeon.md` ("The ceiling ratchets while
   the game is being built"); `ScoringTests.everyDemoGameCanPayItsOwnMaximum` is the
   row that holds each milestone to its own number.
+- **The grue kills on the port's trigger, not the mainframe's.** Dungeon uses `DangerousDark` with the same defaults as Zork 1, so it counts turns ending in the dark and rolls 50% a turn from the third, whether the player moves or stands still (Zork 1's Phase 7 grue entry has the detail). The mainframe's only grue deaths are in `WALK` (`rooms.394:1394-1407`), which can kill only a player trying to leave a dark room, so a player who stands in the dark is never eaten there. Milestone 9's Crypt entry records where the port switches its grue off.
 
 ### Milestone 1 — above ground, the white house, the cellar
 
