@@ -471,6 +471,11 @@ function main() {
   // parser reads only `--from-commands=FILE` is a coin flip the first user loses.
   // Value flags consume the next argument; unknown `--x y` pairs are left to be
   // rejected as unknown booleans rather than silently eaten.
+  //
+  // A value flag with no value — typed last, or as `--flag=` — is refused here, by
+  // name (#627). It used to be read as an empty string, and for `--derived-from` and
+  // `--type-name` an empty string is the same as no flag at all, so the run went
+  // ahead as though the flag had never been typed.
   const VALUE_FLAGS = new Set([
     '--from-commands', '--from-session', '--upto', '--budget',
     '--seed', '--derived-from', '--type-name',
@@ -482,13 +487,16 @@ function main() {
     if (!a.startsWith('--')) { positional.push(a); continue }
     const eq = a.indexOf('=')
     const key = eq > 0 ? a.slice(0, eq) : a
-    if (eq > 0) {
-      flags.set(key, a.slice(eq + 1))
-    } else if (VALUE_FLAGS.has(key) && i + 1 < argv.length) {
-      flags.set(key, argv[i + 1])
-      i += 1
+    const inline = eq > 0 ? a.slice(eq + 1) : undefined
+    if (VALUE_FLAGS.has(key)) {
+      const value = inline ?? argv[++i]
+      if (!value) {
+        console.error(`playtest-routes: ${key} needs a value`)
+        process.exit(2)
+      }
+      flags.set(key, value)
     } else {
-      flags.set(key, '')
+      flags.set(key, inline ?? '')
     }
   }
   const typeName = flags.get('--type-name')
@@ -517,18 +525,14 @@ function main() {
   // (`seedFor`), because `open` refuses a session whose seed is not the route's: a
   // second route cut at a different seed could never be handed out beside the first.
   // A game with no routes yet gets 0, and `--seed` is how the first one picks
-  // something else. `--seed` wins when there is one — and an empty one (`--seed` as
-  // the last argument) is refused, not silently defaulted: `Number('')` is 0, which
-  // would pin a different round than the one the tester meant.
+  // something else. `--seed` wins when there is one; the parser above has already
+  // refused an empty one, which `Number('')` would otherwise read as 0 and so pin a
+  // different round than the one the tester meant.
   //
   // Read once for both writing verbs. `cut` and `distill` produce the same artifact
   // and a route whose seed each picked by its own rule would be one `open` refuses
   // depending on which command made it.
   function resolveSeed() {
-    if (seedFlag === '') {
-      console.error('playtest-routes: --seed needs a value')
-      process.exit(2)
-    }
     const raw = seedFlag !== undefined ? Number(seedFlag) : focus.seedFor(game)
     if (!Number.isInteger(raw) || raw < 0) {
       console.error('playtest-routes: --seed must be a whole number of zero or more,'

@@ -189,6 +189,11 @@ die() { echo "playtest-replay: $*" >&2; exit 2; }
 # at the first non-comment line, so adding a flag above documents it here too.
 usage() { sed -n '2,${/^#/!q; s/^# \{0,1\}//; p;}' "$0"; }
 
+# A value flag typed last has nothing after it, and one given '' has nothing in
+# it. Checked before the `shift 2` that would otherwise fail under `set -e` and end
+# the script with status 1 and no word about why (#627).
+need_value() { [[ $# -ge 2 && -n "$2" ]] || die "$1 needs a value"; }
+
 need_number() { [[ "$2" =~ ^[0-9]+$ ]] || die "$1 must be a whole number, got '$2'"; }
 
 # A label and a probe both become a directory name under .context/playtest, so both
@@ -208,18 +213,18 @@ seed_set=0; timeout_set=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --build)        build_only=1; shift ;;
-    --commands)     commands="${2:-}"; shift 2 ;;
-    --seed)         seed="${2:-}"; seed_set=1; shift 2 ;;
-    --start)        start_route="${2:-}"; shift 2 ;;
-    --tail)         tail_lines="${2:-}"; shift 2 ;;
-    --label)        label="${2:-}"; shift 2 ;;
-    --probe)        probe="${2:-}"; shift 2 ;;
-    --restore)      restore_slot="${2:-}"; shift 2 ;;
-    --save)         save_slot="${2:-}"; shift 2 ;;
-    --saves-from)   saves_from="${2:-}"; shift 2 ;;
-    --max-turns)    max_turns="${2:-}"; shift 2 ;;
-    --timeout)      timeout_secs="${2:-}"; timeout_set=1; shift 2 ;;
-    --package-path) pkg="${2:-}"; shift 2 ;;
+    --commands)     need_value "$@"; commands="$2"; shift 2 ;;
+    --seed)         need_value "$@"; seed="$2"; seed_set=1; shift 2 ;;
+    --start)        need_value "$@"; start_route="$2"; shift 2 ;;
+    --tail)         need_value "$@"; tail_lines="$2"; shift 2 ;;
+    --label)        need_value "$@"; label="$2"; shift 2 ;;
+    --probe)        need_value "$@"; probe="$2"; shift 2 ;;
+    --restore)      need_value "$@"; restore_slot="$2"; shift 2 ;;
+    --save)         need_value "$@"; save_slot="$2"; shift 2 ;;
+    --saves-from)   need_value "$@"; saves_from="$2"; shift 2 ;;
+    --max-turns)    need_value "$@"; max_turns="$2"; shift 2 ;;
+    --timeout)      need_value "$@"; timeout_secs="$2"; timeout_set=1; shift 2 ;;
+    --package-path) need_value "$@"; pkg="$2"; shift 2 ;;
     --keep-blank-lines) keep_blanks=1; shift ;;
     -h|--help)      usage; exit 0 ;;
     -*)             die "unknown option $1" ;;

@@ -290,7 +290,7 @@ The third number is
 counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
 round greps for the first across four places — the testers' transcripts, the `branch-NNN.txt`
 files a rewind wrote off, the probes under `.context/playtest/.replays/` that the server's
-own `replay` tool writes, and the `bin/playtest-replay` probes under the round's `-play-` and
+own `replay` tool writes after the round's preflight session finishes, and the `bin/playtest-replay` probes under the round's `-play-` and
 `-verify-` labels. The collator does all of it; nobody is asked how far they got.
 
 The last of those four is the newest and was the largest. `bin/playtest-replay` wrote no

@@ -11,12 +11,17 @@ const repo = fileURLToPath(new URL('../..', import.meta.url))
 // even printed `error: unknown product '--help'`, mistaking the flag for a
 // build target. bin/playtest-replay already handled it before this issue was
 // filed, so it rides along here as the regression guard for the convention the
-// others were brought into line with.
+// others were brought into line with. Issue #627 added bin/gnusto-mcp and
+// bin/playtest-measure, which read the flag as a game name and as a probe
+// directory.
 //
 // No fixture package is spun up: every script answers -h/--help before it
 // looks at cwd, builds anything or spawns swift, so this runs directly against
 // the repo checkout and stays fast.
-const SCRIPTS = ['export-game', 'new-game', 'playtest-preflight', 'playtest-routes', 'playtest-replay']
+const SCRIPTS = [
+  'export-game', 'gnusto-mcp', 'new-game', 'playtest-measure', 'playtest-preflight',
+  'playtest-routes', 'playtest-replay',
+]
 
 for (const script of SCRIPTS) {
   for (const flag of ['--help', '-h']) {

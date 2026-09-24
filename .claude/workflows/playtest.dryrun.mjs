@@ -345,6 +345,7 @@ const LAYOUT = {
   REPLAY_TREE: layoutConst('REPLAY_TREE'),
   PROBE: layoutConst('PROBE'),
   TRANSCRIPT: layoutConst('TRANSCRIPT'),
+  CLOSING: layoutConst('CLOSING'),
 }
 for (const [name, value] of Object.entries(LAYOUT)) {
   check(!!value, `playtest.js no longer declares ${name}, so the recipes restate the layout again`)
@@ -861,11 +862,33 @@ check(
   'the collator is not told to count turns off the [status] footers'
 )
 const replayRecipe = new RegExp(
-  `-path "\\*/${literal(LAYOUT.REPLAY_TREE)}/${literal(LAYOUT.PROBE)}/${literal(LAYOUT.TRANSCRIPT)}" -exec grep -h 'turn=cost'`
+  `-path "\\*/${literal(LAYOUT.REPLAY_TREE)}/${literal(LAYOUT.PROBE)}/${literal(LAYOUT.TRANSCRIPT)}" -newer \\S+ -exec grep -h 'turn=cost'`
 )
 check(
   collator ? replayRecipe.test(collator.prompt) : false,
   'the collator never reads the .replays/ probes, so a chunk of the testers\' replaying is invisible again'
+)
+// The `.replays/` tree is shared by every round in the checkout and its probes carry
+// no label, so the two recipes that read it are scoped by time instead: `-newer` the
+// closing record of the session the Preflight agent opens before anyone else is
+// dispatched. Without it, every round after the first credits all earlier rounds'
+// replays to its own testers (#627). The floor is read off the preflight prompt's
+// own `open` label, so a label that drifts away from the floor fails here.
+const preflightOpenLabel =
+  (promptFor((p) => String(p.label || '').startsWith('preflight'))
+    .match(/`open` a session with `label: "([^"]+)"`/) || [])[1]
+const replayLines = collatorLines.filter(
+  (l) => l.includes(` -path "*/${LAYOUT.REPLAY_TREE}/${LAYOUT.PROBE}`) && /\| wc -l/.test(l)
+)
+check(
+  Boolean(preflightOpenLabel) && preflightOpenLabel.includes(dryRoundId),
+  'could not read a round-scoped `open` label out of the preflight prompt'
+)
+check(
+  replayLines.length === 2
+    && replayLines.every((l) => l.includes(
+      `-newer ${LAYOUT.SCRATCH}/${preflightOpenLabel}/probe-001/${LAYOUT.CLOSING}`)),
+  `the .replays/ recipes are not floored at this round's preflight closing record, so earlier rounds' replays are counted as this round's: ${JSON.stringify(replayLines)}`
 )
 // The round's own trees, counted by exclusion. An operator's ad-hoc label —
 // `prefix-check`, `thief-rate` — cannot be enumerated in advance, so the recipe
@@ -1497,10 +1520,12 @@ check(
 // — which is not hypothetical: three rounds running reported coverage arithmetic
 // with a previous round's sessions folded in.
 //
-// **Every glob, with no exemption.** There used to be one, for the label a round's
-// saved games were cut under — see `playtest.js`'s "There is no fifth tree". A deep
-// start is now a route played inside the tester's own label, so no tree is
-// round-agnostic and the rule has no exception left to keep.
+// **Every label glob, with no exemption.** There used to be one, for the label a
+// round's saved games were cut under — see `playtest.js`'s "There is no fifth tree".
+// A deep start is now a route played inside the tester's own label, so no label tree
+// is round-agnostic. The `.replays` tree is not a label and has no round in its name;
+// it is scoped by time instead, which the `-newer` check beside the replay recipe
+// asserts.
 for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
   const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
   check(

@@ -20,7 +20,14 @@ was produced by this arithmetic, so changing it silently invalidates every
 past-versus-present comparison in the ledgers. Add a field rather than redefining
 one, and if a rule genuinely has to change, re-measure the stored probes with it.
 
+One rule has changed. "free commands" counted the `[status]` footer under the
+opening text, which reads `turn=free` but is not a command, so every probe
+reported one free command too many. It leaves the opening out since #627; a
+"free commands" figure recorded before then is one higher per probe than this
+script now prints for the same probe.
+
 Usage: bin/playtest-measure <probe-dir> [<probe-dir> ...]
+       bin/playtest-measure -h|--help
 
   bin/playtest-measure .context/playtest/mine/probe-*
 """
@@ -29,6 +36,13 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
+
+# -h/--help is a request for this file's usage text, answered on stdout with
+# exit 0 as bin/playtest-replay answers it, before any argument is read as a
+# probe directory (#627).
+if any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    print(__doc__.strip())
+    sys.exit(0)
 
 # The generated shim changes into the game package before dispatch. Probe paths
 # still belong to the directory the caller invoked it from.
@@ -72,15 +86,14 @@ def measure(probe):
     engine = [c for c in commands if not c.lstrip().startswith(("//", "#"))]
     notes = len(commands) - len(engine)
 
-    rooms, moves, free = [], 0, 0
-    for line in transcript.splitlines():
-        m = STATUS.match(line)
-        if not m:
-            continue
+    rooms, moves = [], 0
+    footers = [m for m in map(STATUS.match, transcript.splitlines()) if m]
+    for m in footers:
         rooms.append(m.group("room").strip())
         moves = max(moves, int(m.group("moves")))
-        if m.group("cost") == "free":
-            free += 1
+    # The first footer is the opening's, which every producer writes before any
+    # command runs. It is free, and it is not a command.
+    free = sum(m.group("cost") == "free" for m in footers[1:])
 
     verbs, examined, taken = Counter(), set(), set()
     per_object = {}
