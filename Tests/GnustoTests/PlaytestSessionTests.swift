@@ -332,6 +332,48 @@ struct PlaytestSessionTests {
                     saveDirectory: session.saveDirectory)))
     }
 
+    /// A session that saved exports as a verified regression test, and the
+    /// export writes nothing into the label's saves (#624).
+    @Test func aSessionThatSavedAndRestoredExportsAsVerified() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "saving", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(
+            commands: ["west", "save", "slot1", "wait", "east", "restore", "slot1", "look"],
+            allowPrompts: true)
+        let slot = session.saveDirectory.appendingPathComponent("slot1.gnusto")
+        let bytes = try Data(contentsOf: slot)
+
+        let exported = try await session.export()
+        #expect(exported.verified)
+        #expect(
+            try text(at: URL(fileURLWithPath: exported.transcriptWithoutStatus))
+                .contains("Save to what file?\n"))
+        #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["slot1"])
+        #expect(try Data(contentsOf: slot) == bytes)
+    }
+
+    /// A second probe under one label finds the first probe's slot already
+    /// there. It is in the label when this session opens, so the replay starts
+    /// with it too: the prompt lists it in both, and the restore reads it in
+    /// both.
+    @Test func aSessionOpenedOverAnEarlierProbesSlotExportsAsVerified() async throws {
+        let harness = try Harness(OperaHouse())
+        let first = try await harness.sessions.open(label: "shared", seed: 0)
+        _ = try await first.opening()
+        _ = try await first.move(commands: ["west", "save", "deep"], allowPrompts: true)
+
+        let second = try await harness.sessions.open(label: "shared", seed: 0)
+        _ = try await second.opening()
+        _ = try await second.move(
+            commands: ["restore", "deep", "look", "save", "later"], allowPrompts: true)
+
+        let exported = try await second.export()
+        #expect(exported.verified)
+        #expect(
+            SaveStore.existingSaveNames(in: second.saveDirectory) == ["deep", "later"])
+    }
+
     // MARK: - Checkpoints, restores and rewinds
 
     /// A checkpoint is an index into the command list, so coming back to it

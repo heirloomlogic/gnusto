@@ -88,6 +88,15 @@ function newestTranscript(label) {
   return null
 }
 
+// Empties a label's saves before a replay under it. `bin/playtest-replay` keeps saves
+// at the label, and every label here is re-used by each shrink candidate and each
+// later cut or verify of the same route. A leftover slot makes the save prompt ask
+// before replacing it (#495), which swallows the next command, and it answers a
+// `restore` the list itself never saved for. So each replay here starts with none.
+function clearSaves(label) {
+  fs.rmSync(path.join(focus.SCRATCH, label, 'saves'), { recursive: true, force: true })
+}
+
 // ---------------------------------------------------------------------------
 // Route storage
 // ---------------------------------------------------------------------------
@@ -167,6 +176,7 @@ function probeLanding(game, name, commands, seed, verb) {
   // where that rule lives, so the shrink's oracle and the reader that parses the
   // answers back cannot spell it differently.
   const fed = landingFeed(commands)
+  clearSaves(label)
   const r = runReplay('playtest-routes', `${verb}-${name}`, fed, [
     game,
     '--seed', String(seed),
@@ -218,6 +228,7 @@ function verifyOne(game, dir, name) {
   const fed = [...route.commands, 'inventory']
 
   const label = `routes-verify-${name}`
+  clearSaves(label)
   const r = runReplay('playtest-routes', `verify-${name}`, fed, [
     game,
     '--seed', String(route.seed),
@@ -286,6 +297,7 @@ function oracleFor(game, name, seed) {
     if (seen.has(key)) return seen.get(key)
     replays += 1
     fs.rmSync(dir, { recursive: true, force: true })
+    clearSaves(label)
     const fed = landingFeed(commands)
     const r = runReplay('playtest-routes', `distill-${name}`, fed, [
       game,
