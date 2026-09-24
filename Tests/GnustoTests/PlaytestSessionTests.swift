@@ -374,6 +374,26 @@ struct PlaytestSessionTests {
             SaveStore.existingSaveNames(in: second.saveDirectory) == ["deep", "later"])
     }
 
+    /// A rewind takes back the saves the lines it writes off made, so a
+    /// `restore` after it reads what the recorded lines saved and the export
+    /// still verifies.
+    @Test func aRewindTakesBackTheSavesItWritesOff() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "rewound", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["west", "save", "kept"], allowPrompts: true)
+        let kept = session.saveDirectory.appendingPathComponent("kept.gnusto")
+        let bytes = try Data(contentsOf: kept)
+        _ = try await session.move(
+            commands: ["east", "save", "kept", "yes", "save", "slot1"], allowPrompts: true)
+
+        _ = try await session.rewind(turns: 6)
+        #expect(SaveStore.existingSaveNames(in: session.saveDirectory) == ["kept"])
+        #expect(try Data(contentsOf: kept) == bytes)
+        _ = try await session.move(commands: ["restore", "slot1"], allowPrompts: true)
+        #expect(try await session.export().verified)
+    }
+
     // MARK: - Checkpoints, restores and rewinds
 
     /// A checkpoint is an index into the command list, so coming back to it

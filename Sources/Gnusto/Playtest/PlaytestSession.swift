@@ -146,6 +146,12 @@ actor PlaytestSession {
     /// staged any `savesFrom` slots and before a route or a tester's line ran.
     nonisolated let savesAtOpen: [String: Data]
 
+    /// Every slot a line of this session saved into, by recorded-line index,
+    /// with what the file held before it (`nil` for a slot the line made).
+    /// ``truncate(to:naming:)`` writes those bytes back for the lines it drops,
+    /// so a rewind takes back a `save` as it takes back the rest of the turn.
+    private var saveWrites: [(line: Int, file: String, before: Data?)] = []
+
     /// What `open` copied into ``saveDirectory`` before this session existed,
     /// or `nil` for the ordinary clean start.
     ///
@@ -541,10 +547,7 @@ actor PlaytestSession {
         self.prepared = prepared
         self.directory = directory
         self.saveDirectory = saveDirectory
-        self.savesAtOpen = SaveStore.existingSaves(in: saveDirectory)
-            .reduce(into: [:]) { held, slot in
-                held[slot.url.lastPathComponent] = try? Data(contentsOf: slot.url)
-            }
+        self.savesAtOpen = Self.savedGames(in: saveDirectory)
         self.staged = staged
         self.routeName = route?.name
         self.prefixCount = route.map { $0.prefix.count } ?? 0
@@ -1241,11 +1244,12 @@ actor PlaytestSession {
     /// — after everything has been written, so nothing is lost to the failure.
     ///
     /// The one honest caveat is a session that used the player's own `save` or
-    /// `restore`. The replay starts from ``savesAtOpen``, but the session
-    /// played against the label's live directory, which another probe under
-    /// the same label may have written to while this one ran. A mismatch there
-    /// may be about the slots rather than about the driver. The message says so
-    /// when it applies.
+    /// `restore`. The replay starts from ``savesAtOpen``, and a rewind puts
+    /// back the slots its dropped lines saved into, so the recorded lines
+    /// account for the changes this session made to the label's saves. They do
+    /// not account for another probe under the same label writing there while
+    /// this one ran. A mismatch there may be about the slots rather than about
+    /// the driver. The message says so when it applies.
     ///
     /// Exporting does not end the session. The next `move` reopens the
     /// transcript and rewrites it from the blocks in hand, so a tester that
@@ -1304,7 +1308,7 @@ actor PlaytestSession {
                 \(pinned
                     ? "\n\nThis session used the player's own save or restore. The replay "
                         + "starts from the saved games label \(label) held when this session "
-                        + "opened, and another probe under that label may have saved into it "
+                        + "opened, and another probe under that label may have written to it "
                         + "while this one was playing, in which case the difference is about "
                         + "the slots and not about the driver. Check the diverging turn.\n"
                     : "\n")
@@ -1363,6 +1367,14 @@ actor PlaytestSession {
         let io = ScriptedIOHandler(lines: commands)
         await REPL(world: world, io: io, status: status).run()
         return io.transcript
+    }
+
+    /// The saved games in `directory`, keyed by file name. A slot that can't
+    /// be read is left out.
+    private static func savedGames(in directory: URL) -> [String: Data] {
+        SaveStore.existingSaves(in: directory).reduce(into: [:]) { held, slot in
+            held[slot.url.lastPathComponent] = try? Data(contentsOf: slot.url)
+        }
     }
 
     // MARK: - Going back
@@ -1544,6 +1556,23 @@ actor PlaytestSession {
                 this.
                 """)
         }
+
+        // The slots a dropped line saved into go back to what they held, newest
+        // first, so a `restore` after this reads what the kept lines saved.
+        for write in saveWrites.reversed() where write.line > target {
+            let url = saveDirectory.appendingPathComponent(write.file)
+            do {
+                if let before = write.before {
+                    try before.write(to: url)
+                } else {
+                    try FileManager.default.removeItem(at: url)
+                }
+            } catch {
+                throw PlaytestError(
+                    "Couldn't put back the saved game \(url.path) as it was at line \(target): \(error).")
+            }
+        }
+        saveWrites.removeAll { $0.line > target }
 
         let branch = writeBranch(dropped)
         turns.removeSubrange(target...)
@@ -1966,7 +1995,19 @@ actor PlaytestSession {
         // the same world. ``StatusFooter/turnCost(_:audit:movesBefore:)`` is
         // that rule, written once for both drivers. (#350)
         let movesBefore = lastMoves
+        // Only an answer to the save prompt or its overwrite question writes a
+        // slot, so only those lines read the directory on either side.
+        let savesBefore =
+            pending == .saveFilename || pending == .confirmSaveOverwrite
+            ? Self.savedGames(in: saveDirectory) : nil
         let (result, audit) = await world.performAudited(line)
+        if let savesBefore {
+            saveWrites.removeAll { $0.line >= index }
+            for (file, bytes) in Self.savedGames(in: saveDirectory)
+            where savesBefore[file] != bytes {
+                saveWrites.append((line: index, file: file, before: savesBefore[file]))
+            }
+        }
         let fields = await world.statusFields()
         let turnCost = StatusFooter.turnCost(result, audit: audit, movesBefore: movesBefore)
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
