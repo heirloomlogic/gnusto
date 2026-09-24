@@ -344,14 +344,7 @@ deleting four scenery objects. M9 repeated the result. The budget was over the
 whole declaration surface, and the splitting worked by lowering the peak rather
 than by raising the roof.
 
-**Issue #174 is fixed and there is no limit to keep to.** `Bootstrap.build` now
-runs on a thread the engine sizes — 16 MB against a measured Dungeon peak of
-355 KB — so a body is as long as it reads well at. The existing sub-builders
-stay because they are easier to read, not because anything requires them, and
-`GNUSTO_STACK_REPORT=1` prints what a boot actually used if you ever want to
-know. What remains true is the lesson underneath: **a failure that names nothing
-costs more than the thing it is failing about**, and four milestones of deleting
-content to appease an unmeasured cliff is what that costs.
+**Issue #174 is fixed and there is no limit to keep to.** `Bootstrap.build` now runs on a thread the engine sizes — 16 MB, far above Dungeon's measured peak — so a body is as long as it reads well at. The existing sub-builders stay because they are easier to read, not because anything requires them, and `GNUSTO_STACK_REPORT=1` prints what a boot actually used if you ever want to know. What remains true is the lesson underneath: **a failure that names nothing costs more than the thing it is failing about**, and four milestones of deleting content to appease an unmeasured cliff is what that costs.
 
 A fifth, learned at M3: **a mechanism outgrows its bundle.** M2 put the Round
 Room's carousel inside `DungeonRoundRoom` because all three of its built passages
@@ -1038,11 +1031,7 @@ would make the box quietly unsolvable.
 Nothing of the map, and nothing of the score. The rest is engine work the game
 has been filing as it went, and nothing of it is blocking any more:
 
-- **#174, the bootstrap stack budget, is fixed.** `Bootstrap.build` runs on a
-  16 MB thread the engine owns rather than on whatever stack it was called from,
-  and `GNUSTO_STACK_REPORT=1` prints what a boot used. Dungeon uses 355 KB of it
-  in a debug build, so the nineteenth region has room and so does the twentieth.
-  `set dial to four` is back, and the eight numerals it needs with it.
+- **#174, the bootstrap stack budget, is fixed.** `Bootstrap.build` runs on a 16 MB thread the engine owns rather than on whatever stack it was called from, and `GNUSTO_STACK_REPORT=1` prints what a boot used. Dungeon uses under 1 MB of it in a debug build, so the nineteenth region has room and so does the twentieth. `set dial to four` is back, and the eight numerals it needs with it.
 - **#184, the atlas pairing nothing against Zork III, is fixed.** The builder was
   reading two generations of that checkout at once, so every Zork III entity was
   ambiguous with its own twin and none could pair. It now loads what each game's

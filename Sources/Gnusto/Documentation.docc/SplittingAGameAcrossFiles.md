@@ -90,7 +90,7 @@ $ GNUSTO_STACK_REPORT=1 swift run Dungeon
 Gnusto: Dungeon bootstrapped using 492 KB of the 16384 KB bootstrap stack.
 ```
 
-Dungeon is the largest game in this repository, so its figure is a useful sense of scale: a game would have to be an order of magnitude larger before the figure was worth looking at. A `swift test` run boots it with the same bootstrap on the same 16 MB worker.
+Dungeon is the largest game in this repository, so its figure is a useful sense of scale: a game would have to be an order of magnitude larger before the figure was worth looking at.
 
 ## Worked example
 

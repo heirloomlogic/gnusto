@@ -12,7 +12,7 @@ When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `ba
 
 ### What the core tier already answers
 
-The intents below are listed here because the commonest reason to mint a verb is not knowing the engine already has it. Two files in this repo had independently minted a "go through" before the engine's own `enter` was noticed.
+The core tier is listed in full because the commonest reason to mint a verb is not knowing the engine already has it. Two files in this repo had independently minted a "go through" before the engine's own `enter` was noticed.
 
 Handling things: `take`/`get`/`grab`/`hold`/`carry`/`pick up`, `take`/`get … from`/`off`/`out of` and `remove … from`, `drop`/`discard`/`put down`, `put … on`/`onto`/`hang`/`place`, `put … in`/`into`, `wear`/`don`, `remove`/`doff`/`take off`.
 
@@ -24,7 +24,7 @@ Going: `go`/`walk`/`run`, `enter`/`board`/`get in`/`go through`/`climb`/`step`, 
 
 People: `greet`/`hello`/`hi`/`say to`.
 
-Meta: `score`, `version`, `quit`/`q`, and the engine-level verbs, which the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`, `again`/`g`, `oops`, and the description modes `verbose`, `brief`, `superbrief`/`super`.
+Meta: `score`, `version`, `quit`/`q`, and the engine-level verbs, answered ahead of the pipeline — `save`, `restore`, `undo`, `restart`, `again`/`g`, `oops`, and the description modes `verbose`, `brief`, `superbrief`/`super`.
 
 `again` (or `g`) re-parses the last command the player ran — read against the room as it stands now, so `take it` repeated is about whatever "it" means this turn — and costs whatever that command costs. Nothing engine-level and nothing meta is ever recorded, so it cannot repeat itself, an UNDO, a SAVE or a score check, and neither can a parse error or a turn nothing answered. It is world state, so UNDO rolls it back with the turn that set it and a restored save still knows what to repeat.
 

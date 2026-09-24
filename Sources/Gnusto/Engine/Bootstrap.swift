@@ -21,9 +21,9 @@ enum Bootstrap {
     /// The signature is the one every caller already uses; what changed is where the
     /// work happens. ``buildCore(_:)`` reads every declaration the game and its
     /// bundles make, and how much stack that costs scales with the whole declaration
-    /// surface — 355 KB for Dungeon in a debug build, against the 512 KB a Swift
-    /// Testing cooperative thread has. See ``DeepStack`` for what issue #174 cost
-    /// before this hop existed.
+    /// surface. Dungeon's debug build comes close to the 512 KB a Swift Testing
+    /// cooperative thread has; `GNUSTO_STACK_REPORT` prints the current figure. See
+    /// ``DeepStack`` for what issue #174 cost before this hop existed.
     ///
     /// - Parameter game: the game to build.
     /// - Throws: `BootstrapError` if the game definition is invalid, rethrown on the

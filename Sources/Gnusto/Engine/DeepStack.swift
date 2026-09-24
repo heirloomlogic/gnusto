@@ -19,8 +19,9 @@ import Foundation
 enum DeepStack {
     /// The worker's stack: reserved, not resident. A thread stack is mapped lazily,
     /// so an untouched reservation costs address space and nothing else — which is
-    /// why this can be generous. It is 45× the largest bootstrap yet measured, and
-    /// the size issue #174 had already proved sufficient by hand.
+    /// why this can be generous. It is more than an order of magnitude above the
+    /// largest bootstrap yet measured, and the size issue #174 had already proved
+    /// sufficient by hand.
     static let stackSize = 16 << 20
 
     /// Runs `work` on a fresh worker and returns what it returned.
