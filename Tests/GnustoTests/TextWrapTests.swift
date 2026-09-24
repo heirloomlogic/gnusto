@@ -116,11 +116,28 @@ struct TextWrapTests {
             "  ALPHA<br>  BETA",
             "above\n  the form<br>  more form\nbelow",
             "inscribed\n\n  Abandon every hope\n  all ye who enter here!",
+            // An empty `<br>` segment: doubled, leading, trailing, alone.
+            "a<br><br>b",
+            "<br>b",
+            "a<br>",
+            "<br>",
+            "a<br> <br>b",
+            "a\n<br><br>\nb",
+            "  ALPHA<br><br>  BETA",
+            "  ALPHA<br>",
         ] {
             #expect(
-                TextWrap.plain(text) == TextWrap.wrap(text, width: 200).joined(separator: "\n"),
+                TextWrap.plain(text) == TextWrap.wrap(text, width: .max).joined(separator: "\n"),
                 "\(text.debugDescription)")
         }
+    }
+
+    @Test("wrap() draws an empty line for each empty <br> segment")
+    func wrapDrawsEmptyBrSegments() {
+        #expect(TextWrap.wrap("a<br><br>b", width: 40) == ["a", "", "b"])
+        #expect(TextWrap.wrap("<br>b", width: 40) == ["", "b"])
+        #expect(TextWrap.wrap("a<br>", width: 40) == ["a", ""])
+        #expect(TextWrap.wrap("  ALPHA<br><br>  BETA", width: 40) == ["  ALPHA", "", "  BETA"])
     }
 
     @Test("plain() keeps a form's shape and the block separators around it")

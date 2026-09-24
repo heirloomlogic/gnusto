@@ -170,11 +170,13 @@ public enum TextWrap {
     /// paragraphs and are rendered as a single empty line between them (runs of
     /// blank lines collapse to one). The ``lineBreak`` marker `<br>` forces a
     /// break without starting a new paragraph, for the rare intentional break.
-    /// Words are packed greedily and broken only at spaces; a word longer than
-    /// `width` (a URL, a long identifier) is hard-split into `width`-sized
-    /// chunks rather than overflowing. A preformatted line keeps its own shape
-    /// and its indentation, and is only ever chopped if it is wider than the
-    /// column.
+    /// Every marker ends a line, as it does in ``plain(_:)``, so a run of two
+    /// leaves an empty line between them and a marker at either end of a line
+    /// adds an empty line on that side. Words are packed greedily and broken
+    /// only at spaces; a word longer than `width` (a URL, a long identifier) is
+    /// hard-split into `width`-sized chunks rather than overflowing. A
+    /// preformatted line keeps its own shape and its indentation, and is only
+    /// ever chopped if it is wider than the column.
     ///
     /// - Parameters:
     ///   - text: the prose to reflow; single newlines are soft, blank lines are
@@ -215,6 +217,10 @@ public enum TextWrap {
     /// splitting any single word that is itself wider than the column. All
     /// width comparisons are in terminal columns (``DisplayWidth``), not Swift
     /// `Character` counts, so CJK and emoji pack correctly.
+    ///
+    /// No words is one empty line, the same as ``hardSplit(_:width:)`` gives
+    /// empty text, so an empty `<br>` segment takes a line in prose as it does
+    /// in a form.
     private static func wrapWords(_ words: [Substring], width: Int) -> [String] {
         var lines: [String] = []
         var current = ""
@@ -248,7 +254,7 @@ public enum TextWrap {
                 currentWidth = wordWidth
             }
         }
-        if !current.isEmpty { lines.append(current) }
+        if !current.isEmpty || lines.isEmpty { lines.append(current) }
         return lines
     }
 
