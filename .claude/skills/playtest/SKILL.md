@@ -267,10 +267,10 @@ The first two now come from `closing.json`, which the session server writes at `
 of the status line and the parser's own record of tokens it could not consume. **The rooms
 are recorded by `EntityID`, and the roster they are scored against is copied out of the
 `survey` tool rather than transcribed by the cartographer** — one key space on both sides,
-because a display name cannot be a key. Dungeon declares 143 rooms under 126 distinct
+because a display name cannot be a key. Dungeon declares 195 rooms under 138 distinct
 `name(…)` strings, seven of them "Coal Mine", so the 2026-08-18 round's "119 of 195 rooms
 visited" was a fraction whose numerator and denominator could not meet: a tester who
-walked all seven Coal Mines contributed one, and seventeen rooms were uncountable
+walked all seven Coal Mines contributed one, and fifty-seven rooms were uncountable
 however carefully the two sides were matched. That file
 also carries `firedTimers`, the engine's count of every fuse and daemon body that actually
 ran — which is what lets the round name a timer that was **declared and never fired in any
@@ -324,7 +324,7 @@ which the harness writes and no game can re-voice, is the acceptable middle.
 .claude/skills/playtest/
   SKILL.md                             this file
   references/
-    playtester-brief.md                the doctrine + judgement kernel K1..K13
+    playtester-brief.md                the doctrine + judgement kernel
     finding-contract.md                what a finding must carry
     fixer-brief.md                     the rules a fixer is bound by
     report-shape.md                    the round report and the ledger

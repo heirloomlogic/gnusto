@@ -18,7 +18,7 @@
 #   --keep-blank-lines  Pass blank lines through to the engine instead of
 #                       stripping them. The one reason to: probing what the
 #                       parser does with empty input, which is otherwise
-#                       unreachable. Every blank line then costs a turn.
+#                       unreachable. A blank line is a parse error, so it costs no turn.
 #   --start NAME        Play a committed route before the command list, so a probe can
 #                       start deep in the map without staging saved games. NAME is a
 #                       route in .playtest/<Game>/routes/ — the same store the session

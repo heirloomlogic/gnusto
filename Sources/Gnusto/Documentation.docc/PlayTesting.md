@@ -31,7 +31,7 @@ In a terminal that supports bracketed paste, pasting a multi-line block into a l
 `GNUSTO_STATUS=1` appends one line to every turn:
 
 ```
-[status] room=Coal Cellar | moves=41 | turn=cost
+[status] room=Coal Cellar | moves=41 | score=0 | turn=cost
 ```
 
 That line is the whole point of the exercise. Reading a transcript, you cannot tell which room a paragraph was printed *from* — only which room it talks *about*, which is exactly the thing under suspicion. The footer answers the first question so the prose can be judged on the second.
@@ -51,9 +51,9 @@ bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 
 
 Building is a separate one-shot on purpose: a replay that also builds cannot be trusted to have replayed the same binary twice. Output lands under `.context/playtest/<label>/<probe>/` as `transcript.txt`, `commands.txt`, `stderr.txt` and `summary.txt` — the same two evidence files the session server writes, under the same names. Read the transcript file rather than the tail on your terminal — the tail is for checking the run happened.
 
-`bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
+`bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares, with one exception: `free commands` no longer counts the footer under the opening text, so a figure recorded before that change from a probe with footers is one higher. `bin/playtest-measure --help` says which probes that affects.
 
-A package written by `bin/new-game` has all of them: `bin/playtest-replay`, `bin/playtest-measure`, `bin/export-game`, `bin/playtest-preflight`, `bin/playtest-routes` and `bin/gnusto-mcp` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved. That promise holds once the pinned Gnusto is recent enough to carry `GNUSTO_PACKAGE_PATH`, the variable a shim sets to tell the tool which package it meant; `bin/new-game` checks the tag it just pinned and prints a warning naming the two tools that need it (`bin/gnusto-mcp` and `bin/export-game`) when the default pin predates it. `--dep-path` against a fixed-up checkout is unaffected.
+A package written by `bin/new-game` has all of them: `bin/playtest-replay`, `bin/playtest-measure`, `bin/export-game`, `bin/playtest-preflight`, `bin/playtest-routes` and `bin/gnusto-mcp` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved. That promise holds once the pinned Gnusto is recent enough for each tool to read `GNUSTO_PACKAGE_PATH` or `GNUSTO_INVOCATION_DIR`, the variables a shim sets to tell the tool which package it meant. `bin/new-game` checks each shimmed tool, and the `bin/lib` modules they load, against the tag it just pinned, and prints a warning listing any the tag lacks or carries without that read. `--dep-path` against a fixed-up checkout is unaffected.
 
 `docs/playtesting.md` in this repository is the maintainer's operating manual and carries the calibration answer key: the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game. To run a portable author round from your game package, read <doc:PlayTestingYourOwnGame>. It covers preflight, dispatch, the first cold round, and the routes it can create for later rounds.
 
@@ -111,8 +111,8 @@ Fourteen of them. The ones that advance a world are applied in the order they ar
 | `note` | none | Writes a comment into the transcript at the turn you are standing on, so a wrong line gets flagged when you read it rather than reconstructed forty turns later. |
 | `finish` | — | Says what you found and that you are stopping. It always accepts, and it tells you what was still open. |
 | `checkpoint` | none | Marks where you are standing. Not the game's own SAVE — that is a thing you should still type at the game when you mean to test it. |
-| `restore` | — | Returns the world, the timer queue and the move counter to a checkpoint. The abandoned turns leave the command list and are kept beside the transcript as `branch-NNN.txt`, so a branch you walked away from is still evidence. |
-| `rewind` | — | Takes back the last few recorded lines. Comments count as lines, because that is how they are numbered everywhere else. |
+| `restore` | — | Returns the world, the timer queue and the move counter to a checkpoint. The abandoned turns leave the command list and are kept beside the transcript as `branch-NNN.txt`, so a branch you walked away from is still evidence. Refused, with nothing moved, when a line after the checkpoint saved a game into the session's label; the refusal names that line. |
+| `rewind` | — | Takes back the last few recorded lines. Comments count as lines, because that is how they are numbered everywhere else. Refused, with nothing moved, when one of those lines saved a game into the session's label; the refusal names that line. |
 | `export` | — | Writes the evidence out and checks that it replays: the command list goes through a fresh copy of the game and the result is compared byte for byte, so what you cite is provably a regression test. |
 | `replay` | none | Plays a command list in a brand-new copy with no session at all. Give it an excerpt to `expect` and you get a verdict instead — whether that text really printed, at which turn, in which room, and the whole turn it printed in. |
 
@@ -126,7 +126,9 @@ A game whose map outruns a session's budget cannot be tested at its far end on f
 .playtest/<Game>/routes/<name>.json
 ```
 
-`open` takes one by name and plays it silently. The tester is handed the frame it stopped on and never the commands: `recall` will not read them back, and the rooms the route crossed are not credited as anything the tester covered. `closing.json` records `prefixTurns`, so a round can say how much of a session was the harness walking rather than the tester playing.
+`GNUSTO_PLAYTEST_ROUTES`, if set, replaces the `.playtest` part of that path.
+
+`open` takes a route by name and plays it silently. The tester is handed the frame it stopped on and never the commands: `recall` will not read them back, and the rooms the route crossed are not credited as anything the tester covered. `closing.json` records `prefixTurns`, so a round can say how much of a session was the harness walking rather than the tester playing.
 
 A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. If it no longer ends where its manifest claims, it is stale, and the failure says which room it ends in now.
 

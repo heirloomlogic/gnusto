@@ -91,7 +91,7 @@ Seven of them, and they are the engine's real test corpus as well as its documen
 | `swift run Fulminate` | Pasadena, June 1952 — a rocketry man dies in his own carriage house and you have an hour and four minutes to name the killer | a wall clock and a conversation system |
 | `swift run KindlyDeep` | a fall of rock, two clocks that run down, and a mule who follows | thirst and fatigue, and a companion who parks and rejoins |
 | `swift run Zork1` | the full 350-point reconstruction | prose reproduced verbatim from the published Zork I source |
-| `swift run Dungeon` | the MIT mainframe Zork, the one Zork I was cut down from | 143 rooms so far against a 196-room original, built one region at a time |
+| `swift run Dungeon` | the MIT mainframe Zork, the one Zork I was cut down from | 195 rooms of the original's 196, built one region at a time |
 
 **Lighthouse** is the one to read first: containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins, in a game you can finish in a few minutes. **Dungeon** is the scale test, and it is what finds the bugs a four-room game cannot.
 

@@ -25,7 +25,7 @@ const logs = []
 const survey = {
   // `{id, name}` since #287, and the last two rows are the whole reason: two
   // rooms under one display name is the case a name-keyed roster cannot
-  // represent, and Dungeon has seventeen of them. The collator below reports one
+  // represent, and Dungeon has fifteen such names. The collator below reports one
   // of the pair and not the other, so the critic has to be able to say that
   // "Stair" was both entered and never entered — of different rooms.
   rooms: [
@@ -623,6 +623,10 @@ if (dryArgs.routes?.length) {
       `${p.label} is not given the round's route names (${wants}), so a region naming one is unusable`
     )
   }
+}
+// The server refuses a restore or rewind back past a line that saved a game.
+for (const p of play) {
+  check(/that restore is refused and names the\s+line/.test(p.prompt), `${p.label} is not told a save blocks a restore`)
 }
 
 // **And every seat that plays is told who owns the rooms outside every region.**
@@ -1426,7 +1430,7 @@ check(
 // The room key space. The 2026-08-18 Dungeon round published "119 of 195 rooms
 // visited" from a numerator of display names and a denominator an agent had
 // retyped out of `Sources/`. Neither half could be repaired on its own: names
-// are not unique, so seventeen of that game's 143 rooms could not be counted at
+// are not unique, so fifty-seven of that game's 195 rooms could not be counted at
 // all whatever the two sides were matched with. These assert the whole path:
 // the survey tool -> the roster -> the collator's ids -> the critic's line.
 const surveyPrompt = promptFor((p) => /^survey:/.test(String(p.label || '')))

@@ -34,13 +34,15 @@ labels are cleaned. `bin/playtest-replay --saves-from` and the `replay` tool's
 `savesFrom` both take either spelling. A staged probe cited as though it were an
 ordinary one claims the stronger thing, and the next reader finds out the hard way.
 
-**A frame read from `replay` is citable too, and citing it is not optional.** Every
-`replay` call now answers with `transcript=<path>` on its first line and writes that
-file. Before it did, the 2026-08-17 round produced a report asserting an ending branch
+**A frame read from `replay` is citable too, and citing it is not optional.** A
+`replay` that wrote its probe answers with `transcript=<path>` on its first line.
+Before replays wrote one, the 2026-08-17 round produced a report asserting an ending branch
 that appears in **no file in the tree**, and three charters whose load-bearing frames
 came from free replays nobody could re-read. If you read a line off a replay and quote
 it, quote the path with it; a claim whose only witness was a tool result that scrolled
-past is a claim the next reader cannot check.
+past is a claim the next reader cannot check. A replay whose probe could not be written
+has no `transcript=`, and its second line starts `no probe written:` with the reason;
+cite its command list and seed instead.
 
 **A distilled route is reported as what it is.** The round logs each one's name, how
 many commands went in and came out, the room the cold verification landed in — never
@@ -149,7 +151,7 @@ Four things, none of them optional:
   `replays` was added to the wrong side.
 - **Entered is not covered, and the two must not be one number.** A room the harness
   only walked through while replaying a committed route from
-  `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly
+  `.playtest/<Game>/routes/` is reach, not coverage — 21 of Dungeon's were exactly
   that, and the rule is **count them blank**. `coverage.rooms.worked` is the engine's
   own attempt at that line and an upper bound on it: it counts a room a session typed
   a non-travel, non-meta command in, which a route file's own `take lamp` also
