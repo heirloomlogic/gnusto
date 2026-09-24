@@ -21,10 +21,12 @@ past-versus-present comparison in the ledgers. Add a field rather than redefinin
 one, and if a rule genuinely has to change, re-measure the stored probes with it.
 
 One rule has changed. "free commands" counted the `[status]` footer under the
-opening text, which reads `turn=free` but is not a command, so every probe
-reported one free command too many. It leaves the opening out since #627; a
-"free commands" figure recorded before then is one higher per probe than this
-script now prints for the same probe.
+opening text, which reads `turn=free` but is not a command, so a probe with
+footers reported one free command too many. It leaves the opening out since
+#627; for such a probe, a "free commands" figure recorded before then is one
+higher than this script now prints. A probe with no footers, such as a
+`bin/playtest-replay` probe from before #288, counts no free commands in either
+version.
 
 Usage: bin/playtest-measure <probe-dir> [<probe-dir> ...]
        bin/playtest-measure -h|--help

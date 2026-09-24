@@ -292,6 +292,7 @@ round greps for the first across four places — the testers' transcripts, the `
 files a rewind wrote off, the probes under `.context/playtest/.replays/` that the server's
 own `replay` tool writes after the round's preflight session finishes, and the `bin/playtest-replay` probes under the round's `-play-` and
 `-verify-` labels. The collator does all of it; nobody is asked how far they got.
+A `.replays/` probe carries no label, so that tree is bounded by time only: a replay another round or an operator made in this checkout after the preflight session finished is counted too, and if that session's closing record is missing the count is reported as unknown.
 
 The last of those four is the newest and was the largest. `bin/playtest-replay` wrote no
 footers until #288, so its transcripts held no `turn=cost` to grep and its labels matched no

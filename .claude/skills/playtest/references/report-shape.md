@@ -138,8 +138,8 @@ Four things, none of them optional:
 - **Turns, from `coverage.turns`, and never from what anybody said they spent.**
   `sessions` (the testers' transcripts), `branches` (turns a `rewind` wrote out of a
   transcript — really played, so really counted), `replays` (the `.replays/` probes
-  written after the round's preflight session finished — **the testers'**, because the
-  round hands the `replay` tool to its play-phase agents and to no other), `playReplays` and `verifyReplays` (`bin/playtest-replay` under a play or a
+  written after the round's preflight session finished — credited to the testers, because the
+  round hands the `replay` tool to its play-phase agents and to no other, though a replay another round or an operator made in this checkout after that point is counted too; if the preflight closing record is missing the count is reported as unknown, never as zero), `playReplays` and `verifyReplays` (`bin/playtest-replay` under a play or a
   verify label), `harnessReplays` (the round's own errands, under every other label),
   and `total`. Report the total and the tester/verifier split; a round whose verifiers
   outspend its testers many times over played less than it argued, and that belongs in

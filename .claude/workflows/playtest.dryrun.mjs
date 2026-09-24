@@ -130,7 +130,12 @@ const stub = async (prompt, opts = {}) => {
   // file rather than a flag here — a stub that could go either way would make
   // every assertion below conditional on which way it went.
   if (l.startsWith('preflight')) {
-    return { toolsResolved: true, toolNames: ['mcp__fulminate__open', 'mcp__fulminate__finish'] }
+    // `probe-002`: a rerun under the same round id, whose `probe-001` may never have
+    // finished. The `.replays/` floor has to follow the path, not assume the first.
+    return {
+      toolsResolved: true, toolNames: ['mcp__fulminate__open', 'mcp__fulminate__finish'],
+      transcript: `/w/.context/playtest/Fulminate-${dryRoundId}-preflight/probe-002/transcript.txt`,
+    }
   }
   if (l.startsWith('survey')) return survey
   if (l.startsWith('play:')) return findings(l.slice(5))
@@ -884,11 +889,18 @@ check(
   Boolean(preflightOpenLabel) && preflightOpenLabel.includes(dryRoundId),
   'could not read a round-scoped `open` label out of the preflight prompt'
 )
+const replayFloor = `${LAYOUT.SCRATCH}/${preflightOpenLabel}/probe-002/${LAYOUT.CLOSING}`
 check(
   replayLines.length === 2
-    && replayLines.every((l) => l.includes(
-      `-newer ${LAYOUT.SCRATCH}/${preflightOpenLabel}/probe-001/${LAYOUT.CLOSING}`)),
+    && replayLines.every((l) => l.startsWith(`      test -f ${replayFloor} && find `)
+      && l.includes(`-newer ${replayFloor}`) && l.endsWith('|| echo unknown')),
   `the .replays/ recipes are not floored at this round's preflight closing record, so earlier rounds' replays are counted as this round's: ${JSON.stringify(replayLines)}`
+)
+// `*` in `-path` matches `/`, so without `-name` a staged replay's `saves-in`
+// directory is counted as a second probe.
+check(
+  replayLines.some((l) => l.includes('-type d') && l.includes(`-name "${LAYOUT.PROBE}"`)),
+  'the .replays/ probe count also counts each probe\'s saves-in directory'
 )
 // The round's own trees, counted by exclusion. An operator's ad-hoc label —
 // `prefix-check`, `thief-rate` — cannot be enumerated in advance, so the recipe
@@ -1234,7 +1246,7 @@ for (const p of ledgers) {
 // the costume of a count. That is site 2 of #299, and it is a property of the
 // generated text, so here is where it can be asserted.
 const findStarts = [
-  ...new Set(collatorLines.filter((l) => /^\s*find /.test(l)).map((l) => l.trim().split(/\s+/)[1])),
+  ...new Set(collatorLines.flatMap((l) => [...l.matchAll(/(?:^\s*|&& )find (\S+)/g)].map((m) => m[1]))),
 ]
 check(findStarts.length > 0, 'the collator prompt runs no find at all')
 for (const start of findStarts) {
@@ -1866,6 +1878,12 @@ for (const root of ['.', 'bin/templates']) {
         reply.findings = [...(reply.findings || []), ...downExtraBugs]
       }
     }
+    // No transcript from preflight, so no `.replays/` floor: the count must reach the
+    // critic as unknown, and the collator's note must reach it at all.
+    if (String(opts.label || '').startsWith('preflight')) delete reply.transcript
+    if (opts.label === 'collator') {
+      return { ...reply, turns: { ...reply.turns, replaysUnknown: true }, note: 'floor missing' }
+    }
     if (String(opts.label || '').startsWith('cluster:')) {
       for (const a of reply.assignments || []) {
         a.declaration = `${downEngine}/Actions/GameText.swift::${a.declaration.split('::').pop()}`
@@ -1884,6 +1902,13 @@ for (const root of ['.', 'bin/templates']) {
     gameSourceDir: downGameSource, refPath: downRef, tracker: false,
   })
   const downText = downPrompts.join('\n')
+  const downCritic = downPrompts.find((p) => p.includes('world turns**')) || ''
+  check(
+    downCritic.includes('an **unknown** number in probes under')
+      && !downCritic.includes(`${stubTurns.replays} across`)
+      && downCritic.includes("The collator's note, verbatim: floor missing"),
+    'a round with no .replays/ floor reports a measured-looking count, or drops the collator\'s note'
+  )
   for (const bound of ['the Gnusto repo', 'docs/games', 'CLAUDE.md']) {
     check(
       !downText.includes(bound),
