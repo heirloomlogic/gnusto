@@ -11,8 +11,8 @@ struct Zork1ProseTests {
     // MARK: - The floor speaks in Zork I's voice (#242)
 
     /// **The sweep, and the only assertion here that cannot go stale.** Every
-    /// other test below names one verb; a forty-eighth stub arriving in the
-    /// engine tomorrow would slip past all of them. The shared helper derives
+    /// other test below names one verb; a new stub arriving in the engine
+    /// tomorrow would slip past all of them. The shared helper derives
     /// its own completeness from ``GameText/StubReplies``, so it fails the
     /// moment one is added rather than letting the new line go unvoiced.
     @Test func noEngineStubLineSurvivesInZork1() {

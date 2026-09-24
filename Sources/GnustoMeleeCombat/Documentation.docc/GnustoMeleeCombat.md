@@ -109,7 +109,7 @@ before the trait existed. Strength 1 or less is a clumsy blade at 40/76/90;
 keenest one he is holding serves.
 
 The counter-attack rolls a flat table: miss ≤ 50, wound ≤ 85, an outright kill
-above. `playerStrength` is how many wounds the player survives, default 2.
+above. `playerStrength` is the wound that kills the player: at the default of 2, the first wound is survived and the second is fatal.
 `strikesFirst` is the odds out of 100 that a villain starts a fight on a turn
 the player hasn't — 100 fights on sight, 0 only ever answers a blow, and neither
 of those two values draws from the stream. `when:` is an extra gate checked

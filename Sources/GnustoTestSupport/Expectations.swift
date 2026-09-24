@@ -178,11 +178,11 @@ public func expectNoStockRefusal(
 /// name.
 ///
 /// A game that gives itself a **stub floor** — `text.stubs`, rather than an
-/// `action(…)` row per verb — is claiming all ~47 of them, and the claim is easy
-/// to half-keep: one line left unassigned means a plain modern narrator takes
+/// `action(…)` row per verb — is claiming every stub line, and the claim is
+/// easy to half-keep: one line left unassigned means a plain modern narrator takes
 /// over on the turn after a re-voiced one, which is exactly the defect the
 /// Dungeon and Zork 1 floors were written to close. Naming each verb in a test
-/// catches that; it does not catch a *forty-eighth* stub arriving in the engine
+/// catches that; it does not catch a *new* stub arriving in the engine
 /// tomorrow, which would slip past every named assertion at once.
 ///
 /// So this reads the properties off `GameText.StubReplies` with `Mirror`
@@ -195,7 +195,7 @@ public func expectNoStockRefusal(
 /// the one line about two objects, so not a `GameText.Line`, so unreachable by
 /// reflection and compared by hand below the loop — the single line in here that
 /// could change shape without the sweep noticing. It takes a `GameText.Gift`
-/// now, and goes through the same door as the other forty-eight.
+/// now, and goes through the same door as the other stub lines.
 ///
 /// Which sentences each line prints is the *subject's* business as of #255:
 /// `LineSubject.samples(one:many:)` supplies them, so a subject arriving
@@ -204,8 +204,7 @@ public func expectNoStockRefusal(
 ///
 /// It is split out from ``expectNoEngineStubLineSurvives(in:game:sourceLocation:)``
 /// so the sweep can be tested for being *alive*: a reflection loop that matches
-/// nothing passes silently, where one asserted to see all forty-nine lines
-/// cannot.
+/// nothing passes silently, where one asserted to see every line cannot.
 ///
 /// - Parameter ours: the game's `text.stubs`.
 /// - Returns: the property names still identical to the engine's wording.

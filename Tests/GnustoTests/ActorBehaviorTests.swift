@@ -111,6 +111,14 @@ struct ActorBehaviorTests {
         #expect(!transcript.contains("the Ozymandias"))
     }
 
+    /// The plugin's doc-comment example, run: the line writes no article, and
+    /// the painting arrives as "the oil painting".
+    @Test func theDocExampleAnnouncesTheTheft() async throws {
+        let transcript = try await play(ShadowThiefGame(), Array(repeating: "wait", count: 8), seed: 0)
+        #expect(transcript.contains("A shadow relieves you of the oil painting."))
+        #expect(!transcript.contains("the the"))
+    }
+
     @Test func aThiefNeverStealsFromHimself() async throws {
         let transcript = try await play(
             PickpocketGame(),

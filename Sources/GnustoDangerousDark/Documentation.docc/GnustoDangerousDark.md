@@ -23,9 +23,9 @@ spent. Lingering is lethal and movement is not, so a lightless dash toward the
 stairs can still work. Any reachable light resets the count to zero. Dark turn 1
 prints the warning; dark turns 2 through `graceTurns + 1` are a silent grace;
 from dark turn `graceTurns + 2` on, every turn rolls `chance(lethality)` to be
-eaten. The warning turn is always safe, which is the classic fairness contract:
-a player who UNDOes a death gets the warning beat back before the dice can turn
-on them again.
+eaten. The warning turn is safe, which is the classic fairness contract.
+
+UNDO after a death does not bring the warning back. The count is a `@Global`, so UNDO returns it to its value before the fatal turn, and a next turn that also ends in the dark is a dice turn again. UNDO rewinds the seeded random stream too, so typing the fatal turn's command again rolls the same death. A turn that ends in the light resets the count. In Zork 1 the line printed after that UNDO reads like a warning, but it is the room's own dark line: Zork points `text.pitchBlack` at the grue sentence.
 
 Two instances in one game collide on their shared `@Global` namespace before the
 timer name matters. One lethal dark per game.

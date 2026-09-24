@@ -452,7 +452,11 @@ public struct MeleeCombat: GameContent {
     ///   - strikesFirst: the odds out of a hundred that he starts a fight on a
     ///     turn the player hasn't. 100 fights on sight; 0 never starts one and
     ///     only ever answers a blow.
-    ///   - playerStrength: hits the player survives before a wound turns fatal.
+    ///   - playerStrength: the wound that kills the player. At the default of 2
+    ///     the first wound is survived and the second is fatal. The player's
+    ///     wounds are one count in this bundle's ledger, shared by every
+    ///     villain whose daemon it made, and the first wound starts the count
+    ///     from its own villain's `playerStrength`.
     ///   - condition: an extra gate, checked first — a false gate is a quiet, draw-free turn.
     ///   - prose: per-outcome counter-attack lines (miss, wound, playerDeath).
     /// - Returns: the daemon rolling the villain's counter-attack each turn.

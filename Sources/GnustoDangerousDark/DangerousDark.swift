@@ -20,8 +20,13 @@ import Gnusto
 /// Death is a **dice roll** once the grace runs out, the original's grue:
 /// the first dark turn only warns, a configurable grace of guaranteed-safe
 /// turns follows, and then every further dark turn rolls `chance(lethality)`
-/// to be eaten. The warning is always safe, so a revived player (UNDO) still
-/// gets the warning beat before the dice can turn on them again.
+/// to be eaten. The warning turn itself is safe.
+///
+/// UNDO after a death does not bring the warning back. The count is a
+/// `@Global`, so UNDO returns it to its value before the fatal turn, and a
+/// next turn that also ends in the dark is a dice turn again. UNDO rewinds the
+/// seeded random stream too, so typing the fatal turn's command again rolls
+/// the same death. A turn that ends in the light resets the count.
 ///
 /// To make the dark harmless for a stretch — a room whose solution is to stand
 /// in it on purpose, a scene that should not be interrupted — set

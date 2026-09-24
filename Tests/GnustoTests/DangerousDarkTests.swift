@@ -93,6 +93,19 @@ struct DangerousDarkTests {
         expectInOrder(looks[4], ["D.", "*** You have died ***"])
     }
 
+    /// UNDO after a grue death does not bring the warning back (#628). The
+    /// count is a `@Global` and the random stream is world state, so UNDO puts
+    /// both back one turn: the same `look` is a dice turn again and, at 40%
+    /// lethality, rolls the same death twice more.
+    @Test func undoAfterADeathReplaysTheSameRoll() async throws {
+        let transcript = try await play(
+            FickleDarkGame(),
+            ["north", "look", "undo", "look", "undo", "look", "quit"],
+            seed: 0)
+        #expect(occurrences(of: "something in it is breathing", in: transcript) == 1)
+        #expect(occurrences(of: "*** You have died ***", in: transcript) == 3)
+    }
+
     @Test func suspendingTheDarkSilencesIt() async throws {
         // Straight into the warded room and stay there. The Shrine is as dark
         // as the Cave — `dark` is declared on both — so anything that speaks

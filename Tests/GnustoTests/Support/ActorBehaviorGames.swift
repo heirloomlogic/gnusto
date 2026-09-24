@@ -118,6 +118,56 @@ struct NamedLootGame: Game {
     }
 }
 
+/// The example in `ActorBehaviors`'s own doc comment, compiled. Its `timers`
+/// block is that example as written, so an example that stops compiling fails
+/// this target rather than the first reader who copies it.
+struct ShadowThiefGame: Game {
+    let title = "Shadow Thief"
+    let intro = ""
+
+    let cellar = Location {
+        name("Cellar")
+        description("Damp stone.")
+    }
+
+    let gallery = Location {
+        name("Gallery")
+        description("Empty frames.")
+    }
+
+    let studio = Location {
+        name("Studio")
+        description("Bare easels.")
+    }
+
+    let thief = Actor {
+        name("thief")
+    }
+
+    let painting = Item {
+        name("oil painting")
+        adjectives("oil")
+    }
+
+    let actors = ActorBehaviors()
+
+    var timers: [TimedEvent] {
+        actors.roams(
+            thief, named: "thief.roam",
+            rooms: [cellar, gallery, studio])
+        actors.steals(
+            thief, named: "thief.steal",
+            candidates: [painting],
+            announcement: .naming { "A shadow relieves you of \($0)." })
+    }
+
+    var map: WorldMap {
+        player.starts(in: cellar)
+        thief.starts(in: cellar)
+        painting.startsHeld
+    }
+}
+
 struct PickpocketGame: Game {
     let title = "Pickpocket"
     let intro = "Mind your pockets."
