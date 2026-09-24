@@ -95,15 +95,21 @@ struct DangerousDarkTests {
 
     /// UNDO after a grue death does not bring the warning back (#628). The
     /// count is a `@Global` and the random stream is world state, so UNDO puts
-    /// both back one turn: the same `look` is a dice turn again and, at 40%
-    /// lethality, rolls the same death twice more.
+    /// both back one turn: the same `look` is a dice turn again and rolls what
+    /// it rolled before. At 40% lethality, two independent rolls disagree about
+    /// half the time, so across these seeds a stream that was not rewound would
+    /// show a death on one side of the UNDO and not the other.
     @Test func undoAfterADeathReplaysTheSameRoll() async throws {
-        let transcript = try await play(
-            FickleDarkGame(),
-            ["north", "look", "undo", "look", "undo", "look", "quit"],
-            seed: 0)
-        #expect(occurrences(of: "something in it is breathing", in: transcript) == 1)
-        #expect(occurrences(of: "*** You have died ***", in: transcript) == 3)
+        var outcomes: Set<Int> = []
+        for seed in UInt64(0)..<20 {
+            let transcript = try await play(
+                FickleDarkGame(), ["north", "look", "undo", "look", "quit"], seed: seed)
+            #expect(occurrences(of: "something in it is breathing", in: transcript) == 1)
+            let deaths = occurrences(of: "*** You have died ***", in: transcript)
+            #expect(deaths == 0 || deaths == 2, "seed \(seed)")
+            outcomes.insert(deaths)
+        }
+        #expect(outcomes == [0, 2])
     }
 
     @Test func suspendingTheDarkSilencesIt() async throws {

@@ -17,10 +17,12 @@ import Gnusto
 /// turn is a guarantee (the classic fairness contract) and a lightless dash
 /// toward daylight can still succeed. Any reachable light resets the count.
 ///
-/// Death is a **dice roll** once the grace runs out, the original's grue:
-/// the first dark turn only warns, a configurable grace of guaranteed-safe
-/// turns follows, and then every further dark turn rolls `chance(lethality)`
-/// to be eaten. The warning turn itself is safe.
+/// Death is a **dice roll** once the grace runs out: the first dark turn only
+/// warns, a configurable grace of guaranteed-safe turns follows, and then every
+/// further dark turn rolls `chance(lethality)` to be eaten. The warning turn
+/// itself is safe. This is not Zork's rule. Zork's grue keeps no count and can
+/// kill only a player who tries to move out of a dark room, never one who
+/// stands still; `FIDELITY.md` records the difference for both Zork games.
 ///
 /// UNDO after a death does not bring the warning back. The count is a
 /// `@Global`, so UNDO returns it to its value before the fatal turn, and a
@@ -107,14 +109,14 @@ public struct DangerousDark: GameContent {
     /// never earlier than dark turn 2, because dark turn 1 is the warning's own
     /// arm however low `graceTurns` goes. So a
     /// death here lands on a turn spent lingering in a dark the player has
-    /// already been warned about, rather than on the turn they walked into it —
-    /// which is the distinction Zork draws with two separate sentences. `V-WALK`
+    /// already been warned about, rather than on the turn they walked into it.
+    /// Zork has two death sentences, and both belong to moves. `V-WALK`
     /// (`gverbs.zil:1578`) says "You have walked into the slavering fangs of a
     /// lurking grue!" and fires only on a *blocked* move in the dark, a mechanic
     /// this plugin does not have at all; `GOTO` (`gverbs.zil:2110-2114`) says
     /// "A lurking grue slithered into " and then the vehicle's name, or the
-    /// word "room", "and devoured you!" — and is the one that fits. Both games
-    /// here had been handed the first. (#350)
+    /// word "room", "and devoured you!" — the grue comes to the player, so it is
+    /// the one that fits. Both games here had been handed the first. (#350)
     ///
     /// That branch is why ``Text/death`` takes a subject: the vehicle the player was
     /// aboard, or nothing. Both halves are the game's own words. A library that
