@@ -87,10 +87,10 @@ If you ever want the measurement rather than the assurance, set `GNUSTO_STACK_RE
 
 ```
 $ GNUSTO_STACK_REPORT=1 swift run Dungeon
-Gnusto: Dungeon bootstrapped using 340 KB of the 16384 KB bootstrap stack.
+Gnusto: Dungeon bootstrapped using 492 KB of the 16384 KB bootstrap stack.
 ```
 
-Dungeon is 23 content bundles and some 800 declarations, so 340 KB is a useful sense of scale: a game would have to be an order of magnitude larger before the figure was worth looking at. (The same game reports about 355 KB from inside `swift test`, because a test bundle is built with `-enable-testing` and its frames are a little wider. Both are the same bootstrap on the same 16 MB worker.)
+Dungeon is the largest game in this repository, so its figure is a useful sense of scale: a game would have to be an order of magnitude larger before the figure was worth looking at. A `swift test` run boots it with the same bootstrap on the same 16 MB worker.
 
 ## Worked example
 

@@ -45,8 +45,7 @@ know a question was asked.
 
 ## What a handler has to implement
 
-``IOHandler`` has five requirements and three default implementations, so the
-smallest conformance is two methods:
+Every ``IOHandler`` requirement except `write(_:)` and `readLine(prompt:)` has a default implementation, so the smallest conformance is those two methods:
 
 ```swift
 struct PipeHandler: IOHandler {

@@ -92,7 +92,7 @@ Free means free all the way down, too. The `before` rules of stages 1–3 have a
 
 ## Meta intents skip everything
 
-A few intents talk to the *game program*, not the game world: ``Intent/score``, ``Intent/quit``, ``Intent/version``, and the four state-management verbs ``Intent/save``, ``Intent/restore``, ``Intent/undo``, and ``Intent/restart``. These are **meta** intents. They run no rules at all and do not consume a turn — asking for your score is not an action the world should react to, and it should not advance a timed puzzle. Everything in the numbered list above is gated on the intent not being meta.
+A few intents talk to the *game program*, not the game world: ``Intent/score``, ``Intent/quit``, ``Intent/version``, the state-management verbs ``Intent/save``, ``Intent/restore``, ``Intent/undo`` and ``Intent/restart``, and the description modes ``Intent/verbose``, ``Intent/brief`` and ``Intent/superbrief``. These are **meta** intents. They run no rules at all and do not consume a turn — asking for your score is not an action the world should react to, and it should not advance a timed puzzle. Everything in the numbered list above is gated on the intent not being meta.
 
 `save` and `restore` add one more conversational move: they answer with a filename question ("Save to what file?"), and the *next* input line — raw, untokenized — is its answer. A `save` naming a file that already exists asks one more, a yes/no before it replaces it. Like the parser's clarifying questions, these round-trips are pending state inside ``GameWorld``; the driver just keeps feeding lines. The death prompt after ``die(_:)`` works the same way. See <doc:DarknessTimeAndDeath>.
 
