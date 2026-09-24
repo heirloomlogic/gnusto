@@ -2561,8 +2561,9 @@ function firedTimers(rows) {
 // distinct names, seven of them "Coal Mine": a tester who walked all seven
 // contributed one entry, and fifty-seven rooms could never be counted at all.
 // (This pair used to read "143 rooms under 126 names", which counted only the
-// literal `Location { }` declarations and missed the 52 that `Maze.swift` and
-// `Palantir.swift` build from factory functions.) The
+// literal `Location { }` declarations and missed the 52 that factory functions
+// build in `Endgame.swift`, `Maze.swift`, `River.swift`, `Volcano.swift` and
+// `Palantir.swift`.) The
 // 2026-08-18 round published "119 of 195 rooms visited" off that arithmetic and
 // listed as never-entered five Frigid River stretches two charters had stood in.
 //

@@ -274,13 +274,13 @@ enum PlaytestTools {
     /// **Oracle data, gated exactly like `survey`, and for the sharper of the
     /// two reasons.** A tester that can ask which words the parser knows can
     /// never again discover that a printed noun has nothing behind it: it would
-    /// simply not type the word. That is the K8 class, and it is the single
+    /// simply not type the word. That is the unanswerable-noun class, and it is the single
     /// largest defect class every round finds — the whole argument for the
     /// firewall reduced to one tool. So a play-testing role is refused, and the
     /// refusal says why.
     ///
     /// It exists for the two callers who are not being measured. The round's
-    /// **verifier** adjudicating a K8 finding needs to know whether the word is
+    /// **verifier** adjudicating such a finding needs to know whether the word is
     /// really absent, and asking the vocabulary is exact where matching the
     /// reply against *"You can't see any such thing"* is a string-match on prose
     /// a game may re-skin. And a **game author** driving their own game opens

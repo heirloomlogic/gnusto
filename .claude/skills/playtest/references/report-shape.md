@@ -34,9 +34,9 @@ labels are cleaned. `bin/playtest-replay --saves-from` and the `replay` tool's
 `savesFrom` both take either spelling. A staged probe cited as though it were an
 ordinary one claims the stronger thing, and the next reader finds out the hard way.
 
-**A frame read from `replay` is citable too, and citing it is not optional.** Every
-`replay` call now answers with `transcript=<path>` on its first line and writes that
-file. Before it did, the 2026-08-17 round produced a report asserting an ending branch
+**A frame read from `replay` is citable too, and citing it is not optional.** A
+`replay` that wrote its probe answers with `transcript=<path>` on its first line.
+Before replays wrote one, the 2026-08-17 round produced a report asserting an ending branch
 that appears in **no file in the tree**, and three charters whose load-bearing frames
 came from free replays nobody could re-read. If you read a line off a replay and quote
 it, quote the path with it; a claim whose only witness was a tool result that scrolled

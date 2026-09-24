@@ -439,7 +439,7 @@ struct PlaytestSignals: Sendable {
 ///
 /// The two are not interchangeable and the split is the whole point. A display
 /// name is prose — Dungeon declares 195 rooms under 138 names, Zork 1 has
-/// seventeen called Maze and eight called Dead End — so keying anything on it
+/// fifteen called Maze and five called Dead End — so keying anything on it
 /// merges rooms that merely read alike. Walking west out of one Dead End used
 /// to close the other's unwalked west exit, and `look` in one was compared
 /// against `look` in the other and the differing item listing reported as a
