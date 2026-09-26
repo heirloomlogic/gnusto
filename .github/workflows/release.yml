@@ -120,6 +120,11 @@ jobs:
           # Without this codesign stops at a keychain access prompt nobody answers.
           security set-key-partition-list -S apple-tool:,apple: -s \
             -k "$keychain_password" "$keychain" > /dev/null
+          # codesign looks for the identity only in keychains on the search list,
+          # even when --keychain names one; without this it reports "no identity
+          # found" for the hash find-identity just printed. xargs strips the
+          # quotes and indent `list-keychains` prints around each path.
+          security list-keychains -d user | xargs security list-keychains -d user -s "$keychain"
           identity="$(security find-identity -v -p codesigning "$keychain" \
             | awk '/Developer ID Application/ {print $2; exit}')"
           if [[ -z "$identity" ]]; then
