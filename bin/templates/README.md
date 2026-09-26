@@ -51,4 +51,6 @@ git push origin 1.0.0
 
 It discovers your executable products from the manifest, so it needs no edits as they change.
 
+With no further setup the macOS binaries are ad-hoc signed, and macOS refuses to open a downloaded copy until the player clears its quarantine flag. To publish notarized binaries that open on download, add a Developer ID certificate and an App Store Connect API key as repository secrets. The comment above the "Sign and notarize" step in the workflow lists the five secrets, and "Sharing Your Game" in Gnusto's DocC catalog walks through creating them.
+
 The full authoring guides live in Gnusto's DocC catalog — start with "Getting Started with Gnusto".

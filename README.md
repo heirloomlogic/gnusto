@@ -157,7 +157,7 @@ Conform a game type to `GameMain`, mark it `@main`, and it is an executable. Exp
 bin/export-game Lighthouse       # → dist/Lighthouse
 ```
 
-On macOS 15+ that binary links the Swift runtime that ships with the OS, so the recipient runs it with no Xcode and no toolchain. `bin/export-game` builds only for the machine you are standing at; pushing a version tag builds every product for macOS and Linux and attaches them to the release. Neither path notarizes, so a downloaded macOS binary stays quarantined until it is cleared — the full workflow is in [Sharing Your Game](https://heirloomlogic.github.io/gnusto/documentation/gnusto/sharingyourgame).
+On macOS 15+ that binary links the Swift runtime that ships with the OS, so the recipient runs it with no Xcode and no toolchain. `bin/export-game` builds only for the machine you are standing at; pushing a version tag builds every product for macOS and Linux and attaches them to the release. The release workflow notarizes the macOS binaries when the repository has a Developer ID and an App Store Connect API key; without them, and for `bin/export-game`, a downloaded macOS binary stays quarantined until it is cleared. The full workflow is in [Sharing Your Game](https://heirloomlogic.github.io/gnusto/documentation/gnusto/sharingyourgame).
 
 ## Documentation
 
