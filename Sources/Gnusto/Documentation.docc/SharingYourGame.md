@@ -8,7 +8,7 @@ Turn a finished game into a single command-line binary you can hand to a friend.
 
 The person you want to play your game should not need Xcode, a toolchain, or any idea what SwiftPM is. This guide takes a game from *runs on my machine* to *one file that runs on somebody else's*, which is `bin/export-game` and a short conversation with Gatekeeper.
 
-`bin/export-game` builds macOS only, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every executable product for macOS and Linux and attaches them to the release. Neither path notarizes, so a downloaded macOS binary still has to be un-quarantined by hand.
+`bin/export-game` builds macOS only, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every executable product for macOS and Linux and attaches them to the release. Only the release workflow can notarize a macOS binary so that it runs on download; "Notarize the release binaries" below says how.
 
 ## Make a game runnable
 
@@ -113,17 +113,13 @@ On macOS 15 or newer the binary dynamically links the Swift runtime that ships w
 ./dist/Lighthouse
 ```
 
-The one wrinkle is Gatekeeper. A binary someone *downloads* is quarantined, and macOS will refuse to run it until that's cleared. The recipient can clear it themselves:
+The one wrinkle is Gatekeeper. A binary someone *downloads* is quarantined, and macOS refuses to run a quarantined binary unless it is signed with a Developer ID and notarized by Apple. `bin/export-game` does neither, so the recipient clears the flag themselves:
 
 ```sh
 xattr -dr com.apple.quarantine ./Lighthouse
 ```
 
-or you can ad-hoc sign the binary before sending it:
-
-```sh
-codesign -s - dist/Lighthouse
-```
+An ad-hoc signature (`codesign -s -`) does not help. Every arm64 binary already has one, and Gatekeeper refuses it on a quarantined file.
 
 ## Publish binaries for a tag
 
@@ -138,7 +134,24 @@ The workflow reads your products from the manifest the same way `bin/export-game
 
 In this repo the workflow excludes the `Zork1` demo, and the binaries it publishes exist to exercise the workflow, not to feature a game.
 
+### Notarize the release binaries
+
+Without signing secrets the workflow signs the macOS binaries ad-hoc, and a player who downloads one has to clear the quarantine flag before it runs. With five repository secrets it signs each binary with your Developer ID, sends them to Apple for notarization, and publishes binaries that run on download. This needs a paid Apple Developer Program membership. Set all five or none: a partial set fails the build rather than quietly publishing ad-hoc binaries.
+
+1. In Keychain Access, find the "Developer ID Application" certificate, export it with its private key as a `.p12` file, and choose a password.
+2. In App Store Connect, under Users and Access → Integrations → Team Keys, generate an API key with Developer access. Download the `.p8` file and note the key ID and the issuer ID.
+3. Store them as secrets:
+
+```sh
+base64 -i DeveloperID.p12 | gh secret set MACOS_CERTIFICATE_P12
+gh secret set MACOS_CERTIFICATE_PASSWORD      # the .p12 password
+gh secret set NOTARY_API_KEY < AuthKey_XXXXXXXXXX.p8
+gh secret set NOTARY_API_KEY_ID               # the key ID
+gh secret set NOTARY_API_ISSUER_ID            # the issuer ID
+```
+
+The next tag publishes notarized binaries, and the release notes say which kind each release carries. Apple cannot attach its approval to a bare executable, so macOS checks it online the first time the game runs.
+
 ### Current limits
 
 - **`bin/export-game` builds one product for one platform.** It exports a single executable product per run, for the Mac you run it on. Run it with no arguments to list your products, then name the one you want. For every product across both platforms, tag a release instead.
-- **No notarization.** Real Apple notarization is out of scope; the Gatekeeper steps above are the supported way to share. The release binaries are ad-hoc signed, so a downloaded copy stays quarantined until the recipient clears it.

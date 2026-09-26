@@ -29,7 +29,11 @@ env:
 jobs:
   build-macos:
     runs-on: macos-26
-    timeout-minutes: 25
+    # Notarization is a round trip to Apple that usually takes a few minutes and
+    # occasionally much longer.
+    timeout-minutes: 60
+    outputs:
+      signing: ${{ steps.sign.outputs.signing }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -38,20 +42,113 @@ jobs:
           persist-credentials: false
 
       # On macOS 15+ the binary links the OS Swift runtime, so the single file is
-      # the game. Ad-hoc sign it and tar it so the exec bit survives the download.
-      - name: Build and package release binaries
+      # the game.
+      - name: Build release binaries
         run: |
           set -euo pipefail
-          mkdir -p dist
-          arch="$(uname -m)"
+          mkdir -p stage
           # Ships without the `Playtest` trait, exactly as bin/export-game does.
           bindir="$(swift build -c release --disable-default-traits --show-bin-path)"
           for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
             case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
             echo "Building $product (release)…"
             swift build -c release --disable-default-traits --product "$product"
-            codesign -s - "$bindir/$product"
-            tar czf "dist/${product}-macos-${arch}.tar.gz" -C "$bindir" "$product"
+            cp "$bindir/$product" stage/
+          done
+          ls -la stage
+
+      # A downloaded binary carries the quarantine flag, and Gatekeeper runs a
+      # quarantined binary only if it is signed with a Developer ID and notarized
+      # by Apple; an ad-hoc signature is refused. So with the five secrets below
+      # set, each binary is signed with the hardened runtime (notarization
+      # requires it) and all of them go to Apple in one submission. With none set
+      # it falls back to ad-hoc, and the release notes tell the player to clear
+      # the flag by hand. A bare Mach-O cannot have its ticket stapled, so
+      # Gatekeeper fetches it online the first time the game runs. Signing needs
+      # a paid Apple Developer Program membership.
+      #
+      #   MACOS_CERTIFICATE_P12       the Developer ID Application certificate and
+      #                               its private key, exported as .p12, base64
+      #   MACOS_CERTIFICATE_PASSWORD  the password the .p12 was exported with
+      #   NOTARY_API_KEY              an App Store Connect API key, the .p8 text
+      #   NOTARY_API_KEY_ID           that key's ID
+      #   NOTARY_API_ISSUER_ID        the issuer ID shown above the key list
+      - name: Sign and notarize
+        id: sign
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_API_KEY: ${{ secrets.NOTARY_API_KEY }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          names=(MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD NOTARY_API_KEY NOTARY_API_KEY_ID NOTARY_API_ISSUER_ID)
+          set_count=0
+          for name in "${names[@]}"; do
+            if [[ -n "${!name}" ]]; then set_count=$((set_count + 1)); fi
+          done
+          # The arm64 linker has already signed each binary ad-hoc.
+          if [[ $set_count -eq 0 ]]; then
+            echo "No signing secrets set; shipping ad-hoc. Downloads will be quarantined."
+            echo "signing=adhoc" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Some but not all is a half-finished setup, and publishing ad-hoc
+          # binaries under it would hide that until a player hit Gatekeeper.
+          if [[ $set_count -ne ${#names[@]} ]]; then
+            echo "error: $set_count of the ${#names[@]} signing secrets are set; set all or none." >&2
+            exit 1
+          fi
+
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(uuidgen)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          # Without this codesign stops at a keychain access prompt nobody answers.
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$keychain_password" "$keychain" > /dev/null
+          identity="$(security find-identity -v -p codesigning "$keychain" \
+            | awk '/Developer ID Application/ {print $2; exit}')"
+          if [[ -z "$identity" ]]; then
+            echo "error: MACOS_CERTIFICATE_P12 holds no Developer ID Application identity." >&2
+            exit 1
+          fi
+
+          for bin in stage/*; do
+            codesign --force --options runtime --timestamp --keychain "$keychain" -s "$identity" "$bin"
+            codesign --verify --strict --verbose=2 "$bin"
+          done
+
+          printf '%s' "$NOTARY_API_KEY" > "$RUNNER_TEMP/notary-key.p8"
+          notary_auth=(--key "$RUNNER_TEMP/notary-key.p8" --key-id "$NOTARY_API_KEY_ID" --issuer "$NOTARY_API_ISSUER_ID")
+          ditto -c -k --keepParent stage "$RUNNER_TEMP/notarize.zip"
+          # A rejected submission can exit non-zero, and the log below is the only
+          # place that says why, so the exit status is left to the status field.
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" "${notary_auth[@]}" \
+            --wait --timeout 45m --output-format json > "$RUNNER_TEMP/notary.json" || true
+          cat "$RUNNER_TEMP/notary.json"
+          status="$(plutil -extract status raw "$RUNNER_TEMP/notary.json")"
+          if [[ "$status" != "Accepted" ]]; then
+            xcrun notarytool log "$(plutil -extract id raw "$RUNNER_TEMP/notary.json")" "${notary_auth[@]}" || true
+            echo "error: notarization finished with status '$status'." >&2
+            exit 1
+          fi
+          echo "signing=notarized" >> "$GITHUB_OUTPUT"
+
+      # tar so the exec bit survives the download.
+      - name: Package release binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          arch="$(uname -m)"
+          for bin in stage/*; do
+            product="$(basename "$bin")"
+            tar czf "dist/${product}-macos-${arch}.tar.gz" -C stage "$product"
           done
           ls -la dist
 
@@ -146,6 +243,7 @@ jobs:
           # "fatal: not a git repository" after your binaries have already built.
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          MACOS_SIGNING: ${{ needs.build-macos.outputs.signing }}
         run: |
           set -euo pipefail
           shopt -s globstar nullglob
@@ -156,18 +254,26 @@ jobs:
           fi
           echo "Assets: ${assets[*]}"
 
+          # Written one line per paragraph: GitHub renders a newline inside a
+          # release body as a line break.
           cat > release-notes.md <<'EOF'
           Standalone builds of this game for macOS and Linux.
 
-          Each asset is a `.tar.gz` holding a single executable for the named
-          platform. On macOS 15+ the binary links the Swift runtime that ships
-          with the OS, so it runs directly — no Xcode, no toolchain.
+          Each asset is a `.tar.gz` holding a single executable for the named platform. On macOS 15+ the binary links the Swift runtime that ships with the OS, so it runs directly — no Xcode, no toolchain.
+          EOF
+          if [[ "$MACOS_SIGNING" == "notarized" ]]; then
+            cat >> release-notes.md <<'EOF'
 
-          macOS binaries are ad-hoc signed; a downloaded copy is quarantined by
-          Gatekeeper until you clear it:
+          macOS binaries are signed with a Developer ID and notarized by Apple. The first run checks the notarization with Apple, so it needs an internet connection.
+          EOF
+          else
+            cat >> release-notes.md <<'EOF'
+
+          macOS binaries are ad-hoc signed and not notarized, so macOS refuses to open a downloaded copy until you clear the quarantine flag:
 
               xattr -dr com.apple.quarantine ./<Game>
           EOF
+          fi
 
           # A version suffix (e.g. 1.2.0-beta) marks a pre-release.
           prerelease=()

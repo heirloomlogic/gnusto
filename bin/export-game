@@ -105,7 +105,6 @@ echo
 echo "Play it:      ./dist/${product}"
 echo "Share it:     send the single file dist/${product} to a friend on macOS 15+."
 echo
-echo "Gatekeeper note: a binary a friend *downloads* is quarantined. They clear it with"
+echo "Gatekeeper note: a binary a friend *downloads* is quarantined, and macOS"
+echo "refuses to run it until they clear the flag:"
 echo "  xattr -dr com.apple.quarantine ./${product}"
-echo "or you can ad-hoc sign before sharing:"
-echo "  codesign -s - dist/${product}"
