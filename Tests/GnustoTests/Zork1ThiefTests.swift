@@ -76,9 +76,9 @@ struct Zork1ThiefTests {
             transcript,
             [
                 "clumsiness of your attempt",  // ruined on force
-                "reveals a broken clockwork canary.",  // the built-in open shows the ruin
+                "recently had a bad experience",  // the damage helper describes the ruin
                 "It is already open.",  // the second OPEN does not damage it again
-                "In the jewel-encrusted egg is a broken clockwork canary.",
+                "In the broken jewel-encrusted egg is a broken clockwork canary.",
                 "recently had a bad experience",  // the broken canary's own description
                 "Your score is 15 of a possible 350",  // kitchen 10 + shell 5; canary nothing
             ])

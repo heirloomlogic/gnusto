@@ -137,20 +137,7 @@ entry below is grouped by the task that introduced it.
   for a given item wins, with no duplicate-placement diagnostic), so "the
   house is examinable from every side" needed one scenery item per room
   rather than one item registered four times.
-- **Cross-bundle egg/trophy-case sharing uses a file-scope `let`.**
-  `ZorkAboveGround.egg` and `ZorkHouse.trophyCase` are both aliases of
-  file-scope values declared in `Sources/Zork1/House.swift`
-  (`zork1Egg`/`zork1TrophyCase`), following the same pattern
-  `DslQuickWinGames.swift`'s `eggItem`/`trophyCaseItem` pair uses within a
-  single file — a stored property's initializer can't reference `self` or a
-  sibling stored property, but a closure captured in a later top-level
-  `let` can freely name an earlier one. This was chosen over the
-  `ContentBundles` article's "explicit injection" pattern (constructing one
-  bundle with a reference to the other's item) because the trophy case's
-  closure needs to name the egg *inside its own description closure*, which
-  runs into the same self-reference restriction either way; the file-scope
-  idiom resolves both problems (cross-bundle sharing and self-reference) at
-  once.
+- **Cross-bundle egg behavior is host-wired.** The egg, nest and broken shell belong to `ZorkAboveGround`; the canaries and trophy case belong to `ZorkHouse`. The host places the intact bird inside the egg and wires shared shell damage, thief opening, scoring and the endgame. The case describes its own current contents without naming the egg. The former file-scope egg/case aliases and egg-only case description are no longer used. (#683, #684)
 
 ### Out of scope for Task 8 (unchanged)
 
@@ -899,14 +886,18 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   is only a loan — his steal daemon takes it back on a later turn, the original's
   snatch-and-resteal.
 - **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse models his off-screen work while he carries the gift. An earlier ordinary stash or death deposit opens it immediately and cancels the fuse, so every thief-deposited egg keeps the clockwork canary intact. The thief accepts only a gift the player is holding, matching `PRE-GIVE`; named actors, scenery, and other non-held objects are refused before the handler changes containment. (#667, #668)
-- **The jewel-encrusted egg follows `EGG-OBJECT`'s OPEN branches.** Bare `open egg` refuses with the source's no-tool line, and `open egg with hands` refuses with its warning about damage; both leave the egg shut and the intact canary inside. A named source weapon or tool opens it destructively, swapping the `golden clockwork canary` for the worthless `broken clockwork canary`. Source WEAPONBIT items use the port's `.sharp` trait; source TOOLBIT items use `.opensEggDestructively`, including the skeleton key, wrench, screwdriver, hand pump, shovel, and the tube that subsumes the source's putty object. The thief's careful hands (above) still open it without ruin. (`1actions.zil:2919-2945`, #669)
+- **The jewel-encrusted egg follows `EGG-OBJECT`'s OPEN branches.** Bare `open egg` refuses with the source's no-tool line, and `open egg with hands` refuses with its warning about damage; both leave the egg shut and the intact canary inside. A named source weapon or tool replaces it with an open `broken jewel-encrusted egg`, preserving its placement and transferring its current cargo. The `golden clockwork canary` becomes the `broken clockwork canary` only while still inside; a removed bird stays intact. Source WEAPONBIT items use the port's `.sharp` trait; source TOOLBIT items use `.opensEggDestructively`, including the skeleton key, wrench, screwdriver, hand pump, shovel, and the tube that subsumes the source's putty object. The thief's careful hands (above) still open the intact egg without ruin. (`1actions.zil:2919-2972`, #669, #683)
+
+- **The nest is portable and treetop drops fall to the Forest Path.** NEST is an open container (`1dungeon.zil:1145-1152`) and carries the egg inside it. The treetop's DROP after-rule runs only after the engine's possession gate and moves ordinary dropped cargo to the path. An intact egg, dropped alone or inside its nest, becomes the broken shell through the same damage lifecycle as forced OPEN. The shell's contents are transferred, and only a canary still inside is ruined. Room listings follow the resulting placements; repeated drops of an already broken shell do not recreate either bird. Fall narration and the ruined shell's first-sight paragraph reproduce TREE-ROOM and BROKEN-EGG. (`1actions.zil:2880-2915`, `1dungeon.zil:1171-1178`, #683)
+
+- **The egg-containing nest's fall repairs a source location inconsistency.** TREE-ROOM says the nest falls and spills the damaged egg, but IDROP leaves the nest upstairs; that branch removes the intact egg and moves the predeclared broken shell directly to PATH, bypassing BAD-EGG. Here the nest moves to the path too, and the shared damage lifecycle determines its bird and other cargo from the intact shell's current contents. This preserves a canary previously removed by the player and carries additional contents rather than losing or recreating them. It is a deliberate state departure from that branch; no historical Z-machine run is claimed. (`1actions.zil:2898-2904`, #683)
 
 ### Mechanics still simplified or deferred
 
 - **The thief has no `CYCLOWRATH`-style eat-you timer of his own**; he simply fights in his
   lair and is otherwise evasive. (The cyclops *does* now have his wrath timer — see the
   Phase-10.10 cyclops entry, closed in the fidelity pass.)
-- **The egg's non-OPEN damage paths remain simplified.** `EGG-OBJECT` also ruins the egg through MUNG, THROW, climbing on it, and several other rough actions. The port's `smash` family still uses the general stub floor, and an unsuitable OPEN instrument always gets the source's first refusal instead of setting FIGHTBIT for a different second answer. (`1actions.zil:2919-2972`)
+- **Damage actions beyond forced OPEN and treetop DROP remain simplified.** `EGG-OBJECT` also ruins the egg through MUNG, THROW, climbing on it, and several other rough actions. The port's `smash` family still uses the general stub floor, and an unsuitable OPEN instrument always gets the source's first refusal instead of setting FIGHTBIT for a different second answer. (`1actions.zil:2919-2972`)
 - **The canary's own scoring (find 6 / case 4) and the `wind canary` → brass bauble trick are
   deferred to Phase 10.12.** This phase introduces the canary item and its intact/ruined
   state only; the canary and bauble are *not* yet in the host `scoring.treasures` roster.
@@ -965,15 +956,12 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
   143 points of `.takeValue` and 129 of `.depositValue`; the bootstrap sums all three
   and warns if the total misses `maxScore`. It comes to exactly 350, so the original's
   ceiling is genuinely reachable here and not merely asserted.
-- **The ruined canary is worthless here.** The original grudgingly pays a single point
-  (`TVALUE 1`) for casing the `broken clockwork canary`; here it carries no value and is not in
-  the roster, so forcing the egg simply forfeits the canary's score. Keeping the broken bird
-  out of the roster also avoids a twentieth entry that would muddy the "all nineteen cased"
-  endgame check (Phase 10.13).
+- **Both ruined objects are worthless here.** The source gives the broken shell `TVALUE 2` and the broken bird `TVALUE 1` (`1dungeon.zil:1171-1178, 1203-1217`). The port retains zero values for ruined objects; neither substitutes for an intact treasure in the nineteen-item endgame roster. Breaking an already found egg retains its earned five find points but forfeits its five deposit points, and a ruined bird earns no find or deposit points. A removed intact bird keeps its normal values and songbird behavior. The maximum remains 350, achievable through careful thief opening. (#683)
 
 ### Tests
 
 - **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg above ground with the sword, then winding the broken canary (only grinds, no bauble), and casing it (scores nothing). `Zork1ThiefTests` separately pins the bare and explicit-hands refusals, the destructive weapon route, harmless repeated OPEN, and a thief clean-open after the bare refusal.
+- **The nest and shell lifecycle is checked through real routes** (`Zork1TreeTests`): portable contents, ordinary and egg-containing falls, refused unheld drops, held/nested/ground shell replacement, empty nests and repeated damaged-shell falls. Seed 1's theft/death route supplies a cleanly opened egg for fall tests with its canary present or removed and with extra cargo. These checks supplement the unchanged 350-point walkthrough. (#683)
 - **The full intact `wind canary` → bauble → case run is exercised by the Phase 10.14 walkthrough** (`Zork1WalkthroughTests`). The intact canary is recoverable after the thief cleanly opens a gifted or stolen egg. The walkthrough gives him the egg in his lair and leaves him to deposit it; `Zork1ThiefTests` separately pins ordinary stash, death after theft, and death before the gift fuse fires, then winds the recovered canary in the forest and takes the bauble.
 
 ## Phase 10.13 — Endgame wiring: the Stone Barrow & the ancient map (`Sources/Zork1/Zork1.swift`, `AboveGround.swift`)
