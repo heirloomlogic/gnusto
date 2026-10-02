@@ -285,10 +285,6 @@ struct ZorkMaze: GameContent {
     /// `CYCLOWRATH`). Six escalating turns of menace, then he eats you.
     @Global var cyclopsWrath = 0
 
-    /// Whether the grating has been opened from below — the one-time leaf-shower
-    /// latch (the original's `GRATE-REVEALED`). Set by the host's grating rule.
-    @Latch var gratingOpenedFromBelow
-
     // MARK: - Map
 
     var map: WorldMap {

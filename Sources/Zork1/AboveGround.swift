@@ -141,29 +141,20 @@ struct ZorkAboveGround: GameContent {
 
     let clearingGrating = Location {
         name("Clearing")
-        description(Prose.clearingGrating)
     }
 
-    /// Pushing the leaves reveals the grating — the Task 4 push-to-reveal
-    /// pattern (`before(.push)` + `reply`, not `after`, so the stock "You
-    /// can't move that." never prints ahead of the reveal line).
-    /// Two channels again. "On the ground is a pile of leaves." is the
-    /// `LDESC` — where the pile is, and the only thing that tells a player
-    /// there is anything here to push — and it was the examine text, so the
-    /// Clearing listed nothing at all. `firstSight` is what announces the pile;
-    /// `scenery` is kept so the announcement is the author's sentence rather
-    /// than a stock one, and so the pile still cannot be picked up.
-    let leaves = Item.scenery(
-        "pile of leaves",
-        adjectives: "dead",
-        synonyms: "leaf", "pile",
-        description: Prose.leavesExamined
-    ) {
+    /// Portable leaves: disturbing them discovers the closed grating, while
+    /// looking underneath only hints at it. Listings follow actual placement.
+    let leaves = Item {
+        name("pile of leaves")
+        adjectives("dead")
+        synonyms("leaf", "pile")
+        description(Prose.leavesExamined)
         firstSight(Prose.leaves)
     }
 
     /// Openable, and locked by `skeletonKey` via the `map` block below, so it
-    /// starts (and stays) locked: `open grating` refuses with the built-in
+    /// starts locked: `open grating` refuses with the built-in
     /// "is locked" message with no rule of our own needed.
     /// `grate` and `lock` are nouns the game says out loud — the description
     /// names a heavy lock — and neither was declared, so `x grate` and `x lock`
@@ -481,9 +472,28 @@ struct ZorkAboveGround: GameContent {
         grating.lockedBy(skeletonKey)
     }
 
+    /// Permanent topside discovery (`GRATE-REVEALED`), separate from the
+    /// grating's temporary visibility when standing in the room below.
+    @Latch var gratingDiscovered
+
+    /// LEAVES-APPEAR: source discovery requires a closed, undiscovered grate.
+    /// Taking or moving gives the disturbance line; cutting gives the other.
+    private func discoverGrating(cutting: Bool = false) {
+        guard !grating.isOpen, !gratingDiscovered else { return }
+        $gratingDiscovered.trips()
+        grating.reveal()
+        say(cutting ? Prose.leavesCutReveal : Prose.leavesMoveEmbellishment)
+    }
+
     // MARK: - Rules
 
     var rules: Rules {
+        clearingGrating.onEnter {
+            if !gratingDiscovered { grating.conceal() }
+        }
+        clearingGrating.describe {
+            Prose.clearingGrating(gratingOpen: grating.isOpen, discovered: gratingDiscovered)
+        }
         brokenEgg.describe {
             let contents = brokenEgg.contents.filter(\.isRevealed).map(\.indefiniteNoun)
             if contents.isEmpty { return gameText.emptyContainer(brokenEgg.definiteNoun) }
@@ -499,15 +509,23 @@ struct ZorkAboveGround: GameContent {
             try refuse(Prose.mailboxAnchored)
         }
 
-        // Not `require`: that helper is hardwired to `refuse` (see
-        // `Sources/Gnusto/Declarations/Helpers.swift`), but "already moved"
-        // needs to fully own the turn's response (`reply`), not just block
-        // a default action with a complaint. Same reasoning at `rug.before`
-        // in `House.swift`.
-        leaves.before(.push) {
-            guard !grating.isRevealed else { try reply(Prose.leavesAlreadyMoved) }
-            grating.reveal()
-            try reply(Prose.leavesMoveEmbellishment)
+        leaves.before(.take) {
+            // Keep default TAKE's possession and reach refusals; no discovery
+            // through a closed transparent holder before that refusal runs.
+            guard leaves.isReachable else { return }
+            discoverGrating()
+        }
+        leaves.before(.push, .cut) {
+            guard leaves.isReachable else { try refuse(gameText.cantReach(leaves.definiteNoun)) }
+            let cutting = command.intent == .cut
+            say(cutting ? Prose.leavesCut : Prose.leavesMoved)
+            discoverGrating(cutting: cutting)
+            try handled()
+        }
+        leaves.before(.lookUnder) {
+            guard leaves.isReachable else { try refuse(gameText.cantReach(leaves.definiteNoun)) }
+            guard !gratingDiscovered else { return }
+            try reply(Prose.leavesConcealedHint)
         }
 
         // Climbing the tree is the `up` exit under another name — `climb tree`

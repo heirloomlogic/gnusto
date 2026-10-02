@@ -68,14 +68,7 @@ entry below is grouped by the task that introduced it.
   same place `up` leads (`AboveGround.swift` rules). Off a climbable it answers
   with a polite default. The chimney/dome/canyon still use their own `up`/`down`
   gates rather than `climb` — a minor remaining seam, not a wart.
-- **The grating's key doesn't exist yet.** `ZorkAboveGround.grating` is
-  `lockable(with: skeletonKey)`, and `skeletonKey` is declared but never
-  placed in any `map` block, so it starts (and stays) `.nowhere` — legal per
-  Bootstrap (an unplaced item defaults to `.nowhere`), and confirmed by
-  running the bootstrap: no stub room was needed. `open grating` therefore
-  always refuses with the engine's standard "is locked" message. The maze
-  that actually holds the key was deferred out of Phase 7 (which took the
-  cellar region instead) and remains future content.
+- **The grating's key is placed in Maze-5 (Phase 10.10).** The skeleton key unlocks the shared two-sided door; a hidden topside grating remains out of parser scope until discovered. The portable leaves and temporary below-side visibility are reconciled under #682 below.
 - **The trap door is really barred now (Phase 8).** The slam prose's "you
   hear a bolt slide home above you" told the truth-to-be since Phase 5;
   with the thief in play it is mechanically true: descending while he
@@ -801,13 +794,8 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   Maze-12→Maze-5, all `down`) and its self-loops (Maze-1 `north`, Maze-6 `west`, Maze-8
   `west`, Maze-9 `northwest`, Maze-14 `northwest`, each returning to itself).
 - **The maze entrance is one-way.** The Troll Room's west passage is host-wired and available while the troll is unconscious or permanently defeated. It drops into Maze-1, which — as in the original — has no exit back to the Troll Room. Deleting the old collapsed-rubble stub in `ZorkCellar` was part of this task.
-- **The grating is a real two-way door** between the Grating Room and the above-ground
-  Clearing (host-wired `via:` the grating item, a `ZorkAboveGround` entity). Because the
-  engine only folds a door into scope where it is perceivable and the grating starts hidden
-  (revealed topside by clearing the leaves), entering the Grating Room reveals it from below
-  so it can be unlocked with the skeleton key. Opening it from below showers the forest's
-  leaves down and lights the room — the original's `GRATE-REVEALED` / leaf-drop, folded into
-  one open.
+- **The grating is a real two-way door with separate visibility and discovery state.** The shared `via:` door connects the Grating Room and Clearing. `MAZE-11-FCN` temporarily exposes it from below without setting `GRATE-REVEALED`; `CLEARING-FCN` conceals it upstairs until permanent discovery. The port uses its existing revealed-item set for visibility and an AboveGround latch for permanent discovery; `Item.conceal()` removes only hidden-item visibility and retains placement/open state, including through undo. Opening an undiscovered grating from below sets discovery and moves the leaves into the Grating Room once; already discovered or repeated openings do not move them. Clearing LOOK reports the open or discovered closed grating. The existing lantern/dark-room and lock-side treatment remains unchanged; no new source daylight or below-only unlocking fidelity is claimed. (`1actions.zil:815-900`, #682)
+- **Leaves are portable, and their handling follows LEAF-PILE.** TAKE retains the built-in action and carries the leaves; MOVE/PUSH say "Done." and CUT rustles them without removal. Disturbing a closed, undiscovered grating permanently reveals it: TAKE/MOVE use the disturbance line and CUT uses "With the leaves moved". Repeat or away handling never relocates the leaves or recreates discovery. LOOK UNDER gives the concealed-grating hint without changing visibility or discovery, falling back to the ordinary inspection reply after discovery. Physical leaf rules check reach before mutation, including through closed transparent containers. Listings follow actual placement after TAKE or the below-side fall. The source has no EXAMINE text, so the existing fresh description remains; leaf COUNT/BURN and source SIZE 25 are not added here. Bare CUT remains the port's broader grammar. Pinned ZIL was read as documentary evidence; no historical Z-machine run is claimed. (`1dungeon.zil:696-703`, `1actions.zil:774-820`, #682)
 - **The Strange Passage east to the Living Room is host-wired**, gated on the cyclops having
   smashed the east wall (the original's `MAGIC-FLAG`); until then the Living Room's west door
   is "nailed shut."
@@ -1372,7 +1360,7 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
 - **`dig` loses its instrument.** `V-DIG` (`:416`) answers about the tool and
   defaults it to `HANDS`; the engine hands the line no instrument, so the hands
   are written into the sentence.
-- **`cut` renders one of `V-CUT`'s four branches.** The last one, "Strange concept, cutting the X...." (`gverbs.zil:400`), answers `cut X with Y` and also a bare `cut X`, which has no row in the source: `gsyntax.zil:149` is CUT's only syntax and it has a tool slot. The other three are not reproduced. An actor is attacked (`:385`), but here the stub's actor guard answers first, so `cut troll with sword` prints "The troll does not understand this." A `BURNBIT` object cut with a weapon is destroyed (`:387`), so `cut sack with knife` removes the brown sack in the source and leaves it here. A tool without `WEAPONBIT` gets "The "cutting edge" of a X is hardly adequate." (`:396`), so `cut rope with leaflet` gets the last branch instead. A stub line is handed two names and no traits, so each of the three would need a Zork 1 rule on `.cut`.
+- **`cut` renders one of `V-CUT`'s four branches.** The last one, "Strange concept, cutting the X...." (`gverbs.zil:400`), answers `cut X with Y` and also a bare `cut X`, which has no row in the source: `gsyntax.zil:149` is CUT's only syntax and it has a tool slot. The other three are not reproduced. An actor is attacked (`:385`), but here the stub's actor guard answers first, so `cut troll with sword` prints "The troll does not understand this." A `BURNBIT` object cut with a weapon is destroyed (`:387`), so `cut sack with knife` removes the brown sack in the source and leaves it here. A tool without `WEAPONBIT` gets "The "cutting edge" of a X is hardly adequate." (`:396`), so `cut rope with leaflet` gets the last branch instead. A stub line is handed two names and no traits, so each of the three would need a Zork 1 rule on `.cut`. The leaves' `LEAF-PILE` CUT override is implemented separately under #682: it rustles and conditionally reveals the grating rather than destroying the pile.
 - **`knock` keeps both branches, and loses one article.** `V-KNOCK` (`:765`)
   answers "Nobody's home." at a `DOORBIT` object and "Why knock on a X?" at
   anything else. Both are reproduced (#247) — the split is a game-wide rule,

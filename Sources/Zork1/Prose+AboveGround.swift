@@ -205,10 +205,17 @@ extension Prose {
         There is an unpleasant grinding noise from inside the canary.
         """
 
-    static let clearingGrating = """
-        You are in a clearing, with a forest surrounding you on all sides.
-        A path leads south.
-        """
+    static func clearingGrating(gratingOpen: Bool, discovered: Bool) -> String {
+        let grating =
+            gratingOpen
+            ? "An open grating descends into darkness."
+            : discovered ? "There is a grating securely fastened into the ground." : ""
+        return """
+            You are in a clearing, with a forest surrounding you on all sides.
+            A path leads south.
+            \(grating)
+            """
+    }
 
     /// Where the pile is — the `LDESC`, this engine's `firstSight` — and the
     /// only thing that tells a player there is anything here to push.
@@ -224,7 +231,13 @@ extension Prose {
 
     static let leavesMoveEmbellishment = "In disturbing the pile of leaves, a grating is revealed."
 
-    static let leavesAlreadyMoved = "The leaves have already been pushed aside."
+    static let leavesMoved = "Done."
+    static let leavesCut = "You rustle the leaves around, making quite a mess."
+    static let leavesCutReveal = "With the leaves moved, a grating is revealed."
+    static let leavesConcealedHint = """
+        Underneath the pile of leaves is a grating. As you release the leaves,
+        the grating is once again concealed from view.
+        """
 
     static let grating = """
         A sturdy iron grating, set into the ground and fastened with a
