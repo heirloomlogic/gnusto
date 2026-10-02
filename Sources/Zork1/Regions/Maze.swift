@@ -211,7 +211,7 @@ struct ZorkMaze: GameContent {
 
     /// The rusty knife beside the skeleton — a weapon and a tool, and (like the
     /// sword, nasty knife, and sceptre) sharp enough to hole the inflatable
-    /// boat. Not a treasure.
+    /// boat. Its named weapon use is cursed; it is not a treasure.
     let rustyKnife = Item {
         name("rusty knife")
         adjectives("rusty")
@@ -422,9 +422,34 @@ struct ZorkMaze: GameContent {
         try reply(line)
     }
 
+    private func curseRustyKnife(against target: Item) throws -> Never {
+        guard rustyKnife.isReachable else {
+            try refuse(gameText.cantReach(rustyKnife.definiteNoun))
+        }
+        guard target.isReachable else {
+            try refuse(gameText.cantReach(target.definiteNoun))
+        }
+        guard rustyKnife.isHeld else {
+            try refuse(Prose.combatText.weaponNotHeld(rustyKnife.definiteNoun))
+        }
+        rustyKnife.vanish()
+        try die(Prose.rustyKnifeTurns)
+    }
+
     // MARK: - Rules
 
     var rules: Rules {
+        // ATTACK's weapon is the indirect object, whose rules precede the victim's.
+        rustyKnife.before(.attack) {
+            guard command.indirectObject == rustyKnife, let target = command.directObject else { return }
+            try curseRustyKnife(against: target)
+        }
+        // SWING reverses the slots, so intercept before the indirect target's rules.
+        world.before(.swingAt) {
+            guard command.directObject == rustyKnife, let target = command.indirectObject else { return }
+            try curseRustyKnife(against: target)
+        }
+
         // Shout the name of the cyclops's father's nemesis and he bolts,
         // smashing through the east wall. This opens both the stair up (he's
         // gone) and the shortcut east to the Living Room. A location rule, so it

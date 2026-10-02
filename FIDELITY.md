@@ -787,6 +787,10 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   smashed the east wall (the original's `MAGIC-FLAG`); until then the Living Room's west door
   is "nailed shut."
 
+- **The rusty knife warns on successful TAKE with the sword directly held and curses explicit weapon use.** `RUSTY-KNIFE-FCN` checks `IN? SWORD WINNER`, so a sword on the floor or inside a carried holder does not warn. The port prints the exact source warning after the successful built-in TAKE; refused or repeated acquisition does not warn. ATTACK with the rusty knife as indirect weapon, and targeted SWING/THRUST with it as direct weapon, check knife/target reach and direct knife possession before removing the knife and invoking the existing death/resurrection path. The knife therefore does not reappear in the resurrection scatter; undo restores it with the prior death state. Weapon interception precedes the target’s attack rule, including the sleeping cyclops. Bare swings, attacking the knife itself and throwing it do not trigger this Zork I curse; Dungeon’s separate throwing behavior is not adopted. The source parser’s implicit acquisition remains absent, so an unheld knife receives the port’s holding refusal. Pinned ZIL provides the warning and death prose; no historical Z-machine replay is claimed. (`1actions.zil:907-926`, `gsyntax.zil:464-467`, #680)
+
+- **SWING and its THRUST synonym have the source’s bare Whoosh reply; general targeted attacks remain incomplete.** Targeted rusty-knife use is handled above. Other targeted weapons have no default action, so the engine reports the command unimplemented and rolls back its state as a free turn. `V-SWING` instead performs ATTACK with reversed target/weapon slots; the port has no public helper to redispatch that command through its target and melee rules. That pre-existing gap is tracked in #697, with a seed39 sleeping-cyclops comparison against ordinary ATTACK. This repair does not claim general SWING equivalence. (`gverbs.zil:1347-1351`, #680)
+
 ### Mechanics simplified or deferred
 
 - **The cyclops's wrath is modeled (closed in the fidelity pass).** Steel still can't beat

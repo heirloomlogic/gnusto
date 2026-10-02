@@ -143,6 +143,22 @@ extension Prose {
     /// now. (#350)
     static let rustyKnifeFirstSight = "Beside the skeleton is a rusty knife."
 
+    /// `RUSTY-KNIFE-FCN` (`1actions.zil:907-926`).
+    static let rustyKnifeBluePulse = """
+        As you touch the rusty knife, your sword gives a single pulse of blinding
+        blue light.
+        """
+
+    static let rustyKnifeTurns = """
+        As the knife approaches its victim, your mind is submerged by an
+        overmastering will. Slowly, your hand turns, until the rusty blade
+        is an inch from your neck. The knife seems to sing as it savagely
+        slits your throat.
+        """
+
+    /// `V-SWING` without an indirect object (`gverbs.zil:1347-1351`).
+    static let swingWhoosh = "Whoosh!"
+
     /// `BURNED-OUT-LANTERN`'s `FDESC` (`1dungeon.zil:524`), and the object's
     /// only string. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let burnedOutLanternFirstSight = "The deceased adventurer's useless lantern is here."

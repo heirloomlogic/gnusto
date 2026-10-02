@@ -63,6 +63,15 @@ extension Intent {
         ["patch", .directObject],
         ["patch", .directObject, "with", .indirectObject])
 
+    /// Swing a held weapon without a target.
+    #verb("swing", ["swing", .directObject], ["thrust", .directObject])
+
+    /// A targeted swing; the rusty knife's rule claims its cursed use.
+    #verb(
+        "swingAt",
+        ["swing", .directObject, "at", .indirectObject],
+        ["thrust", .directObject, "at", .indirectObject])
+
     /// Ask for a report on your condition — how many times you've died, and how
     /// many times you may yet be brought back. Handled in ``Zork1`` (it reads the
     /// host's death counter).
@@ -101,6 +110,8 @@ struct ZorkSystems: GameContent {
         Intent.odysseus
         Intent.fix
         Intent.diagnose
+        Intent.swing
+        Intent.swingAt
         // The source resolves these phrases to its HANDS pseudo-object.
         // Literal rows carry them to the egg's `.open` rule with no
         // indirect object. Other openables still use the built-in action.
@@ -139,6 +150,15 @@ struct ZorkSystems: GameContent {
         action(.echo, say: Prose.verbEcho)
         action(.odysseus, say: Prose.verbMagicWordInert)
         action(.fix, say: Prose.verbFixNothing)
+        action(.swing, reach: .directObject) {
+            guard let weapon = command.directObject else { return }
+            guard weapon.isHeld else {
+                try refuse(Prose.combatText.weaponNotHeld(weapon.definiteNoun))
+            }
+            try reply(Prose.swingWhoosh)
+        }
+        // Targeted swings have no default: only the rusty knife is wired.
+        // Other weapons remain unimplemented, so those turns are free.
 
         // `.diagnose` has no stage-4 default here — the host answers it, since
         // the report reads the host's death counter (see ``Zork1.actions``).

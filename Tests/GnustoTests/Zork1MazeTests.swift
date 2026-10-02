@@ -456,4 +456,45 @@ struct Zork1MazeTests {
         #expect(restored.playerLocation == before.playerLocation)
         #expect((await world.perform("diagnose")).output.contains("perfect health"))
     }
+
+    @Test(arguments: ["swing sword at cyclops", "thrust sword at cyclops"])
+    func targetedNonKnifeSwingsRemainUnimplementedAndFree(command: String) async throws {
+        let world = try await Self.mazeWorld()
+        for command in [
+            "southwest", "east", "south", "southeast", "give lunch to cyclops", "open bottle", "give bottle to cyclops",
+        ] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
+        let before = await world.snapshot()
+        let unsupported = await world.perform(command)
+        #expect(unsupported.output.contains("can't do that") || unsupported.output.contains("understand"))
+        #expect(!unsupported.output.contains("the thing that woke him up"))
+        let after = await world.snapshot()
+        #expect(after.placements == before.placements)
+        #expect(after.globals == before.globals)
+        #expect(after.activeFuses == before.activeFuses)
+        #expect(after.activeDaemons == before.activeDaemons)
+        #expect(after.moves == before.moves)
+        #expect(after.score == before.score)
+        #expect(after.rngState == before.rngState)
+        #expect(after.lastCommand == before.lastCommand)
+        #expect(after.pronounIt == before.pronounIt)
+        #expect(after.playerLocation == before.playerLocation)
+        #expect(after.touched == before.touched)
+        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
+    }
+
+    @Test func aClosedHolderRefusesTheRustyKnifeTakeWithoutAWarning() async throws {
+        let world = try await Self.mazeWorld([
+            "take rusty knife", "open bottle", "put rusty knife in bottle", "close bottle",
+        ])
+        let before = await world.snapshot()
+        #expect(before.placements[Self.rustyKnife] == .inside(Self.bottle))
+        #expect(!before.openItems.contains(Self.bottle))
+        let refused = await world.perform("take rusty knife")
+        #expect(refused.output.contains("can't reach"))
+        #expect(!Self.singleLine(refused.output).contains(Self.warning))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == before.placements[Self.rustyKnife])
+    }
 }
