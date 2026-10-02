@@ -327,6 +327,9 @@ struct Zork1: Game, GameMain {
                 rugMoved: house.trapDoor.isRevealed,
                 trapDoorOpen: house.trapDoor.isOpen)
         }
+        house.livingRoom.onEnter {
+            if maze.eastWallOpen { house.cyclopsOpening.reveal() }
+        }
 
         // `enter house` is `WHITE-HOUSE-F`'s `THROUGH` branch, and it answers
         // for the same pair: from behind the house an open window walks you
