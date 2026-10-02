@@ -174,6 +174,7 @@ struct ZorkRiver: GameContent {
         firstSight(Prose.shovelFirstSight)
         description(Prose.shovel)
         trait(.weight, 15)
+        trait(.opensEggDestructively, true)
     }
 
     /// The jewelled scarab, five and five, buried in the sand of the Sandy Cave.

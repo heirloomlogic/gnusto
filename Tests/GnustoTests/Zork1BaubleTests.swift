@@ -19,9 +19,10 @@ struct Zork1BaubleTests {
         let transcript = try await play(
             Zork1(),
             [
-                "north", "north", "up",  // West of House → Forest Path → Up a Tree
+                "south", "east", "open window", "west", "west", "take sword",
+                "east", "east", "north", "north", "up",  // Living Room → Up a Tree
                 "take egg",  // the egg pays 5 on the find
-                "open egg",  // forced open by hand: wrecks the canary
+                "open egg with sword",  // a source weapon wrecks the canary
                 "take canary",  // the broken bird
                 "down",  // back down to the Forest Path
                 "wind canary",
@@ -48,7 +49,9 @@ struct Zork1BaubleTests {
         let transcript = try await play(
             Zork1(),
             [
-                "north", "north", "up", "take egg", "open egg", "take canary",
+                "south", "east", "open window", "west", "west", "take sword",
+                "east", "east", "north", "north", "up", "take egg",
+                "open egg with sword", "take canary",
                 "down", "south", "west",  // back to West of House
                 "south", "east", "open window", "west",  // into the Kitchen
                 "west",  // Living Room

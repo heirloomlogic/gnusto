@@ -5,9 +5,9 @@ import Testing
 @testable import Gnusto
 @testable import Zork1
 
-/// End-to-end playthroughs of the Phase 10.11 thief endgame: the egg's two ways
-/// open (your clumsy hands wreck the canary; the thief's careful hands don't),
-/// the give-to-thief service, and the defended lair (the Treasure Room's +25
+/// End-to-end playthroughs of the Phase 10.11 thief endgame: forcing the egg
+/// with a weapon or tool wrecks the canary, while the thief opens it cleanly;
+/// the give-to-thief service; and the defended lair (the Treasure Room's +25
 /// award, the now-snatchable silver chalice, and the thief who fights to the
 /// death there). The thief roams the whole underground, so every route is seed-pinned;
 /// the seeds are final (the Phase 10.14 walkthrough closed the roadmap's planned
@@ -41,28 +41,48 @@ struct Zork1ThiefTests {
         #expect(attack.contains("thief"))
     }
 
-    @Test func forcingTheEggOpenRuinsTheCanary() async throws {
-        // Opening the jewel-encrusted egg by hand is fatal to the delicate
-        // clockwork bird inside: the intact canary is swapped for a mangled
-        // ruin, and the shell's 5 points for the find are all it's now worth.
-        // No thief involved, so no seed pin is needed for the mechanic — seed 1
-        // just keeps the run reproducible.
+    @Test func bareAndExplicitHandOpeningLeaveTheEggClosed() async throws {
         let transcript = try await play(
             Zork1(),
             [
-                "north", "north", "up", "take egg", "open egg",
+                "north", "north", "up", "take egg",
+                "open egg", "look in egg",
+                "open egg with hands", "look in egg",
+            ])
+
+        let bare = turnOutput(of: "open egg", in: transcript)
+        #expect(bare.contains("neither the tools nor the expertise"))
+        #expect(!bare.contains("clumsiness of your attempt"))
+        let hands = turnOutput(of: "open egg with hands", in: transcript)
+        #expect(hands.contains("without damaging it"))
+        #expect(!hands.contains("sentence isn't one I recognize"))
+        #expect(turnOutput(of: "look in egg", in: transcript).contains("The jewel-encrusted egg is closed."))
+        #expect(turnOutput(ofLast: "look in egg", in: transcript).contains("The jewel-encrusted egg is closed."))
+        #expect(!transcript.contains("broken clockwork canary"))
+    }
+
+    @Test func forcingTheEggOpenWithAWeaponRuinsTheCanaryOnce() async throws {
+        // The sword is a source WEAPONBIT item. Fetching it before the egg
+        // proves the destructive branch receives the named instrument.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west", "take sword",
+                "east", "east", "north", "north", "up", "take egg",
+                "open egg with sword", "open egg",
                 "look in egg", "down", "drop egg", "look", "examine canary", "score",
-            ],
-            seed: 1)
+            ])
         expectInOrder(
             transcript,
             [
                 "clumsiness of your attempt",  // ruined on force
                 "reveals a broken clockwork canary.",  // the built-in open shows the ruin
+                "It is already open.",  // the second OPEN does not damage it again
                 "In the jewel-encrusted egg is a broken clockwork canary.",
                 "recently had a bad experience",  // the broken canary's own description
-                "Your score is 5 of a possible 350",  // the shell scored 5; the canary, nothing
+                "Your score is 15 of a possible 350",  // kitchen 10 + shell 5; canary nothing
             ])
+        #expect(transcript.components(separatedBy: "clumsiness of your attempt").count == 2)
 
         // The ruined bird's `FDESC` is its listing line, printed while it sits
         // untouched in the dropped egg. EXAMINE is the same paragraph without
@@ -122,6 +142,7 @@ struct Zork1ThiefTests {
             _ = await world.perform(command)
         }
 
+        let refused = await world.perform("open egg")
         let beforeGift = await world.snapshot()
         let gift = await world.perform("give egg to thief")
         var beforeDeath = await world.snapshot()
@@ -139,6 +160,7 @@ struct Zork1ThiefTests {
         let attack = await world.perform("attack thief")
         let egg = await world.perform("look in egg")
 
+        #expect(refused.output.contains("neither the tools nor the expertise"))
         #expect(gift.output.contains("unexpected generosity"))
         #expect(attack.output.contains("The thief takes a fatal blow"))
         #expect(egg.output.contains("In the jewel-encrusted egg is a golden clockwork canary."))
@@ -147,8 +169,8 @@ struct Zork1ThiefTests {
     @Test func theThiefTakesTheEggYouOffer() async throws {
         // Hand the thief the egg where you meet him in the Gallery and he
         // pockets it with a knowing smile — the setup for his off-screen
-        // egg-opening service (where, unlike your clumsy hands, he keeps the
-        // canary intact). The egg leaves your possession with him. Seed 5 keeps
+        // egg-opening service (where, unlike forcing it with a tool, he keeps
+        // the canary intact). The egg leaves your possession with him. Seed 5 keeps
         // the thief loitering in the Gallery when you arrive with the egg.
         let transcript = try await play(
             Zork1(),
