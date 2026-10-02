@@ -124,7 +124,7 @@ struct Zork1ThiefTests {
 
         let gift = await world.perform("give egg to thief")
         var beforeDeath = await world.snapshot()
-        beforeDeath.unconsciousActors.insert(EntityID("thief"))
+        beforeDeath.unconsciousActors.insert(EntityID("ZorkThief.thief"))
         await world.restore(beforeDeath, mode: .brief)
         let attack = await world.perform("attack thief")
         let egg = await world.perform("look in egg")
