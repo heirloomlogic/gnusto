@@ -95,6 +95,48 @@ struct Zork1ThiefTests {
         #expect(!examined.contains("nestled in the egg"))
     }
 
+    @Test func unheldQualifyingToolsLeaveTheEggAndCanaryUnchanged() async throws {
+        let world = try cachedWorld(Zork1(), seed: 0)
+        _ = await world.begin()
+        for command in ["north", "north", "up", "take egg"] {
+            _ = await world.perform(command)
+        }
+
+        let egg = EntityID("ZorkAboveGround.egg")
+        let canary = EntityID("ZorkHouse.canary")
+        let brokenCanary = EntityID("ZorkHouse.brokenCanary")
+        let sword = EntityID("ZorkHouse.sword")
+        let thief = EntityID("ZorkThief.thief")
+        var baseline = await world.snapshot()
+        baseline.place(sword, .room(baseline.playerLocation))
+
+        await world.restore(baseline, mode: .brief)
+        let groundRefusal = await world.perform("open egg with sword")
+        let afterGroundRefusal = await world.snapshot()
+
+        #expect(groundRefusal.output.contains("aren't holding"))
+        #expect(afterGroundRefusal.placements[egg] == baseline.placements[egg])
+        #expect(afterGroundRefusal.placements[canary] == baseline.placements[canary])
+        #expect(afterGroundRefusal.placements[brokenCanary] == baseline.placements[brokenCanary])
+        #expect(afterGroundRefusal.placements[sword] == baseline.placements[sword])
+        #expect(!afterGroundRefusal.openItems.contains(egg))
+
+        var actorHeld = baseline
+        actorHeld.place(thief, .room(actorHeld.playerLocation))
+        actorHeld.place(sword, .heldBy(thief))
+        actorHeld.unconsciousActors.insert(thief)
+        await world.restore(actorHeld, mode: .brief)
+        let actorRefusal = await world.perform("open egg with sword")
+        let afterActorRefusal = await world.snapshot()
+
+        #expect(actorRefusal.output.contains("aren't holding"))
+        #expect(afterActorRefusal.placements[egg] == actorHeld.placements[egg])
+        #expect(afterActorRefusal.placements[canary] == actorHeld.placements[canary])
+        #expect(afterActorRefusal.placements[brokenCanary] == actorHeld.placements[brokenCanary])
+        #expect(afterActorRefusal.placements[sword] == actorHeld.placements[sword])
+        #expect(!afterActorRefusal.openItems.contains(egg))
+    }
+
     @Test func theThiefOpensAStolenEggWhenHeStashesIt() async throws {
         // Seed 1 makes the thief steal the egg when the player first returns
         // to the lair. Leaving again gives the stash daemon its off-screen turn.

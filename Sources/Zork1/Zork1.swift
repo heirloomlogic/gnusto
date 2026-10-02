@@ -712,9 +712,9 @@ struct Zork1: Game, GameMain {
         }
 
         // EGG-OBJECT distinguishes an unassisted attempt, explicit hands, and
-        // a source weapon or tool. Only the last branch opens the egg and ruins
-        // the canary. The thief's service sets `isOpen` directly, preserving
-        // the bird. This cross-bundle rule owns the egg/canary swap.
+        // a held source weapon or tool. Only the last branch opens the egg and
+        // ruins the canary. The thief's service sets `isOpen` directly,
+        // preserving the bird. This cross-bundle rule owns the egg/canary swap.
         aboveGround.egg.before(.open) {
             guard !aboveGround.egg.isOpen else { return }
             guard let tool = command.indirectObject else {
@@ -724,6 +724,7 @@ struct Zork1: Game, GameMain {
                 }
                 try refuse(Prose.eggNeedsTool)
             }
+            guard tool.isHeld else { try refuse(gameText.notHolding()) }
             guard tool[default: .sharp] || tool[default: .opensEggDestructively] else {
                 try refuse(Prose.eggWrongTool(tool.indefiniteName))
             }
