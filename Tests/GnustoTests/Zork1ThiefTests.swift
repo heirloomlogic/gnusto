@@ -103,6 +103,8 @@ struct Zork1ThiefTests {
         // player's hands. Each route starts fresh so the thief cannot roam away
         // before the next offer is parsed.
         let route = [
+            "north", "north", "up", "take egg", "down",
+            "south", "west", "south",
             "south", "east", "open window", "west", "west",
             "take lantern", "turn on lantern",
             "push rug", "open trap door", "down",
