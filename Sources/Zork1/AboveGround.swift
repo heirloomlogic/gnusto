@@ -100,34 +100,18 @@ struct ZorkAboveGround: GameContent {
     /// `climb` rule in this bundle's `rules`), the same place `up` leads.
     let tree = Item.scenery("large tree", adjectives: "large", "gnarled", description: Prose.tree)
 
-    /// Two channels, not one. "Beside you on the branch is a small bird's
-    /// nest." is a sentence about *where the nest is* — the `FDESC`, this
-    /// engine's `firstSight` — and it was declared as the examine text alone,
-    /// so Up a Tree named no nest and then the egg's listing line said "On the
-    /// nest is…" about a thing the room had never mentioned. It is the listing
-    /// line, and only that. (#350)
-    ///
-    /// `scenery` is kept: it withholds the *engine's* stock listing sentence
-    /// and never the author's. `bird` is an adjective alongside `birds`
-    /// because the tokenizer drops a trailing `'s`, so a player typing `bird's
-    /// nest` hands the parser `["bird", "nest"]`.
-    let nest = Item.scenery(
-        "nest",
-        adjectives: "small", "bird", "birds"
-    ) {
+    /// The source's portable, open nest. Its first-sight paragraph applies
+    /// before it is touched; subsequent listings follow its actual placement.
+    let nest = Item {
+        name("bird's nest")
+        adjectives("small", "bird", "birds")
         firstSight(Prose.nest)
-        surface
+        container
     }
 
-    /// The jewel-encrusted egg, found up the tree. The living room's trophy
-    /// case (in ``ZorkHouse``) describes itself by whether it holds this egg;
-    /// since the two live in different bundles, the host declares that
-    /// `describe` rule (`Zork1.rules`).
-    /// Two channels here too: the long paragraph opens "In the bird's nest
-    /// is…", which is the `FDESC` and belongs to the listing line. Bound to
-    /// `description(…)`, it told a player holding the egg that it was still in
-    /// the nest. `clasp` is a synonym because the paragraph names one, and a
-    /// noun the prose names is a noun the parser owes an answer for.
+    /// The intact treasure starts inside the nest. Its first-sight paragraph
+    /// names that placement; EXAMINE describes the egg itself. The host owns
+    /// damage replacement and the thief's careful opening across bundles.
     let egg = Item {
         name("jewel-encrusted egg")
         adjectives("jewel", "encrusted", "jeweled")
@@ -137,13 +121,22 @@ struct ZorkAboveGround: GameContent {
         // The original's values: 5 for the find, 5 for the case.
         trait(.takeValue, 5)
         trait(.depositValue, 5)
-        // A container holding the clockwork canary, but sealed by a mechanism no
-        // brute can work: force it open yourself (the built-in `open`, gated by a
-        // host rule) and you wreck the bird. Starts closed and opaque — the canary
-        // stays hidden until it's opened. Only the thief can open it cleanly (his
-        // egg-service fuse, wired in ``Zork1``).
+        // Starts closed and opaque. The host replaces it on destructive OPEN
+        // or a fall; only the thief can open the intact shell cleanly.
         container
         openable
+    }
+
+    /// The open shell left by destructive opening or a fall. It replaces the
+    /// intact treasure without inheriting its value; see FIDELITY.md.
+    let brokenEgg = Item {
+        name("broken jewel-encrusted egg")
+        adjectives("broken", "jewel", "encrusted", "jeweled", "ruined")
+        synonyms("clasp")
+        firstSight(Prose.brokenEgg)
+        container
+        openable
+        startsOpen
     }
 
     let clearingGrating = Location {
@@ -481,7 +474,7 @@ struct ZorkAboveGround: GameContent {
 
         tree.starts(in: forestPath)
         nest.starts(in: upATree)
-        egg.starts(on: nest)
+        egg.starts(inside: nest)
 
         leaves.starts(in: clearingGrating)
         grating.starts(in: clearingGrating)
@@ -491,6 +484,12 @@ struct ZorkAboveGround: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        brokenEgg.describe {
+            let contents = brokenEgg.contents.filter(\.isRevealed).map(\.indefiniteNoun)
+            if contents.isEmpty { return gameText.emptyContainer(brokenEgg.definiteNoun) }
+            return gameText.inTheContainer(
+                .init(item: .list(contents), holder: brokenEgg.definiteNoun))
+        }
         frontDoor.before(.open) {
             try refuse(Prose.frontDoorRefusal)
         }

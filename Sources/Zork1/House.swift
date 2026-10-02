@@ -229,14 +229,11 @@ struct ZorkHouse: GameContent {
         transparent
     }
 
-    /// The golden clockwork canary nested inside the egg. Intact only while
-    /// the egg is opened by careful hands (the thief's); the player's clumsy
-    /// attempt swaps it for the ruined bird. The intact bird starts sealed
-    /// inside the egg (placed by the host, since the egg lives in
-    /// ``ZorkAboveGround``); the broken one waits offstage until a forced
-    /// opening swaps them. A treasure in its own right — six for the find, four
-    /// for the case — and, wound out among the trees, it summons the songbird
-    /// that drops the ``bauble`` (the host owns that cross-bundle trick).
+    /// Starts sealed inside the egg, placed by the host across bundles.
+    /// Destructive opening or a fall ruins it only while still inside.
+    /// Careful thief opening preserves the bird: six points for the find,
+    /// four for the case, and a songbird that drops the bauble when wound
+    /// among the trees.
     let canary = Item {
         name("golden clockwork canary")
         adjectives("golden", "clockwork")
@@ -247,9 +244,8 @@ struct ZorkHouse: GameContent {
         trait(.depositValue, 4)
     }
 
-    /// The ruined bird a forced egg leaves behind. Worthless here — where the
-    /// original grudgingly pays a single point for casing it, wrecking the
-    /// canary simply forfeits its score (see `FIDELITY.md`).
+    /// The bird left inside a damaged shell. Worthless in this port; the
+    /// source's one-point deposit differs, as recorded in FIDELITY.md.
     let brokenCanary = Item {
         name("broken clockwork canary")
         adjectives("broken", "mangled", "clockwork")
@@ -332,7 +328,7 @@ struct ZorkHouse: GameContent {
 
         // The canary rides sealed inside the egg, but the egg lives in
         // ``ZorkAboveGround``, so the host places the canary inside it
-        // (`Zork1.map`). The broken twin stays offstage until a forced opening
+        // (`Zork1.map`). The broken twin stays offstage until shell damage
         // trades it in.
     }
 
@@ -379,9 +375,8 @@ struct ZorkHouse: GameContent {
             say(Prose.trapDoorSlam)
         }
 
-        // Forcing the egg open by hand wrecks the canary inside. Because the
-        // egg lives in ``ZorkAboveGround`` and the canary here, that rule spans
-        // two bundles and the host declares it (`Zork1.rules`).
+        // Shell damage spans the egg in AboveGround and the canary here;
+        // the host declares that shared lifecycle (`Zork1.rules`).
 
         // The lantern's fuel economy: the fuses run only while it burns.
         lantern.before(.turnOn) {

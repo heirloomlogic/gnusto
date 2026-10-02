@@ -102,6 +102,19 @@ extension Prose {
     /// inside. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let nest = "Beside you on the branch is a small bird's nest."
 
+    static let brokenEgg = "There is a somewhat ruined egg here."
+
+    static let eggFalls = "The egg falls to the ground and springs open, seriously damaged."
+
+    static let nestFalls = """
+        The nest falls to the ground, and the egg spills out of it, seriously
+        damaged.
+        """
+
+    static func treeObjectFalls(_ name: String) -> String {
+        "The \(name) falls to the ground."
+    }
+
     /// The egg as the nest holds it: the `FDESC`, printed in place of a stock
     /// "On the nest is a jewel-encrusted egg." line.
     static let eggInNest = """

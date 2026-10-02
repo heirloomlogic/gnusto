@@ -510,7 +510,7 @@ struct Zork1Tests {
                 "Up a Tree",
                 // The nest's `FDESC` and the egg's, in that order, in place of
                 // two stock listing lines — one of which never printed at all,
-                // because the nest is `scenery`.
+                // before the nest is touched.
                 "Beside you on the branch is a small bird's nest.",
                 "In the bird's nest is a large egg encrusted with precious jewels,",
                 "Taken.",

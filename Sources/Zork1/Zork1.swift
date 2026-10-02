@@ -296,6 +296,18 @@ struct Zork1: Game, GameMain {
         }
     }
 
+    /// Replaces the shell at its current placement and transfers its cargo.
+    /// Only a canary still inside is ruined; a removed bird stays intact.
+    private func damageEgg() {
+        let ruinsCanary = aboveGround.egg.holds(house.canary)
+        if ruinsCanary { house.canary.replace(with: house.brokenCanary) }
+        for content in aboveGround.egg.contents {
+            content.move(inside: aboveGround.brokenEgg)
+        }
+        aboveGround.egg.replace(with: aboveGround.brokenEgg)
+        if ruinsCanary { say(Prose.brokenCanaryFirstSight) }
+    }
+
     var rules: Rules {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
@@ -717,11 +729,30 @@ struct Zork1: Game, GameMain {
             try end(won: true)
         }
 
-        // EGG-OBJECT distinguishes an unassisted attempt, explicit hands, and
-        // a held source weapon or tool. Only the last branch opens the egg and
-        // ruins the canary. The thief's service sets `isOpen` directly,
-        // preserving the bird. This cross-bundle rule owns the egg/canary swap.
+        // After DROP's possession gate succeeds, cargo falls to the path.
+        // Move the nest too: TREE-ROOM's prose says it falls, although that
+        // source branch leaves the nest upstairs. FIDELITY.md records the fix.
+        aboveGround.upATree.after(.drop) {
+            guard let item = command.directObject else { return }
+            item.move(to: aboveGround.forestPath)
+            if item == aboveGround.nest && aboveGround.nest.holds(aboveGround.egg) {
+                say(Prose.nestFalls)
+                damageEgg()
+                aboveGround.brokenEgg.move(to: aboveGround.forestPath)
+            } else if item == aboveGround.egg {
+                say(Prose.eggFalls)
+                damageEgg()
+            } else {
+                say(Prose.treeObjectFalls(item.name))
+            }
+        }
+
+        // EGG-OBJECT's qualifying OPEN replaces the shell through the same
+        // damage lifecycle as a fall. The thief opens the intact egg directly.
         aboveGround.egg.before(.open) {
+            guard aboveGround.egg.isReachable else {
+                try refuse(gameText.cantReach(aboveGround.egg.definiteNoun))
+            }
             guard !aboveGround.egg.isOpen else { return }
             guard let tool = command.indirectObject else {
                 let words = command.rawInput.lowercased().split(whereSeparator: { !$0.isLetter })
@@ -734,10 +765,9 @@ struct Zork1: Game, GameMain {
             guard tool[default: .sharp] || tool[default: .opensEggDestructively] else {
                 try refuse(Prose.eggWrongTool(tool.indefiniteName))
             }
-            guard aboveGround.egg.holds(house.canary) else { return }
-            house.canary.replace(with: house.brokenCanary)
             say(Prose.eggForcedRuinsCanary)
-            // Falls through to the built-in open, which reports the egg opened.
+            damageEgg()
+            try handled()
         }
 
         // Wind the intact canary out among the trees and a songbird answers,
