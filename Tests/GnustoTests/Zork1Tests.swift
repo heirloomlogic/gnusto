@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Task 8 White House slice: the mailbox,
@@ -15,6 +15,60 @@ struct Zork1Tests {
         "take sword", "take lantern", "turn on lantern",
         "push rug", "open trap door", "down", "north",
     ]
+
+    @Test(arguments: [
+        (false, false, false, "and a large oriental rug in the center of the room."),
+        (false, false, true, "and an open trap door at your feet."),
+        (false, true, false, "and a closed trap door at your feet."),
+        (false, true, true, "and a rug lying beside an open trap door."),
+        (true, false, false, "and a large oriental rug in the center of the room."),
+        (true, false, true, "and an open trap door at your feet."),
+        (true, true, false, "and a closed trap door at your feet."),
+        (true, true, true, "and a rug lying beside an open trap door."),
+    ])
+    func livingRoomLookMatchesEverySourceState(
+        shortcutOpen: Bool, rugMoved: Bool, trapDoorOpen: Bool, ending: String
+    ) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in ["south", "east", "open window", "west", "west"] {
+            _ = await world.perform(command)
+        }
+        try await world.setLivingRoomPresentationState(
+            shortcutOpen: shortcutOpen, rugMoved: rugMoved, trapDoorOpen: trapDoorOpen)
+        let look = await world.perform("look")
+        let expectedDoor =
+            shortcutOpen
+            ? "You are in the living room. There is a doorway to the east. To the west is a cyclops-shaped opening in an old wooden door, above which is some strange gothic lettering, a trophy case, "
+            : "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, "
+        let output = look.output.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        #expect(output.contains(expectedDoor + ending))
+        let door = await world.perform("examine wooden door")
+        #expect(door.output.contains("The engravings translate to \"This space intentionally left blank.\""))
+        #expect(!door.output.contains("nailed shut"))
+    }
+
+    @Test func livingRoomLookFollowsRugAndTrapDoorCommands() async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in ["south", "east", "open window", "west", "west"] {
+            _ = await world.perform(command)
+        }
+        let initial = await world.perform("look")
+        #expect(initial.output.contains("in the center of the room"))
+        let move = await world.perform("move rug")
+        #expect(move.output.contains("revealing the dusty cover of a closed trap door"))
+        let closed = await world.perform("look")
+        #expect(closed.output.contains("a closed trap door at your feet"))
+        #expect(!closed.output.contains("in the center of the room"))
+        _ = await world.perform("open trap door")
+        let opened = await world.perform("look")
+        #expect(opened.output.contains("a rug lying beside an open trap door"))
+        _ = await world.perform("close trap door")
+        let reclosed = await world.perform("look")
+        #expect(reclosed.output.contains("a closed trap door at your feet"))
+        #expect(!reclosed.output.contains("an open trap door"))
+    }
 
     @Test func openingTheMailboxRevealsAndReadsTheLeaflet() async throws {
         let transcript = try await play(
@@ -1362,5 +1416,16 @@ struct Zork1Tests {
             #expect(turnOutput(of: command, in: transcript).contains("Taken."), "\(command): \(transcript)")
         }
         #expect(turnOutput(of: "inventory", in: transcript).contains("clove of garlic"))
+    }
+}
+
+extension GameWorld {
+    fileprivate func setLivingRoomPresentationState(shortcutOpen: Bool, rugMoved: Bool, trapDoorOpen: Bool) throws {
+        let shortcut = EntityID("ZorkMaze.eastWallOpen")
+        _ = try #require(definition.globals[shortcut]?.defaultValue == .bool(false))
+        state.globals[shortcut] = .bool(shortcutOpen)
+        let trapDoor = EntityID("ZorkHouse.trapDoor")
+        if rugMoved { state.revealedItems.insert(trapDoor) }
+        if trapDoorOpen { state.openItems.insert(trapDoor) }
     }
 }

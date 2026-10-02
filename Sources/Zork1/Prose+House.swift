@@ -47,12 +47,21 @@ extension Prose {
 
     static let water = "A quantity of ordinary water."
 
-    static let livingRoom = """
-        You are in the living room. There is a doorway to the east, a
-        wooden door with strange gothic lettering to the west, which
-        appears to be nailed shut, a trophy case, and a large oriental rug
-        in the center of the room.
-        """
+    /// `LIVING-ROOM-FCN` (`1actions.zil:449-479`) reads the shortcut, moved rug, and trap-door state.
+    static func livingRoom(shortcutOpen: Bool, rugMoved: Bool, trapDoorOpen: Bool) -> String {
+        let west =
+            shortcutOpen
+            ? ". To the west is a cyclops-shaped opening in an old wooden door, above which is some strange gothic lettering, "
+            : ", a wooden door with strange gothic lettering to the west, which appears to be nailed shut, "
+        let floor: String
+        switch (rugMoved, trapDoorOpen) {
+        case (true, true): floor = "and a rug lying beside an open trap door."
+        case (true, false): floor = "and a closed trap door at your feet."
+        case (false, true): floor = "and an open trap door at your feet."
+        case (false, false): floor = "and a large oriental rug in the center of the room."
+        }
+        return "You are in the living room. There is a doorway to the east\(west)a trophy case, \(floor)"
+    }
 
     /// `LAMP`'s `FDESC`. Its `LDESC` is withdrawn, as the painting's is
     /// (`FIDELITY.md`). (#618)
@@ -143,10 +152,8 @@ extension Prose {
         The doorway opens east, into the kitchen.
         """
 
-    static let livingRoomDoor = """
-        The wooden door is covered with strange gothic lettering, and appears
-        to be nailed shut.
-        """
+    /// `WOODEN-DOOR`'s `TEXT` (`1dungeon.zil:905-913`).
+    static let livingRoomDoor = "The engravings translate to \"This space intentionally left blank.\""
 
     static let gothicLettering = """
         The lettering is in no language you know. It is very old, and it was

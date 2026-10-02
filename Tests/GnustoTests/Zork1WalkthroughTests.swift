@@ -43,6 +43,63 @@ struct Zork1WalkthroughTests {
     /// The pinned seed (see the type doc): the lowest that wins this route.
     static let seed: UInt64 = 0
 
+    @Test func cyclopsOpeningAnswersFromBothSidesOnlyAfterTheShortcutOpens() async throws {
+        let initialWorld = try GameWorld(game: Zork1(), seed: Self.seed)
+        _ = await initialWorld.begin()
+        for command in ["south", "east", "open window", "west", "west"] {
+            _ = await initialWorld.perform(command)
+        }
+        let initial = await initialWorld.perform("look")
+        #expect(initial.output.contains("which appears to be nailed shut"))
+        for noun in ["opening", "cyclops-shaped opening"] {
+            let unseen = await initialWorld.perform("examine \(noun)")
+            #expect(unseen.output.contains("can't see any such thing"))
+        }
+        let world = try GameWorld(game: Zork1(), seed: Self.seed)
+        _ = await world.begin()
+        for command in Walkthrough.prep + Walkthrough.descendAndTroll + Array(Walkthrough.mazeToLair.dropLast()) {
+            _ = await world.perform(command)
+        }
+        let passage = await world.perform("east")
+        #expect(passage.output.contains("Strange Passage"))
+        for noun in ["opening", "large opening"] {
+            let examined = await world.perform("examine \(noun)")
+            #expect(examined.output.contains("The opening in the door is a large one, about cyclops sized."))
+        }
+        let livingRoom = await world.perform("east")
+        #expect(livingRoom.output.contains("Living Room"))
+        let opened = await world.perform("look")
+        #expect(opened.output.contains("cyclops-shaped opening in an old wooden door"))
+        for noun in ["opening", "cyclops-shaped opening"] {
+            let examined = await world.perform("examine \(noun)")
+            #expect(examined.output.contains("The opening in the door is a large one, about cyclops sized."))
+        }
+        let door = await world.perform("examine old wooden door")
+        #expect(door.output.contains("The engravings translate to \"This space intentionally left blank.\""))
+    }
+
+    @Test func cyclopsShortcutUpdatesLivingRoomAndDoorDescriptions() async throws {
+        let route =
+            Walkthrough.prep + Walkthrough.descendAndTroll
+            + Array(Walkthrough.mazeToLair.dropLast()) + ["east", "east"]
+        let transcript = try await play(
+            fresh: Zork1(),
+            route + ["look", "examine wooden door", "open trap door", "look", "close trap door", "look"],
+            seed: Self.seed)
+        #expect(transcript.contains("cyclops, hearing the name of his father's deadly nemesis"))
+        let beforeOpening = turnOutput(of: "look", in: transcript)
+        #expect(beforeOpening.contains("cyclops-shaped opening in an old wooden door"))
+        #expect(beforeOpening.contains("a closed trap door at your feet"))
+        #expect(!beforeOpening.contains("nailed shut"))
+        let examined = turnOutput(of: "examine wooden door", in: transcript)
+        #expect(examined.contains("The engravings translate to \"This space intentionally left blank.\""))
+        #expect(!examined.contains("nailed shut"))
+        #expect(turnOutput(ofLast: "look", in: transcript).contains("a closed trap door at your feet"))
+        let opening = String(
+            transcript[try #require(transcript.range(of: "> open trap door", options: .backwards)).upperBound...])
+        #expect(turnOutput(of: "look", in: opening).contains("a rug lying beside an open trap door"))
+    }
+
     @Test func theFullThreeHundredFiftyPointWalkthrough() async throws {
         let transcript = try await play(Zork1(), Walkthrough.commands, seed: Self.seed)
 

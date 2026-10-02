@@ -320,6 +320,17 @@ struct Zork1: Game, GameMain {
             Prose.behindHouse(windowOpen: house.window.isOpen)
         }
 
+        // The shortcut is the maze's state; the revealed trap door records the moved rug in the house.
+        house.livingRoom.describe {
+            Prose.livingRoom(
+                shortcutOpen: maze.eastWallOpen,
+                rugMoved: house.trapDoor.isRevealed,
+                trapDoorOpen: house.trapDoor.isOpen)
+        }
+        house.livingRoom.onEnter {
+            if maze.eastWallOpen { house.cyclopsOpening.reveal() }
+        }
+
         // `enter house` is `WHITE-HOUSE-F`'s `THROUGH` branch, and it answers
         // for the same pair: from behind the house an open window walks you
         // into the Kitchen and a shut one says so, and from any other side

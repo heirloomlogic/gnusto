@@ -31,7 +31,6 @@ struct ZorkHouse: GameContent {
 
     let livingRoom = Location {
         name("Living Room")
-        description(Prose.livingRoom)
     }
 
     let attic = Location {
@@ -130,7 +129,14 @@ struct ZorkHouse: GameContent {
     let livingRoomDoorway = Item.scenery("doorway", description: Prose.livingRoomDoorway)
 
     /// (#407) Named by `Prose.livingRoom` — the west door, not the trap door.
-    let livingRoomDoor = Item.scenery("wooden door", adjectives: "wooden", description: Prose.livingRoomDoor)
+    let livingRoomDoor = Item.scenery("wooden door", adjectives: "old", "wooden", description: Prose.livingRoomDoor)
+
+    /// (#685) The opening named by the Living Room after the cyclops flees.
+    let cyclopsOpening = Item.scenery(
+        "cyclops-shaped opening", synonyms: "opening", description: Prose.strangePassageOpening
+    ) {
+        hidden
+    }
 
     /// (#407) Named by `Prose.livingRoom`.
     let gothicLettering = Item.scenery(
@@ -310,6 +316,7 @@ struct ZorkHouse: GameContent {
         kitchenChimney.starts(in: kitchen)
         livingRoomDoorway.starts(in: livingRoom)
         livingRoomDoor.starts(in: livingRoom)
+        cyclopsOpening.starts(in: livingRoom)
         gothicLettering.starts(in: livingRoom)
         atticStairway.starts(in: attic)
         atticTable.starts(in: attic)
