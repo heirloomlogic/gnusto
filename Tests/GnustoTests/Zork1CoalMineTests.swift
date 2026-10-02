@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.8 Coal Mine region: the vampire bat
@@ -361,5 +361,82 @@ struct Zork1CoalMineTests {
                 "Forest",
             ])
         #expect(!transcript.contains("Would you like to RESTART"))
+    }
+
+    @Test func aTorchInACarriedCoffinIgnitesTheGasRoom() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toRoundRoom + [
+                "southeast", "east", "tie rope to railing", "down", "take torch",
+                "south", "east", "drop sword", "open coffin", "put torch in coffin",
+                "take coffin", "west", "south", "pray", "east", "south", "east",
+                "west", "west", "open trap door", "down", "north", "east", "east",
+                "south", "south", "touch mirror", "north", "west", "north",
+                "west", "north", "east", "north", "down",
+            ],
+            seed: 2)
+        #expect(
+            turnOutput(of: "put torch in coffin", in: transcript).contains(
+                "You put the ivory torch in the gold coffin."))
+        expectInOrder(transcript, ["Gas Room", "carrying flaming objects", "deserve another"])
+    }
+
+    @Test(arguments: ["torch", "candles", "burningMatch"], ["direct", "coffin", "floor", "unheldCoffin"])
+    func theGasRoomChecksHeldFlamesAtAnyDepth(source: String, placement: String) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 2)
+        _ = await world.begin()
+        await world.stageGasRoomSource(source, placement: placement, lit: true)
+        let result = await world.perform("wait")
+        #expect(result.output.contains("carrying flaming objects") == (placement == "direct" || placement == "coffin"))
+    }
+
+    @Test(arguments: ["direct", "sack", "closedSack", "deep", "deepClosed"])
+    func aMatchIgnitesGasEvenInsideClosedOrNestedHolders(placement: String) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 2)
+        _ = await world.begin()
+        await world.stageGasRoomSource("burningMatch", placement: placement, lit: true)
+        let result = await world.perform("wait")
+        #expect(result.output.contains("carrying flaming objects"))
+    }
+
+    @Test(arguments: ["candles", "burningMatch", "lantern"], ["direct", "coffin"])
+    func unlitFlamesAndTheSafeLanternDoNotIgniteGas(source: String, placement: String) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 2)
+        _ = await world.begin()
+        await world.stageGasRoomSource(source, placement: placement, lit: source == "lantern")
+        let result = await world.perform("wait")
+        #expect(!result.output.contains("carrying flaming objects"))
+        #expect(await world.snapshot().playerLocation == EntityID("ZorkCoalMine.gasRoom"))
+    }
+}
+
+extension GameWorld {
+    fileprivate func stageGasRoomSource(_ source: String, placement: String, lit: Bool) {
+        let gasRoom = EntityID("ZorkCoalMine.gasRoom")
+        let coffin = EntityID("ZorkTemple.coffin")
+        let sack = EntityID("ZorkHouse.sack")
+        let sourceID = EntityID(source == "lantern" ? "ZorkHouse.lantern" : "ZorkTemple.\(source)")
+        state.setPlayerLocation(placingAt: gasRoom)
+        state.place(EntityID("ZorkHouse.lantern"), .heldBy(.player))
+        state.litItems.insert(EntityID("ZorkHouse.lantern"))
+        if lit { state.litItems.insert(sourceID) } else { state.litItems.remove(sourceID) }
+        state.openItems.insert(coffin)
+        for item in state.containment().children(of: sack) { state.place(item, .nowhere) }
+        switch placement {
+        case "direct": state.place(sourceID, .heldBy(.player))
+        case "floor": state.place(sourceID, .room(gasRoom))
+        case "coffin", "unheldCoffin":
+            state.place(coffin, placement == "coffin" ? .heldBy(.player) : .room(gasRoom))
+            state.place(sourceID, .inside(coffin))
+        default:
+            state.place(sack, placement.hasPrefix("deep") ? .inside(coffin) : .heldBy(.player))
+            if placement.hasPrefix("deep") { state.place(coffin, .heldBy(.player)) }
+            state.place(sourceID, .inside(sack))
+            if placement == "closedSack" || placement == "deepClosed" {
+                state.openItems.remove(sack)
+            } else {
+                state.openItems.insert(sack)
+            }
+        }
     }
 }

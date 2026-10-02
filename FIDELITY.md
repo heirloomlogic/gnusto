@@ -647,11 +647,7 @@ third, the huge diamond, has to be made.
   and the garlic guard comes *before* the random draw, so an armed descent never
   touches the random stream — this is the region's one source of randomness. The
   original also accepts garlic simply dropped in the room; here it must be carried.
-- **The Gas Room reads the `.openFlame` trait** (minted in Phase 10.6, unread until
-  now). At the end of any turn spent there with a lit open flame in hand — the ivory
-  torch, the lit candles, or a struck match, carried in or lit on the spot — the air
-  goes up and the player dies (`afterEachTurn` → `die`). The electric lantern carries
-  no flame and is safe, exactly as in the original.
+- The Gas Room reads the `.openFlame` trait for the torch, candles, and struck match. At the end of a turn there, a lit flame carried directly or inside carried containers ignites the gas and kills the player (`afterEachTurn` → `die`). Closed containers do not shield the flame: [BOOM-ROOM](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L2446) calls [HELD?](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/gverbs.zil#L2167), which follows each object's parent until it reaches the player, without testing openness. An unlit source, the electric lantern, or an unheld flame does not trigger this hazard. The supplied open-coffin/torch route and focused direct, nested, closed-holder, and safe-control tests cover this possession check; the historical reference is archived ZIL, not a running Z-machine.
 - **The basket is modeled as the original's two objects.** The real container (open,
   transparent, `capacity` 50) and a stand-in trade rooms when the chain is worked, so
   "raise basket" and "lower basket" always name a basket in the Shaft Room however the
