@@ -122,9 +122,19 @@ struct Zork1ThiefTests {
             _ = await world.perform(command)
         }
 
+        let beforeGift = await world.snapshot()
         let gift = await world.perform("give egg to thief")
         var beforeDeath = await world.snapshot()
-        beforeDeath.unconsciousActors.insert(EntityID("ZorkThief.thief"))
+        let recipients = Set(
+            beforeDeath.placements.compactMap { id, placement -> EntityID? in
+                guard beforeGift.placements[id] == .heldBy(.player),
+                    case .heldBy(let holder) = placement,
+                    holder != .player
+                else { return nil }
+                return holder
+            })
+        let thiefID = try #require(recipients.count == 1 ? recipients.first : nil)
+        beforeDeath.unconsciousActors.insert(thiefID)
         await world.restore(beforeDeath, mode: .brief)
         let attack = await world.perform("attack thief")
         let egg = await world.perform("look in egg")
