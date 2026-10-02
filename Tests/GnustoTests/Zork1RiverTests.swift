@@ -218,6 +218,140 @@ struct Zork1RiverTests {
         return world
     }
 
+    private static let groupedSharpPutCommands = [
+        "put sword and axe in boat", "put axe and sword in boat",
+        "put pump and sword and axe in boat", "put sword and pump and axe in boat",
+        "put sword and axe and pump in boat",
+    ]
+    private static let axe = EntityID("ZorkCellar.axe")
+    private static let pump = EntityID("ZorkDam.handPump")
+    private static let wrench = EntityID("ZorkDam.wrench")
+    private static let tube = EntityID("ZorkDam.tube")
+
+    private static func groupedPutBoatWorld(aboard: Bool) async throws -> GameWorld {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        var route = toInflatedBoat
+        route.insert("take axe", at: try #require(route.lastIndex(of: "attack troll")) + 1)
+        route.insert("take tube", at: try #require(route.firstIndex(of: "take wrench")) + 1)
+        for command in route + ["put wrench in boat"] { _ = await world.perform(command) }
+        if aboard {
+            for command in ["drop sword", "drop axe", "enter boat", "take sword", "take axe"] {
+                _ = await world.perform(command)
+            }
+        }
+        let ready = await world.snapshot()
+        #expect(ready.playerLocation == bank)
+        #expect(ready.playerVehicle == (aboard ? boat : nil))
+        #expect(ready.placements[sword] == .heldBy(.player))
+        #expect(ready.placements[axe] == .heldBy(.player))
+        #expect(ready.placements[tube] == .heldBy(.player))
+        #expect(ready.placements[pump] == .heldBy(.player))
+        #expect(ready.placements[wrench] == .inside(boat))
+        #expect(ready.placements[label] == .inside(boat))
+        return world
+    }
+
+    private static func punctureCount(in output: String) -> Int {
+        occurrences(of: punctureLine, in: output) + occurrences(of: "punctured the boat", in: output)
+    }
+
+    @Test(arguments: [false, true], groupedSharpPutCommands)
+    func groupedSharpPutLeavesOneWreckAndRefusesObsoleteHullMembers(aboard: Bool, command: String) async throws {
+        let world = try await Self.groupedPutBoatWorld(aboard: aboard)
+        let response = await world.perform(command)
+        #expect(Self.punctureCount(in: response.output) == 1)
+        #expect(response.output.contains("can't reach"))
+        let after = await world.snapshot()
+        #expect(after.playerLocation == Self.bank)
+        #expect(after.playerVehicle == nil)
+        #expect(after.placements[Self.boat] == .nowhere)
+        #expect(after.placements[Self.wreck] == .room(Self.bank))
+        #expect(after.placements[Self.label] == .room(Self.bank))
+        #expect(after.placements[Self.wrench] == .room(Self.bank))
+        #expect(after.placements[Self.sword] == .heldBy(.player))
+        #expect(after.placements[Self.axe] == .heldBy(.player))
+        #expect(after.placements[Self.tube] == .heldBy(.player))
+        let expectedPump: Placement = command.hasPrefix("put pump") ? .room(Self.bank) : .heldBy(.player)
+        #expect(after.placements[Self.pump] == expectedPump)
+        let look = (await world.perform("look")).output
+        #expect(look.contains("punctured boat"))
+        #expect(look.contains("label"))
+        #expect(look.contains("wrench"))
+        // A later command names the wreck rather than reviving the obsolete hull.
+        let refused = await world.perform("put sword and axe in boat")
+        #expect(Self.punctureCount(in: refused.output) == 0)
+        #expect((await world.snapshot()).placements[Self.wreck] == .room(Self.bank))
+        #expect((await world.snapshot()).placements[Self.boat] == .nowhere)
+    }
+
+    @Test(arguments: [false, true], groupedSharpPutCommands)
+    func undoRestoresTheWholeGroupedPutIncludingCargoAndBoarding(aboard: Bool, command: String) async throws {
+        let world = try await Self.groupedPutBoatWorld(aboard: aboard)
+        let before = await world.snapshot()
+        _ = await world.perform(command)
+        #expect((await world.snapshot()).placements[Self.wreck] == .room(Self.bank))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.placements == before.placements)
+        #expect(restored.playerVehicle == before.playerVehicle)
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect(restored.globals == before.globals)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect(restored.touched == before.touched)
+        #expect(restored.moves == before.moves)
+        #expect(restored.rngState == before.rngState)
+        #expect(restored.pronounIt == before.pronounIt)
+        #expect(Self.punctureCount(in: (await world.perform(command)).output) == 1)
+        #expect((await world.snapshot()).placements[Self.wreck] == .room(Self.bank))
+    }
+
+    @Test(arguments: [false, true], ["put sword and axe in boat", "put axe and sword in boat"])
+    func groupedPutWreckCanBeRepairedAndRepairUndoneBeforeReboarding(aboard: Bool, command: String) async throws {
+        let world = try await Self.groupedPutBoatWorld(aboard: aboard)
+        _ = await world.perform(command)
+        let beforeRepair = await world.snapshot()
+        #expect(beforeRepair.placements[Self.wreck] == .room(Self.bank))
+        #expect((await world.perform("fix boat with tube")).output.contains("boat is repaired"))
+        let repaired = await world.snapshot()
+        #expect(repaired.placements[Self.boat] == .room(Self.bank))
+        #expect(repaired.placements[Self.wreck] == .nowhere)
+        #expect(repaired.placements[Self.tube] == .nowhere)
+        #expect(repaired.placements[Self.label] == .room(Self.bank))
+        #expect(repaired.placements[Self.wrench] == .room(Self.bank))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.placements == beforeRepair.placements)
+        #expect(restored.playerVehicle == beforeRepair.playerVehicle)
+        #expect(restored.globals == beforeRepair.globals)
+        #expect((await world.perform("fix boat with tube")).output.contains("boat is repaired"))
+        for next in ["drop sword", "drop axe", "enter boat", "launch boat"] { _ = await world.perform(next) }
+        let afloat = await world.snapshot()
+        #expect(afloat.playerVehicle == Self.boat)
+        #expect(afloat.playerLocation == Self.river1)
+        #expect(afloat.placements[Self.boat] == .room(Self.river1))
+    }
+
+    @Test(
+        arguments: [false, true],
+        [
+            ("ZorkHouse.knife", "knife"), ("ZorkTemple.sceptre", "sceptre"),
+            ("ZorkMaze.rustyKnife", "rusty knife"), ("ZorkThief.stiletto", "stiletto"),
+        ])
+    func laterSourceWeaponsCannotPunctureAnAlreadyReplacedHull(aboard: Bool, weapon: (String, String)) async throws {
+        let world = try await Self.groupedPutBoatWorld(aboard: aboard)
+        let id = EntityID(weapon.0)
+        await world.placeBoatTestItem(id, .heldBy(.player))
+        let response = await world.perform("put sword and \(weapon.1) in boat")
+        #expect(Self.punctureCount(in: response.output) == 1)
+        #expect(response.output.contains("can't reach"))
+        let after = await world.snapshot()
+        #expect(after.placements[Self.wreck] == .room(Self.bank))
+        #expect(after.placements[id] == .heldBy(.player))
+        #expect(after.placements[Self.label] == .room(Self.bank))
+        #expect(after.placements[Self.wrench] == .room(Self.bank))
+    }
+
     @Test(arguments: [
         "drop sword", "put sword in boat", "attack label with sword",
         "smash label with sword", "destroy label with sword", "break label with sword",

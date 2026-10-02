@@ -485,7 +485,7 @@ struct ZorkRiver: GameContent {
                 try refuse(Prose.combatText.weaponNotHeld(weapon.definiteNoun))
             }
             let afloat = isOnRiver()
-            puncture()
+            try puncture()
             say(Prose.boatPuncturedByWeapon("\(weapon.definiteNoun)"))
             if afloat { try die(Prose.boatPuncturedAfloat) }
             try handled()
@@ -495,7 +495,7 @@ struct ZorkRiver: GameContent {
         // happens on a bank, so this only wrecks the boat — no drowning.
         magicBoat.before(.board) {
             guard carryingSomethingSharp() else { return }
-            puncture()
+            try puncture()
             try refuse(Prose.boatPuncturedOnLand)
         }
 
@@ -505,7 +505,7 @@ struct ZorkRiver: GameContent {
             guard let stowed = command.directObject, stowed[default: .sharp] else { return }
             try require(stowed.isHeld, else: gameText.notHolding())
             let afloat = isOnRiver()
-            puncture()
+            try puncture()
             if afloat {
                 try die(Prose.boatPuncturedAfloat)
             }
@@ -628,7 +628,10 @@ struct ZorkRiver: GameContent {
 
     /// Burst the magic boat: swap in the punctured wreck and scatter whatever the
     /// boat was carrying into the room and leave its passenger on foot.
-    private func puncture() {
+    private func puncture() throws {
+        // A grouped PUT keeps its original destination after the first weapon
+        // replaces the hull. Refuse later members before replacing it again.
+        try require(magicBoat.location != nil, else: gameText.cantReach(magicBoat.definiteNoun))
         for cargo in magicBoat.contents {
             cargo.move(to: player.location)
         }
