@@ -159,12 +159,7 @@ entry below is grouped by the task that introduced it.
 ## Phase 8 — the Troll Room (`Sources/Zork1/Cellar.swift`)
 
 - **Prose is held to the Zork 1 rule at the top of this file**; "troll" the name was always used as-is. The troll's strength (2) and the sword/knife as the weapons that can reach him are the original's data.
-- **The passages beyond the troll are honest stubs.** East (toward the
-  round-room side of the dungeon) and west (toward the maze) refuse with
-  the troll's block while he lives, and with a collapsed-passages line
-  after — their regions are later phases. In the original both passages
-  open onto real map. *(Updated in Phase 10.4: east now opens onto the
-  East-West Passage once the troll falls; only west remains a stub.)*
+- **Both passages beyond the troll are live.** East opens onto the East-West Passage and west drops one-way into Maze-1. An awake troll blocks both; a knockout opens both until recovery, and death opens both permanently.
 - **Combat reads a per-weapon table** *(closed in the fidelity pass — was a single
   fixed table)*. One roll per swing (miss/wound/knockout/kill), but the cutpoints now
   slide with the weapon's `.weaponStrength`: the elvish sword (keen, 3) whiffs less and
@@ -173,14 +168,7 @@ entry below is grouped by the task that introduced it.
   fights exactly as before. The villain answers on the end-of-turn clock, player wounds
   never heal, and a knocked-out troll falls to the next clean blow. Deterministic under a
   pinned seed; the transcripts record their sequences.
-- **Defeat is permanent; his axe is now lootable (closed in the fidelity
-  pass).** The troll still vanishes with his death line ("sinks into the
-  shadows") and never recovers to block again — the original's randomized
-  recovery isn't modeled. But his **bloody axe** (a `ZorkCellar` item, `.nowhere`
-  in his hands while he lives) now clatters to the Troll Room floor on defeat
-  (his `onDefeat`, host-wired in `Zork1`) and can be taken; it is `.weapon` and
-  `.sharp` (holes the river boat, like the other blades). Earlier the body took
-  the axe into the floor with it.
+- **Knockout, recovery, and death carry the troll's map and axe transitions.** `1actions.zil:671–700` at `historicalsource/zork1@97b7b3d68c075dd9af7da499c3e9690ada3471fd` clears the passages and drops the bloody axe on knockout, restores the block and reclaims only an untaken floor axe on recovery, and opens the passages permanently on death. The Swift host now does the same: a player-held axe survives recovery and a finishing blow, while an offstage axe drops on death. The axe remains `.weapon` and `.sharp`.
 
 ## Phase 8 — the reduced thief (`Sources/Zork1/Cellar.swift` + host wiring)
 
@@ -823,9 +811,7 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   one-way `PER MAZE-DIODES` drops (Maze-2→Maze-4, Maze-7→Dead-End-1, Maze-9→Maze-11,
   Maze-12→Maze-5, all `down`) and its self-loops (Maze-1 `north`, Maze-6 `west`, Maze-8
   `west`, Maze-9 `northwest`, Maze-14 `northwest`, each returning to itself).
-- **The maze entrance is one-way.** The Troll Room's west passage (host-wired, gated on
-  `trollDefeated`) drops into Maze-1, which — as in the original — has no exit back to the
-  Troll Room. Deleting the old collapsed-rubble stub in `ZorkCellar` was part of this task.
+- **The maze entrance is one-way.** The Troll Room's west passage is host-wired and available while the troll is unconscious or permanently defeated. It drops into Maze-1, which — as in the original — has no exit back to the Troll Room. Deleting the old collapsed-rubble stub in `ZorkCellar` was part of this task.
 - **The grating is a real two-way door** between the Grating Room and the above-ground
   Clearing (host-wired `via:` the grating item, a `ZorkAboveGround` entity). Because the
   engine only folds a door into scope where it is perceivable and the grating starts hidden
@@ -1108,8 +1094,7 @@ closures:
 - **`diagnose` verb** — reports the death toll and resurrections remaining (`Zork1.swift`).
 - **Machine non-coal destruction** — a closed machine with non-coal contents grinds them to
   a worthless slag (`Zork1.swift` machine rule, `Prose+CoalMine.swift`).
-- **Troll's bloody axe** — drops to the Troll Room floor on defeat, lootable, `.weapon` and
-  `.sharp` (`Cellar.swift` axe item, `Zork1.swift` `onDefeat`, `Prose+Cellar.swift`).
+- **Troll's bloody axe** — drops to the Troll Room floor on knockout or death, is reclaimed on recovery only if it remains loose there, and stays with the player if taken; it is lootable, `.weapon`, and `.sharp` (`Cellar.swift`, `Zork1.swift`, `Prose+Cellar.swift`).
 - **Boat repair** — `fix boat with gunk` patches the punctured boat with the dam's tube
   (`Zork1.swift` host-wired, `Prose+River.swift`).
 
@@ -1655,6 +1640,7 @@ map, taken from `dung.355` and checked room by room against the exit counts in
 - The **Cellar runs east** to the Troll Room and south to West of Chasm; Zork I
   runs it north and south.
 - The **Troll Room opens in four directions**, and the troll gates three of them.
+- The mainframe troll's `OUT!`, `IN!`, and `DEAD!` transitions in `mdlzork_810722/original_source/act1.254:182–210` are restored across all three gated exits: knockout opens them and drops the axe, recovery closes them and reclaims only an available room-floor axe, and death opens them permanently. The existing unconscious room prose now agrees with the map state.
 - The **Gallery and Studio hang off the crawlway**, so the painting can be had
   without ever meeting the troll — where Zork I puts the Gallery behind him. The
   Studio's doors are north and northwest, not south.

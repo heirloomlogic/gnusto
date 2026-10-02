@@ -550,6 +550,11 @@ struct StunLabGame: Game {
 
     let melee = MeleeCombat()
 
+    @Global var knockoutCallbacks = 0
+    @Global var knockoutSawUnconscious = false
+    @Global var recoveryCallbacks = 0
+    @Global var recoverySawUnconscious = false
+
     var content: GameContents { melee }
 
     var map: WorldMap {
@@ -570,9 +575,17 @@ struct StunLabGame: Game {
                 miss: ["The bar rings off the floor."],
                 wound: ["A flake of clay spins away."],
                 knockout: "The golem drops to its knees and stays there.",
-                death: "The golem comes apart into wet shards."))
+                death: "The golem comes apart into wet shards."),
+            onKnockout: {
+                knockoutCallbacks += 1
+                knockoutSawUnconscious = golem.isUnconscious
+            })
         world.before(Intent("check")) {
-            try reply("Out cold: \(golem.isUnconscious).")
+            let lifecycle =
+                "Out cold: \(golem.isUnconscious). "
+                + "Knockouts: \(knockoutCallbacks), saw cold: \(knockoutSawUnconscious). "
+                + "Recoveries: \(recoveryCallbacks), saw cold: \(recoverySawUnconscious)."
+            try reply(lifecycle)
         }
         // A knockout the game takes by its own means, which is what
         // `Actor.isUnconscious` invites. It writes the flag and nothing else,
@@ -591,6 +604,10 @@ struct StunLabGame: Game {
             prose: MeleeCombat.AggressionProse(
                 miss: ["The golem swipes and catches nothing."],
                 wound: ["The golem rakes your forearm."],
-                playerDeath: "The golem brings both fists down at once."))
+                playerDeath: "The golem brings both fists down at once."),
+            onRecovery: {
+                recoveryCallbacks += 1
+                recoverySawUnconscious = golem.isUnconscious
+            })
     }
 }

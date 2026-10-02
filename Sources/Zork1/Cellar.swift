@@ -49,14 +49,14 @@ struct ZorkCellar: GameContent {
     let troll = Actor {
         name("troll")
         pronoun(.he)
-        description(Prose.troll)
-        firstSight(Prose.trollPresence)
+        description(when: \Actor.isUnconscious, Prose.trollUnconscious, otherwise: Prose.troll)
+        firstSight(when: \Actor.isUnconscious, Prose.trollUnconscious, otherwise: Prose.trollPresence)
     }
 
     /// The troll's bloody axe. It begins ``.nowhere`` — in his hands, out of
-    /// reach while he lives — and clatters to the Troll Room floor when he falls
-    /// (his `onDefeat`, host-wired in ``Zork1``). Sharp enough to hole the river
-    /// boat, like the other blades.
+    /// reach while he is awake — and drops to the Troll Room floor when he is
+    /// knocked out or killed. Sharp enough to hole the river boat, like the
+    /// other blades.
     let axe = Item {
         name("bloody axe")
         adjectives("bloody")

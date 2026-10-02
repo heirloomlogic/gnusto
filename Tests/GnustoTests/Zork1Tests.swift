@@ -9,6 +9,13 @@ import Testing
 /// the kitchen window, the rug/trap-door pair, the tree/egg/trophy-case
 /// chain, and the leaves/grating pair, plus a full-slice smoke walk.
 struct Zork1Tests {
+    private static let toTheTrollForKnockout = [
+        "north", "north", "up", "take egg", "down", "south", "west",
+        "south", "east", "open window", "west", "west",
+        "take sword", "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down", "north",
+    ]
+
     @Test func openingTheMailboxRevealsAndReadsTheLeaflet() async throws {
         let transcript = try await play(
             Zork1(),
@@ -536,6 +543,62 @@ struct Zork1Tests {
         let afterDeath = transcript.components(
             separatedBy: "troll takes a fatal blow")[1]
         #expect(!afterDeath.contains("A nasty-looking troll"))
+    }
+
+    @Test(arguments: [("east", "East-West Passage"), ("west", "Maze")])
+    func anUnconsciousTrollOpensBothPassages(direction: String, destination: String) async throws {
+        let awake = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout + [direction],
+            seed: 8)
+        #expect(turnOutput(ofLast: direction, in: awake).contains(Prose.trollBlocksTheWay))
+
+        let transcript = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout + ["attack troll", direction],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll", in: transcript).contains(Prose.trollKnockout))
+        let passage = turnOutput(ofLast: direction, in: transcript)
+        #expect(passage.contains(destination))
+        #expect(!passage.contains(Prose.trollBlocksTheWay))
+    }
+
+    @Test func trollRecoveryReclaimsOnlyAnAvailableAxe() async throws {
+        let route = Self.toTheTrollForKnockout
+        let loose = try await play(
+            fresh: Zork1(),
+            route + ["attack troll", "look", "wait", "take axe", "east"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll", in: loose).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "look", in: loose).contains("An unconscious troll is sprawled on the floor."))
+        #expect(turnOutput(of: "take axe", in: loose).contains("You can't see any such thing."))
+        #expect(turnOutput(ofLast: "east", in: loose).contains(Prose.trollBlocksTheWay))
+
+        let held = try await play(
+            fresh: Zork1(),
+            route + ["attack troll", "take axe", "inventory", "east", "inventory"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll", in: held).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "take axe", in: held).contains("Taken."))
+        #expect(turnOutput(ofLast: "east", in: held).contains(Prose.trollBlocksTheWay))
+        #expect(turnOutput(of: "inventory", in: output(after: "> east", in: held)).contains("bloody axe"))
+    }
+
+    @Test func killingAnUnconsciousTrollLeavesHisTakenAxeHeldAndPassagesOpen() async throws {
+        let transcript = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout
+                + [
+                    "attack troll", "take axe", "attack troll with axe",
+                    "inventory", "east",
+                ],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll", in: transcript).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "attack troll with axe", in: transcript).contains("fatal blow"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("bloody axe"))
+        #expect(turnOutput(ofLast: "east", in: transcript).contains("East-West Passage"))
     }
 
     @Test func theTrollCanKillYou() async throws {

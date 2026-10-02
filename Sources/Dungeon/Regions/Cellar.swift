@@ -76,8 +76,8 @@ struct DungeonCellar: GameContent {
         pronoun(.he)
     }
 
-    /// The troll's axe. It starts in his hands — offstage — and clatters to
-    /// the floor when he falls (his `onDefeat`, host-wired).
+    /// The troll's axe. It starts in his hands — offstage — and drops to the
+    /// floor when he is knocked out or killed.
     let axe = Item {
         name("bloody axe")
         adjectives("bloody")
@@ -201,7 +201,8 @@ struct DungeonCellar: GameContent {
         // way you came. Two of the three reach regions later milestones build;
         // this one is wholly inside this bundle, so it is declared here.
         trollRoom.east(
-            crawlway, when: { trollDefeated }, otherwise: Prose.trollBlocksTheWay)
+            crawlway, when: { trollDefeated || troll.isUnconscious },
+            otherwise: Prose.trollBlocksTheWay)
         crawlway.east(trollRoom)
 
         crawlway.north(westOfChasm)

@@ -163,7 +163,7 @@ public struct MeleeCombat: GameContent {
     /// are no longer standing in one room. It is the whole of the difference
     /// between a villain who blocks and a villain who kills you for reading the
     /// room; see
-    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:)``.
+    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:onRecovery:)``.
     struct Ledger: Codable, Sendable, GlobalValue {
         var health: [String: Int] = [:]
         var stunned: [String: Int] = [:]
@@ -282,7 +282,8 @@ public struct MeleeCombat: GameContent {
     }
 
     /// Registers a villain: attacks against `actor` resolve a weapon, roll
-    /// the outcome table, and track his health under `key`. At zero health
+    /// the outcome table, and track his health under `key`. A new knockout sets
+    /// the actor's shared unconscious state before `onKnockout` runs. At zero health
     /// the death line prints, `onDefeat` runs (unbar the door, drop the
     /// loot — this is the host's composition point, before the body
     /// vanishes), and the actor is removed from play.
@@ -296,7 +297,7 @@ public struct MeleeCombat: GameContent {
     ///
     /// A knockout also sets `Actor.isUnconscious` — see `stun(_:key:turnsLeft:)`.
     /// It is cleared again by the villain's own
-    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:)`` daemon, so
+    /// ``aggression(of:key:named:strikesFirst:playerStrength:when:prose:onRecovery:)`` daemon, so
     /// a villain registered here without one stays down for good once knocked
     /// out, exactly as his stun counter already did.
     ///
@@ -307,6 +308,7 @@ public struct MeleeCombat: GameContent {
     ///   - weapons: an optional restriction on the `.weapon` items that count
     ///     against this villain. Omit it to accept every trait-marked weapon.
     ///   - prose: per-outcome combat lines (miss, wound, knockout, death).
+    ///   - onKnockout: host hook run once when this attack creates a knockout, after the actor becomes unconscious. Finishing blows and externally applied unconscious state do not run it.
     ///   - onDefeat: host hook run at death, before the actor vanishes.
     /// - Returns: the `before(.attack)` rules driving the villain's combat.
     @RuleBuilder
@@ -316,6 +318,7 @@ public struct MeleeCombat: GameContent {
         strength: Int,
         weapons: [Item]? = nil,
         prose: VillainProse,
+        onKnockout: @escaping @Sendable () -> Void = {},
         onDefeat: @escaping @Sendable () -> Void = {}
     ) -> Rules {
         let _ = Self.requireRotatingProse(prose.miss, named: "VillainProse.miss")
@@ -389,6 +392,7 @@ public struct MeleeCombat: GameContent {
                 case ...knockoutMax:
                     ledger.health[key] = health
                     stun(actor, key: key, turnsLeft: 2)
+                    onKnockout()
                     try reply(prose.knockout)
                 default:
                     health = 0
@@ -416,6 +420,8 @@ public struct MeleeCombat: GameContent {
     /// `turnsLeft: 2` buys three ticks without a counter-attack: the tick that
     /// knocked him down and the two he spends on the floor. The unconscious
     /// flag clears at commit, so theft and movement also wait until next turn.
+    /// `onRecovery` runs once on that final tick after recovery is scheduled,
+    /// while the shared flag is still set for the rest of the turn.
     /// A game that sets `Actor.isUnconscious` by its own means buys the same
     /// silence, for as
     /// long as it leaves the flag set; there is no countdown behind that one,
@@ -459,6 +465,7 @@ public struct MeleeCombat: GameContent {
     ///     from its own villain's `playerStrength`.
     ///   - condition: an extra gate, checked first — a false gate is a quiet, draw-free turn.
     ///   - prose: per-outcome counter-attack lines (miss, wound, playerDeath).
+    ///   - onRecovery: host hook run once on the final stun tick, after deferred recovery is scheduled but before it commits. Externally applied unconscious state does not run it.
     /// - Returns: the daemon rolling the villain's counter-attack each turn.
     public func aggression(
         of actor: Actor,
@@ -467,7 +474,8 @@ public struct MeleeCombat: GameContent {
         strikesFirst: Int = 100,
         playerStrength: Int = 2,
         when condition: @escaping @Sendable () -> Bool = { true },
-        prose: AggressionProse
+        prose: AggressionProse,
+        onRecovery: @escaping @Sendable () -> Void = {}
     ) -> TimedEvent {
         Self.requireRotatingProse(prose.miss, named: "AggressionProse.miss")
         Self.requireRotatingProse(prose.wound, named: "AggressionProse.wound")
@@ -505,6 +513,7 @@ public struct MeleeCombat: GameContent {
                 if stunTurns == 0 {
                     ledger.stunned[key] = nil
                     actor.recoverAfterTurn()
+                    onRecovery()
                 } else {
                     stun(actor, key: key, turnsLeft: stunTurns - 1)
                 }
