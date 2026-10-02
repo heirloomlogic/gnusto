@@ -209,9 +209,18 @@ extension Prose {
         """
 
     static let boatPuncturedAfloat = """
-        Something sharp shifts against the hull and opens it with a hiss. The
-        boat folds up beneath you, and the fierce cold current does the rest.
+        In other words, fighting the fierce currents of the Frigid River. You
+        manage to hold your own for a bit, but then you are carried over a
+        waterfall and into some nasty rocks. Ouch!
         """
+
+    static func boatPuncturedByWeapon(_ weapon: String) -> String {
+        """
+        It seems that \(weapon) didn't agree with the boat, as evidenced
+        by the loud hissing noise issuing therefrom. With a pathetic sputter, the
+        boat deflates, leaving you without.
+        """
+    }
 
     static let noSwimming = """
         A look before leaping reveals that the river is wide and dangerous, with

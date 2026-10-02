@@ -112,6 +112,10 @@ struct ZorkSystems: GameContent {
         Intent.diagnose
         Intent.swing
         Intent.swingAt
+        // DESTROY and its synonyms accept a held instrument in gsyntax.zil:158-162.
+        SyntaxRule("destroy", .directObject, "with", .indirectObject, intent: .smash)
+        SyntaxRule("smash", .directObject, "with", .indirectObject, intent: .smash)
+        SyntaxRule("break", .directObject, "with", .indirectObject, intent: .smash)
         // The source resolves these phrases to its HANDS pseudo-object.
         // Literal rows carry them to the egg's `.open` rule with no
         // indirect object. Other openables still use the built-in action.

@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.9 Frigid River region: the inflatable
@@ -195,6 +195,202 @@ struct Zork1RiverTests {
                 "boat is repaired",  // the patch
                 "magic boat",  // repaired; the blade-free boarding holds
             ])
+    }
+
+    private static let boat = EntityID("ZorkRiver.magicBoat")
+    private static let wreck = EntityID("ZorkRiver.puncturedBoat")
+    private static let sword = EntityID("ZorkHouse.sword")
+    private static let label = EntityID("ZorkRiver.tanLabel")
+    private static let bank = EntityID("ZorkDam.damBase")
+    private static let river1 = EntityID("ZorkRiver.river1")
+    private static let punctureLine = "didn't agree with the boat"
+    private static let riverDeath = "fighting the fierce currents of the Frigid River"
+
+    private static func boardedBoatWorld(_ extra: [String] = []) async throws -> GameWorld {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in toInflatedBoat + ["drop sword", "enter boat"] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.snapshot()).playerLocation == bank)
+        #expect((await world.snapshot()).playerVehicle == boat)
+        for command in extra { _ = await world.perform(command) }
+        return world
+    }
+
+    @Test(arguments: [
+        "drop sword", "put sword in boat", "attack label with sword",
+        "smash label with sword", "destroy label with sword", "break label with sword",
+    ])
+    func aboardWeaponActionsWreckTheBoatAshore(command: String) async throws {
+        let world = try await Self.boardedBoatWorld(["take sword", "drop wrench"])
+        let before = await world.snapshot()
+        #expect(before.placements[Self.label] == .inside(Self.boat))
+        #expect(before.placements[EntityID("ZorkDam.wrench")] == .inside(Self.boat))
+        let response = await world.perform(command)
+        #expect(response.output.contains(Self.punctureLine))
+        #expect(!response.output.contains(Self.riverDeath))
+        let after = await world.snapshot()
+        #expect(after.playerLocation == Self.bank)
+        #expect(after.playerVehicle == nil)
+        #expect(after.placements[Self.boat] == .nowhere)
+        #expect(after.placements[Self.wreck] == .room(Self.bank))
+        #expect(after.placements[Self.label] == .room(Self.bank))
+        #expect(after.placements[EntityID("ZorkDam.wrench")] == .room(Self.bank))
+        #expect(after.placements[Self.sword] == .heldBy(.player))
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
+    }
+
+    @Test(arguments: [
+        "drop sword", "put sword in boat", "attack label with sword", "smash label with sword",
+    ])
+    func aboardWeaponActionsDrownOnTheRiverAndUndoRestoresTheBoat(command: String) async throws {
+        let world = try await Self.boardedBoatWorld(["take sword", "launch boat"])
+        let before = await world.snapshot()
+        #expect(before.playerLocation == Self.river1)
+        let response = await world.perform(command)
+        #expect(response.output.contains(Self.punctureLine))
+        #expect(response.output.contains(Self.riverDeath))
+        #expect(response.output.contains("you probably deserve another"))
+        let after = await world.snapshot()
+        #expect(after.playerVehicle == nil)
+        #expect(after.placements[Self.boat] == .nowhere)
+        #expect(after.placements[Self.wreck] == .room(Self.river1))
+        #expect(after.placements[Self.label] == .room(Self.river1))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect(restored.playerVehicle == before.playerVehicle)
+        #expect(restored.placements == before.placements)
+        #expect(restored.globals == before.globals)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
+    }
+
+    @Test func aDroppedWeaponWreckCanBeRepairedAndBoardedAgain() async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        var route = Self.toInflatedBoat
+        route.insert("take tube", at: try #require(route.firstIndex(of: "take wrench")) + 1)
+        for command in route + ["drop sword", "enter boat", "take sword", "drop sword"] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.snapshot()).playerVehicle == nil)
+        #expect((await world.snapshot()).placements[Self.wreck] == .room(Self.bank))
+        #expect((await world.perform("fix boat with tube")).output.contains("boat is repaired"))
+        for command in ["drop sword", "enter boat", "launch boat"] { _ = await world.perform(command) }
+        let repaired = await world.snapshot()
+        #expect(repaired.playerVehicle == Self.boat)
+        #expect(repaired.playerLocation == Self.river1)
+        #expect(repaired.placements[Self.wreck] == .nowhere)
+        #expect(repaired.placements[EntityID("ZorkDam.tube")] == .nowhere)
+    }
+
+    @Test(arguments: [
+        ("ZorkHouse.sword", "sword"), ("ZorkHouse.knife", "knife"),
+        ("ZorkTemple.sceptre", "sceptre"), ("ZorkMaze.rustyKnife", "rusty knife"),
+        ("ZorkThief.stiletto", "stiletto"), ("ZorkCellar.axe", "bloody axe"),
+    ])
+    func everySourceWeaponUsesTheBoatInterceptionBeforeItsOwnRules(id: String, noun: String) async throws {
+        for command in ["drop \(noun)", "attack label with \(noun)", "smash label with \(noun)"] {
+            let world = try await Self.boardedBoatWorld()
+            await world.placeBoatTestItem(EntityID(id), .heldBy(.player))
+            let response = await world.perform(command)
+            #expect(response.output.contains(Self.punctureLine), "\(command): \(response.output)")
+            #expect(!response.output.contains("slits your throat"))
+            let after = await world.snapshot()
+            #expect(after.playerVehicle == nil)
+            #expect(after.placements[Self.wreck] == .room(Self.bank))
+            #expect(after.placements[EntityID(id)] == .heldBy(.player))
+        }
+    }
+
+    @Test(arguments: [
+        "drop sword", "put sword in boat", "attack label with sword", "smash label with sword",
+    ])
+    func unheldWeaponsRefuseWithoutWreckingTheBoat(command: String) async throws {
+        let world = try await Self.boardedBoatWorld()
+        let response = await world.perform(command)
+        #expect(response.output.contains("holding") || response.output.contains("carrying"))
+        #expect(!response.output.contains(Self.punctureLine))
+        let after = await world.snapshot()
+        #expect(after.playerVehicle == Self.boat)
+        #expect(after.placements[Self.wreck] == .nowhere)
+        #expect(after.placements[Self.sword] == .room(Self.bank))
+    }
+
+    @Test(arguments: ["swing rusty knife at label", "thrust rusty knife at label"])
+    func aboardTargetedRustyKnifeSwingsStillCurseBeforeAnyAttackRedirect(command: String) async throws {
+        let world = try await Self.boardedBoatWorld()
+        let knife = EntityID("ZorkMaze.rustyKnife")
+        await world.placeBoatTestItem(knife, .heldBy(.player))
+        let response = await world.perform(command)
+        #expect(response.output.contains("slits your throat"))
+        #expect(!response.output.contains(Self.punctureLine))
+        let after = await world.snapshot()
+        #expect(after.placements[knife] == .nowhere)
+        #expect(after.placements[Self.boat] == .room(Self.bank))
+        #expect(after.placements[Self.wreck] == .nowhere)
+    }
+
+    @Test(arguments: ["weapon", "target"])
+    func unreachableWeaponOrTargetRefusesBeforePuncturing(blocked: String) async throws {
+        for command in ["attack label with sword", "smash label with sword"] {
+            let world = try await Self.boardedBoatWorld(["take sword"])
+            let bottle = EntityID("ZorkHouse.bottle")
+            await world.placeBoatTestItem(bottle, .heldBy(.player))
+            await world.placeBoatTestItem(blocked == "weapon" ? Self.sword : Self.label, .inside(bottle))
+            let response = await world.perform(command)
+            #expect(response.output.contains("can't reach"), "\(command): \(response.output)")
+            #expect(!response.output.contains(Self.punctureLine))
+            #expect((await world.snapshot()).playerVehicle == Self.boat)
+            #expect((await world.snapshot()).placements[Self.wreck] == .nowhere)
+        }
+    }
+
+    @Test func harmlessCargoAndNonWeaponActionsLeaveTheBoatIntact() async throws {
+        let world = try await Self.boardedBoatWorld()
+        for command in [
+            "drop wrench", "take wrench", "put wrench in boat", "take wrench",
+            "attack label with wrench", "smash label with wrench", "attack label", "smash label",
+            "swing wrench at label", "swing wrench",
+        ] {
+            let response = await world.perform(command)
+            #expect(!response.output.contains(Self.punctureLine))
+            #expect((await world.snapshot()).playerVehicle == Self.boat)
+            #expect((await world.snapshot()).placements[Self.wreck] == .nowhere)
+        }
+        #expect((await world.perform("drop wrench")).output.contains("Dropped."))
+        #expect((await world.snapshot()).placements[EntityID("ZorkDam.wrench")] == .inside(Self.boat))
+    }
+
+    @Test(arguments: [true, false])
+    func puttingASharpWeaponIntoTheBoatFromTheBankRequiresHoldingIt(held: Bool) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in Self.toInflatedBoat { _ = await world.perform(command) }
+        if !held { _ = await world.perform("drop sword") }
+        let response = await world.perform("put sword in boat")
+        let after = await world.snapshot()
+        #expect(after.playerLocation == Self.bank)
+        #expect(after.playerVehicle == nil)
+        if held {
+            #expect(response.output.contains("punctured the boat"))
+            #expect(after.placements[Self.wreck] == .room(Self.bank))
+            #expect(after.placements[Self.label] == .room(Self.bank))
+        } else {
+            #expect(response.output.contains("holding"))
+            #expect(after.placements[Self.boat] == .room(Self.bank))
+            #expect(after.placements[Self.wreck] == .nowhere)
+            #expect(after.placements[Self.label] == .inside(Self.boat))
+        }
+    }
+
+    @Test func weaponDropOutsideTheBoatRemainsAnOrdinaryDrop() async throws {
+        let transcript = try await play(Zork1(), Self.toInflatedBoat + ["drop sword", "look"], seed: 39)
+        #expect(turnOutput(of: "drop sword", in: transcript).contains("Dropped."))
+        #expect(!transcript.contains(Self.punctureLine))
+        #expect(!transcript.contains("punctured the boat"))
     }
 
     // MARK: - The boat's two valves
@@ -522,5 +718,12 @@ struct Zork1RiverTests {
                 "Rocky Ledge",
                 "Canyon View",
             ])
+    }
+}
+
+// Placement seams exercise all six weapons and transparent-holder reach without replacing the river route.
+extension GameWorld {
+    fileprivate func placeBoatTestItem(_ item: EntityID, _ placement: Placement) {
+        state.place(item, placement)
     }
 }

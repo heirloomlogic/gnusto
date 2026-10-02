@@ -459,6 +459,38 @@ struct ZorkRiver: GameContent {
             try refuse(Prose.disembarkOntoWater)
         }
 
+        // RBOAT-FUNCTION's M-BEG runs before the weapon's own action. In
+        // particular, ATTACK punctures before the rusty knife can curse it;
+        // SWING is not intercepted here and keeps its earlier knife curse.
+        world.before(.drop, .putIn, .attack, .smash) {
+            guard player.vehicle == magicBoat else { return }
+            let weapon: Item?
+            switch command.intent {
+            case .drop:
+                weapon = command.directObject
+            case .putIn:
+                guard command.indirectObject == magicBoat else { return }
+                weapon = command.directObject
+            default:
+                weapon = command.indirectObject
+            }
+            guard let weapon, weapon[default: .sharp] else { return }
+            try require(weapon.isReachable, else: gameText.cantReach(weapon.definiteNoun))
+            if let target = command.directObject, target != weapon {
+                try require(target.isReachable, else: gameText.cantReach(target.definiteNoun))
+            }
+            guard weapon.isHeld else {
+                if command.intent == .drop { try refuse(gameText.notCarrying()) }
+                if command.intent == .putIn { try refuse(gameText.notHolding()) }
+                try refuse(Prose.combatText.weaponNotHeld(weapon.definiteNoun))
+            }
+            let afloat = isOnRiver()
+            puncture()
+            say(Prose.boatPuncturedByWeapon("\(weapon.definiteNoun)"))
+            if afloat { try die(Prose.boatPuncturedAfloat) }
+            try handled()
+        }
+
         // Boarding the boat while carrying anything sharp bursts it. Boarding
         // happens on a bank, so this only wrecks the boat — no drowning.
         magicBoat.before(.board) {
@@ -471,6 +503,7 @@ struct ZorkRiver: GameContent {
         // afloat, that's fatal.
         magicBoat.before(.putIn) {
             guard let stowed = command.directObject, stowed[default: .sharp] else { return }
+            try require(stowed.isHeld, else: gameText.notHolding())
             let afloat = isOnRiver()
             puncture()
             if afloat {
@@ -594,7 +627,7 @@ struct ZorkRiver: GameContent {
     }
 
     /// Burst the magic boat: swap in the punctured wreck and scatter whatever the
-    /// boat was carrying into the room. Shared by the board and stow punctures.
+    /// boat was carrying into the room and leave its passenger on foot.
     private func puncture() {
         for cargo in magicBoat.contents {
             cargo.move(to: player.location)
