@@ -743,6 +743,7 @@ struct Zork1: Game, GameMain {
         thief.thief.before(.give) {
             guard let offered = command.directObject else { return }
             guard !thief.thiefDefeated else { return }
+            guard offered.isHeld else { try refuse(gameText.notHolding()) }
             offered.move(heldBy: thief.thief)
             if offered == aboveGround.egg {
                 startFuse("thiefOpensEgg", after: 4)

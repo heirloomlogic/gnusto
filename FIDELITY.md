@@ -915,9 +915,7 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   thief now lifts treasures back from your hands and off the floor, holding it while he lives
   is only a loan — his steal daemon takes it back on a later turn, the original's
   snatch-and-resteal.
-- **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets
-  the egg open with the clockwork canary intact; you recover the opened egg among his effects
-  when he dies. The service is silent (you aren't watching) and is cancelled if he dies first.
+- **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets the egg open with the clockwork canary intact; you recover the opened egg among his effects when he dies. The service is silent (you aren't watching) and is cancelled if he dies first. The thief accepts only a gift the player is holding, matching `PRE-GIVE`; named actors, scenery, and other non-held objects are refused before the handler changes containment. (#667)
 - **The jewel-encrusted egg is now an openable container.** Forcing it open *by hand* (the
   built-in `open`) wrecks the canary — the intact `golden clockwork canary` is swapped for a
   worthless `broken clockwork canary`. Only the thief's careful hands (above) open it
