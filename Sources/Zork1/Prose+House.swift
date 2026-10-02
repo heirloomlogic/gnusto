@@ -106,12 +106,6 @@ extension Prose {
 
     static let trapDoorSlam = "The trap door crashes shut, and you hear someone barring it."
 
-    static let trophyCaseEmpty = "A glass-fronted trophy case, empty for now."
-
-    static func trophyCaseHolding(_ contents: String) -> String {
-        "A glass-fronted trophy case, holding \(contents)."
-    }
-
     static let attic = """
         This is the attic. The only exit is a stairway leading down.
         """
