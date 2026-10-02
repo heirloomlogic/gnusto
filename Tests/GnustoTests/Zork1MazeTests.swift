@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.10 maze region: the fifteen twisting
@@ -287,5 +287,173 @@ struct Zork1MazeTests {
                 "casts a curse on your valuables",  // search bones
                 "casts a curse on your valuables",  // move bones
             ])
+    }
+
+    private static let rustyKnife = EntityID("ZorkMaze.rustyKnife")
+    private static let sword = EntityID("ZorkHouse.sword")
+    private static let bottle = EntityID("ZorkHouse.bottle")
+    private static let lunch = EntityID("ZorkHouse.lunch")
+    private static let warning = "As you touch the rusty knife, your sword gives a single pulse of blinding blue light."
+    private static let knifeDeath =
+        "As the knife approaches its victim, your mind is submerged by an overmastering will. Slowly, your hand turns, until the rusty blade is an inch from your neck. The knife seems to sing as it savagely slits your throat."
+
+    private static func mazeWorld(_ extra: [String] = []) async throws -> GameWorld {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in toMaze5 + extra { _ = await world.perform(command) }
+        #expect((await world.snapshot()).playerLocation == EntityID("ZorkMaze.maze5"))
+        #expect((await world.snapshot()).placements[sword] == .heldBy(.player))
+        return world
+    }
+
+    private static func singleLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    @Test(arguments: ["held", "floor", "nested", "absent"])
+    func rustyKnifeTakeWarnsOnlyWithTheSwordDirectlyHeld(swordPlacement: String) async throws {
+        let world = try await Self.mazeWorld()
+        if swordPlacement == "floor" { _ = await world.perform("drop sword") }
+        if swordPlacement == "nested" {
+            _ = await world.perform("open bottle")
+            _ = await world.perform("put sword in bottle")
+        }
+        if swordPlacement == "absent" {
+            _ = await world.perform("take rusty knife")
+            _ = await world.perform("drop sword")
+            _ = await world.perform("southwest")
+            _ = await world.perform("drop rusty knife")
+        }
+        let before = await world.snapshot()
+        if swordPlacement == "held" { #expect(before.placements[Self.sword] == .heldBy(.player)) }
+        if swordPlacement == "floor" { #expect(before.placements[Self.sword] == .room(before.playerLocation)) }
+        if swordPlacement == "nested" { #expect(before.placements[Self.sword] == .inside(Self.bottle)) }
+        if swordPlacement == "absent" { #expect(before.placements[Self.sword] != .heldBy(.player)) }
+        #expect(before.playerLocation == EntityID(swordPlacement == "absent" ? "ZorkMaze.maze6" : "ZorkMaze.maze5"))
+        #expect(before.placements[Self.rustyKnife] == .room(before.playerLocation))
+        let taken = await world.perform("take rusty knife")
+        #expect(taken.output.contains("Taken."))
+        #expect(Self.singleLine(taken.output).contains(Self.warning) == (swordPlacement == "held"))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == .heldBy(.player))
+        let repeated = await world.perform("take rusty knife")
+        #expect(!Self.singleLine(repeated.output).contains(Self.warning))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == .heldBy(.player))
+    }
+
+    @Test(arguments: ["take rusty knife from me", "take rusty knife from bottle"])
+    func refusedRustyKnifeTakeDoesNotWarn(command: String) async throws {
+        let world = try await Self.mazeWorld()
+        let before = await world.snapshot()
+        let refused = await world.perform(command)
+        #expect(!refused.output.contains("Taken."))
+        #expect(!Self.singleLine(refused.output).contains(Self.warning))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == before.placements[Self.rustyKnife])
+        #expect((await world.snapshot()).touched == before.touched)
+    }
+
+    @Test(arguments: [
+        "attack skeleton with rusty knife", "swing rusty knife at skeleton", "thrust rusty knife at skeleton",
+    ])
+    func rustyKnifeWeaponUseRemovesItBeforeResurrection(command: String) async throws {
+        let world = try await Self.mazeWorld(["take rusty knife"])
+        let before = await world.snapshot()
+        #expect(before.placements[Self.rustyKnife] == .heldBy(.player))
+        let cursed = await world.perform(command)
+        #expect(Self.singleLine(cursed.output).contains(Self.knifeDeath))
+        #expect(cursed.output.contains("you probably deserve another"))
+        let after = await world.snapshot()
+        #expect(after.placements[Self.rustyKnife] == .nowhere)
+        #expect(after.playerLocation == EntityID("ZorkAboveGround.forestWest"))
+        #expect(!cursed.isFinished)
+        #expect((await world.perform("diagnose")).output.contains("You have been killed once."))
+        #expect((await world.perform("x rusty knife")).output.contains("can't see"))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == .nowhere)
+    }
+
+    @Test(arguments: [
+        "attack cyclops with rusty knife", "swing rusty knife at cyclops", "thrust rusty knife at cyclops",
+    ])
+    func rustyKnifeCursePrecedesTheSleepingCyclopsTargetRule(command: String) async throws {
+        let world = try await Self.mazeWorld(["take rusty knife"])
+        for command in [
+            "southwest", "east", "south", "southeast", "give lunch to cyclops", "open bottle", "give bottle to cyclops",
+        ] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
+        let cursed = await world.perform(command)
+        #expect(Self.singleLine(cursed.output).contains(Self.knifeDeath))
+        #expect(cursed.output.contains("you probably deserve another"))
+        #expect(!cursed.output.contains("the thing that woke him up"))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == .nowhere)
+    }
+
+    @Test(arguments: [
+        "attack skeleton with rusty knife", "swing rusty knife at skeleton", "thrust rusty knife at skeleton",
+    ])
+    func anUnheldOrUnreachableRustyKnifeCannotCurse(command: String) async throws {
+        let world = try await Self.mazeWorld()
+        let floor = await world.snapshot()
+        let unheld = await world.perform(command)
+        #expect(!Self.singleLine(unheld.output).contains(Self.knifeDeath))
+        #expect(unheld.output.contains("holding"))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == floor.placements[Self.rustyKnife])
+        _ = await world.perform("take rusty knife")
+        _ = await world.perform("open bottle")
+        _ = await world.perform("put rusty knife in bottle")
+        _ = await world.perform("close bottle")
+        let closed = await world.snapshot()
+        #expect(closed.placements[Self.rustyKnife] == .inside(Self.bottle))
+        #expect(!closed.openItems.contains(Self.bottle))
+        let unreachable = await world.perform(command)
+        #expect(unreachable.output.contains("can't reach"))
+        #expect(!Self.singleLine(unreachable.output).contains(Self.knifeDeath))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == closed.placements[Self.rustyKnife])
+        #expect((await world.snapshot()).playerLocation == closed.playerLocation)
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
+    }
+
+    @Test(arguments: ["attack lunch with rusty knife", "swing rusty knife at lunch", "thrust rusty knife at lunch"])
+    func anUnreachableKnifeTargetCannotTriggerTheCurse(command: String) async throws {
+        let world = try await Self.mazeWorld(["take rusty knife", "open bottle", "put lunch in bottle", "close bottle"])
+        let before = await world.snapshot()
+        #expect(before.placements[Self.lunch] == .inside(Self.bottle))
+        #expect(!before.openItems.contains(Self.bottle))
+        let refused = await world.perform(command)
+        #expect(refused.output.contains("can't reach"))
+        #expect(!Self.singleLine(refused.output).contains(Self.knifeDeath))
+        let after = await world.snapshot()
+        #expect(after.placements[Self.rustyKnife] == .heldBy(.player))
+        #expect(after.placements[Self.lunch] == before.placements[Self.lunch])
+        #expect(after.playerLocation == before.playerLocation)
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
+    }
+
+    @Test(arguments: ["swing rusty knife", "thrust rusty knife", "attack rusty knife", "throw rusty knife at skeleton"])
+    func nonTargetedWeaponUseAndThrowingTheRustyKnifeAreNotCursed(command: String) async throws {
+        let world = try await Self.mazeWorld(["take rusty knife"])
+        let response = await world.perform(command)
+        #expect(!Self.singleLine(response.output).contains(Self.knifeDeath))
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
+        let after = await world.snapshot()
+        #expect(after.placements[Self.rustyKnife] != .nowhere)
+        #expect(after.playerLocation == EntityID("ZorkMaze.maze5"))
+        if command.hasPrefix("swing") || command.hasPrefix("thrust") {
+            #expect(response.output.contains("Whoosh!"))
+            #expect(after.placements[Self.rustyKnife] == .heldBy(.player))
+        }
+    }
+
+    @Test func undoRestoresTheKnifeAndDeathStateAfterItsCurse() async throws {
+        let world = try await Self.mazeWorld(["take rusty knife"])
+        let before = await world.snapshot()
+        #expect(
+            Self.singleLine((await world.perform("attack skeleton with rusty knife")).output).contains(Self.knifeDeath))
+        #expect((await world.snapshot()).placements[Self.rustyKnife] == .nowhere)
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.placements == before.placements)
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect((await world.perform("diagnose")).output.contains("perfect health"))
     }
 }
