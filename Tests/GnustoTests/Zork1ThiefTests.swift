@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.11 thief endgame: the egg's two ways
@@ -76,11 +76,11 @@ struct Zork1ThiefTests {
     }
 
     @Test func theThiefOpensAStolenEggWhenHeStashesIt() async throws {
-        // Seed 1 makes the thief steal the egg on the third wait. On the next
-        // turn the stash daemon deposits his loot onto the Treasure Room floor.
+        // Seed 1 makes the thief steal the egg when the player first returns
+        // to the lair. Leaving again gives the stash daemon its off-screen turn.
         let transcript = try await play(
             Zork1(),
-            Self.eggToLair + ["wait", "wait", "wait", "down", "up"],
+            Self.eggToLair + ["wait", "wait", "wait", "down", "up", "down", "up"],
             seed: 1)
 
         #expect(transcript.contains("jewel-encrusted egg vanished"))
@@ -113,22 +113,25 @@ struct Zork1ThiefTests {
     }
 
     @Test func theThiefOpensAGiftedEggWhenHeDiesBeforeTheFuse() async throws {
-        // The three attacks kill the thief on the turn when the GIVE fuse
-        // would otherwise fire. Death deposition must open the egg first.
-        let transcript = try await play(
-            Zork1(),
-            Self.eggToLair + [
-                "give egg to thief",
-                "attack thief", "attack thief", "attack thief",
-                "look in egg",
-            ],
-            seed: 0)
+        // Put the thief down after the gift so the next ordinary attack is a
+        // guaranteed finishing blow. Death therefore precedes the four-turn
+        // GIVE fuse without making the regression depend on a combat roll.
+        let world = try cachedWorld(Zork1(), seed: 0)
+        _ = await world.begin()
+        for command in Self.eggToLair {
+            _ = await world.perform(command)
+        }
 
-        #expect(turnOutput(of: "give egg to thief", in: transcript).contains("unexpected generosity"))
-        #expect(transcript.contains("The thief takes a fatal blow"))
-        #expect(
-            turnOutput(of: "look in egg", in: transcript)
-                .contains("In the jewel-encrusted egg is a golden clockwork canary."))
+        let gift = await world.perform("give egg to thief")
+        var beforeDeath = await world.snapshot()
+        beforeDeath.unconsciousActors.insert(EntityID("thief"))
+        await world.restore(beforeDeath, mode: .brief)
+        let attack = await world.perform("attack thief")
+        let egg = await world.perform("look in egg")
+
+        #expect(gift.output.contains("unexpected generosity"))
+        #expect(attack.output.contains("The thief takes a fatal blow"))
+        #expect(egg.output.contains("In the jewel-encrusted egg is a golden clockwork canary."))
     }
 
     @Test func theThiefTakesTheEggYouOffer() async throws {
