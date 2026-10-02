@@ -97,6 +97,28 @@ struct Zork1ThiefTests {
         #expect(!carried.contains("egg"))
     }
 
+    @Test func theThiefRefusesGiftsThePlayerDoesNotHold() async throws {
+        // Seed 5 keeps the thief in the Gallery. The player can name the thief,
+        // his stiletto, and the Gallery's vandals there, but none is in the
+        // player's hands. Each route starts fresh so the thief cannot roam away
+        // before the next offer is parsed.
+        let route = [
+            "south", "east", "open window", "west", "west",
+            "take lantern", "turn on lantern",
+            "push rug", "open trap door", "down",
+            "south", "east",
+        ]
+
+        for command in ["give thief to thief", "give stiletto to thief", "give vandals to thief"] {
+            let transcript = try await play(Zork1(), route + [command, "inventory"], seed: 5)
+            #expect(turnOutput(of: command, in: transcript).contains("aren't holding that"))
+            #expect(turnOutput(of: "inventory", in: transcript).contains("brass lantern"))
+        }
+        let gift = try await play(Zork1(), route + ["give lantern to thief", "inventory"], seed: 5)
+        #expect(turnOutput(of: "give lantern to thief", in: gift).contains("mocking little bow"))
+        #expect(!turnOutput(of: "inventory", in: gift).contains("brass lantern"))
+    }
+
     @Test func theThiefSnatchesTheChaliceBack() async throws {
         // The Treasure Room is the thief's, and he guards the silver chalice.
         // Reaching it pays 25; entering summons him home. The chalice can now be
