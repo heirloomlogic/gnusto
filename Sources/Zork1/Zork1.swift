@@ -806,6 +806,9 @@ struct Zork1: Game, GameMain {
             guard !thief.thiefDefeated else { return }
             guard offered.isHeld else { try refuse(gameText.notHolding()) }
             offered.move(heldBy: thief.thief)
+            if (offered[.depositValue] ?? 0) > 0 {
+                thief.engrossed = true
+            }
             if offered == aboveGround.egg {
                 startFuse("thiefOpensEgg", after: 4)
                 try reply(Prose.thiefTakesEgg)
@@ -946,7 +949,15 @@ struct Zork1: Game, GameMain {
         melee.aggression(
             of: thief.thief, key: "thief", named: "thiefFights",
             strikesFirst: 20,
-            when: { thief.thief.isIn(maze.treasureRoom) },
+            when: {
+                // THIEF-ENGROSSED costs one I-FIGHT tick. The aggression
+                // gate draws nothing and keeps the existing fight engaged.
+                if thief.engrossed {
+                    thief.engrossed = false
+                    return false
+                }
+                return thief.thief.isIn(maze.treasureRoom)
+            },
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.thiefSwipeMiss],
                 wound: [Prose.thiefSwipeWound],

@@ -34,6 +34,9 @@ struct ZorkThief: GameContent {
     /// Room is his, and its hoard stays out of reach.
     @Latch var thiefDefeated
 
+    /// A positive-value gift costs him one eligible counter-attack.
+    @Global var engrossed = false
+
     // MARK: - Items
 
     /// The thief's vicious little blade — his own weapon, and, like the sword,

@@ -12,8 +12,8 @@ import Testing
 /// exactly as ``Zork1WalkthroughTests`` pins it — the extra turns of inserted
 /// `x` lines would shift the thief's dice — and interleaves the sweep's `x`
 /// lines into the deterministic phase B that follows. Neither transcript may
-/// print "You can't see any such thing." beyond the walkthrough's own third
-/// blows landing on bodies the first two killed.
+/// print "You can't see any such thing." beyond the walkthrough's redundant
+/// blows after the villains fall.
 struct Zork1NounTests {
     /// The walkthrough's own pinned seed.
     static let seed: UInt64 = 0
@@ -68,11 +68,12 @@ struct Zork1NounTests {
         let ring = try await play(Zork1(), Self.ring, seed: Self.seed)
         let sweep = try await play(Zork1(), Self.sweep, seed: Self.seed)
         // A clean sweep never prints the refusal. The sweep play permits
-        // exactly two: the walkthrough's third blows, landing on bodies the
-        // first two already killed. The ring has no combat at all.
+        // three: one redundant troll blow and two redundant thief blows. The
+        // treasure gift's quiet tick changes the seeded combat stream (#672).
+        // The ring has no combat at all.
         #expect(ring.components(separatedBy: "You can't see any such thing.").count == 1)
         #expect(
-            sweep.components(separatedBy: "You can't see any such thing.").count == 3)
+            sweep.components(separatedBy: "You can't see any such thing.").count == 4)
         #expect(!ring.contains("don't know the word"))
         #expect(!sweep.contains("don't know the word"))
         #expect(sweep.contains("Land of the Dead"))

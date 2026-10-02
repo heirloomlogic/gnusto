@@ -3,6 +3,7 @@ import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
+@testable import GnustoMeleeCombat
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.11 thief endgame: forcing the egg
@@ -22,6 +23,138 @@ struct Zork1ThiefTests {
         "west", "west", "west", "up", "take bag of coins", "take skeleton key",
         "southwest", "east", "south", "southeast", "odysseus", "up",
     ]
+
+    private static let thiefID = EntityID("ZorkThief.thief")
+    private static let engrossedID = EntityID("ZorkThief.engrossed")
+    private static let ledgerID = EntityID("MeleeCombat.ledger")
+
+    private static func engagedThiefWorld() async throws -> GameWorld {
+        let world = try cachedWorld(Zork1(), seed: 1)
+        _ = await world.begin()
+        for command in eggToLair + ["wait", "wait", "wait", "wait"] {
+            _ = await world.perform(command)
+        }
+        var state = await world.snapshot()
+        // Isolate the combat daemon after the real route starts the fight.
+        // Roaming and stealing have separate random draws, so retaining them
+        // would not establish whether a quiet attack tick draws randomness.
+        state.activeDaemons = ["thiefFights"]
+        await world.restore(state, mode: .brief)
+        return world
+    }
+
+    @Test func aTreasureGiftSkipsTheGiftTurnsAttackOnTheIssueRoute() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.eggToLair + ["wait", "wait", "wait", "wait", "give bag of coins to thief", "wait"],
+            seed: 1)
+        let gift = turnOutput(of: "give bag of coins to thief", in: transcript)
+        #expect(gift.contains("mocking little bow"))
+        #expect(!gift.contains("stiletto"))
+        #expect(turnOutput(ofLast: "wait", in: transcript).contains("stiletto"))
+    }
+
+    @Test func anOrdinaryGiftDoesNotSkipTheGiftTurnsAttack() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.eggToLair + ["wait", "wait", "wait", "wait", "give skeleton key to thief"],
+            seed: 1)
+        let gift = turnOutput(of: "give skeleton key to thief", in: transcript)
+        #expect(gift.contains("mocking little bow"))
+        #expect(gift.contains("stiletto"))
+    }
+
+    @Test func treasureDistractionIsDrawFreeAndPreservesEngagementForOneTick() async throws {
+        let world = try await Self.engagedThiefWorld()
+        let before = await world.snapshot()
+        let ledgerBefore = try #require(MeleeCombat.Ledger(stateValue: before.globals[Self.ledgerID]!))
+        #expect(ledgerBefore.engaged.contains("thief"))
+        _ = await world.perform("give bag of coins to thief")
+        let quiet = await world.snapshot()
+        let ledgerQuiet = try #require(MeleeCombat.Ledger(stateValue: quiet.globals[Self.ledgerID]!))
+        #expect(quiet.placements[EntityID("ZorkMaze.bagOfCoins")] == .heldBy(Self.thiefID))
+        #expect(quiet.rngState == before.rngState)
+        #expect(ledgerQuiet.engaged == ledgerBefore.engaged)
+        #expect(ledgerQuiet.playerHealth == ledgerBefore.playerHealth)
+        #expect(quiet.globals[Self.engrossedID] == .bool(false))
+        #expect((await world.perform("wait")).output.contains("stiletto"))
+        #expect((await world.snapshot()).rngState != quiet.rngState)
+    }
+
+    @Test(arguments: [
+        ("ZorkAboveGround.egg", "egg", true),
+        ("ZorkCoalMine.diamond", "diamond", true),
+        ("ZorkAboveGround.brokenEgg", "broken egg", false),
+        ("ZorkHouse.sword", "sword", false),
+    ])
+    func giftDistractionUsesTheItemsPositiveDepositValue(
+        identity: String, noun: String, distracts: Bool
+    ) async throws {
+        let world = try await Self.engagedThiefWorld()
+        var before = await world.snapshot()
+        before.place(EntityID(identity), .heldBy(.player))
+        await world.restore(before, mode: .brief)
+        _ = await world.perform("give \(noun) to thief")
+        let after = await world.snapshot()
+        #expect(after.placements[EntityID(identity)] == .heldBy(Self.thiefID))
+        #expect((after.rngState == before.rngState) == distracts)
+        let ledger = try #require(MeleeCombat.Ledger(stateValue: after.globals[Self.ledgerID]!))
+        #expect(ledger.engaged.contains("thief"))
+    }
+
+    @Test func anUnheldTreasureCannotArmDistraction() async throws {
+        let world = try await Self.engagedThiefWorld()
+        var before = await world.snapshot()
+        before.place(EntityID("ZorkMaze.bagOfCoins"), .room(before.playerLocation))
+        await world.restore(before, mode: .brief)
+        #expect((await world.perform("give coins to thief")).output.contains("aren't holding"))
+        let after = await world.snapshot()
+        #expect(after.globals[Self.engrossedID] == before.globals[Self.engrossedID])
+        #expect(after.placements == before.placements)
+        // This ordinary refused GIVE still costs a turn and permits combat.
+        #expect(after.rngState != before.rngState)
+        #expect(after.moves == before.moves + 1)
+    }
+
+    @Test func undoRestoresTheTreasureGiftAndItsQuietReplay() async throws {
+        let world = try await Self.engagedThiefWorld()
+        let before = await world.snapshot()
+        let gift = await world.perform("give bag of coins to thief")
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.globals == before.globals)
+        #expect(restored.placements == before.placements)
+        #expect(restored.rngState == before.rngState)
+        #expect(restored.moves == before.moves)
+        #expect((await world.perform("give bag of coins to thief")).output == gift.output)
+    }
+
+    @Test func saveRestoresAPendingDistractionAndConsumesItOnce() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-thief-distraction-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let world = try await Self.engagedThiefWorld()
+        var pending = await world.snapshot()
+        // A suspended aggression daemon leaves the gift state pending. This
+        // fixture exercises persistence independently of same-turn consumption.
+        pending.activeDaemons.remove("thiefFights")
+        await world.restore(pending, mode: .brief)
+        _ = await world.perform("give bag of coins to thief")
+        pending = await world.snapshot()
+        #expect(pending.globals[Self.engrossedID] == .bool(true))
+        pending.activeDaemons.insert("thiefFights")
+        await world.restore(pending, mode: .brief)
+        _ = await world.perform("save")
+        #expect((await world.perform(path)).output.contains("Saved."))
+        #expect(!(await world.perform("wait")).output.contains("stiletto"))
+        #expect((await world.perform("wait")).output.contains("stiletto"))
+        _ = await world.perform("restore")
+        #expect((await world.perform(path)).output.contains("Restored."))
+        #expect((await world.snapshot()).globals[Self.engrossedID] == .bool(true))
+        #expect(!(await world.perform("wait")).output.contains("stiletto"))
+        #expect((await world.snapshot()).globals[Self.engrossedID] == .bool(false))
+        #expect((await world.perform("wait")).output.contains("stiletto"))
+    }
 
     @Test func theTrollsAxeIsAWeaponAgainstTheThief() async throws {
         let transcript = try await play(
