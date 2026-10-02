@@ -249,8 +249,7 @@ struct Zork1MazeTests {
 
     @Test func disturbingTheSkeletonBanishesYourLoot() async throws {
         // Taking the bones wakes the ghost, who curses your valuables to the
-        // Land of the Dead — all but the lamp, which is spared so light is never
-        // lost (as the death scatter spares it).
+        // Land of the Dead. Equipment has no treasure deposit value.
         let transcript = try await play(
             Zork1(),
             Self.toMaze5 + [
@@ -308,6 +307,158 @@ struct Zork1MazeTests {
 
     private static func singleLine(_ text: String) -> String {
         text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    private static let boneCommands = ["take bones", "search bones", "move bones"]
+    private static let mazeFive = EntityID("ZorkMaze.maze5")
+    private static let curseDestination = EntityID("ZorkTemple.landOfDead")
+    private static let coins = EntityID("ZorkMaze.bagOfCoins")
+    private static let bar = EntityID("ZorkRoundRoom.platinumBar")
+    private static let coffin = EntityID("ZorkTemple.coffin")
+    private static let hiddenTreasures = [
+        EntityID("ZorkDam.trunk"), EntityID("ZorkRiver.scarab"), EntityID("ZorkRiver.potOfGold"),
+    ]
+    private static let scoredTreasures = [
+        EntityID("ZorkCellar.painting"), EntityID("ZorkAboveGround.egg"), bar,
+        EntityID("ZorkDam.trunk"), EntityID("ZorkTemple.torch"), coffin,
+        EntityID("ZorkTemple.sceptre"), EntityID("ZorkTemple.crystalSkull"),
+        EntityID("ZorkMirror.crystalTrident"), EntityID("ZorkCoalMine.jade"),
+        EntityID("ZorkCoalMine.sapphireBracelet"), EntityID("ZorkCoalMine.diamond"),
+        EntityID("ZorkRiver.emerald"), EntityID("ZorkRiver.scarab"), EntityID("ZorkRiver.potOfGold"),
+        coins, EntityID("ZorkMaze.silverChalice"), EntityID("ZorkHouse.canary"), EntityID("ZorkHouse.bauble"),
+    ]
+
+    @Test(arguments: boneCommands)
+    func skeletonCurseSelectsHeldAndFloorTreasureAndLeavesEquipment(command: String) async throws {
+        let world = try await Self.mazeWorld(["take skeleton key", "take bag of coins"])
+        let bauble = EntityID("ZorkHouse.bauble")
+        await world.placeSkeletonTestItem(bauble, .room(Self.mazeFive))
+        for item in [
+            EntityID("ZorkTemple.bell"), EntityID("ZorkTemple.book"), EntityID("ZorkTemple.candles"),
+            EntityID("ZorkDam.matchbook"),
+        ] {
+            await world.placeSkeletonTestItem(item, .heldBy(.player))
+        }
+        let before = await world.snapshot()
+        #expect(Self.singleLine((await world.perform(command)).output).contains("casts a curse on your valuables"))
+        let after = await world.snapshot()
+        for item in [Self.coins, bauble] {
+            #expect(after.placements[item] == .room(Self.curseDestination))
+        }
+        let equipment = before.placements.filter {
+            ($0.value == .heldBy(.player) || $0.value == .room(Self.mazeFive)) && $0.key != Self.coins
+                && $0.key != bauble
+        }
+        for (item, placement) in equipment {
+            #expect(after.placements[item] == placement)
+        }
+        let inventory = (await world.perform("inventory")).output
+        for name in [
+            "sword", "lantern", "bottle", "lunch", "skeleton key", "bell", "black book", "candles", "matchbook",
+        ] {
+            #expect(inventory.contains(name))
+        }
+        #expect(!inventory.contains("coins"))
+        #expect(!(await world.perform("look")).output.contains("bauble"))
+        #expect(Self.singleLine((await world.perform(command)).output).contains("casts a curse on your valuables"))
+        let repeated = await world.snapshot()
+        for item in Array(equipment.keys) + [Self.coins, bauble] {
+            #expect(repeated.placements[item] == after.placements[item])
+        }
+    }
+
+    @Test(arguments: ["held", "floor"])
+    func skeletonCurseUsesDepositValuesAcrossTheTreasureRoster(placement: String) async throws {
+        let world = try await Self.mazeWorld()
+        let origin: Placement = placement == "held" ? .heldBy(.player) : .room(Self.mazeFive)
+        for item in Self.scoredTreasures { await world.placeSkeletonTestItem(item, origin) }
+        for item in Self.hiddenTreasures { await world.revealSkeletonTestItem(item) }
+        await world.setSkeletonTestBarAcousticsFixed()
+        let before = await world.snapshot()
+        _ = await world.perform("take bones")
+        let after = await world.snapshot()
+        for item in Self.scoredTreasures {
+            #expect(after.placements[item] == (item == Self.coffin ? origin : .room(Self.curseDestination)))
+        }
+        #expect(after.score == before.score)
+        #expect(after.playerLocation == before.playerLocation)
+    }
+
+    @Test(arguments: hiddenTreasures, [false, true])
+    func skeletonCurseRespectsTheHiddenFlagInBothDirectScopes(item: EntityID, revealed: Bool) async throws {
+        for origin in [Placement.heldBy(.player), .room(Self.mazeFive)] {
+            let world = try await Self.mazeWorld()
+            await world.placeSkeletonTestItem(item, origin)
+            if revealed { await world.revealSkeletonTestItem(item) }
+            _ = await world.perform("search bones")
+            #expect((await world.snapshot()).placements[item] == (revealed ? .room(Self.curseDestination) : origin))
+        }
+    }
+
+    @Test(arguments: [false, true], ["held", "floor"])
+    func echoMakesThePreviouslySacredBarEligibleForTheSkeletonCurse(quieted: Bool, placement: String) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in Array(Self.toMaze5.dropLast(4)) + ["east", "east", "east"] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.snapshot()).playerLocation == EntityID("ZorkRoundRoom.loudRoom"))
+        if quieted {
+            #expect((await world.perform("echo")).output.contains("acoustics of the room change"))
+        }
+        for command in ["west", "west", "west", "west", "west", "west", "up"] {
+            _ = await world.perform(command)
+        }
+        #expect((await world.snapshot()).playerLocation == Self.mazeFive)
+        let origin: Placement = placement == "held" ? .heldBy(.player) : .room(Self.mazeFive)
+        await world.placeSkeletonTestItem(Self.bar, origin)
+        _ = await world.perform("move bones")
+        let destination: Placement = quieted ? .room(Self.curseDestination) : origin
+        #expect((await world.snapshot()).placements[Self.bar] == destination)
+    }
+
+    @Test(arguments: ["held", "floor"])
+    func skeletonCurseDoesNotSearchInsideOrdinaryHolders(placement: String) async throws {
+        let world = try await Self.mazeWorld(["open bottle"])
+        let emerald = EntityID("ZorkRiver.emerald")
+        let origin: Placement = placement == "held" ? .heldBy(.player) : .room(Self.mazeFive)
+        await world.placeSkeletonTestItem(Self.bottle, origin)
+        await world.placeSkeletonTestItem(emerald, .inside(Self.bottle))
+        _ = await world.perform("search bones")
+        let after = await world.snapshot()
+        #expect(after.placements[Self.bottle] == origin)
+        #expect(after.placements[emerald] == .inside(Self.bottle))
+        #expect(after.placements[Self.coins] == .room(Self.curseDestination))
+    }
+
+    @Test func skeletonCurseMovesATreasureContainerWithItsContentsStillInside() async throws {
+        let world = try await Self.mazeWorld()
+        let egg = EntityID("ZorkAboveGround.egg")
+        let canary = EntityID("ZorkHouse.canary")
+        await world.placeSkeletonTestItem(egg, .heldBy(.player))
+        await world.placeSkeletonTestItem(canary, .inside(egg))
+        _ = await world.perform("take bones")
+        let after = await world.snapshot()
+        #expect(after.placements[egg] == .room(Self.curseDestination))
+        #expect(after.placements[canary] == .inside(egg))
+    }
+
+    @Test(arguments: boneCommands)
+    func undoRestoresBothTreasureScopesAndEquipmentAfterTheSkeletonCurse(command: String) async throws {
+        let world = try await Self.mazeWorld()
+        let bauble = EntityID("ZorkHouse.bauble")
+        await world.placeSkeletonTestItem(bauble, .heldBy(.player))
+        let before = await world.snapshot()
+        _ = await world.perform(command)
+        #expect((await world.snapshot()).placements[Self.coins] == .room(Self.curseDestination))
+        #expect((await world.snapshot()).placements[bauble] == .room(Self.curseDestination))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.placements == before.placements)
+        #expect(restored.globals == before.globals)
+        #expect(restored.score == before.score)
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect(restored.revealedItems == before.revealedItems)
     }
 
     @Test(arguments: ["held", "floor", "nested", "absent"])
@@ -496,5 +647,24 @@ struct Zork1MazeTests {
         #expect(refused.output.contains("can't reach"))
         #expect(!Self.singleLine(refused.output).contains(Self.warning))
         #expect((await world.snapshot()).placements[Self.rustyKnife] == before.placements[Self.rustyKnife])
+    }
+}
+
+// These seams arrange selector edge cases after reaching the maze through normal commands.
+extension GameWorld {
+    fileprivate func placeSkeletonTestItem(_ item: EntityID, _ placement: Placement) {
+        precondition(definition.items[item] != nil)
+        state.place(item, placement)
+    }
+
+    fileprivate func revealSkeletonTestItem(_ item: EntityID) {
+        precondition(definition.items[item]?.isHidden == true)
+        state.revealedItems.insert(item)
+    }
+
+    fileprivate func setSkeletonTestBarAcousticsFixed() {
+        let key = EntityID("ZorkRoundRoom.loudRoomAcousticsFixed")
+        precondition(definition.globals[key]?.defaultValue == .bool(false))
+        state.globals[key] = .bool(true)
     }
 }

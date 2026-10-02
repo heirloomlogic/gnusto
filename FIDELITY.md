@@ -790,16 +790,7 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   divergence remains: the original's separate eyeing/gasping *room-look* variants (the
   cyclops's state folded into the room description) aren't reproduced — the slice shows his
   presence through the actor's own line, and the mood paragraphs would double with it.
-- **The skeleton's disturb-curse is modeled (closed in the fidelity pass).** Disturbing the
-  bones — `take`, `search` (`.lookIn`), or `move` (`.push`) — now wakes the ghost, who banishes
-  your carried valuables to the Land of the Dead and mutters off, exactly as the curse prose
-  (`Prose.skeletonLeaveItBe`, unchanged) has always described. Host-wired, since the
-  destination is a `ZorkTemple` room (`temple.landOfDead`); the scatter mirrors `onDeath()`.
-  Two divergences: **the lamp is spared** (a deliberate anti-softlock, exactly as the death
-  scatter spares it, so light is never lost to the curse — the original banishes everything),
-  and the slice's single `landOfDead` room (whose description is already the canonical Land of
-  the Living Dead text) stands in for the original's separate LAND-OF-LIVING-DEAD. The
-  burned-out lantern is present as takeable junk.
+- **The skeleton's disturb-curse selects treasure from the floor and inventory (#671).** The port's existing `take`, `search` (`.lookIn`), and `move` (`.push`) handlers wake the ghost and banish revealed, non-sacred items with positive deposit value directly held by the player or directly on the room floor. This follows the selection in `SKELETON` and `ROB` (`1actions.zil:931–940,3976–3991`): ordinary equipment, including the lantern and Hades ritual tools, stays put; nested items are not selected separately. The coffin remains sacred, and the platinum bar becomes eligible after `echo` quiets the Loud Room. The host wires the destination to `temple.landOfDead`, whose canonical Land of the Living Dead description stands in for the source's separate room. `Prose.skeletonLeaveItBe` is unchanged. Existing scoring departures, including the port's worthless broken egg and broken canary, are unchanged; this repair follows the port's deposit values.
 - **The Treasure Room and Strange Passage geography is built, but the thief, his hoard, the
   silver chalice, and the Treasure Room's +25 visit award arrive in Phase 10.11.**
 
@@ -1060,9 +1051,7 @@ individual Phase-10.10 entries above are updated in place; the closures:
   the water or shouting `odysseus` calls him off. Fully `ZorkMaze`-local, deterministic, no RNG
   (`Maze.swift` `cyclopsRoom.afterEachTurn` + `cyclopsProvoked`/`cyclopsWrath`, `Prose+Maze.swift`,
   and the lunch arming in `Zork1.swift`'s host give-rule).
-- **Skeleton disturb-curse** — taking, searching, or moving the bones banishes your carried
-  valuables (lamp spared) to the Land of the Dead. Host-wired (`Zork1.swift` `maze.skeleton`
-  rules → `temple.landOfDead`), reusing the existing curse prose.
+- **Skeleton disturb-curse** — taking, searching, or moving the bones banishes revealed, non-sacred treasure with positive deposit value directly on the floor or in inventory to the Land of the Dead. Ordinary equipment and separately nested treasure are preserved; the coffin is sacred, and the bar loses its sacred protection after `echo`. Host-wired (`Zork1.swift` `maze.skeleton` rules → `temple.landOfDead`), reusing the existing curse prose. See #671 above for the selector and existing scoring departures.
 
 ## Fidelity pass — the deferred divergences reversed (Tier 3, post-Phase 10)
 
