@@ -168,7 +168,7 @@ entry below is grouped by the task that introduced it.
   fights exactly as before. The villain answers on the end-of-turn clock, player wounds
   never heal, and a knocked-out troll falls to the next clean blow. Deterministic under a
   pinned seed; the transcripts record their sequences.
-- **Knockout, recovery, and death carry the troll's map and axe transitions.** `1actions.zil:671–700` at `historicalsource/zork1@97b7b3d68c075dd9af7da499c3e9690ada3471fd` clears the passages and drops the bloody axe on knockout, restores the block and reclaims only an untaken floor axe on recovery, and opens the passages permanently on death. The Swift host now does the same: a player-held axe survives recovery and a finishing blow, while an offstage axe drops on death. The axe remains `.weapon` and `.sharp`.
+- **Knockout, recovery, and death carry the troll's map and axe transitions.** `1actions.zil:671–700` at `historicalsource/zork1@97b7b3d68c075dd9af7da499c3e9690ada3471fd` clears the passages and drops the bloody axe on knockout, restores the block and reclaims only an untaken floor axe on recovery, and opens the passages permanently on death. The Swift host now does the same: the troll holds the axe until he drops it, a player-held axe survives recovery and a finishing blow, and a destroyed axe stays destroyed. The axe remains `.weapon` and `.sharp`.
 
 ## Phase 8 — the reduced thief (`Sources/Zork1/Cellar.swift` + host wiring)
 
@@ -1640,7 +1640,7 @@ map, taken from `dung.355` and checked room by room against the exit counts in
 - The **Cellar runs east** to the Troll Room and south to West of Chasm; Zork I
   runs it north and south.
 - The **Troll Room opens in four directions**, and the troll gates three of them.
-- The mainframe troll's `OUT!`, `IN!`, and `DEAD!` transitions in `mdlzork_810722/original_source/act1.254:182–210` are restored across all three gated exits: knockout opens them and drops the axe, recovery closes them and reclaims only an available room-floor axe, and death opens them permanently. The existing unconscious room prose now agrees with the map state.
+- The mainframe troll's `OUT!`, `IN!`, and `DEAD!` transitions in `mdlzork_810722/original_source/act1.254:182–210` are restored across all three gated exits: knockout opens them and drops the axe, recovery closes them and reclaims only an available room-floor axe, and death opens them permanently. The troll holds the axe between those transitions, so a destroyed axe stays destroyed. The unconscious room prose agrees with the axe on the floor or in the player's hands.
 - The **Gallery and Studio hang off the crawlway**, so the painting can be had
   without ever meeting the troll — where Zork I puts the Gallery behind him. The
   Studio's doors are north and northwest, not south.

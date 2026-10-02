@@ -650,13 +650,13 @@ struct Zork1: Game, GameMain {
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
             onKnockout: {
-                if cellar.axe.location == nil {
+                if cellar.troll.holds(cellar.axe) {
                     cellar.axe.move(to: cellar.trollRoom)
                 }
             },
             onDefeat: {
                 cellar.$trollDefeated.trips()
-                if cellar.axe.location == nil {
+                if cellar.troll.holds(cellar.axe) {
                     cellar.axe.move(to: cellar.trollRoom)
                 }
             })
@@ -876,7 +876,7 @@ struct Zork1: Game, GameMain {
                 playerDeath: Prose.trollKillsYou),
             onRecovery: {
                 if cellar.axe.isIn(cellar.trollRoom) {
-                    cellar.axe.vanish()
+                    cellar.axe.move(heldBy: cellar.troll)
                 }
             })
 
@@ -948,6 +948,7 @@ struct Zork1: Game, GameMain {
         // ``ZorkCellar`` room, so the host places him — cross-bundle, like his
         // every other seam.
         thief.thief.starts(in: cellar.gallery)
+        cellar.axe.starts(heldBy: cellar.troll)
 
         house.cellar.south(cellar.eastOfChasm)
         cellar.eastOfChasm.north(house.cellar)

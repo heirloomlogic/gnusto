@@ -76,8 +76,7 @@ struct DungeonCellar: GameContent {
         pronoun(.he)
     }
 
-    /// The troll's axe. It starts in his hands — offstage — and drops to the
-    /// floor when he is knocked out or killed.
+    /// The troll's axe. He holds it at the start, visible but out of reach, and drops it to the floor when knocked out or killed.
     let axe = Item {
         name("bloody axe")
         adjectives("bloody")

@@ -739,13 +739,13 @@ struct Dungeon: Game, GameMain {
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
             onKnockout: {
-                if cellar.axe.location == nil {
+                if cellar.troll.holds(cellar.axe) {
                     cellar.axe.move(to: cellar.trollRoom)
                 }
             },
             onDefeat: {
                 cellar.$trollDefeated.trips()
-                if cellar.axe.location == nil {
+                if cellar.troll.holds(cellar.axe) {
                     cellar.axe.move(to: cellar.trollRoom)
                 }
             })
@@ -1310,7 +1310,7 @@ struct Dungeon: Game, GameMain {
                 playerDeath: Prose.trollKillsYou),
             onRecovery: {
                 if cellar.axe.isIn(cellar.trollRoom) {
-                    cellar.axe.vanish()
+                    cellar.axe.move(heldBy: cellar.troll)
                 }
             })
 
@@ -1348,6 +1348,7 @@ struct Dungeon: Game, GameMain {
         cellar.trollRoom.west(house.cellar)
         house.cellar.south(cellar.westOfChasm)
         cellar.westOfChasm.west(house.cellar)
+        cellar.axe.starts(heldBy: cellar.troll)
 
         // The chimney, one-way up into the Kitchen. The load gate is the
         // host's `before(.go)` rule above rather than a conditional exit,
