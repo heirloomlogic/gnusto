@@ -1206,6 +1206,95 @@ struct Zork1Tests {
         "south", "south",  // → Dam Lobby → Dam
     ]
 
+    private static let damNaturalLightCases: [(String, [String], String)] = [
+        ("damRoom", [], "Flood Control Dam #3"),
+        ("damLobby", ["north"], "waiting room for groups touring"),
+        ("damBase", ["down"], "base of Flood Control Dam #3"),
+    ]
+    private static let drainForLighting = ["turn bolt with wrench"] + Array(repeating: "wait", count: 8)
+    private static let damDarkRoomCases: [(String, [String])] = [
+        ("reservoirSouth", ["west"]), ("streamView", ["west", "west"]),
+        ("reservoir", drainForLighting + ["west", "north"]),
+        ("reservoirNorth", drainForLighting + ["west", "north", "north"]),
+        ("stream", drainForLighting + ["west", "north", "up"]),
+    ]
+    private static let grueDarkTurns = EntityID("DangerousDark.darkTurns")
+    private static let damTestLantern = EntityID("ZorkHouse.lantern")
+
+    private static func damLightingWorld(_ extra: [String]) async throws -> GameWorld {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in approachTheChargedDam + extra { _ = await world.perform(command) }
+        return world
+    }
+
+    @Test(arguments: damNaturalLightCases)
+    func damRoomsStayVisibleAndSafeWithoutACarriedLight(
+        room: String, approach: [String], description: String
+    ) async throws {
+        let world = try await Self.damLightingWorld(approach)
+        let target = EntityID("ZorkDam.\(room)")
+        #expect((await world.snapshot()).playerLocation == target)
+        _ = await world.perform("turn off lantern")
+        _ = await world.perform("drop lantern")
+        let unlit = await world.snapshot()
+        #expect(!unlit.litItems.contains(Self.damTestLantern))
+        #expect(unlit.placements[Self.damTestLantern] != .heldBy(.player))
+        #expect(unlit.litRooms.contains(target))
+        for command in ["look"] + Array(repeating: "wait", count: 6) + ["look"] {
+            let response = await world.perform(command)
+            #expect(!response.output.contains("pitch black"))
+            #expect(!response.output.contains("lurking grue"))
+            if command == "look" {
+                #expect(
+                    response.output.split(whereSeparator: \.isWhitespace).joined(separator: " ").contains(description))
+            }
+            let after = await world.snapshot()
+            #expect(after.playerLocation == target)
+            #expect(after.globals[Self.grueDarkTurns] == .int(0))
+        }
+    }
+
+    @Test(arguments: damDarkRoomCases)
+    func reservoirAndStreamRoomsStillNeedLight(room: String, approach: [String]) async throws {
+        let world = try await Self.damLightingWorld(approach)
+        let target = EntityID("ZorkDam.\(room)")
+        let before = await world.snapshot()
+        #expect(before.playerLocation == target)
+        #expect(!before.litRooms.contains(target))
+        #expect((await world.perform("turn off lantern")).output.contains("pitch black"))
+        #expect((await world.perform("look")).output.contains("pitch black"))
+        let after = await world.snapshot()
+        #expect(after.playerLocation == target)
+        #expect(after.globals[Self.grueDarkTurns] == .int(2))
+    }
+
+    @Test func maintenanceRedButtonStillControlsItsOwnLight() async throws {
+        let world = try await Self.damLightingWorld(["north", "north"])
+        let room = EntityID("ZorkDam.maintenanceRoom")
+        #expect((await world.snapshot()).playerLocation == room)
+        #expect(!(await world.snapshot()).litRooms.contains(room))
+        _ = await world.perform("push red button")
+        #expect((await world.snapshot()).litRooms.contains(room))
+        _ = await world.perform("turn off lantern")
+        for command in ["look"] + Array(repeating: "wait", count: 6) {
+            let response = await world.perform(command)
+            #expect(!response.output.contains("pitch black"))
+            #expect((await world.snapshot()).globals[Self.grueDarkTurns] == .int(0))
+            #expect((await world.snapshot()).playerLocation == room)
+        }
+        #expect((await world.perform("push red button")).output.contains("pitch black"))
+        #expect(!(await world.snapshot()).litRooms.contains(room))
+        #expect((await world.snapshot()).globals[Self.grueDarkTurns] == .int(1))
+        _ = await world.perform("turn on lantern")
+        #expect(!(await world.snapshot()).litRooms.contains(room))
+        #expect((await world.snapshot()).globals[Self.grueDarkTurns] == .int(0))
+        _ = await world.perform("push red button")
+        _ = await world.perform("turn off lantern")
+        #expect((await world.snapshot()).litRooms.contains(room))
+        #expect(!(await world.perform("look")).output.contains("pitch black"))
+    }
+
     /// Turning the bolt with the wrench opens the gates; eight turns later the
     /// reservoir has drained, the trunk of jewels lies revealed on the bed, and
     /// taking it scores fifteen.

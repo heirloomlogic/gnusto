@@ -34,7 +34,7 @@ struct Zork1RiverTests {
 
     /// Drain the reservoir, walk the bare bed to Reservoir North for the hand
     /// pump, and return to the Dam Base — one command short of inflating.
-    /// Ends on the (dark) Dam Base holding the pump, the wrench, the sword and
+    /// Ends on Dam Base holding the pump, the wrench, the sword and
     /// the lit lantern, the pile of plastic still spread on the bank.
     ///
     /// Split out of ``toInflatedBoat`` so the inflate rule's own refusals can be

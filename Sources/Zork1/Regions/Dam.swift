@@ -24,13 +24,11 @@ struct ZorkDam: GameContent {
     let damRoom = Location {
         name("Dam")
         description(Prose.dam)
-        dark
     }
 
     let damLobby = Location {
         name("Dam Lobby")
         description(Prose.damLobby)
-        dark
     }
 
     /// Dark until the red button turns the room's own lights on.
@@ -43,7 +41,6 @@ struct ZorkDam: GameContent {
     let damBase = Location {
         name("Dam Base")
         description(Prose.damBase)
-        dark
     }
 
     let reservoirSouth = Location {

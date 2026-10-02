@@ -384,6 +384,7 @@ has been waiting on since Phase 10.4.
   N↔Reservoir North, S↔Reservoir South, Up/W→Stream, Down blocked; Reservoir
   North S→Reservoir (only when drained), N→Atlantis (T7); Stream View E→Reservoir
   South, W blocked; Stream Down/E→Reservoir, Up/W blocked.
+- Dam, Dam Lobby and Dam Base are naturally lit. Their original room flags contain `ONBIT` (`1dungeon.zil:2135–2192`, historicalsource/zork1 revision `97b7b3d68c075dd9af7da499c3e9690ada3471fd`). Route tests turn off and drop the lantern, then LOOK and WAIT in each room without accumulating dangerous-dark turns. The five reservoir/stream rooms retain their darkness; Maintenance Room's red button still switches its own light.
 - **The cross-region edges to the Round Room hub are host-wired.** Deep Canyon's
   east (to the Dam) and northwest (to Reservoir South), and the Chasm's northeast
   (to Reservoir South), cross the `ZorkRoundRoom`/`ZorkDam` bundle boundary, so
