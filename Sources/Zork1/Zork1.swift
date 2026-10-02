@@ -590,23 +590,15 @@ struct Zork1: Game, GameMain {
             try handled()
         }
 
-        // The grating over the Grating Room. The grating and its skeleton key
-        // are ``ZorkAboveGround`` entities, the room below is a ``ZorkMaze`` one,
-        // so the host owns the crossing. The engine only folds a door into scope
-        // where it's perceivable, and the grating starts hidden (revealed
-        // topside by clearing the leaves) — so from below it must be revealed on
-        // entry, or the player couldn't unlock it. Then the built-in unlock/open
-        // verbs carry the puzzle; opening it from below showers the forest's
-        // leaves down and lets in the light.
+        // MAZE-11-FCN exposes the grating from below without setting the
+        // permanent topside discovery latch. CLEARING-FCN restores concealment.
         maze.gratingRoom.onEnter {
             aboveGround.grating.reveal()
         }
         aboveGround.grating.after(.open) {
-            // Only from below, and only the first time — the leaves fall once.
-            // (The room's own daylight is moot: you can't be down here without
-            // the lit lantern, which lights it already.)
             guard player.location == maze.gratingRoom else { return }
-            guard maze.$gratingOpenedFromBelow.trips() else { return }
+            guard aboveGround.$gratingDiscovered.trips() else { return }
+            aboveGround.leaves.move(to: maze.gratingRoom)
             say(Prose.gratingOpensFromBelow)
         }
 

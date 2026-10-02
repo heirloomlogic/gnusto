@@ -4,6 +4,33 @@ import Testing
 @testable import Gnusto
 
 struct DoorTests {
+    @Test func concealRestoresHiddenDoorScopeAndUndoRestoresItsReveal() async throws {
+        let world = try GameWorld(game: HiddenDoorGame())
+        _ = await world.begin()
+        _ = await world.perform("push switch")
+        _ = await world.perform("open bookcase door")
+        let before = await world.snapshot()
+        let door = EntityID("bookcase")
+        #expect(before.revealedItems.contains(door))
+        #expect(before.openItems.contains(door))
+        _ = await world.perform("pull switch")
+        let concealed = await world.snapshot()
+        #expect(concealed.revealedItems == before.revealedItems.subtracting([door]))
+        #expect(concealed.openItems == before.openItems)
+        #expect(concealed.placements == before.placements)
+        _ = await world.perform("undo")
+        #expect((await world.snapshot()).revealedItems == before.revealedItems)
+        #expect((await world.snapshot()).openItems == before.openItems)
+        #expect((await world.perform("examine bookcase door")).output.contains("bookcase door"))
+        _ = await world.perform("pull switch")
+        #expect((await world.perform("examine bookcase door")).output.contains("can't see"))
+        #expect((await world.perform("east")).output.contains("can't go"))
+        // The non-hidden switch remains nameable; revealing again restores
+        // passage without requiring another OPEN, since conceal kept that state.
+        #expect((await world.perform("push switch")).output.contains("revealing a door"))
+        #expect((await world.perform("east")).output.contains("Secret Passage"))
+    }
+
     // MARK: - Shared trap door
 
     @Test func closedDoorBlocksMovement() async throws {

@@ -288,6 +288,11 @@ struct HiddenDoorGame: Game {
             bookcase.reveal()
             try reply("A bookcase swings aside, revealing a door.")
         }
+        switchLever.before(.pull) {
+            bookcase.conceal()
+            switchLever.conceal()  // Concealing ordinary scenery is a no-op.
+            try reply("The bookcase hides the door again.")
+        }
     }
 }
 
