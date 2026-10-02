@@ -602,6 +602,11 @@ struct Zork1: Game, GameMain {
             say(Prose.gratingOpensFromBelow)
         }
 
+        maze.rustyKnife.after(.take) {
+            guard house.sword.isHeld else { return }
+            say(Prose.rustyKnifeBluePulse)
+        }
+
         // Feeding the cyclops. The lunch, bottle and water are ``ZorkHouse``
         // items and the cyclops a ``ZorkMaze`` one, so the host bridges them —
         // like the match and the machine. Give him the lunch and he turns
