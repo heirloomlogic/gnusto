@@ -42,6 +42,16 @@ extension Prose {
 
     static let garlic = "A single clove of garlic, papery and pungent."
 
+    /// V-EAT's FOODBIT branch (`gverbs.zil:483-496`).
+    static let lunchNotHeld = "You're not holding that."
+    static let lunchEaten = "Thank you very much. It really hit the spot."
+
+    /// GARLIC-F's EAT override (`1actions.zil:4160-4165`).
+    static let garlicEaten = """
+        What the heck! You won't make friends this way, but nobody around
+        here is too friendly anyhow. Gulp!
+        """
+
     /// `BOTTLE`'s `FDESC`. (#514)
     static let bottleFirstSight = "A bottle is sitting on the table."
 
