@@ -226,6 +226,25 @@ struct Zork1RiverTests {
     private static let axe = EntityID("ZorkCellar.axe")
     private static let pump = EntityID("ZorkDam.handPump")
     private static let wrench = EntityID("ZorkDam.wrench")
+    @Test func theLeakRepairLeavesGunkForTheIndependentBoatPatch() async throws {
+        var route = Self.toInflatedBoat
+        route.insert(
+            contentsOf: ["take tube", "push blue button", "plug leak with putty"],
+            at: try #require(route.firstIndex(of: "take wrench")) + 1)
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in route { _ = await world.perform(command) }
+        #expect((await world.snapshot()).globals[EntityID("ZorkDam.floodLevel")] == .int(-1))
+        #expect((await world.snapshot()).placements[Self.tube] == .heldBy(.player))
+        #expect((await world.perform("enter boat")).output.contains("punctured the boat"))
+        #expect((await world.perform("fix boat with gunk")).output.contains("boat is repaired"))
+        #expect((await world.snapshot()).placements[Self.tube] == .nowhere)
+        #expect((await world.snapshot()).globals[EntityID("ZorkDam.floodLevel")] == .int(-1))
+        _ = await world.perform("drop sword")
+        _ = await world.perform("enter boat")
+        #expect((await world.perform("launch boat")).output.contains("Frigid River"))
+    }
+
     private static let tube = EntityID("ZorkDam.tube")
 
     private static func groupedPutBoatWorld(aboard: Bool) async throws -> GameWorld {

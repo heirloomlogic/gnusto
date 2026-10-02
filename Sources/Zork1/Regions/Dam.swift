@@ -8,7 +8,7 @@ import GnustoScoring
 /// gates drains the reservoir over eight turns, laying bare the bed and the
 /// trunk of jewels sunk in it; closing them fills it again. The blue button
 /// springs a leak that floods the Maintenance Room and drowns anyone who
-/// lingers.
+/// lingers unless the tube's gunk plugs the leak.
 ///
 /// The bolt, the gates, and the water they move are the region's cross-region
 /// seam: draining or filling sets the Round Room bundle's ``waterMoving`` (which
@@ -185,6 +185,8 @@ struct ZorkDam: GameContent {
     let yellowButton = Item.scenery(
         "yellow button", adjectives: "yellow", synonyms: "switch", description: Prose.yellowButton)
 
+    let leak = Item.scenery("leak", synonyms: "drip", "pipe") { hidden }
+
     let wrench = Item {
         name("wrench")
         synonyms("tool")
@@ -203,7 +205,8 @@ struct ZorkDam: GameContent {
 
     let tube = Item {
         name("tube")
-        synonyms("gunk", "toothpaste")
+        synonyms("gunk", "toothpaste", "putty", "material")
+        adjectives("viscous")
         firstSight(Prose.tubeFirstSight)
         description(Prose.tube)
         trait(.weight, 5)
@@ -252,7 +255,7 @@ struct ZorkDam: GameContent {
     /// Whether the red button has switched the Maintenance Room lights on.
     @Global var maintenanceRoomLit = false
 
-    /// Turns since the blue button sprang the leak; the terminal value seals the room.
+    /// Zero before the leak, -1 after repair, otherwise its rising level; the terminal value seals the room.
     @Global var floodLevel = 0
 
     var maintenanceRoomFlooded: Bool { floodLevel > Prose.floodLadder.count }
@@ -337,6 +340,7 @@ struct ZorkDam: GameContent {
         redButton.starts(in: maintenanceRoom)
         brownButton.starts(in: maintenanceRoom)
         yellowButton.starts(in: maintenanceRoom)
+        leak.starts(in: maintenanceRoom)
         wrench.starts(in: maintenanceRoom)
         screwdriver.starts(in: maintenanceRoom)
         tube.starts(in: maintenanceRoom)
@@ -379,8 +383,33 @@ struct ZorkDam: GameContent {
         // water rises turn by turn.
         blueButton.before(.push) {
             guard floodLevel == 0 else { try reply(Prose.blueButtonAgain) }
+            leak.reveal()
             startDaemon("damFlood")
             try reply(Prose.blueButtonPush)
+        }
+
+        leak.before(.fix, .putIn, .putOn) {
+            let material: Item?
+            if command.intent == .fix {
+                guard command.directObject == leak else { return }
+                material = command.indirectObject
+            } else {
+                guard command.indirectObject == leak else { return }
+                material = command.directObject
+            }
+            try require(leak.isReachable, else: gameText.cantReach(leak.definiteNoun))
+            guard floodLevel > 0, !maintenanceRoomFlooded, let material else { return }
+            try require(material.isReachable, else: gameText.cantReach(material.definiteNoun))
+            if command.intent != .fix {
+                try require(material.isHeld, else: gameText.notHolding())
+            }
+            guard material == tube else {
+                if command.intent == .fix { try reply(Prose.leakWrongMaterial(material.indefiniteName)) }
+                return
+            }
+            floodLevel = -1
+            stopDaemon("damFlood")
+            try reply(Prose.leakRepaired)
         }
     }
 

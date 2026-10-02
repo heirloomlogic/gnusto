@@ -228,6 +228,13 @@ extension Prose {
 
     // MARK: - Flood (Maintenance Room)
 
+    static let leakRepaired = """
+        By some miracle of Zorkian technology, you have managed to stop the
+        leak in the dam.
+        """
+
+    static func leakWrongMaterial(_ material: String) -> String { "With \(material)?" }
+
     static let floodLadder = ["ankles", "shins", "knees", "hips", "waist", "chest", "neck"]
 
     /// The water climbs one body-part step each turn — the original's
