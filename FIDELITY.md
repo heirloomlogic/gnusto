@@ -902,20 +902,15 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   room he shares with you: held in your hands, on the floor, or inside an open container he can
   rifle (the trophy case is wired in as one). Only a shut container or another room keeps a
   treasure safe — the original's thief, who lifts nearly anything from nearly anywhere.
-- **He ferries his takings to the hoard.** A draw-free `thiefStash` daemon deposits everything
-  he carries (bar the stiletto) onto the Treasure Room floor whenever he is in the lair.
-- **He defends his lair to the death.** Entering the Treasure Room summons him home, and a
-  `melee.aggression(…, while: { thief.isIn(treasureRoom) })` daemon lets him fight back
-  *only there* — evasive everywhere else. He carries the stiletto (the sixth `.sharp`
-  boat-puncturer; the original's SIZE 10) and, killed, drops his whole hoard plus the
-  stiletto and unbars the trap door.
+- **He ferries his takings to the hoard.** A draw-free `thiefStash` daemon deposits everything he carries (bar the stiletto) onto the Treasure Room floor when he is alone in the lair. He keeps the bag while the player is there, matching the off-screen guard around `I-THIEF`'s ordinary call to `DEPOSIT-BOOTY` (`1actions.zil:3895-3897`). The shared deposit helper opens the egg without harming the canary, as `DEPOSIT-BOOTY` itself requires (`:1897-1909`).
+- **He defends his lair to the death.** Entering the Treasure Room summons him home, and a `melee.aggression(…, while: { thief.isIn(treasureRoom) })` daemon lets him fight back *only there* — evasive everywhere else. He carries the stiletto (the sixth `.sharp` boat-puncturer; the original's SIZE 10) and, killed, deposits his hoard through the same egg-opening helper, drops the stiletto, and unbars the trap door. The source's `F-DEAD` branch also calls `DEPOSIT-BOOTY` (`1actions.zil:2035-2038`).
 - **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **snatchable**
   *(closed in the fidelity pass — was hard-refused while the thief lived)*. There is no take
   guard: you can grab it straight from the hoard (the original's snatch), but because the
   thief now lifts treasures back from your hands and off the floor, holding it while he lives
   is only a loan — his steal daemon takes it back on a later turn, the original's
   snatch-and-resteal.
-- **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets the egg open with the clockwork canary intact; you recover the opened egg among his effects when he dies. The service is silent (you aren't watching) and is cancelled if he dies first. The thief accepts only a gift the player is holding, matching `PRE-GIVE`; named actors, scenery, and other non-held objects are refused before the handler changes containment. (#667)
+- **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse models his off-screen work while he carries the gift. An earlier ordinary stash or death deposit opens it immediately and cancels the fuse, so every thief-deposited egg keeps the clockwork canary intact. The thief accepts only a gift the player is holding, matching `PRE-GIVE`; named actors, scenery, and other non-held objects are refused before the handler changes containment. (#667, #668)
 - **The jewel-encrusted egg is now an openable container.** Forcing it open *by hand* (the
   built-in `open`) wrecks the canary — the intact `golden clockwork canary` is swapped for a
   worthless `broken clockwork canary`. Only the thief's careful hands (above) open it
@@ -995,11 +990,7 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 - **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg
   above ground, then winding the broken canary (only grinds, no bauble), and casing it (scores
   nothing).
-- **The full intact `wind canary` → bauble → case run is exercised by the Phase 10.14
-  walkthrough** (`Zork1WalkthroughTests`). The intact canary is only recoverable by the thief's
-  clean-open service; the walkthrough arms it in the lair (give egg, retreat one room while the
-  four-turn fuse works, return and kill), recovers the opened egg with the canary whole, winds
-  it in the forest for the bauble, and cases both — proving the whole chain end-to-end.
+- **The full intact `wind canary` → bauble → case run is exercised by the Phase 10.14 walkthrough** (`Zork1WalkthroughTests`). The intact canary is recoverable after the thief cleanly opens a gifted or stolen egg. The walkthrough gives him the egg in his lair and leaves him to deposit it; `Zork1ThiefTests` separately pins ordinary stash, death after theft, and death before the gift fuse fires, then winds the recovered canary in the forest and takes the bauble.
 
 ## Phase 10.13 — Endgame wiring: the Stone Barrow & the ancient map (`Sources/Zork1/Zork1.swift`, `AboveGround.swift`)
 

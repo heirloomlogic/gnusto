@@ -1,8 +1,8 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.11 thief endgame: the egg's two ways
@@ -13,6 +13,16 @@ import Testing
 /// the seeds are final (the Phase 10.14 walkthrough closed the roadmap's planned
 /// one-time re-pin).
 struct Zork1ThiefTests {
+    static let eggToLair = [
+        "north", "north", "up", "take egg", "down",
+        "south", "west", "south", "east", "open window", "west", "west",
+        "take sword", "take lantern", "turn on lantern", "open trophy case",
+        "move rug", "open trap door", "down", "north",
+        "attack troll", "attack troll", "attack troll",
+        "west", "west", "west", "up", "take bag of coins", "take skeleton key",
+        "southwest", "east", "south", "southeast", "odysseus", "up",
+    ]
+
     @Test func theTrollsAxeIsAWeaponAgainstTheThief() async throws {
         let transcript = try await play(
             Zork1(),
@@ -63,6 +73,75 @@ struct Zork1ThiefTests {
         let examined = turnOutput(of: "examine canary", in: transcript)
         #expect(examined.contains("A golden clockwork canary. It seems to have recently had a bad"))
         #expect(!examined.contains("nestled in the egg"))
+    }
+
+    @Test func theThiefOpensAStolenEggWhenHeStashesIt() async throws {
+        // Seed 1 makes the thief steal the egg when the player first returns
+        // to the lair. Leaving again gives the stash daemon its off-screen turn.
+        let transcript = try await play(
+            Zork1(),
+            Self.eggToLair + ["wait", "wait", "wait", "down", "up", "down", "up"],
+            seed: 1)
+
+        #expect(transcript.contains("jewel-encrusted egg vanished"))
+        #expect(
+            turnOutput(ofLast: "up", in: transcript)
+                .contains("In the jewel-encrusted egg is a golden clockwork canary."))
+    }
+
+    @Test func theThiefOpensAStolenEggWhenHeDies() async throws {
+        // This is the issue route: theft on move 38 and death before any
+        // player-run opening. The recovered canary must still make the bauble.
+        let transcript = try await play(
+            Zork1(),
+            Self.eggToLair + [
+                "wait", "wait", "wait", "wait",
+                "attack thief", "attack thief", "attack thief", "attack thief",
+                "take egg", "look in egg", "take canary",
+                "down", "east", "east", "east", "east", "east",
+                "wind canary", "take bauble",
+            ],
+            seed: 1)
+
+        #expect(transcript.contains("jewel-encrusted egg vanished"))
+        #expect(transcript.contains("The thief takes a fatal blow"))
+        #expect(
+            turnOutput(of: "look in egg", in: transcript)
+                .contains("In the jewel-encrusted egg is a golden clockwork canary."))
+        #expect(turnOutput(of: "wind canary", in: transcript).contains("lovely songbird"))
+        #expect(turnOutput(of: "take bauble", in: transcript).contains("Taken."))
+    }
+
+    @Test func theThiefOpensAGiftedEggWhenHeDiesBeforeTheFuse() async throws {
+        // Put the thief down after the gift so the next ordinary attack is a
+        // guaranteed finishing blow. Death therefore precedes the four-turn
+        // GIVE fuse without making the regression depend on a combat roll.
+        let world = try cachedWorld(Zork1(), seed: 0)
+        _ = await world.begin()
+        for command in Self.eggToLair {
+            _ = await world.perform(command)
+        }
+
+        let beforeGift = await world.snapshot()
+        let gift = await world.perform("give egg to thief")
+        var beforeDeath = await world.snapshot()
+        let recipients = Set(
+            beforeDeath.placements.compactMap { id, placement -> EntityID? in
+                guard beforeGift.placements[id] == .heldBy(.player),
+                    case .heldBy(let holder) = placement,
+                    holder != .player
+                else { return nil }
+                return holder
+            })
+        let thiefID = try #require(recipients.count == 1 ? recipients.first : nil)
+        beforeDeath.unconsciousActors.insert(thiefID)
+        await world.restore(beforeDeath, mode: .brief)
+        let attack = await world.perform("attack thief")
+        let egg = await world.perform("look in egg")
+
+        #expect(gift.output.contains("unexpected generosity"))
+        #expect(attack.output.contains("The thief takes a fatal blow"))
+        #expect(egg.output.contains("In the jewel-encrusted egg is a golden clockwork canary."))
     }
 
     @Test func theThiefTakesTheEggYouOffer() async throws {

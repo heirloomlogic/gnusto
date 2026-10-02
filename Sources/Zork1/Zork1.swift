@@ -278,6 +278,19 @@ struct Zork1: Game, GameMain {
         ]
     }
 
+    /// Moves the thief's carried treasure into a room. The source's
+    /// `DEPOSIT-BOOTY` also opens the egg during every deposit, whether the
+    /// normal stash daemon or the thief's death requested it.
+    private func depositThiefBooty(in room: Location) {
+        for loot in thief.thief.inventory where loot != thief.stiletto {
+            loot.move(to: room)
+            if loot == aboveGround.egg {
+                aboveGround.egg.isOpen = true
+                stopFuse("thiefOpensEgg")
+            }
+        }
+    }
+
     var rules: Rules {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
@@ -770,8 +783,9 @@ struct Zork1: Game, GameMain {
                 stopDaemon("thiefSteals")
                 stopDaemon("thiefStash")
                 stopDaemon("thiefFights")
-                // Everything he was carrying — stolen treasures and the
-                // stiletto both — spills into the room where he fell.
+                // Deposit the hoard first so the egg gets the same careful
+                // opening as an ordinary stash. The stiletto then follows.
+                depositThiefBooty(in: player.location)
                 thief.thief.dropAll()
                 say(Prose.thiefLootScatters)
             })
@@ -860,15 +874,15 @@ struct Zork1: Game, GameMain {
             chancePerTurn: 30,
             announcement: Prose.thiefSteals)
 
-        // In his lair he ferries his takings into the hoard: a draw-free
+        // Alone in his lair he ferries his takings into the hoard: a draw-free
         // deposit of everything he carries (bar the stiletto he keeps to hand)
-        // onto the Treasure Room floor. Guards before touching anything, so
-        // every other turn is silent and RNG-free.
+        // onto the Treasure Room floor. In company he keeps hold of the bag,
+        // as `I-THIEF` does before its off-screen `DEPOSIT-BOOTY` call.
         daemon("thiefStash", autostart: true) {
-            guard thief.thief.isIn(maze.treasureRoom) else { return }
-            for loot in thief.thief.inventory where loot != thief.stiletto {
-                loot.move(to: maze.treasureRoom)
+            guard thief.thief.isIn(maze.treasureRoom), player.location != maze.treasureRoom else {
+                return
             }
+            depositThiefBooty(in: maze.treasureRoom)
         }
 
         // He fights back only in his lair — the `when:` gate closes everywhere
@@ -888,8 +902,8 @@ struct Zork1: Game, GameMain {
         // The egg-opening service: four turns after you hand him the egg, the
         // thief works its mechanism open — the canary intact, where your own
         // hands would have wrecked it. Silent (you're not there to watch); you
-        // find the opened egg among his effects when he falls. Cancelled if he
-        // dies first (you'll have to force it yourself).
+        // find the opened egg among his effects when he falls. An earlier
+        // stash or death deposits and opens the egg immediately instead.
         fuse("thiefOpensEgg", after: 4) {
             guard !thief.thiefDefeated else { return }
             aboveGround.egg.isOpen = true
