@@ -223,9 +223,6 @@ struct ZorkHouse: GameContent {
     /// opening from the living room is never barred (the bolt is on top).
     @Global var trapDoorBarred = false
 
-    /// Its examine text — empty vs. holding the egg — is a `describe` rule.
-    /// The egg lives in `ZorkAboveGround`, so that rule is cross-bundle and
-    /// the host declares it (`Zork1.rules`), not this bundle.
     let trophyCase = Item.scenery("trophy case") {
         container
         openable
@@ -342,6 +339,13 @@ struct ZorkHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        trophyCase.describe {
+            let contents = trophyCase.contents.filter(\.isRevealed).map(\.indefiniteNoun)
+            if contents.isEmpty { return gameText.emptyContainer(trophyCase.definiteNoun) }
+            return gameText.inTheContainer(
+                .init(item: .list(contents), holder: trophyCase.definiteNoun))
+        }
+
         // `KITCHEN-WINDOW-F` falls through to the stock answer once the window
         // is open. Return that answer explicitly: blank calculated prose is an
         // author error, and using `gameText` keeps Zork's override authoritative.

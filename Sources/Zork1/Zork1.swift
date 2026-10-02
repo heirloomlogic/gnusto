@@ -693,16 +693,6 @@ struct Zork1: Game, GameMain {
         // it back on a later turn, the original's snatch-and-resteal. No guard
         // rule; the chalice is an ordinary treasure the thief happens to covet.
 
-        // The living-room trophy case describes itself by whether it holds the
-        // egg. The case is a ``ZorkHouse`` entity and the egg a
-        // ``ZorkAboveGround`` one, so this `describe` rule spans two bundles and
-        // the host owns it.
-        house.trophyCase.describe {
-            house.trophyCase.holds(aboveGround.egg)
-                ? Prose.trophyCaseHolding("a \(aboveGround.egg.name)")
-                : Prose.trophyCaseEmpty
-        }
-
         // The endgame trigger. When the last of the nineteen treasures settles
         // into the case, the ancient map to the Stone Barrow appears among them.
         // An `after(.putIn)` fires for the container (the indirect object), so

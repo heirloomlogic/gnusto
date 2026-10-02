@@ -373,6 +373,12 @@ extension GameText {
         /// What holds it — the container, or the surface it rests on.
         public let holder: Noun
 
+        /// Creates the paired nouns for a placement or contents-list line.
+        public init(item: Noun, holder: Noun) {
+            self.item = item
+            self.holder = holder
+        }
+
         /// Both arrangements, because a line about two things has two things
         /// its verb might agree with and the wording rarely agrees with the one
         /// it names first. One order would let a template that hard-codes the

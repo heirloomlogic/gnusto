@@ -447,11 +447,55 @@ struct Zork1Tests {
         #expect(relight.contains("a bit dimmer"))
     }
 
+    @Test(arguments: [false, true])
+    func trophyCaseExamineAgreesWithLookInAsContentsChange(caseOpen: Bool) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in ["north", "north", "up"] {
+            _ = await world.perform(command)
+        }
+        let egg = await world.perform("take egg")
+        #expect(egg.output.contains("Taken."))
+        for command in ["down", "south", "west", "south", "east", "open window", "west", "west"] {
+            _ = await world.perform(command)
+        }
+        let sword = await world.perform("take sword")
+        #expect(sword.output.contains("Taken."))
+        let stages: [([String], String, Int)] = [
+            ([], "The trophy case is empty.", 15),
+            (["put sword in case"], "In the trophy case is an elvish sword.", 15),
+            (["take sword from case"], "The trophy case is empty.", 15),
+            (["put egg in case"], "In the trophy case is a jewel-encrusted egg.", 20),
+            (["put sword in case"], "In the trophy case are a jewel-encrusted egg and an elvish sword.", 20),
+            (["take egg from case"], "In the trophy case is an elvish sword.", 15),
+            (["take sword from case"], "The trophy case is empty.", 15),
+        ]
+        for (commands, expected, expectedScore) in stages {
+            if !commands.isEmpty {
+                _ = await world.perform("open case")
+                for command in commands {
+                    _ = await world.perform(command)
+                }
+            }
+            _ = await world.perform(caseOpen ? "open case" : "close case")
+            let examined = await world.perform("examine case")
+            let lookedIn = await world.perform("look in case")
+            let examineText = examined.output.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            let contentsText = lookedIn.output.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            #expect(examineText == expected)
+            #expect(contentsText == expected)
+            #expect(examineText == contentsText)
+            #expect(!examineText.contains("ancient parchment"))
+            let score = await world.perform("score")
+            #expect(score.output.contains("Your score is \(expectedScore) of a possible 350"))
+        }
+    }
+
     @Test func treeEggAndTrophyCase() async throws {
         // West of House → North of House → Forest Path → Up a Tree, takes
         // the egg, climbs back down, crosses to the Living Room via the
         // kitchen window, and stows the egg in the (now open) trophy case —
-        // whose closure description reflects the change live.
+        // whose examine response lists the deposited egg.
         let transcript = try await play(
             Zork1(),
             [
@@ -474,7 +518,7 @@ struct Zork1Tests {
                 "Living Room",
                 "Opened.",
                 "You put the jewel-encrusted egg in the trophy case.",
-                "A glass-fronted trophy case, holding a jewel-encrusted egg.",
+                "In the trophy case is a jewel-encrusted egg.",
             ])
     }
 
