@@ -750,6 +750,9 @@ struct Zork1: Game, GameMain {
         // EGG-OBJECT's qualifying OPEN replaces the shell through the same
         // damage lifecycle as a fall. The thief opens the intact egg directly.
         aboveGround.egg.before(.open) {
+            guard aboveGround.egg.isReachable else {
+                try refuse(gameText.cantReach(aboveGround.egg.definiteNoun))
+            }
             guard !aboveGround.egg.isOpen else { return }
             guard let tool = command.indirectObject else {
                 let words = command.rawInput.lowercased().split(whereSeparator: { !$0.isLetter })

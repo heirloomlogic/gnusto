@@ -229,4 +229,39 @@ struct Zork1TreeTests {
             _ = await world.perform("up")
         }
     }
+
+    @Test func destructiveOpeningCannotReachThroughAClosedTransparentCase() async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in Self.swordToTree + [
+            "take egg", "down", "south", "west", "south", "east", "open window", "west", "west",
+            "open case", "put egg in case", "close case",
+        ] {
+            _ = await world.perform(command)
+        }
+        let before = await world.snapshot()
+        #expect(before.placements[Self.egg] == .inside(EntityID("ZorkHouse.trophyCase")))
+        #expect(before.score == 20)
+        let refused = await world.perform("open egg with sword")
+        #expect(refused.output.contains("can't reach the jewel-encrusted egg"))
+        #expect(!refused.output.contains("clumsiness"))
+        let after = await world.snapshot()
+        for item in [Self.egg, Self.brokenEgg, Self.canary, Self.brokenCanary, Self.sword] {
+            #expect(after.placements[item] == before.placements[item])
+        }
+        #expect(after.openItems == before.openItems)
+        #expect(after.touched == before.touched)
+        #expect(after.score == before.score)
+
+        // Opening the case restores reach; the same weapon then damages it.
+        #expect((await world.perform("open case")).output.contains("Opening the trophy case"))
+        let reachable = await world.perform("open egg with sword")
+        #expect(reachable.output.contains("clumsiness"))
+        let damaged = await world.snapshot()
+        #expect(damaged.placements[Self.egg] == .nowhere)
+        #expect(damaged.placements[Self.canary] == .nowhere)
+        #expect(damaged.placements[Self.brokenEgg] == before.placements[Self.egg])
+        #expect(damaged.placements[Self.brokenCanary] == .inside(Self.brokenEgg))
+        #expect(damaged.score == 15)
+    }
 }
