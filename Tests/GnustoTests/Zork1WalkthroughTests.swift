@@ -43,6 +43,28 @@ struct Zork1WalkthroughTests {
     /// The pinned seed (see the type doc): the lowest that wins this route.
     static let seed: UInt64 = 0
 
+    @Test func cyclopsShortcutUpdatesLivingRoomAndDoorDescriptions() async throws {
+        let route =
+            Walkthrough.prep + Walkthrough.descendAndTroll
+            + Array(Walkthrough.mazeToLair.dropLast()) + ["east", "east"]
+        let transcript = try await play(
+            fresh: Zork1(),
+            route + ["look", "examine wooden door", "open trap door", "look", "close trap door", "look"],
+            seed: Self.seed)
+        #expect(transcript.contains("cyclops, hearing the name of his father's deadly nemesis"))
+        let beforeOpening = turnOutput(of: "look", in: transcript)
+        #expect(beforeOpening.contains("cyclops-shaped opening in an old wooden door"))
+        #expect(beforeOpening.contains("a closed trap door at your feet"))
+        #expect(!beforeOpening.contains("nailed shut"))
+        let examined = turnOutput(of: "examine wooden door", in: transcript)
+        #expect(examined.contains("The engravings translate to \"This space intentionally left blank.\""))
+        #expect(!examined.contains("nailed shut"))
+        #expect(turnOutput(ofLast: "look", in: transcript).contains("a closed trap door at your feet"))
+        let opening = String(
+            transcript[try #require(transcript.range(of: "> open trap door", options: .backwards)).upperBound...])
+        #expect(turnOutput(of: "look", in: opening).contains("a rug lying beside an open trap door"))
+    }
+
     @Test func theFullThreeHundredFiftyPointWalkthrough() async throws {
         let transcript = try await play(Zork1(), Walkthrough.commands, seed: Self.seed)
 
