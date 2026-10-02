@@ -189,26 +189,13 @@ score ranks, and a longer lantern burn. No new rooms this task.
   unchanged, and the one-constant-per-entity structure is the path the
   verbatim swap later flowed through cleanly.
 - **The custom verbs' responses are held to the same rule as every other line.** Infocom's famous joke replies (the hollow voice's "Fool.", the wave-of-nausea, and so on) carry through, and the verb *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the iconic ones and were always used as-is. Some responses are the port's own, among them the line printed when praying at the altar carries the player to the forest (see the Temple section's *Prose*). The engine has since taken over some of these verbs as stubs; Zork overrides those verbs' stage-4 defaults, so the reproduced text stays inside `Sources/Zork1/` where `THIRD_PARTY_NOTICES` scopes it.
-- **Verbs the original didn't have answer in the engine's voice.** The engine's
-  stub set is wider than Zork's verb pack, so `sing`, `jump`, `kneel`, `listen`,
-  `eat` and the rest reply with Gnusto's generic line rather than anything
-  Infocom wrote. A departure, and the right one: the alternative is
-  `I don't know the word "sing"`.
+- **The engine's verb vocabulary extends Zork's.** Extra syntax can use the engine's voice, while source verbs retain Zork's replies. Earlier entries incorrectly counted EAT among verbs absent from the original: V-EAT exists, its inedible refusal is reproduced by the stub floor, and the two food routines are implemented under #681 below.
 
 ### Custom verbs (`Systems.swift`)
 
-- **Most of the verb pack moved into the engine.** `dig`, `wave`, `touch`,
-  `tie`/`untie`, `give`, `smell`, `drink`, `fill`, `pour`, `climb`, `pray` and the
-  magic words `xyzzy`/`plugh` are engine *stub verbs* now, so every Gnusto game
-  gets them. What stays in `Systems.swift` is the vocabulary that is actually
-  Zork's: `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `turn … with …`,
-  `ring`, `echo`, `odysseus`/`ulysses`, `fix`, `diagnose`.
-  **No player-visible text changed for the verbs Zork already had**: it keeps an
-  `action(…)` override for each of those thirteen, so the reply is still the
-  original's line, not the engine's. That is also deliberate on licensing
-  grounds — the reproduced Infocom text stays inside `Sources/Zork1/`, per
-  `THIRD_PARTY_NOTICES`. The ~34 stub verbs Zork *never* had (`sing`, `jump`,
-  `kneel`, `eat`, …) are new vocabulary answering in the engine's voice.
+- **Most of the verb pack moved into the engine.** `dig`, `wave`, `touch`, `tie`/`untie`, `give`, `smell`, `drink`, `fill`, `pour`, `climb`, `pray`, `eat` and the magic words `xyzzy`/`plugh` are engine stub verbs. Systems.swift retains Zork-specific vocabulary such as `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `ring`, `echo`, `odysseus`/`ulysses`, `fix` and `diagnose`. Source replies remain in Sources/Zork1 through prose overrides or item rules, within the THIRD_PARTY_NOTICES scope. EAT is source vocabulary, not an invented verb; House owns the lunch and garlic branches, while the existing stub owns inedible replies.
+- **Food EAT restores V-EAT and GARLIC-F as game-local routines.** Lunch and garlic are the only FOODBIT objects in the pinned declarations. Reach is checked before consumption, including through closed transparent holders. Lunch must be directly carried or an immediate child of a player-carried holder; two-level nesting and reachable unheld lunch get V-EAT's possession refusal. Garlic's object routine has no such possession test and consumes reachable floor, held or nested garlic with its own source prose. Both disappear once; repeat commands cannot name them. Generic inedible replies and the existing GIVE-to-cyclops rule remain separate. (`1dungeon.zil:147-153, 366-374`, `gverbs.zil:483-496`, `1actions.zil:4160-4165`, #681)
+- **Parser auto-TAKE is a retained departure for this food repair.** Source EAT has the TAKE syntax flag, and ITAKE-CHECK can acquire an unheld target before dispatch; HELD? recognizes carried contents recursively. The port's EAT pipeline still requires explicit acquisition for lunch, so source parser-level floor eating is not reproduced even though V-EAT's possession branch is. Garlic follows its own routine after the port's reach check. The source's other EAT aliases are not added here. This documents the current scoped implementation, not a policy for future work. Pinned revision `97b7b3d68c075dd9af7da499c3e9690ada3471fd` was read as documentary evidence; no historical Z-machine replay is claimed. (`gsyntax.zil:186-188`, `gparser.zil:1248-1292`, `gverbs.zil:2167-2172`, #681)
 - **The verbs that remain are still mostly inert.** Their real mechanics arrive
   with the regions that need them (the clockwork canary, the plastic boat, the dam
   controls, the Cyclops), which only have to add an item-scoped rule — the parser
@@ -3472,11 +3459,7 @@ Box 12 gave the game a written answer for every stub verb, and doing it raised a
 question this file had not had to answer before: **the verbatim policy above is
 about room descriptions, and says nothing about verb replies.**
 
-`docs/games/dungeon-prose-comparison.md` — the authority the prose rule names —
-compares *descriptions*, mainframe against trilogy. Nothing in it covers what
-`V-YELL` prints. The precedent was already in the tree and undocumented:
-``Prose/drinkWater`` is `V-EAT`'s "Thank you very much. It really hit the spot."
-(`gverbs.zil:483`), taken as-is since the bottle was written.
+`docs/games/dungeon-prose-comparison.md`, the authority the prose rule names, compares descriptions between the mainframe and trilogy. The existing verb-reply precedent is Prose.drinkWater, taken from HIT-SPOT ("Thank you very much. I was rather thirsty (from all this talking, probably).", `gverbs.zil:518-526`), rather than V-EAT's food sentence. Prose.lunchEaten now reproduces that separate V-EAT sentence under #681.
 
 **The policy, stated here because it now covers more than one line.** A trilogy
 verb reply is treated exactly as an `identical` description is: taken verbatim

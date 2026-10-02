@@ -402,6 +402,22 @@ struct ZorkHouse: GameContent {
             stopFuse("lanternDies")
         }
 
+        // V-EAT checks lunch possession at one containment level. GARLIC-F
+        // consumes accessible garlic without that possession check.
+        lunch.before(.eat) {
+            guard lunch.isReachable else { try refuse(gameText.cantReach(lunch.definiteNoun)) }
+            guard lunch.isHeld || player.inventory.contains(where: { $0.holds(lunch) }) else {
+                try refuse(Prose.lunchNotHeld)
+            }
+            lunch.vanish()
+            try reply(Prose.lunchEaten)
+        }
+        garlic.before(.eat) {
+            guard garlic.isReachable else { try refuse(gameText.cantReach(garlic.definiteNoun)) }
+            garlic.vanish()
+            try reply(Prose.garlicEaten)
+        }
+
         // Liquids. Water lives in the bottle and can't be carried loose — it
         // slips through your fingers. Drinking or pouring empties the bottle;
         // refilling needs a water source, of which this slice has none yet
