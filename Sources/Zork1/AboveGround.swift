@@ -193,6 +193,7 @@ struct ZorkAboveGround: GameContent {
     /// `.nowhere`).
     let skeletonKey = Item {
         name("skeleton key")
+        trait(.opensEggDestructively, true)
     }
 
     let clearingEast = Location {

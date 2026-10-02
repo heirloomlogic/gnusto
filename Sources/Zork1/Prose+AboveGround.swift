@@ -162,6 +162,14 @@ extension Prose {
         seriously compromised its esthetic appeal.
         """
 
+    static let eggNeedsTool = "You have neither the tools nor the expertise."
+
+    static let eggHandsRiskDamage = "I doubt you could do that without damaging it."
+
+    static func eggWrongTool(_ tool: String) -> String {
+        "The concept of using \(tool) is certainly original."
+    }
+
     static let bauble = """
         A small brass bauble, beautifully worked, that catches the light with
         a warm glow. It is the sort of trinket a songbird might treasure.

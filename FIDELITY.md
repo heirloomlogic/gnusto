@@ -911,16 +911,14 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   is only a loan — his steal daemon takes it back on a later turn, the original's
   snatch-and-resteal.
 - **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse models his off-screen work while he carries the gift. An earlier ordinary stash or death deposit opens it immediately and cancels the fuse, so every thief-deposited egg keeps the clockwork canary intact. The thief accepts only a gift the player is holding, matching `PRE-GIVE`; named actors, scenery, and other non-held objects are refused before the handler changes containment. (#667, #668)
-- **The jewel-encrusted egg is now an openable container.** Forcing it open *by hand* (the
-  built-in `open`) wrecks the canary — the intact `golden clockwork canary` is swapped for a
-  worthless `broken clockwork canary`. Only the thief's careful hands (above) open it
-  without ruin.
+- **The jewel-encrusted egg follows `EGG-OBJECT`'s OPEN branches.** Bare `open egg` refuses with the source's no-tool line, and `open egg with hands` refuses with its warning about damage; both leave the egg shut and the intact canary inside. A named source weapon or tool opens it destructively, swapping the `golden clockwork canary` for the worthless `broken clockwork canary`. Source WEAPONBIT items use the port's `.sharp` trait; source TOOLBIT items use `.opensEggDestructively`, including the skeleton key, wrench, screwdriver, hand pump, shovel, and the tube that subsumes the source's putty object. The thief's careful hands (above) still open it without ruin. (`1actions.zil:2919-2945`, #669)
 
 ### Mechanics still simplified or deferred
 
 - **The thief has no `CYCLOWRATH`-style eat-you timer of his own**; he simply fights in his
   lair and is otherwise evasive. (The cyclops *does* now have his wrath timer — see the
   Phase-10.10 cyclops entry, closed in the fidelity pass.)
+- **The egg's non-OPEN damage paths remain simplified.** `EGG-OBJECT` also ruins the egg through MUNG, THROW, climbing on it, and several other rough actions. The port's `smash` family still uses the general stub floor, and an unsuitable OPEN instrument always gets the source's first refusal instead of setting FIGHTBIT for a different second answer. (`1actions.zil:2919-2972`)
 - **The canary's own scoring (find 6 / case 4) and the `wind canary` → brass bauble trick are
   deferred to Phase 10.12.** This phase introduces the canary item and its intact/ruined
   state only; the canary and bauble are *not* yet in the host `scoring.treasures` roster.
@@ -987,9 +985,7 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 
 ### Tests
 
-- **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg
-  above ground, then winding the broken canary (only grinds, no bauble), and casing it (scores
-  nothing).
+- **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg above ground with the sword, then winding the broken canary (only grinds, no bauble), and casing it (scores nothing). `Zork1ThiefTests` separately pins the bare and explicit-hands refusals, the destructive weapon route, harmless repeated OPEN, and a thief clean-open after the bare refusal.
 - **The full intact `wind canary` → bauble → case run is exercised by the Phase 10.14 walkthrough** (`Zork1WalkthroughTests`). The intact canary is recoverable after the thief cleanly opens a gifted or stolen egg. The walkthrough gives him the egg in his lair and leaves him to deposit it; `Zork1ThiefTests` separately pins ordinary stash, death after theft, and death before the gift fuse fires, then winds the recovered canary in the forest and takes the bauble.
 
 ## Phase 10.13 — Endgame wiring: the Stone Barrow & the ancient map (`Sources/Zork1/Zork1.swift`, `AboveGround.swift`)

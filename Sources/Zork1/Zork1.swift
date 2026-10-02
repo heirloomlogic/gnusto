@@ -4,6 +4,11 @@ import GnustoDangerousDark
 import GnustoMeleeCombat
 import GnustoScoring
 
+extension TraitKey<Bool> {
+    /// A source `TOOLBIT` item that can force the egg's mechanism.
+    static let opensEggDestructively = Self("opensEggDestructively", default: false)
+}
+
 /// *Zork I: The Great Underground Empire* — the complete game. Composes every
 /// region — the above-ground grounds (``ZorkAboveGround``), the house
 /// (``ZorkHouse``), the cellar (``ZorkCellar``), the Round Room hub
@@ -706,16 +711,24 @@ struct Zork1: Game, GameMain {
             try end(won: true)
         }
 
-        // Forcing the egg open by hand. The mechanism is too fine for brute
-        // fingers: prying it yourself wrecks the canary inside, swapping the
-        // intact bird for the ruined one, before the built-in open completes.
-        // (The thief opens it cleanly through his own service — that path sets
-        // `isOpen` directly and never runs this rule.) Guarded so a second
-        // "open egg" on an already-open or already-ruined egg does nothing. The
-        // egg lives in ``ZorkAboveGround`` and the canary in ``ZorkHouse``, so
-        // the host owns this cross-bundle rule.
+        // EGG-OBJECT distinguishes an unassisted attempt, explicit hands, and
+        // a held source weapon or tool. Only the last branch opens the egg and
+        // ruins the canary. The thief's service sets `isOpen` directly,
+        // preserving the bird. This cross-bundle rule owns the egg/canary swap.
         aboveGround.egg.before(.open) {
-            guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
+            guard !aboveGround.egg.isOpen else { return }
+            guard let tool = command.indirectObject else {
+                let words = command.rawInput.lowercased().split(whereSeparator: { !$0.isLetter })
+                if words.last == "hands" {
+                    try refuse(Prose.eggHandsRiskDamage)
+                }
+                try refuse(Prose.eggNeedsTool)
+            }
+            guard tool.isHeld else { try refuse(gameText.notHolding()) }
+            guard tool[default: .sharp] || tool[default: .opensEggDestructively] else {
+                try refuse(Prose.eggWrongTool(tool.indefiniteName))
+            }
+            guard aboveGround.egg.holds(house.canary) else { return }
             house.canary.replace(with: house.brokenCanary)
             say(Prose.eggForcedRuinsCanary)
             // Falls through to the built-in open, which reports the egg opened.
@@ -901,7 +914,7 @@ struct Zork1: Game, GameMain {
 
         // The egg-opening service: four turns after you hand him the egg, the
         // thief works its mechanism open — the canary intact, where your own
-        // hands would have wrecked it. Silent (you're not there to watch); you
+        // forcing it with a weapon or tool would have wrecked it. Silent (you're not there to watch); you
         // find the opened egg among his effects when he falls. An earlier
         // stash or death deposits and opens the egg immediately instead.
         fuse("thiefOpensEgg", after: 4) {

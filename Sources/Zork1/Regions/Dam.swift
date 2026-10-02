@@ -193,6 +193,7 @@ struct ZorkDam: GameContent {
         synonyms("tool")
         description(Prose.wrench)
         trait(.weight, 10)
+        trait(.opensEggDestructively, true)
     }
 
     let screwdriver = Item {
@@ -200,6 +201,7 @@ struct ZorkDam: GameContent {
         adjectives("screw")
         synonyms("driver", "tool")
         description(Prose.screwdriver)
+        trait(.opensEggDestructively, true)
     }
 
     let tube = Item {
@@ -208,6 +210,8 @@ struct ZorkDam: GameContent {
         firstSight(Prose.tubeFirstSight)
         description(Prose.tube)
         trait(.weight, 5)
+        // The port folds the source's TOOLBIT putty into its tube.
+        trait(.opensEggDestructively, true)
     }
 
     // MARK: - Reservoir items
@@ -217,6 +221,7 @@ struct ZorkDam: GameContent {
         adjectives("hand", "held", "air", "small")
         synonyms("pump")
         description(Prose.handPump)
+        trait(.opensEggDestructively, true)
     }
 
     /// The trunk of jewels: fifteen on the find, five in the case. It lies on

@@ -88,11 +88,26 @@ struct ZorkSystems: GameContent {
     /// ``Intent/greet`` owns every spelling of a greeting and reads the frame
     /// both ways; Zork's part is the branching, which lives in ``Prose`` and in
     /// `text.greets`. (#325, FIDELITY.md)
-    var verbs: [SyntaxRule] {
-        [
-            .wind, .inflate, .deflate, .launch, .raise, .lower, .turnWith,
-            .ring, .echo, .odysseus, .fix, .diagnose,
-        ]
+    @VerbBuilder var verbs: [SyntaxRule] {
+        Intent.wind
+        Intent.inflate
+        Intent.deflate
+        Intent.launch
+        Intent.raise
+        Intent.lower
+        Intent.turnWith
+        Intent.ring
+        Intent.echo
+        Intent.odysseus
+        Intent.fix
+        Intent.diagnose
+        // The source resolves these phrases to its HANDS pseudo-object.
+        // Literal rows carry them to the egg's `.open` rule with no
+        // indirect object. Other openables still use the built-in action.
+        SyntaxRule("open", .directObject, "with", "hands", intent: .open)
+        SyntaxRule("open", .directObject, "with", "your", "hands", intent: .open)
+        SyntaxRule("open", .directObject, "with", "bare", "hands", intent: .open)
+        SyntaxRule("open", .directObject, "with", "your", "bare", "hands", intent: .open)
     }
 
     /// `V-LOWER`'s `HACK-HACK` stem (`gverbs.zil:902`), which `V-RAISE` calls
