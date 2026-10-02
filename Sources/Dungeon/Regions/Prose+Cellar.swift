@@ -32,8 +32,8 @@ extension Prose {
     /// along. The thief's listing line had the identical fault and is the
     /// reason this one was looked at. (#329)
     static let trollOnTheFloor = """
-        The nasty-looking troll is face down in the dirt, the bloody axe still
-        in his fist and every way out of the room clear.
+        The nasty-looking troll is face down in the dirt, out cold, with every
+        way out of the room clear.
         """
 
     static let trollBlocksTheWay = """

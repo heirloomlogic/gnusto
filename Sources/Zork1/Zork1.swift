@@ -649,11 +649,16 @@ struct Zork1: Game, GameMain {
                 wound: [Prose.trollWound1, Prose.trollWound2],
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
+            onKnockout: {
+                if cellar.troll.holds(cellar.axe) {
+                    cellar.axe.move(to: cellar.trollRoom)
+                }
+            },
             onDefeat: {
                 cellar.$trollDefeated.trips()
-                // His bloody axe was `.nowhere` in his hands; now it drops to
-                // the Troll Room floor, there to be looted (FIDELITY.md).
-                cellar.axe.move(to: cellar.trollRoom)
+                if cellar.troll.holds(cellar.axe) {
+                    cellar.axe.move(to: cellar.trollRoom)
+                }
             })
 
         // The bar. Descending while the thief is at large throws the bolt
@@ -868,7 +873,12 @@ struct Zork1: Game, GameMain {
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],
-                playerDeath: Prose.trollKillsYou))
+                playerDeath: Prose.trollKillsYou),
+            onRecovery: {
+                if cellar.axe.isIn(cellar.trollRoom) {
+                    cellar.axe.move(heldBy: cellar.troll)
+                }
+            })
 
         // The thief now prowls the whole underground, teleport-roaming every
         // room below (bar his own lair, which he's summoned to defend, and the
@@ -938,6 +948,7 @@ struct Zork1: Game, GameMain {
         // ``ZorkCellar`` room, so the host places him — cross-bundle, like his
         // every other seam.
         thief.thief.starts(in: cellar.gallery)
+        cellar.axe.starts(heldBy: cellar.troll)
 
         house.cellar.south(cellar.eastOfChasm)
         cellar.eastOfChasm.north(house.cellar)
@@ -946,17 +957,19 @@ struct Zork1: Game, GameMain {
         cellar.studio.up(house.kitchen)
 
         // Where ZorkCellar meets ZorkRoundRoom and ZorkMaze: the troll gates
-        // both his passages, and each opens once he falls. East runs onto the
+        // both his passages, and each opens while he is down. East runs onto the
         // East-West Passage; west drops into the maze — one-way, canonical
         // (Maze-1 has no exit back to the Troll Room), so there's no matching
         // back-edge.
         cellar.trollRoom.exit(
             .east, to: roundRoom.eastWestPassage,
-            when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
+            when: { cellar.trollDefeated || cellar.troll.isUnconscious },
+            otherwise: Prose.trollBlocksTheWay)
         roundRoom.eastWestPassage.west(cellar.trollRoom)
         cellar.trollRoom.exit(
             .west, to: maze.maze1,
-            when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
+            when: { cellar.trollDefeated || cellar.troll.isUnconscious },
+            otherwise: Prose.trollBlocksTheWay)
 
         // Where ZorkRoundRoom meets ZorkDam: Deep Canyon opens east onto the
         // dam and northwest onto the reservoir's south shore, and the Chasm's

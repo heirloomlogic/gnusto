@@ -298,6 +298,22 @@ struct MeleeCombatTests {
         #expect(afterWaking.contains("The golem swipes and catches nothing."))
     }
 
+    @Test func lifecycleHooksRunOnceWithSharedUnconsciousStateStillSet() async throws {
+        let transcript = try await play(
+            StunLabGame(),
+            ["take bar", "attack golem", "check", "check", "check", "quit"],
+            seed: 0)
+        let beforeRecovery = turnOutput(of: "check", in: transcript)
+        #expect(beforeRecovery.contains("Out cold: true."))
+        #expect(beforeRecovery.contains("Knockouts: 1, saw cold: true."))
+        #expect(beforeRecovery.contains("Recoveries: 0"))
+
+        let afterRecovery = turnOutput(ofLast: "check", in: transcript)
+        #expect(afterRecovery.contains("Out cold: false."))
+        #expect(afterRecovery.contains("Knockouts: 1, saw cold: true."))
+        #expect(afterRecovery.contains("Recoveries: 1, saw cold: true."))
+    }
+
     /// The finishing blow on the turn the stun clears — the turn the player
     /// spent the knockout to buy. Seed 0 again, one probe turn further in, so
     /// the swing lands with the countdown resting at zero: `stunned[key] != nil`
@@ -349,6 +365,8 @@ struct MeleeCombatTests {
 
         let whileDown = output(after: "eyes go dull", in: transcript)
         #expect(whileDown.contains("Out cold: true."))
+        #expect(whileDown.contains("Knockouts: 0"))
+        #expect(whileDown.contains("Recoveries: 0"))
         #expect(!whileDown.contains("swipes and catches nothing"))
         #expect(!whileDown.contains("rakes your forearm"))
         #expect(!whileDown.contains("brings both fists down"))

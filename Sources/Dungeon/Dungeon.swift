@@ -738,9 +738,16 @@ struct Dungeon: Game, GameMain {
                 wound: [Prose.trollWound1, Prose.trollWound2],
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
+            onKnockout: {
+                if cellar.troll.holds(cellar.axe) {
+                    cellar.axe.move(to: cellar.trollRoom)
+                }
+            },
             onDefeat: {
                 cellar.$trollDefeated.trips()
-                cellar.axe.move(to: cellar.trollRoom)
+                if cellar.troll.holds(cellar.axe) {
+                    cellar.axe.move(to: cellar.trollRoom)
+                }
             })
 
         // Forcing the egg open by hand. The mechanism is too fine for brute
@@ -1300,7 +1307,12 @@ struct Dungeon: Game, GameMain {
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],
-                playerDeath: Prose.trollKillsYou))
+                playerDeath: Prose.trollKillsYou),
+            onRecovery: {
+                if cellar.axe.isIn(cellar.trollRoom) {
+                    cellar.axe.move(heldBy: cellar.troll)
+                }
+            })
 
         thiefTimers
         palantirTimers
@@ -1336,6 +1348,7 @@ struct Dungeon: Game, GameMain {
         cellar.trollRoom.west(house.cellar)
         house.cellar.south(cellar.westOfChasm)
         cellar.westOfChasm.west(house.cellar)
+        cellar.axe.starts(heldBy: cellar.troll)
 
         // The chimney, one-way up into the Kitchen. The load gate is the
         // host's `before(.go)` rule above rather than a conditional exit,
@@ -1346,7 +1359,8 @@ struct Dungeon: Game, GameMain {
         // the front door of the underground crossroads, and he holds it the
         // same way he holds the crawlway east.
         cellar.trollRoom.north(
-            crossroads.eastWestPassage, when: { cellar.trollDefeated },
+            crossroads.eastWestPassage,
+            when: { cellar.trollDefeated || cellar.troll.isUnconscious },
             otherwise: Prose.trollBlocksTheWay)
         crossroads.eastWestPassage.west(cellar.trollRoom)
 
@@ -1449,7 +1463,7 @@ struct Dungeon: Game, GameMain {
         // two. Maze-1 comes back **west** — the mainframe's own asymmetry, and
         // the first thing the maze does to you.
         cellar.trollRoom.south(
-            maze.maze1, when: { cellar.trollDefeated },
+            maze.maze1, when: { cellar.trollDefeated || cellar.troll.isUnconscious },
             otherwise: Prose.trollBlocksTheWay)
         maze.maze1.west(cellar.trollRoom)
 

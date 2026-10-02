@@ -38,6 +38,8 @@ randomness, which is what keeps one villain's presence from shifting another
 villain's draws. Two simplifications are deliberate and want ledgering per game:
 the player's wounds never heal, and a defeated villain stays defeated.
 
+The optional lifecycle hooks expose the transitions a host may need for inventory or map state. `onKnockout` runs once only when `villain` rolls a new knockout, after the actor's shared unconscious flag is set; it does not run for a finishing blow or unconscious state applied outside melee. `onRecovery` runs once on the final stun tick, after deferred recovery is scheduled and while the actor remains unconscious through the rest of that turn; it does not run for externally applied unconscious state. `onDefeat` retains its existing timing before the actor vanishes.
+
 ## Wiring it in
 
 Mark the weapons, register each villain in `rules`, and splice his
@@ -136,8 +138,8 @@ only in his own lair, so his gate is closed on almost every turn he is alive.
 
 ### Registering a villain
 
-- ``MeleeCombat/villain(_:key:strength:weapons:prose:onDefeat:)``
-- ``MeleeCombat/aggression(of:key:named:strikesFirst:playerStrength:when:prose:)``
+- ``MeleeCombat/villain(_:key:strength:weapons:prose:onKnockout:onDefeat:)``
+- ``MeleeCombat/aggression(of:key:named:strikesFirst:playerStrength:when:prose:onRecovery:)``
 
 ### Traits the host declares on its items
 

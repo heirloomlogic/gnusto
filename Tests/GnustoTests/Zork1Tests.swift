@@ -9,6 +9,13 @@ import Testing
 /// the kitchen window, the rug/trap-door pair, the tree/egg/trophy-case
 /// chain, and the leaves/grating pair, plus a full-slice smoke walk.
 struct Zork1Tests {
+    private static let toTheTrollForKnockout = [
+        "north", "north", "up", "take egg", "down", "south", "west",
+        "south", "east", "open window", "west", "west",
+        "take sword", "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down", "north",
+    ]
+
     @Test func openingTheMailboxRevealsAndReadsTheLeaflet() async throws {
         let transcript = try await play(
             Zork1(),
@@ -536,6 +543,93 @@ struct Zork1Tests {
         let afterDeath = transcript.components(
             separatedBy: "troll takes a fatal blow")[1]
         #expect(!afterDeath.contains("A nasty-looking troll"))
+    }
+
+    @Test(arguments: [("east", "East-West Passage"), ("west", "Maze")])
+    func anUnconsciousTrollOpensBothPassages(direction: String, destination: String) async throws {
+        let awake = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout + [direction],
+            seed: 8)
+        #expect(turnOutput(ofLast: direction, in: awake).contains(Prose.trollBlocksTheWay))
+
+        let transcript = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout + ["attack troll", direction],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll", in: transcript).contains(Prose.trollKnockout))
+        let passage = turnOutput(ofLast: direction, in: transcript)
+        #expect(passage.contains(destination))
+        #expect(!passage.contains(Prose.trollBlocksTheWay))
+    }
+
+    @Test func theAwakeTrollsAxeIsVisibleButUnavailable() async throws {
+        let transcript = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout + ["examine axe", "take axe", "attack troll with axe"],
+            seed: 8)
+
+        #expect(turnOutput(of: "examine axe", in: transcript).contains("A heavy war axe"))
+        #expect(turnOutput(of: "take axe", in: transcript).contains("You can't reach the bloody axe."))
+        #expect(
+            turnOutput(of: "attack troll with axe", in: transcript).contains("You aren't even holding the bloody axe."))
+    }
+
+    @Test func trollRecoveryReclaimsOnlyAnAvailableAxe() async throws {
+        let route = Self.toTheTrollForKnockout
+        let loose = try await play(
+            fresh: Zork1(),
+            route + ["attack troll", "look", "wait", "take axe", "east"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll", in: loose).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "look", in: loose).contains("An unconscious troll is sprawled on the floor."))
+        #expect(turnOutput(of: "take axe", in: loose).contains("You can't reach the bloody axe."))
+        #expect(turnOutput(ofLast: "east", in: loose).contains(Prose.trollBlocksTheWay))
+
+        let held = try await play(
+            fresh: Zork1(),
+            route + ["attack troll", "take axe", "inventory", "east", "inventory"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll", in: held).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "take axe", in: held).contains("Taken."))
+        #expect(turnOutput(ofLast: "east", in: held).contains(Prose.trollBlocksTheWay))
+        #expect(turnOutput(of: "inventory", in: output(after: "> east", in: held)).contains("bloody axe"))
+    }
+
+    @Test func killingAnUnconsciousTrollLeavesHisTakenAxeHeldAndPassagesOpen() async throws {
+        let transcript = try await play(
+            fresh: Zork1(),
+            Self.toTheTrollForKnockout
+                + [
+                    "attack troll", "take axe", "attack troll with axe",
+                    "inventory", "east",
+                ],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll", in: transcript).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "attack troll with axe", in: transcript).contains("fatal blow"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("bloody axe"))
+        #expect(turnOutput(ofLast: "east", in: transcript).contains("East-West Passage"))
+    }
+
+    @Test func aDestroyedAxeDoesNotReturnWhenTheTrollDies() async throws {
+        let world = try GameWorld(game: Zork1(), seed: 8)
+        _ = await world.begin()
+        var knockout = ""
+        for command in Self.toTheTrollForKnockout + ["attack troll", "take axe"] {
+            let result = await world.perform(command)
+            if command == "attack troll" { knockout = result.output }
+        }
+        #expect(knockout.contains(Prose.trollKnockout))
+
+        // The coal machine destroys a non-coal load with `Item.vanish()`. Apply
+        // that exact placement transition here without replaying the whole mine.
+        await world.vanishForTrollAxeRegression("ZorkCellar.axe")
+        let death = await world.perform("attack troll with sword")
+
+        #expect(death.output.contains("fatal blow"))
+        #expect(await world.placementForTrollAxeRegression("ZorkCellar.axe") == .nowhere)
     }
 
     @Test func theTrollCanKillYou() async throws {

@@ -945,6 +945,104 @@ struct DungeonTests {
             ])
     }
 
+    @Test(
+        arguments: [
+            ("east", "North-South Crawlway"),
+            ("north", "East-West Passage"),
+            ("south", "Maze"),
+        ])
+    func anUnconsciousTrollOpensAllThreePassages(direction: String, destination: String) async throws {
+        let awake = try await play(
+            fresh: Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor + ["east", direction],
+            seed: 8)
+        #expect(turnOutput(ofLast: direction, in: awake).contains(Prose.trollBlocksTheWay))
+
+        let transcript = try await play(
+            fresh: Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["east", "attack troll with sword", direction],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll with sword", in: transcript).contains(Prose.trollKnockout))
+        let passage = turnOutput(ofLast: direction, in: transcript)
+        #expect(passage.contains(destination))
+        #expect(!passage.contains(Prose.trollBlocksTheWay))
+    }
+
+    @Test func theAwakeTrollsAxeIsVisibleButUnavailable() async throws {
+        let transcript = try await play(
+            fresh: Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["east", "examine axe", "take axe", "attack troll with axe"],
+            seed: 8)
+
+        #expect(turnOutput(of: "examine axe", in: transcript).contains("A heavy war axe"))
+        #expect(turnOutput(of: "take axe", in: transcript).contains("You can't reach the bloody axe."))
+        #expect(
+            turnOutput(of: "attack troll with axe", in: transcript).contains("You aren't even holding the bloody axe."))
+    }
+
+    @Test func trollRecoveryReclaimsOnlyAnAvailableAxe() async throws {
+        let route = Self.intoTheKitchen + Self.downTheTrapDoor + ["east"]
+        let loose = try await play(
+            fresh: Dungeon(),
+            route + ["attack troll with sword", "look", "wait", "take axe", "north"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll with sword", in: loose).contains(Prose.trollKnockout))
+        let unconsciousLook = turnOutput(of: "look", in: loose)
+        #expect(unconsciousLook.contains("face down in the dirt"))
+        #expect(!unconsciousLook.contains("in his fist"))
+        #expect(unconsciousLook.contains("bloody axe"))
+        #expect(turnOutput(of: "take axe", in: loose).contains("You can't reach the bloody axe."))
+        #expect(turnOutput(ofLast: "north", in: loose).contains(Prose.trollBlocksTheWay))
+
+        let held = try await play(
+            fresh: Dungeon(),
+            route + ["attack troll with sword", "take axe", "inventory", "north", "inventory"],
+            seed: 8)
+        #expect(turnOutput(of: "attack troll with sword", in: held).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "take axe", in: held).contains("Taken."))
+        #expect(turnOutput(ofLast: "north", in: held).contains(Prose.trollBlocksTheWay))
+        #expect(turnOutput(of: "inventory", in: output(after: "> north", in: held)).contains("bloody axe"))
+    }
+
+    @Test func killingAnUnconsciousTrollLeavesHisTakenAxeHeldAndPassagesOpen() async throws {
+        let transcript = try await play(
+            fresh: Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + [
+                    "east", "attack troll with sword", "take axe",
+                    "attack troll with axe", "inventory", "north",
+                ],
+            seed: 8)
+
+        #expect(turnOutput(of: "attack troll with sword", in: transcript).contains(Prose.trollKnockout))
+        #expect(turnOutput(of: "attack troll with axe", in: transcript).contains("fatal blow"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("bloody axe"))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains("East-West Passage"))
+    }
+
+    @Test func aDestroyedAxeDoesNotReturnWhenTheTrollDies() async throws {
+        let world = try GameWorld(game: Dungeon(), seed: 8)
+        _ = await world.begin()
+        let route = Self.intoTheKitchen + Self.downTheTrapDoor + ["east"]
+        var knockout = ""
+        for command in route + ["attack troll with sword", "take axe"] {
+            let result = await world.perform(command)
+            if command == "attack troll with sword" { knockout = result.output }
+        }
+        #expect(knockout.contains(Prose.trollKnockout))
+
+        // The coal machine destroys a non-coal load with `Item.vanish()`. Apply
+        // that exact placement transition here without replaying the whole mine.
+        await world.vanishForTrollAxeRegression("DungeonCellar.axe")
+        let death = await world.perform("attack troll with sword")
+
+        #expect(death.output.contains("fatal blow"))
+        #expect(await world.placementForTrollAxeRegression("DungeonCellar.axe") == .nowhere)
+    }
+
     /// The Round Room is a **carousel**, which is the single largest thing the
     /// trilogy threw away here: nine passages, machinery under the floor, and
     /// not one of them going where you asked while it turns. Zork I's Round

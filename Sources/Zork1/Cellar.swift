@@ -11,8 +11,7 @@ import GnustoScoring
 /// makes the darkness lethal is the `DangerousDark` plugin, wired by the
 /// host with this game's prose.
 ///
-/// The Troll Room's passages — east to the Round Room hub, west into the maze —
-/// are host-wired conditional exits gated on ``trollDefeated`` (see ``Zork1``).
+/// The Troll Room's passages — east to the Round Room hub, west into the maze — are host-wired conditional exits gated on permanent defeat or a current knockout (see ``Zork1``).
 struct ZorkCellar: GameContent {
     // MARK: - Rooms
 
@@ -35,9 +34,7 @@ struct ZorkCellar: GameContent {
         dark
     }
 
-    /// North of the cellar. Both the troll's passages open once he falls: east
-    /// onto the Round Room hub, west down into the maze. Both crossings are
-    /// host-wired (they span other bundles) and gated on ``trollDefeated``.
+    /// North of the cellar. Both the troll's passages open once he falls: east onto the Round Room hub, west down into the maze. Both crossings are host-wired (they span other bundles) and gated on permanent defeat or a current knockout.
     let trollRoom = Location {
         name("Troll Room")
         description(Prose.trollRoom)
@@ -49,14 +46,11 @@ struct ZorkCellar: GameContent {
     let troll = Actor {
         name("troll")
         pronoun(.he)
-        description(Prose.troll)
-        firstSight(Prose.trollPresence)
+        description(when: \Actor.isUnconscious, Prose.trollUnconscious, otherwise: Prose.troll)
+        firstSight(when: \Actor.isUnconscious, Prose.trollUnconscious, otherwise: Prose.trollPresence)
     }
 
-    /// The troll's bloody axe. It begins ``.nowhere`` — in his hands, out of
-    /// reach while he lives — and clatters to the Troll Room floor when he falls
-    /// (his `onDefeat`, host-wired in ``Zork1``). Sharp enough to hole the river
-    /// boat, like the other blades.
+    /// The troll's bloody axe. He holds it at the start, visible but out of reach, and drops it to the Troll Room floor when knocked out or killed. Sharp enough to hole the river boat, like the other blades.
     let axe = Item {
         name("bloody axe")
         adjectives("bloody")

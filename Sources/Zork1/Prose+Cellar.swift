@@ -110,6 +110,11 @@ extension Prose {
         out of the room.
         """
 
+    static let trollUnconscious = """
+        An unconscious troll is sprawled on the floor. All passages out of the
+        room are open.
+        """
+
     static let trollBlocksTheWay = """
         The troll fends you off with a menacing gesture.
         """
