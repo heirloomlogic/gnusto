@@ -18,6 +18,32 @@ struct Zork1LeavesTests {
         "odysseus", "east", "east", "east", "east", "north", "north", "north",
     ]
 
+    @Test(arguments: ["me", "leaves"])
+    func takingLeavesFromAnInvalidHolderDoesNotDiscoverTheGrating(holder: String) async throws {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in ["north", "north", "north"] { _ = await world.perform(command) }
+        let before = await world.snapshot()
+        #expect(before.placements[Self.leaves] == .room(Self.clearing))
+        #expect(!before.revealedItems.contains(Self.grating))
+        let refused = await world.perform("take leaves from \(holder)")
+        #expect(refused.output.contains("You don't find the pile of leaves there."))
+        #expect(!refused.output.contains("revealed"))
+        let after = await world.snapshot()
+        #expect(after.placements[Self.leaves] == before.placements[Self.leaves])
+        #expect(after.revealedItems == before.revealedItems)
+        #expect(
+            after.globals[EntityID("ZorkAboveGround.gratingDiscovered")]
+                == before.globals[EntityID("ZorkAboveGround.gratingDiscovered")])
+        #expect(after.touched == before.touched)
+        #expect((await world.perform("inventory")).output.contains("empty-handed"))
+        #expect((await world.perform("examine grating")).output.contains("can't see"))
+        let taken = await world.perform("take leaves")
+        expectInOrder(taken.output, ["In disturbing the pile of leaves, a grating is revealed.", "Taken."])
+        #expect((await world.snapshot()).placements[Self.leaves] == .heldBy(.player))
+        #expect((await world.snapshot()).revealedItems.contains(Self.grating))
+    }
+
     @Test func takingLeavesCarriesThemAndRevealsTheClosedGrating() async throws {
         let world = try GameWorld(game: Zork1(), seed: 39)
         _ = await world.begin()
@@ -118,7 +144,7 @@ struct Zork1LeavesTests {
         #expect((await world.snapshot()).placements[Self.leaves] == .heldBy(.player))
         _ = await world.perform("up")
         let look = await world.perform("look")
-        #expect(look.output.contains("An open grating descends into darkness."))
+        #expect(look.output.contains("There is an open grating, descending into darkness."))
         #expect(!look.output.contains("On the ground is a pile of leaves."))
         _ = await world.perform("drop leaves")
         _ = await world.perform("down")

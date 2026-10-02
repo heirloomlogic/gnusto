@@ -208,7 +208,7 @@ extension Prose {
     static func clearingGrating(gratingOpen: Bool, discovered: Bool) -> String {
         let grating =
             gratingOpen
-            ? "An open grating descends into darkness."
+            ? "There is an open grating, descending into darkness."
             : discovered ? "There is a grating securely fastened into the ground." : ""
         return """
             You are in a clearing, with a forest surrounding you on all sides.

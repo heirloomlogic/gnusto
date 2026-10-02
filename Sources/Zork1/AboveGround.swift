@@ -485,6 +485,11 @@ struct ZorkAboveGround: GameContent {
         say(cutting ? Prose.leavesCutReveal : Prose.leavesMoveEmbellishment)
     }
 
+    /// TAKE FROM admits containment at any depth, as the default action does.
+    private func containsLeaves(_ holder: Item) -> Bool {
+        holder.contents.contains { $0 == leaves || containsLeaves($0) }
+    }
+
     // MARK: - Rules
 
     var rules: Rules {
@@ -510,8 +515,9 @@ struct ZorkAboveGround: GameContent {
         }
 
         leaves.before(.take) {
-            // Keep default TAKE's possession and reach refusals; no discovery
-            // through a closed transparent holder before that refusal runs.
+            // Let default TAKE answer a false holder claim before discovery,
+            // and keep its possession and reach refusal ordering.
+            if let holder = command.indirectObject, !containsLeaves(holder) { return }
             guard leaves.isReachable else { return }
             discoverGrating()
         }
