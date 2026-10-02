@@ -127,6 +127,24 @@ Keep the closure for a verb that *does* something: reads state, moves the world,
 
 One verb this does not apply to. An **engine stub** — `squeeze`, `dig`, `climb` — already has a word, a line and a reach column, so changing its words is an assignment (`text.stubs.squeeze = …`) and not a row. Writing `action(.squeeze, say: …)` works and warns, because a row there gives up the verb's rows along with everything else in this section. See <doc:StubVerbs>.
 
+## Redirect a default action
+
+A custom default can normalize a command into another intent with ``redirect(to:directObject:indirectObject:preposition:)``. For example, Zork's targeted SWING names the weapon first; ATTACK names the target first:
+
+```swift
+action(.swingAt, reach: .bothObjects) {
+    guard let weapon = command.directObject, let target = command.indirectObject else { return }
+    guard weapon.isHeld else { try refuse("You aren't holding it.") }
+    try redirect(to: .attack, directObject: target, indirectObject: weapon, preposition: "with")
+}
+```
+
+The original command's `before` rules run first. A redirect then runs the replacement's reach checks, world/location/object `before` rules, default and `after` rules. It ends the original default, so that body's remaining code and the original `after` rules do not run. If a replacement rule replies or refuses, the later replacement stages stop in the usual way.
+
+This is one turn: each-turn upkeep, timers, moves, commit and undo capture happen once. The replacement binds its direct object as `it`, while end-of-turn rules and AGAIN retain the original command. An unhandled replacement rolls back the whole typed turn for free. In a grouped command each member can redirect, with upkeep and the clock still shared by the group. If any member redirects to an unhandled command, later members stop and the whole group rolls back, including earlier members' changes and upkeep; the prior undo snapshot remains available.
+
+The helper is limited to the pipeline's stage-4 action. Calling from a `before`, `after` or timer body, or from a default invoked early by ``proceed()``, traps. Meta and engine commands cannot be destinations, and a chain exceeding 32 redirects traps with a cycle diagnostic. ``Command/verbPhrase`` and ``Command/rawInput`` retain the typed input; ``Command/preposition`` is the canonical value supplied by the redirect. The actor, direction and topic are retained too.
+
 ## Shape the pattern
 
 A pattern reads the way it's typed. Each literal is one lowercase alphanumeric

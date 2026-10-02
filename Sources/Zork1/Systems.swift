@@ -163,8 +163,13 @@ struct ZorkSystems: GameContent {
             }
             try reply(Prose.swingWhoosh)
         }
-        // Targeted swings have no default: only the rusty knife is wired.
-        // Other weapons remain unimplemented, so those turns are free.
+        action(.swingAt, reach: .bothObjects) {
+            guard let weapon = command.directObject, let target = command.indirectObject else { return }
+            guard weapon.isHeld else {
+                try refuse(Prose.combatText.weaponNotHeld(weapon.definiteNoun))
+            }
+            try redirect(to: .attack, directObject: target, indirectObject: weapon, preposition: "with")
+        }
 
         // `.diagnose` has no stage-4 default here — the host answers it, since
         // the report reads the host's death counter (see ``Zork1.actions``).

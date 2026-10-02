@@ -170,7 +170,7 @@ public struct Command: Sendable {
     public let directObject: Item?
     /// The secondary item the command acts on, if any.
     public let indirectObject: Item?
-    /// The preposition the player used, if any.
+    /// The parsed preposition, or the canonical one supplied by `redirect`.
     public let preposition: String?
     /// The direction the player named, if any.
     public let direction: Direction?

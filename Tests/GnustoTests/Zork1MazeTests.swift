@@ -3,6 +3,8 @@ import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
+@testable import GnustoMeleeCombat
+@testable import GnustoScoring
 @testable import Zork1
 
 /// End-to-end playthroughs of the Phase 10.10 maze region: the fifteen twisting
@@ -309,6 +311,105 @@ struct Zork1MazeTests {
         text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
+    private static let sleepCyclops = [
+        "southwest", "east", "south", "southeast", "give lunch to cyclops", "open bottle", "give bottle to cyclops",
+    ]
+
+    // Fresh worlds can encode equal dictionaries and sets in different orders.
+    // Decode the two plugin ledgers before comparing their complete values.
+    private static func globalsMatch(_ left: [EntityID: StateValue], _ right: [EntityID: StateValue]) -> Bool {
+        guard Set(left.keys) == Set(right.keys) else { return false }
+        for (id, value) in left {
+            guard let other = right[id] else { return false }
+            switch id {
+            case EntityID("MeleeCombat.ledger"):
+                guard let lhs = MeleeCombat.Ledger(stateValue: value), let rhs = MeleeCombat.Ledger(stateValue: other),
+                    lhs.health == rhs.health, lhs.stunned == rhs.stunned, lhs.engaged == rhs.engaged,
+                    lhs.playerHealth == rhs.playerHealth
+                else { return false }
+            case EntityID("Scoring.claimed"):
+                guard let lhs = Scoring.Claimed(stateValue: value), let rhs = Scoring.Claimed(stateValue: other),
+                    lhs.names == rhs.names
+                else { return false }
+            default:
+                guard value == other else { return false }
+            }
+        }
+        return true
+    }
+
+    @Test(arguments: ["swing sword at cyclops", "thrust sword at cyclops"])
+    func targetedSwingsWakeTheSleepingCyclopsLikeAttack(command: String) async throws {
+        let swing = try await Self.mazeWorld()
+        let attack = try await Self.mazeWorld()
+        for word in Self.sleepCyclops {
+            _ = await swing.perform(word)
+            _ = await attack.perform(word)
+        }
+        let before = await swing.snapshot()
+        let actual = await swing.perform(command)
+        let expected = await attack.perform("attack cyclops with sword")
+        #expect(actual.output == expected.output)
+        #expect(actual.output.contains("the thing that woke him up"))
+        let after = await swing.snapshot()
+        let attacked = await attack.snapshot()
+        #expect(Self.globalsMatch(after.globals, attacked.globals))
+        #expect(after.placements == attacked.placements)
+        #expect(after.activeDaemons == attacked.activeDaemons)
+        #expect(after.rngState == attacked.rngState)
+        #expect(after.moves == before.moves + 1)
+        #expect(after.moves == attacked.moves)
+        #expect(after.pronounIt == attacked.pronounIt)
+        _ = await swing.perform("undo")
+        let restored = await swing.snapshot()
+        #expect(restored.globals == before.globals)
+        #expect(restored.placements == before.placements)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect(restored.moves == before.moves)
+        #expect(restored.rngState == before.rngState)
+        #expect(restored.pronounIt == before.pronounIt)
+        #expect((await swing.perform(command)).output == expected.output)
+    }
+
+    @Test(arguments: ["swing", "thrust"])
+    func targetedSwingsMatchSeededTrollMeleeAndAgain(verb: String) async throws {
+        let route = Array(Self.toMaze5.prefix(while: { $0 != "attack troll" }))
+        let swing = try GameWorld(game: Zork1(), seed: 39)
+        let attack = try GameWorld(game: Zork1(), seed: 39)
+        _ = await swing.begin()
+        _ = await attack.begin()
+        for command in route {
+            _ = await swing.perform(command)
+            _ = await attack.perform(command)
+        }
+        for command in ["\(verb) sword at troll", "again", "again"] {
+            let actual = await swing.perform(command)
+            let expected = await attack.perform("attack troll with sword")
+            #expect(actual.output == expected.output)
+            let swung = await swing.snapshot()
+            let attacked = await attack.snapshot()
+            #expect(Self.globalsMatch(swung.globals, attacked.globals))
+            #expect(swung.placements == attacked.placements)
+            #expect(swung.activeDaemons == attacked.activeDaemons)
+            #expect(swung.rngState == attacked.rngState)
+            #expect(swung.moves == attacked.moves)
+            #expect(swung.pronounIt == attacked.pronounIt)
+        }
+    }
+
+    @Test(arguments: ["swing sword at cyclops", "thrust sword at cyclops"])
+    func anUnheldSwingWeaponCannotWakeTheCyclops(command: String) async throws {
+        let world = try await Self.mazeWorld()
+        for word in Self.sleepCyclops + ["drop sword"] { _ = await world.perform(word) }
+        let before = await world.snapshot()
+        let result = await world.perform(command)
+        #expect(result.output.contains("holding"))
+        #expect(!result.output.contains("the thing that woke him up"))
+        #expect((await world.snapshot()).globals[EntityID("ZorkMaze.cyclopsSubdued")] == .bool(true))
+        #expect((await world.snapshot()).placements == before.placements)
+        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
+    }
+
     private static let boneCommands = ["take bones", "search bones", "move bones"]
     private static let mazeFive = EntityID("ZorkMaze.maze5")
     private static let curseDestination = EntityID("ZorkTemple.landOfDead")
@@ -606,34 +707,6 @@ struct Zork1MazeTests {
         #expect(restored.placements == before.placements)
         #expect(restored.playerLocation == before.playerLocation)
         #expect((await world.perform("diagnose")).output.contains("perfect health"))
-    }
-
-    @Test(arguments: ["swing sword at cyclops", "thrust sword at cyclops"])
-    func targetedNonKnifeSwingsRemainUnimplementedAndFree(command: String) async throws {
-        let world = try await Self.mazeWorld()
-        for command in [
-            "southwest", "east", "south", "southeast", "give lunch to cyclops", "open bottle", "give bottle to cyclops",
-        ] {
-            _ = await world.perform(command)
-        }
-        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
-        let before = await world.snapshot()
-        let unsupported = await world.perform(command)
-        #expect(unsupported.output.contains("can't do that") || unsupported.output.contains("understand"))
-        #expect(!unsupported.output.contains("the thing that woke him up"))
-        let after = await world.snapshot()
-        #expect(after.placements == before.placements)
-        #expect(after.globals == before.globals)
-        #expect(after.activeFuses == before.activeFuses)
-        #expect(after.activeDaemons == before.activeDaemons)
-        #expect(after.moves == before.moves)
-        #expect(after.score == before.score)
-        #expect(after.rngState == before.rngState)
-        #expect(after.lastCommand == before.lastCommand)
-        #expect(after.pronounIt == before.pronounIt)
-        #expect(after.playerLocation == before.playerLocation)
-        #expect(after.touched == before.touched)
-        #expect((await world.perform("examine cyclops")).output.contains("sleeping like a baby"))
     }
 
     @Test func aClosedHolderRefusesTheRustyKnifeTakeWithoutAWarning() async throws {

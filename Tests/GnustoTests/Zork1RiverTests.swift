@@ -486,9 +486,35 @@ struct Zork1RiverTests {
         #expect(after.placements[Self.wreck] == .nowhere)
     }
 
+    @Test(arguments: ["swing sword at label", "thrust sword at label"], [false, true])
+    func targetedSwordSwingsReachTheBoatAttackInterceptionAndUndo(command: String, afloat: Bool) async throws {
+        let world = try await Self.boardedBoatWorld(["take sword"])
+        if afloat { _ = await world.perform("launch boat") }
+        let before = await world.snapshot()
+        let result = await world.perform(command)
+        #expect(result.output.contains(Self.punctureLine))
+        let after = await world.snapshot()
+        #expect(after.playerVehicle == nil)
+        #expect(after.placements[Self.boat] == .nowhere)
+        #expect(after.placements[Self.wreck] == .room(before.playerLocation))
+        #expect(after.moves == before.moves + 1)
+        #expect(result.output.contains(Self.riverDeath) == afloat)
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.placements == before.placements)
+        #expect(restored.playerVehicle == before.playerVehicle)
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect(restored.globals == before.globals)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect(restored.moves == before.moves)
+        #expect(restored.rngState == before.rngState)
+    }
+
     @Test(arguments: ["weapon", "target"])
     func unreachableWeaponOrTargetRefusesBeforePuncturing(blocked: String) async throws {
-        for command in ["attack label with sword", "smash label with sword"] {
+        for command in [
+            "attack label with sword", "smash label with sword", "swing sword at label", "thrust sword at label",
+        ] {
             let world = try await Self.boardedBoatWorld(["take sword"])
             let bottle = EntityID("ZorkHouse.bottle")
             await world.placeBoatTestItem(bottle, .heldBy(.player))
