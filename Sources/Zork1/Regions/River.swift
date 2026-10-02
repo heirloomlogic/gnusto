@@ -178,8 +178,8 @@ struct ZorkRiver: GameContent {
     }
 
     /// The jewelled scarab, five and five, buried in the sand of the Sandy Cave.
-    /// Starts `hidden`; the third dig with the shovel reveals it (a fourth digs
-    /// your own grave).
+    /// Starts `hidden`; the fourth shovel dig reveals it, and the fifth
+    /// collapses the hole.
     let scarab = Item {
         name("jewelled scarab")
         adjectives("jewelled", "beautiful", "carved")
@@ -320,9 +320,9 @@ struct ZorkRiver: GameContent {
     /// above-ground room) and governs the pot of gold.
     @Global var rainbowSolid = false
 
-    /// How many times the sand of the Sandy Cave has been dug. The third dig
-    /// bares the scarab; a fourth collapses the hole.
-    @Global var digCount = 0
+    /// The source BEACH-DIG index: three preliminary digs, then discovery
+    /// and collapse. The initial and post-collapse value is -1.
+    @Global var digCount = -1
 
     /// Turns left before the current carries the boat to the next stretch — the
     /// continuous interrupt's countdown, reloaded on entering each stretch (and
@@ -538,19 +538,26 @@ struct ZorkRiver: GameContent {
             try require(player.vehicle == nil, else: Prose.cliffPathTooNarrow)
         }
 
-        // Digging the sand. Bare hands do nothing; the shovel deepens the hole,
-        // bares the scarab on the third dig, and buries you on the fourth.
+        // The fourth shovel dig reveals the scarab; the fifth resets the
+        // hole and reburies only a scarab still lying directly in the cave.
         sand.before(.dig) {
             try require(command.indirectObject == shovel, else: Prose.digWithoutShovel)
             digCount += 1
+            if digCount > 3 {
+                digCount = -1
+                if scarab.isIn(sandyCave) { scarab.conceal() }
+                try die(Prose.digCollapses)
+            }
             if digCount == 3 {
+                guard !scarab.isRevealed else { try reply(Prose.nothingToDigHere) }
                 scarab.reveal()
                 try reply(Prose.digRevealsScarab)
             }
-            if digCount > 3 {
-                try die(Prose.digCollapses)
+            switch digCount {
+            case 0: try reply(Prose.digProgress)
+            case 1: try reply(Prose.digDeeper)
+            default: try reply(Prose.digSurrounded)
             }
-            try reply(Prose.digProgress)
         }
     }
 

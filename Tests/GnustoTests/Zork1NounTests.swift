@@ -402,6 +402,7 @@ struct Zork1NounTests {
         "northeast",  // Sandy Cave
         "x sand",
         "dig sand with shovel", "dig sand with shovel", "dig sand with shovel",
+        "dig sand with shovel",  // fourth dig reveals the scarab
         "take scarab",
         "southwest",  // Sandy Beach
         "south",  // Shore

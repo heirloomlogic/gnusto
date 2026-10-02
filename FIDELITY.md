@@ -723,9 +723,7 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
   before it looks at the tool. **One syntactic addition:** the original's only INFLATE syntax
   is `INFLAT OBJECT WITH OBJECT`, its lung-power line reached through `BLOW IN` / `BREATHE`;
   this port also accepts a bare `inflate <thing>` and answers it with that same line.
-- **Digging the Sandy Cave**: three digs with the shovel bare the scarab, a fourth collapses
-  the hole and buries the player — the original's `BEACH-DIG` counter, used as-is. Bare
-  hands do nothing.
+- **Digging the Sandy Cave**: from a fresh cave, the first three shovel digs keep the scarab hidden and print the source’s three distinct `BDIGS` messages; the fourth reveals a still-hidden scarab and the fifth collapses the hole. `BEACH-DIG` starts at -1 and resets to -1 before death. Collapse re-hides the scarab only when it lies directly in the cave; a collected scarab, one inside a container, or one elsewhere retains its revealed state through the existing resurrection/scatter handling. A fourth dig with an already revealed scarab uses the source shovel fallback instead of reporting another discovery. Bare hands do nothing. Undo and save/restore preserve progress, discovery and reset visibility. These mechanics follow `SAND-FUNCTION`, `BDIGS` (`1actions.zil:2851–2879`) and `V-DIG` (`gverbs.zil:405–416`) in pinned ZIL, not a historical executable replay. (#677)
 - **The buoy is an openable container**; opening it exposes the large emerald, which scores
   on the take (the original scores it the moment the buoy is opened — the difference is one
   `take` command and never observable in the score line).
