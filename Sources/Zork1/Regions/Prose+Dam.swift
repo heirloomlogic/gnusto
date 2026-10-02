@@ -228,6 +228,8 @@ extension Prose {
 
     // MARK: - Flood (Maintenance Room)
 
+    static let floodLadder = ["ankles", "shins", "knees", "hips", "waist", "chest", "neck"]
+
     /// The water climbs one body-part step each turn — the original's
     /// continuously rising level, narrated every turn rather than in a few
     /// fixed bands. `part` walks the ladder ankles → shins → knees → hips →
@@ -242,6 +244,8 @@ extension Prose {
         """
 
     // MARK: - Blocked & conditional exits
+
+    static let maintenanceRoomFlooded = "The room is full of water and cannot be entered."
 
     static let reservoirWouldDrown = "You would drown."
 

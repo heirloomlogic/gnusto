@@ -255,8 +255,10 @@ struct ZorkDam: GameContent {
     /// Whether the red button has switched the Maintenance Room lights on.
     @Global var maintenanceRoomLit = false
 
-    /// Turns since the blue button sprang the leak — the flood daemon's clock.
+    /// Turns since the blue button sprang the leak; the terminal value seals the room.
     @Global var floodLevel = 0
+
+    var maintenanceRoomFlooded: Bool { floodLevel > Prose.floodLadder.count }
 
     // MARK: - Map
 
@@ -270,8 +272,8 @@ struct ZorkDam: GameContent {
 
         // Dam Lobby.
         damLobby.south(damRoom)
-        damLobby.north(maintenanceRoom)
-        damLobby.east(maintenanceRoom)
+        damLobby.north(maintenanceRoom, when: { !maintenanceRoomFlooded }, otherwise: Prose.maintenanceRoomFlooded)
+        damLobby.east(maintenanceRoom, when: { !maintenanceRoomFlooded }, otherwise: Prose.maintenanceRoomFlooded)
 
         // Maintenance Room.
         maintenanceRoom.south(damLobby)
@@ -379,8 +381,7 @@ struct ZorkDam: GameContent {
         // The blue button springs the leak: the flood daemon starts, and the
         // water rises turn by turn.
         blueButton.before(.push) {
-            guard !isDaemonActive("damFlood") else { try reply(Prose.blueButtonAgain) }
-            floodLevel = 0
+            guard floodLevel == 0 else { try reply(Prose.blueButtonAgain) }
             startDaemon("damFlood")
             try reply(Prose.blueButtonPush)
         }
@@ -389,17 +390,12 @@ struct ZorkDam: GameContent {
     // MARK: - Timers
 
     var timers: [TimedEvent] {
-        // The Maintenance Room flood. The water rises one step each turn along
-        // the original's body-part ladder (ankles → shins → knees → hips →
-        // waist → chest → neck), narrated continuously every turn rather than
-        // in a few fixed bands; once it tops the neck the room is full, whoever
-        // is still here drowns, and the room seals (the daemon stops). Leaving
-        // is the only escape — the leak isn't plugged in this slice.
+        // The terminal flood level seals both entrances before anyone inside
+        // drowns. Stopping the daemon leaves that level intact for save and undo.
         daemon("damFlood") {
-            let ladder = ["ankles", "shins", "knees", "hips", "waist", "chest", "neck"]
             floodLevel += 1
-            if floodLevel <= ladder.count {
-                say(Prose.floodRises(ladder[floodLevel - 1]), from: maintenanceRoom)
+            if !maintenanceRoomFlooded {
+                say(Prose.floodRises(Prose.floodLadder[floodLevel - 1]), from: maintenanceRoom)
             } else {
                 // Past the neck: the room is full. Drowning is not a `say`, so
                 // this one keeps its own room test.
