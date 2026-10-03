@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {mkdtempSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {loadGames, validateCatalog, resolveCatalogGame} from '../lib/game-catalog.mjs';
@@ -17,8 +17,9 @@ test('rejects malformed catalogs, ambiguous names, unsafe modules and symbols', 
   }
   const catalog = value(); catalog.games.push({...catalog.games[0], name: 'sto-ry'}); assert.throws(() => validateCatalog(catalog), /Ambiguous/);
 });
-test('missing and malformed catalog files produce contextual errors', () => {
+test('missing and malformed catalog files produce contextual errors', t => {
   const root = mkdtempSync(path.join(tmpdir(), 'gnusto-catalog-'));
+  t.after(() => rmSync(root, {recursive: true, force: true}));
   assert.throws(() => loadGames(root), /gnusto-games.json/);
   writeFileSync(path.join(root, 'gnusto-games.json'), '{');
   assert.throws(() => loadGames(root), /gnusto-games.json/);

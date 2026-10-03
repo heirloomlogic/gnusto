@@ -46,7 +46,7 @@ export function findEngineRoot(packageRoot, environment = process.env) {
 function requireTrait(root, name) {
   if (!/\.trait\(\s*name:\s*"Playtest"/.test(fs.readFileSync(path.join(root, 'Package.swift'), 'utf8'))) throw new Error(`${name} does not declare the required Playtest trait`);
 }
-export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.env.GNUSTO_TERMINAL_PATH, game, mode = 'development'}) {
+export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.env.GNUSTO_TERMINAL_PATH, game, mode = 'development', platform = process.platform}) {
   if (!['development', 'deployment'].includes(mode)) throw new Error(`Unknown build mode: ${mode}`);
   packageRoot = fs.realpathSync(packageRoot);
   engineRoot = fs.realpathSync(engineRoot ?? findEngineRoot(packageRoot));
@@ -71,14 +71,16 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
   requireTrait(packageRoot, catalog.package);
   requireTrait(engineRoot, 'Gnusto');
   if (terminalRoot) { requireTrait(terminalRoot, 'GnustoTerminal'); links.push({name: 'gnustoterminal', source: terminalRoot}); }
-  if (!sameEngine && declaration.kind === 'url') links.push({name: engineIdentity, source: engineRoot});
-  const engineDependencyPath = declaration?.kind === 'path' ? declaration.location : path.join(generatedPackage, 'Dependencies', engineIdentity);
+  const engineEdit = declaration?.kind === 'url' ? {identity: engineIdentity, path: engineRoot, url: declaration.location} : null;
+  const engineDependencyPath = engineEdit ? null : declaration?.kind === 'path' ? declaration.location : path.join(generatedPackage, 'Dependencies', engineIdentity);
+  const defaultBuildFlags = mode === 'deployment' && platform === 'linux' ? ['--static-swift-stdlib'] : [];
+  const bootstrapManifest = engineEdit ? `// swift-tools-version: 6.2\nimport PackageDescription\nlet package = Package(name: "GnustoDependencyEditBootstrap", traits: [.trait(name: "Playtest", description: "Attach the current engine checkout."), .default(enabledTraits: ["Playtest"])], dependencies: [.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: [])])\n` : null;
   const dependency = (name, location) => `.package(name: ${swiftStringLiteral(name)}, path: ${swiftStringLiteral(location)}, traits: forwarded)`;
   const dependencies = [dependency(catalog.package, `Dependencies/${gameIdentity}`), terminalRoot ? dependency('GnustoTerminal', 'Dependencies/gnustoterminal') : `.package(url: ${swiftStringLiteral(REMOTE_TERMINAL)}, branch: "main", traits: forwarded)`];
-  if (!sameEngine && declaration.kind === 'url') dependencies.push(dependency('Gnusto', `Dependencies/${engineIdentity}`));
+  if (engineEdit) dependencies.push(`.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: forwarded)`);
   const manifest = `// swift-tools-version: 6.2\nimport PackageDescription\n\nlet forwarded: Set<Package.Dependency.Trait> = [\n    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))\n]\nlet package = Package(\n    name: ${swiftStringLiteral(game.name + 'TerminalBuild')},\n    platforms: [.macOS(.v15)],\n    products: [.executable(name: ${swiftStringLiteral(launcherProduct)}, targets: [${swiftStringLiteral(launcherTarget)}])],\n    traits: [\n        .trait(name: "Playtest", description: "Enable the development MCP server."),\n        .default(enabledTraits: ["Playtest"]),\n    ],\n    dependencies: [\n        ${dependencies.join(',\n        ')},\n    ],\n    targets: [\n        .executableTarget(name: ${swiftStringLiteral(launcherTarget)}, dependencies: [\n            .product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)}),\n            .product(name: "GnustoTerminal", package: "GnustoTerminal"),\n        ]),\n    ]\n)\n`;
   const entryPoint = `import GnustoTerminal\nimport ${game.module}\n\n#if canImport(Darwin)\nimport Darwin\n#elseif canImport(Glibc)\nimport Glibc\n#endif\n\nlet result = await TerminalLaunch.run(${game.module}.${game.symbol})\nexit(result)\n`;
-  return {packageRoot: generatedPackage, gamePackageRoot: packageRoot, engineRoot, terminalRoot, game, mode, manifest, entryPoint, scratchPath, generatedRoot, links, engineDependencyPath, launcherProduct, launcherTarget};
+  return {packageRoot: generatedPackage, gamePackageRoot: packageRoot, engineRoot, terminalRoot, game, mode, manifest, entryPoint, scratchPath, generatedRoot, links, engineDependencyPath, launcherProduct, launcherTarget, engineEdit, bootstrapManifest, platform, defaultBuildFlags};
 }
 function buildFlags(environment) {
   let flags;
@@ -108,30 +110,44 @@ function swiftExecutable(swift, environment) {
   }
   throw new Error(`Swift executable not found: ${swift}`);
 }
-function fingerprint(spec, swift, flags, environment) {
+function combineFingerprints(localInputs, resolution) { return createHash('sha256').update(localInputs).update(resolution).digest('hex'); }
+function resolutionFingerprint(spec) {
+  const hash = createHash('sha256');
+  hashTree(hash, path.join(spec.packageRoot, 'Package.resolved'));
+  hashTree(hash, path.join(spec.scratchPath, 'checkouts'));
+  hashTree(hash, path.join(spec.scratchPath, 'workspace-state.json'));
+  hashTree(hash, path.join(spec.packageRoot, 'Packages'));
+  return hash.digest('hex');
+}
+function fingerprint(spec, swift, flags, environment, withResolution = true) {
+  if (withResolution) return combineFingerprints(fingerprint(spec, swift, flags, environment, false), resolutionFingerprint(spec));
   const hash = createHash('sha256');
   let selectedDeveloper = environment.DEVELOPER_DIR;
   if (!selectedDeveloper && process.platform === 'darwin') {
     try { selectedDeveloper = fs.readlinkSync('/var/db/xcode_select_link'); } catch {}
   }
-  hash.update(JSON.stringify({selectedDeveloper, version: TOOL_VERSION, manifest: spec.manifest, entry: spec.entryPoint, mode: spec.mode, swift, flags, toolchain: [environment.DEVELOPER_DIR, environment.TOOLCHAINS, environment.SDKROOT, environment.SWIFT_EXEC]}));
+  hash.update(JSON.stringify({selectedDeveloper, version: TOOL_VERSION, manifest: spec.manifest, entry: spec.entryPoint, bootstrapManifest: spec.bootstrapManifest, engineEdit: spec.engineEdit, mode: spec.mode, platform: spec.platform, defaultBuildFlags: spec.defaultBuildFlags, swift, flags, toolchain: [environment.DEVELOPER_DIR, environment.TOOLCHAINS, environment.SDKROOT, environment.SWIFT_EXEC]}));
   for (const file of [fileURLToPath(import.meta.url), path.join(path.dirname(fileURLToPath(import.meta.url)), 'game-catalog.mjs'), swift]) {
     hash.update(file); hashTree(hash, file);
   }
   if (selectedDeveloper) hashTree(hash, path.join(selectedDeveloper, 'Toolchains/XcodeDefault.xctoolchain/usr/bin/swift'));
   for (const root of new Set([spec.gamePackageRoot, spec.engineRoot, spec.terminalRoot].filter(Boolean))) { hash.update(root); hashTree(hash, root); }
-  hashTree(hash, path.join(spec.packageRoot, 'Package.resolved'));
-  const checkouts = path.join(spec.scratchPath, 'checkouts');
-  hashTree(hash, checkouts);
-  // SwiftPM symlinks URL overrides through scratch/checkouts; hashing follows them once.
   return hash.digest('hex');
+}
+function engineEditReady(spec) {
+  if (!spec.engineEdit) return true;
+  try {
+    const dependencies = JSON.parse(fs.readFileSync(path.join(spec.scratchPath, 'workspace-state.json'), 'utf8')).object.dependencies;
+    const engine = dependencies.find(dependency => dependency.packageRef.identity === spec.engineEdit.identity);
+    return engine?.packageRef.kind === 'remoteSourceControl' && engine.packageRef.location === spec.engineEdit.url && engine.state.name === 'edited' && fs.realpathSync(engine.state.path) === spec.engineRoot;
+  } catch { return false; }
 }
 function resultFor(spec, state) { return {binary: state.binary, binDirectory: state.binDirectory, packageRoot: spec.packageRoot, scratchPath: spec.scratchPath, fingerprint: state.fingerprint}; }
 function cacheHit(spec, expected) {
   try {
     const state = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'build-state.json'), 'utf8'));
     fs.accessSync(state.binary, fs.constants.X_OK);
-    if (state.fingerprint === expected && fs.statSync(state.binary).isFile()) return resultFor(spec, state);
+    if (engineEditReady(spec) && state.fingerprint === expected && fs.statSync(state.binary).isFile()) return resultFor(spec, state);
   } catch {}
   return null;
 }
@@ -141,23 +157,34 @@ function atomicWrite(file, text) {
   const temporary = `${file}.${randomUUID()}.tmp`;
   fs.writeFileSync(temporary, text); fs.renameSync(temporary, file);
 }
-async function lock(spec) {
-  fs.mkdirSync(spec.generatedRoot, {recursive: true});
-  const directory = path.join(spec.generatedRoot, 'build.lock');
-  for (;;) {
-    try { fs.mkdirSync(directory); fs.writeFileSync(path.join(directory, 'owner'), String(process.pid)); return () => fs.rmSync(directory, {recursive: true, force: true}); }
-    catch (error) {
-      if (error.code !== 'EEXIST') throw error;
-      try {
-        const pid = Number(fs.readFileSync(path.join(directory, 'owner'), 'utf8'));
-        try { process.kill(pid, 0); } catch (error) { if (error.code === 'ESRCH') fs.rmSync(directory, {recursive: true, force: true}); }
-      } catch (error) {
-        if (error.code === 'ENOENT' && fs.existsSync(directory) && Date.now() - fs.statSync(directory).mtimeMs > 30000) fs.rmSync(directory, {recursive: true, force: true});
-      }
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-  }
+export async function acquireBuildLock(generatedRoot) {
+  fs.mkdirSync(generatedRoot, {recursive: true});
+  const token = randomUUID();
+  const lockFile = path.join(generatedRoot, 'build.lockfile');
+  // Keep the same inode forever: unlinking it can let a successor lock a different file.
+  // The native advisory lock is released by the OS, including after an abandoned owner.
+  const command = process.platform === 'darwin' ? '/usr/bin/lockf' : 'flock';
+  const helper = `process.stdout.write(${JSON.stringify(token)}); process.stdin.resume(); process.stdin.on('end', () => process.exit(0));`;
+  const child = spawn(command, [...(process.platform === 'darwin' ? ['-k'] : []), lockFile, process.execPath, '-e', helper], {stdio: ['pipe', 'pipe', 'pipe']});
+  let errors = '';
+  child.stderr.on('data', data => { errors += data; });
+  const closed = new Promise(resolve => child.on('close', code => resolve(code)));
+  await new Promise((resolve, reject) => {
+    let received = '';
+    child.stdout.on('data', data => { received += data; if (received === token) resolve(); });
+    child.on('error', reject);
+    child.on('close', code => reject(new Error(`Unable to acquire build lock (${command}, ${code}): ${errors.trim()}`)));
+  });
+  let released = false;
+  return async () => {
+    if (released) return;
+    released = true;
+    child.stdin.end();
+    const code = await closed;
+    if (code !== 0) throw new Error(`Build lock helper exited ${code}: ${errors.trim()}`);
+  };
 }
+
 function run(swift, args, environment, capture = false) {
   return new Promise((resolve, reject) => {
     const child = spawn(swift, args, {env: environment, stdio: ['ignore', 'pipe', 'inherit']});
@@ -172,7 +199,7 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
   swift = swiftExecutable(swift, environment);
   let expected = fingerprint(spec, swift, flags, environment);
   if (!force) { const hit = cacheHit(spec, expected); if (hit) return hit; }
-  const unlock = await lock(spec);
+  const unlock = await acquireBuildLock(spec.generatedRoot);
   try {
     expected = fingerprint(spec, swift, flags, environment);
     if (!force) { const hit = cacheHit(spec, expected); if (hit) return hit; }
@@ -185,9 +212,34 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
     }
     atomicWrite(path.join(spec.packageRoot, 'Package.swift'), spec.manifest);
     atomicWrite(path.join(spec.packageRoot, `Sources/${spec.launcherTarget}/main.swift`), spec.entryPoint);
-    const env = {...environment, GNUSTO_ENGINE_PATH: spec.engineDependencyPath};
+    const stableInputs = fingerprint(spec, swift, flags, environment, false);
+    const env = {...environment};
+    if (spec.engineEdit) delete env.GNUSTO_ENGINE_PATH;
+    else env.GNUSTO_ENGINE_PATH = spec.engineDependencyPath;
     const toolchainVersion = await run(swift, ['--version'], env, true);
-    const args = ['build', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, '--configuration', spec.mode === 'deployment' ? 'release' : 'debug', ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), ...flags];
+    if (spec.engineEdit && !engineEditReady(spec)) {
+      // Bootstrap only this generated workspace so author/terminal version requirements
+      // do not prevent entering editable mode. No remote engine code is compiled.
+      // Only generated metadata/symlinks are reset; unmanaged engine sources are untouched.
+      fs.rmSync(path.join(spec.scratchPath, 'workspace-state.json'), {force: true});
+      fs.rmSync(path.join(spec.packageRoot, 'Packages'), {recursive: true, force: true});
+      atomicWrite(path.join(spec.packageRoot, 'Package.swift'), spec.bootstrapManifest);
+      try {
+        await run(swift, ['package', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), 'edit', spec.engineEdit.identity, '--path', spec.engineEdit.path], env);
+      } finally { atomicWrite(path.join(spec.packageRoot, 'Package.swift'), spec.manifest); }
+      if (!engineEditReady(spec)) throw new Error('SwiftPM did not attach the current engine checkout as an editable dependency.');
+    }
+    if (spec.engineEdit) {
+      const graph = JSON.parse(await run(swift, ['package', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), 'show-dependencies', '--format', 'json'], env, true));
+      const identities = new Set(), paths = new Set();
+      const visit = node => {
+        if (node.name === 'Gnusto' || node.identity === spec.engineEdit.identity) { identities.add(node.identity); paths.add(fs.realpathSync(node.path)); }
+        for (const dependency of node.dependencies || []) visit(dependency);
+      };
+      visit(graph);
+      if (!engineEditReady(spec) || identities.size !== 1 || !identities.has(spec.engineEdit.identity) || paths.size !== 1 || !paths.has(spec.engineRoot)) throw new Error('Generated graph lost the editable current engine dependency; refusing to compile released engine sources.');
+    }
+    const args = ['build', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, '--configuration', spec.mode === 'deployment' ? 'release' : 'debug', ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), ...spec.defaultBuildFlags, ...flags];
     await run(swift, [...args, '--product', spec.launcherProduct], env);
     const binDirectory = await run(swift, [...args, '--show-bin-path'], env, true);
     if (!path.isAbsolute(binDirectory)) throw new Error(`Swift returned a nonabsolute binary directory: ${binDirectory}`);
@@ -197,8 +249,11 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
       const remote = path.join(spec.scratchPath, 'checkouts', 'GnustoTerminal');
       requireTrait(remote, 'GnustoTerminal');
     }
-    const state = {binary, binDirectory, fingerprint: fingerprint(spec, swift, flags, environment), toolchainVersion};
+    if (!engineEditReady(spec)) throw new Error('Generated workspace lost its editable engine during build; refusing to publish current state.');
+    const resolvedInputs = resolutionFingerprint(spec);
+    if (fingerprint(spec, swift, flags, environment, false) !== stableInputs) throw new Error('Local compilation inputs changed during build; retry to compile the current sources.');
+    const state = {binary, binDirectory, fingerprint: combineFingerprints(stableInputs, resolvedInputs), toolchainVersion};
     atomicWrite(path.join(spec.generatedRoot, 'build-state.json'), JSON.stringify(state, null, 2) + '\n');
     return resultFor(spec, state);
-  } finally { unlock(); }
+  } finally { await unlock(); }
 }

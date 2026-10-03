@@ -18,7 +18,7 @@ function fixture(t, {url = false} = {}) {
   fs.writeFileSync(path.join(packageRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}\n.package(name: "Gnusto", ${url ? 'url: "https://github.com/HeirloomLogic/Gnusto", branch: "main"' : `path: ${swiftStringLiteral(engineRoot)}`}, traits: forwarded)`);
   fs.writeFileSync(path.join(packageRoot, 'gnusto-games.json'), JSON.stringify({version: 1, package: 'Story', games: [{name: 'Story', product: 'StoryLibrary', module: 'Story', symbol: 'game'}]}));
   const swift = path.join(root, 'fake-swift');
-  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) console.log(bin);\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){const scratch=a[a.indexOf('--scratch-path')+1]; fs.mkdirSync(scratch,{recursive:true}); const file=path.join(scratch,'workspace-state.json'); if(a.includes('edit')) fs.writeFileSync(file,JSON.stringify({object:{dependencies:[{packageRef:{identity:a[a.indexOf('edit')+1],kind:'remoteSourceControl',location:'https://github.com/HeirloomLogic/Gnusto'},state:{name:'edited',path:a[a.indexOf('--path')+1]}}]}})); else {const workspace=JSON.parse(fs.readFileSync(file));if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:workspace.object.dependencies[0].state.path}]}));} process.exit(0)}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
   fs.chmodSync(swift, 0o755);
   const environment = {...process.env, LOG: path.join(root, 'invocations'), GNUSTO_SWIFT_BUILD_FLAGS: '["--jobs","2"]'};
   const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: loadGames(packageRoot).games[0], mode: 'development'});
@@ -33,8 +33,11 @@ test('manifest uses the product separately from the module and forwards conditio
   assert.equal(f.spec.engineDependencyPath, f.engineRoot);
   assert.equal(f.spec.links.some(link => link.name === 'gnusto'), false);
   const url = fixture(t, {url: true});
-  assert.match(url.spec.engineDependencyPath, /Dependencies\/gnusto$/);
-  assert.match(url.spec.manifest, /package\(name: "Gnusto", path:/);
+  assert.equal(url.spec.engineDependencyPath, null);
+  assert.equal(url.spec.engineEdit.path, fs.realpathSync(url.engineRoot));
+  assert.equal(url.spec.engineEdit.identity, 'gnusto');
+  assert.doesNotMatch(url.spec.manifest, /package\(name: "Gnusto", path:/);
+  assert.match(url.spec.manifest, /package\(url: "https:\/\/github.com\/HeirloomLogic\/Gnusto", branch: "main", traits: forwarded\)/);
 });
 test('cache hits invoke no SwiftPM and simultaneous misses share one build', async t => {
   const f = fixture(t);
@@ -105,19 +108,25 @@ test('real path and URL author graphs share current Gnusto and resource-bearing 
   const root = process.env.GNUSTO_GRAPH_ROOT || fs.mkdtempSync(path.join(tmpdir(), 'gnusto-real-graph-'));
   fs.mkdirSync(root, {recursive: true});
   const evidence = [];
+  const swiftLog = path.join(root, 'swift-invocations.jsonl');
+  const swift = path.join(root, 'swift-wrapper');
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs'; import {spawnSync} from 'node:child_process';\nfs.appendFileSync(process.env.GNUSTO_GRAPH_SWIFT_LOG, JSON.stringify(process.argv.slice(2))+'\\n');\nconst result=spawnSync('swift',process.argv.slice(2),{stdio:'inherit'});process.exit(result.status ?? 1);\n`);
+  fs.chmodSync(swift, 0o755);
+  const logCount = () => fs.existsSync(swiftLog) ? fs.readFileSync(swiftLog, 'utf8').trim().split('\n').length : 0;
   t.after(() => { if (!process.env.GNUSTO_GRAPH_KEEP) fs.rmSync(root, {recursive: true, force: true}); });
   for (const kind of ['path', 'url']) {
     const packageRoot = path.join(root, `author-${kind}`);
     fs.cpSync(path.resolve('bin/tests/fixtures/game-build/resource-story'), packageRoot, {recursive: true});
     const dependency = kind === 'path'
       ? `.package(name: "Gnusto", path: ${swiftStringLiteral(engineRoot)}, traits: forwarded)`
-      : '.package(url: "https://github.com/HeirloomLogic/Gnusto", branch: "main", traits: forwarded)';
+      : '.package(url: "https://github.com/HeirloomLogic/Gnusto", from: "0.0.1", traits: forwarded)';
     fs.writeFileSync(path.join(packageRoot, 'Package.swift'), fs.readFileSync(path.join(packageRoot, 'Package.swift.in'), 'utf8').replace('ENGINE_DEPENDENCY', dependency));
     const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: 'Story', mode: 'deployment'});
-    const environment = {...process.env, GNUSTO_SWIFT_BUILD_FLAGS: process.env.GNUSTO_SWIFT_BUILD_FLAGS || '["--jobs","2"]'};
-    let built = await buildGame(spec, {environment});
-    const graph = spawnSync('swift', ['package', '--package-path', built.packageRoot, '--scratch-path', built.scratchPath, '--disable-default-traits', 'show-dependencies', '--format', 'json'], {encoding: 'utf8', env: {...environment, GNUSTO_ENGINE_PATH: spec.engineDependencyPath}, maxBuffer: 20 * 1024 * 1024});
+    const environment = {...process.env, GNUSTO_GRAPH_SWIFT_LOG: swiftLog, GNUSTO_SWIFT_BUILD_FLAGS: process.env.GNUSTO_SWIFT_BUILD_FLAGS || '["--jobs","2"]'};
+    let built = await buildGame(spec, {environment, swift});
+    const graph = spawnSync('swift', ['package', '--package-path', built.packageRoot, '--scratch-path', built.scratchPath, '--disable-default-traits', 'show-dependencies', '--format', 'json'], {encoding: 'utf8', env: {...environment, ...(spec.engineDependencyPath ? {GNUSTO_ENGINE_PATH: spec.engineDependencyPath} : {})}, maxBuffer: 20 * 1024 * 1024});
     assert.equal(graph.status, 0, graph.stderr);
+    assert.doesNotMatch(graph.stderr, /Conflicting identity/);
     const unique = new Map();
     const walk = node => {
       const previous = unique.get(node.identity);
@@ -135,7 +144,7 @@ test('real path and URL author graphs share current Gnusto and resource-bearing 
     let played = launch(built); assert.equal(played.status, 0, played.stderr); assert.match(played.stdout, /BuildSourceOne ResourceOpeningOne/);
     const source = path.join(packageRoot, 'Sources/Story/Story.swift');
     fs.writeFileSync(source, fs.readFileSync(source, 'utf8').replace('BuildSourceOne', 'BuildSourceTwo'));
-    const before = built.fingerprint; built = await buildGame(spec, {environment}); assert.notEqual(before, built.fingerprint);
+    const before = built.fingerprint; built = await buildGame(spec, {environment, swift}); assert.notEqual(before, built.fingerprint);
     played = launch(built); assert.equal(played.status, 0, played.stderr); assert.match(played.stdout, /BuildSourceTwo ResourceOpeningOne/);
     const catalogFile = path.join(packageRoot, 'gnusto-games.json');
     const sameNameCatalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8'));
@@ -144,10 +153,26 @@ test('real path and URL author graphs share current Gnusto and resource-bearing 
     const manifestFile = path.join(packageRoot, 'Package.swift');
     fs.writeFileSync(manifestFile, fs.readFileSync(manifestFile, 'utf8').replace('.library(name: "StoryLibrary"', '.library(name: "Story"'));
     const sameNameSpec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: 'Story', mode: 'deployment'});
-    const sameNameBuild = await buildGame(sameNameSpec, {environment});
+    const sameNameBuild = await buildGame(sameNameSpec, {environment, swift});
     played = launch(sameNameBuild); assert.equal(played.status, 0, played.stderr); assert.match(played.stdout, /BuildSourceTwo ResourceOpeningOne/);
     assert.notEqual(path.basename(sameNameBuild.binary), 'Story');
-    evidence.push({kind, sameNameProductObserved: true, identities: [...unique.keys()], enginePath: engines[0].path, terminalPath: terminals[0].path, authorPath: author.path, binary: built.binary, currentSourceEditObserved: true, resourceObserved: true});
+    const deployedMCP = spawnSync(sameNameBuild.binary, ['--mcp'], {input: '', encoding: 'utf8', timeout: 15000});
+    assert.equal(deployedMCP.status, 1, deployedMCP.stderr); assert.match(deployedMCP.stderr, /without.*Playtest|unavailable/i);
+    const warmedCount = logCount();
+    assert.deepEqual(await buildGame(sameNameSpec, {environment, swift}), sameNameBuild); assert.equal(logCount(), warmedCount);
+    let developmentMCP = false;
+    if (kind === 'url') {
+      const developmentSpec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: 'Story', mode: 'development'});
+      const development = await buildGame(developmentSpec, {environment, swift});
+      const initialize = JSON.stringify({jsonrpc: '2.0', id: 1, method: 'initialize', params: {protocolVersion: '2024-11-05', capabilities: {}, clientInfo: {name: 'graph-integration', version: '1'}}}) + '\n';
+      const response = spawnSync(development.binary, ['--mcp'], {input: initialize, encoding: 'utf8', timeout: 15000});
+      assert.equal(response.status, 0, response.stderr);
+      const protocol = JSON.parse(response.stdout.trim()); assert.equal(protocol.id, 1); assert(protocol.result?.protocolVersion); assert.equal(protocol.error, undefined);
+      developmentMCP = true;
+      const developmentCount = logCount();
+      assert.deepEqual(await buildGame(developmentSpec, {environment, swift}), development); assert.equal(logCount(), developmentCount);
+    }
+    evidence.push({kind, sameNameProductObserved: true, warmZeroSwift: true, developmentMCP, deploymentMCPUnavailable: true, graphDiagnostics: graph.stderr, editedSourceControl: kind === 'url', identities: [...unique.keys()], enginePath: engines[0].path, terminalPath: terminals[0].path, authorPath: author.path, binary: built.binary, currentSourceEditObserved: true, resourceObserved: true});
   }
   if (process.env.GNUSTO_GRAPH_EVIDENCE) fs.writeFileSync(process.env.GNUSTO_GRAPH_EVIDENCE, JSON.stringify({root, evidence}, null, 2) + '\n');
 });
@@ -174,4 +199,117 @@ test('source directory aliases and empty directory deletion participate in finge
   next = await buildGame(f.spec, f); assert.notEqual(next.fingerprint, built.fingerprint); built = next;
   fs.rmdirSync(path.join(f.packageRoot, 'Empty'));
   next = await buildGame(f.spec, f); assert.notEqual(next.fingerprint, built.fingerprint);
+});
+
+
+test('source edits after compilation cannot publish an old executable as current', async t => {
+  const f = fixture(t);
+  const source = path.join(f.packageRoot, 'Sources/content.swift');
+  fs.writeFileSync(source, 'BeforeEdit');
+  const environment = {...f.environment, READ_SOURCE: source, MUTATE_SOURCE: '1', MUTATE_MARKER: path.join(f.root, 'mutated')};
+  await assert.rejects(buildGame(f.spec, {...f, environment}), /inputs changed during build/);
+  assert.equal(fs.existsSync(path.join(f.spec.generatedRoot, 'build-state.json')), false);
+  const current = await buildGame(f.spec, {...f, environment});
+  assert.equal(fs.readFileSync(current.binary, 'utf8'), 'AfterEdit');
+  const count = f.log().length;
+  await buildGame(f.spec, {...f, environment}); assert.equal(f.log().length, count);
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 2);
+});
+
+test('abandoned native locks and simultaneous recoverers preserve the live successor inode', {timeout: 30000}, async t => {
+  const {spawn} = await import('node:child_process');
+  const {once} = await import('node:events');
+  const f = fixture(t);
+  fs.mkdirSync(f.spec.generatedRoot, {recursive: true});
+  const lockFile = path.join(f.spec.generatedRoot, 'build.lockfile');
+  const command = process.platform === 'darwin' ? '/usr/bin/lockf' : 'flock';
+  const holderCode = "console.log(process.pid); process.stdin.resume(); process.stdin.on('end',()=>process.exit(0));";
+  const holder = spawn(command, [...(process.platform === 'darwin' ? ['-k'] : []), lockFile, process.execPath, '-e', holderCode], {stdio: ['pipe', 'pipe', 'inherit']});
+  const holderPID = Number((await once(holder.stdout, 'data'))[0].toString().trim());
+  const inode = fs.statSync(lockFile).ino;
+  const clients = [];
+  t.after(() => { holder.stdin.end(); for (const client of clients) { client.stdin.end(); client.kill(); } });
+  const code = `import {acquireBuildLock} from ${JSON.stringify(new URL('../lib/game-build.mjs', import.meta.url).href)}; import {once} from 'node:events'; console.log('started'); const release = await acquireBuildLock(process.argv[1]); console.log('acquired'); process.stdin.resume(); await once(process.stdin,'end'); await release();`;
+  const client = () => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code, f.spec.generatedRoot], {stdio: ['pipe', 'pipe', 'pipe']});
+    clients.push(child);
+    let text = '', errors = '';
+    child.stderr.on('data', data => { errors += data; });
+    const started = new Promise(resolve => child.stdout.on('data', data => { text += data; if (text.includes('started')) resolve(); }));
+    const acquired = new Promise((resolve, reject) => {
+      child.stdout.on('data', data => { if (data.toString().includes('acquired')) resolve(child); });
+      child.on('exit', status => { if (status) reject(new Error(errors)); });
+    });
+    return {child, started, acquired, output: () => text};
+  };
+  const a = client(), b = client();
+  await Promise.all([a.started, b.started]);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert(!a.output().includes('acquired')); assert(!b.output().includes('acquired'));
+  process.kill(holderPID, 'SIGKILL');
+  const first = await Promise.race([a.acquired, b.acquired]);
+  const remaining = first === a.child ? b : a;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert(!remaining.output().includes('acquired'));
+  assert.equal(fs.statSync(lockFile).ino, inode);
+  first.stdin.end(); await once(first, 'exit');
+  const second = await remaining.acquired; second.stdin.end(); await once(second, 'exit');
+  assert.equal(fs.statSync(lockFile).ino, inode);
+});
+
+
+test('Linux deployments request the static Swift runtime and fingerprint platform policy', async t => {
+  const f = fixture(t);
+  const linux = makeBuildSpec({...f, game: 'Story', mode: 'deployment', platform: 'linux'});
+  assert.deepEqual(linux.defaultBuildFlags, ['--static-swift-stdlib']);
+  const built = await buildGame(linux, f);
+  assert(f.log().find(item => item.args.includes('--product')).args.includes('--static-swift-stdlib'));
+  const darwin = makeBuildSpec({...f, game: 'Story', mode: 'deployment', platform: 'darwin'});
+  const other = await buildGame(darwin, f); assert.notEqual(other.fingerprint, built.fingerprint);
+  assert.deepEqual(makeBuildSpec({...f, game: 'Story', mode: 'development', platform: 'linux'}).defaultBuildFlags, []);
+});
+
+
+test('editable URL attachment uses literal current sources and remains Swift-free when warm', async t => {
+  const f = fixture(t, {url: true});
+  const environment = {...f.environment, GNUSTO_ENGINE_PATH: 'must-not-turn-source-control-into-a-path'};
+  const built = await buildGame(f.spec, {...f, environment});
+  const edit = f.log().find(item => item.args.includes('edit'));
+  assert.equal(edit.args[edit.args.indexOf('--path') + 1], fs.realpathSync(f.engineRoot));
+  assert.equal(edit.engine, undefined);
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 1);
+  assert.equal(fs.readFileSync(path.join(f.spec.packageRoot, 'Package.swift'), 'utf8'), f.spec.manifest);
+  const count = f.log().length;
+  assert.deepEqual(await buildGame(f.spec, {...f, environment}), built); assert.equal(f.log().length, count);
+});
+
+test('publication retains the validated snapshot when an edit races after validation', async t => {
+  const f = fixture(t);
+  const source = path.join(f.packageRoot, 'Sources/content.swift');
+  const canonicalSource = fs.realpathSync(source);
+  fs.writeFileSync(source, 'BeforeEdit');
+  const original = fs.readFileSync;
+  let reads = 0;
+  fs.readFileSync = function(file, ...args) {
+    const bytes = original.call(this, file, ...args);
+    if (String(file) === canonicalSource && ++reads === 4) fs.writeFileSync(source, 'AfterEdit');
+    return bytes;
+  };
+  let before;
+  try { before = await buildGame(f.spec, {...f, environment: {...f.environment, READ_SOURCE: source}}); }
+  finally { fs.readFileSync = original; }
+  assert.equal(fs.readFileSync(source, 'utf8'), 'AfterEdit');
+  assert.equal(fs.readFileSync(before.binary, 'utf8'), 'BeforeEdit');
+  const current = await buildGame(f.spec, {...f, environment: {...f.environment, READ_SOURCE: source}});
+  assert.notEqual(current.fingerprint, before.fingerprint);
+  assert.equal(fs.readFileSync(current.binary, 'utf8'), 'AfterEdit');
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 2);
+});
+
+
+test('a resolver that drops editable state is refused before compilation', async t => {
+  const f = fixture(t, {url: true});
+  await assert.rejects(buildGame(f.spec, {...f, environment: {...f.environment, LOSE_EDIT: '1'}}), /refusing to compile released engine sources/);
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 0);
+  assert.equal(fs.existsSync(path.join(f.spec.generatedRoot, 'build-state.json')), false);
 });
