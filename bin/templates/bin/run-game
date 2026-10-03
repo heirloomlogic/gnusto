@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Build and play this library game through the terminal front end.
+# Usage: bin/run-game <Game> [--frontend terminal|yonk]
+# A shim over the resolved Gnusto checkout; see bin/lib/gnusto-tooling.sh.
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec run-game "$@"

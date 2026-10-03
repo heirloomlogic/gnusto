@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "package": "MyGame",
+  "games": [
+    {"name": "MyGame", "product": "MyGame", "module": "MyGame", "symbol": "game"}
+  ]
+}

@@ -40,8 +40,6 @@ usage() {
 game=""
 destination=""
 dep_path=""
-stale_pin_warning=""
-traitless_pin_warning=""
 dev_tooling_warning=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -95,26 +93,13 @@ if [ -e "$destination" ]; then
   fi
 fi
 
-# Does the Gnusto whose manifest is on stdin declare the Playtest trait?
-#
-# SwiftPM validates trait forwarding when it resolves, not when it compiles, and
-# it refuses outright: "Package 'zwank' (Zwank) enables traits [Playtest] on
-# package 'gnusto' (Gnusto) that declares no traits." So a generated package that
-# forwards the trait to a Gnusto predating it does not resolve at all -- and every
-# release up to and including 0.5.0 predates it. The generated line looks perfectly
-# correct in isolation, which is why a manifest a test only string-matches sails
-# past this.
-#
-# Asked of the Gnusto actually depended on rather than hardcoded against a tag, so
-# the forwarding comes back by itself the day a release declaring the trait ships
-# and nobody has to remember to come back and delete this.
-#
-# Whitespace is stripped before the match because the declaration is one line in
-# bin/templates/Package.swift and four in the engine's own, and a literal grep
-# would see only one of those spellings.
+# Consume the entire manifest so an early trait match cannot raise SIGPIPE under
+# pipefail while git show or printf is still writing a supported release.
 declares_playtest_trait() {
-  tr -d ' \t\n' | grep -q '\.trait(name:"Playtest"'
+  tr -d ' \t\n' | grep '\.trait(name:"Playtest"' >/dev/null
 }
+
+factory_file="Sources/Gnusto/Engine/PackagedGame.swift"
 
 if [ -n "$dep_path" ]; then
   [ -d "$dep_path" ] || die "--dep-path '$dep_path' is not a directory"
@@ -124,12 +109,27 @@ if [ -n "$dep_path" ]; then
   swift_path="${swift_path//$'\n'/\\n}"
   swift_path="${swift_path//$'\r'/\\r}"
   swift_path="${swift_path//$'\t'/\\t}"
-  if [ -f "$dep_path/Package.swift" ] && declares_playtest_trait < "$dep_path/Package.swift"; then
-    dependency=".package(name: \"Gnusto\", path: \"$swift_path\", traits: gnusto)"
-  else
-    dependency=".package(name: \"Gnusto\", path: \"$swift_path\")"
-    traitless_pin_warning="1"
-  fi
+  [ -f "$dep_path/Package.swift" ] && declares_playtest_trait < "$dep_path/Package.swift" \
+    || die "--dep-path '$dep_path' lacks the Playtest trait; use the coordinated prerelease Gnusto checkout"
+  [ -f "$dep_path/$factory_file" ] && grep 'public struct PackagedGame' "$dep_path/$factory_file" >/dev/null \
+    || die "--dep-path '$dep_path' lacks the game factory ($factory_file); use the coordinated prerelease Gnusto checkout"
+  unsupported_tools=""
+  for shim in bin/templates/bin/* bin/lib/*; do
+    [ -f "$shim" ] || continue
+    tool="${shim#bin/templates/bin/}"
+    tool="${tool#bin/}"
+    candidate="$dep_path/bin/$tool"
+    if [ ! -f "$candidate" ]; then
+      unsupported_tools="$unsupported_tools bin/$tool"
+    elif [[ "$tool" != lib/* ]] && [ ! -x "$candidate" ]; then
+      unsupported_tools="$unsupported_tools bin/$tool"
+    elif grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' "bin/$tool" \
+        && ! grep 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' "$candidate" >/dev/null; then
+      unsupported_tools="$unsupported_tools bin/$tool"
+    fi
+  done
+  [ -z "$unsupported_tools" ] || die "--dep-path '$dep_path' lacks required tools or shim support:$unsupported_tools; use the coordinated prerelease Gnusto checkout"
+  dependency=".package(name: \"Gnusto\", path: \"$swift_path\", traits: gnusto)"
   # Gnusto's Package.swift gates its dev-only tooling (the Persnoop lint plugin,
   # the DocC plugin) on a gitignored .dev-tooling sentinel it finds through
   # #filePath -- the engine's own directory, whichever package is root. A manifest
@@ -157,12 +157,15 @@ else
   # would answer wrong instead of just failing.
   version="$(git tag --sort=-v:refname | head -1)"
   [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
-  if git show "$version:Package.swift" 2>/dev/null | declares_playtest_trait; then
-    dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\", traits: gnusto)"
-  else
-    dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
-    traitless_pin_warning="1"
+  if ! released_manifest="$(git show "$version:Package.swift" 2>/dev/null)" \
+      || ! printf '%s' "$released_manifest" | declares_playtest_trait; then
+    die "Gnusto $version lacks the Playtest trait; pass --dep-path pointing at the coordinated prerelease checkout"
   fi
+  if ! released_factory="$(git show "$version:$factory_file" 2>/dev/null)" \
+      || ! printf '%s' "$released_factory" | grep 'public struct PackagedGame' >/dev/null; then
+    die "Gnusto $version lacks the game factory ($factory_file); pass --dep-path pointing at the coordinated prerelease checkout"
+  fi
+  dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\", traits: gnusto)"
 
   # Every tool the template shims reads GNUSTO_PACKAGE_PATH or
   # GNUSTO_INVOCATION_DIR (itself or through a bin/lib module) to find out which
@@ -185,13 +188,13 @@ else
     tool="${shim#bin/templates/bin/}"
     tool="${tool#bin/}"
     if ! released="$(git show "$version:bin/$tool" 2>/dev/null)"; then
-      stale_tools="$stale_tools $tool"
+      stale_tools="$stale_tools bin/$tool"
     elif grep -q 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' "bin/$tool" \
         && ! printf '%s' "$released" | grep 'GNUSTO_PACKAGE_PATH\|GNUSTO_INVOCATION_DIR' >/dev/null; then
-      stale_tools="$stale_tools $tool"
+      stale_tools="$stale_tools bin/$tool"
     fi
   done
-  [ -z "$stale_tools" ] || stale_pin_warning="1"
+  [ -z "$stale_tools" ] || die "Gnusto $version lacks required tools or shim support:$stale_tools; pass --dep-path pointing at the coordinated prerelease checkout"
 fi
 
 mkdir -p "$destination"
@@ -249,29 +252,7 @@ echo "Wrote $game to $destination"
 echo
 echo "  cd $destination"
 echo "  swift test        # run the transcript tests"
-echo "  swift build && \"\$(swift build --show-bin-path)/$game\"   # play it"
-
-if [ -n "$traitless_pin_warning" ]; then
-  echo
-  echo "warning: the Gnusto this package depends on predates the Playtest trait, so"
-  echo "  Package.swift forwards nothing to it and $game's own Playtest trait reaches"
-  echo "  only $game. The play-test server is compiled into the engine unconditionally"
-  echo "  on that version, so bin/export-game and .github/workflows/release.yml still"
-  echo "  ship a binary carrying it. Nothing else is affected, and the forwarding comes"
-  echo "  back on its own once you depend on a Gnusto that declares the trait."
-fi
-
-if [ -n "$stale_pin_warning" ]; then
-  echo
-  echo "warning: pinned to Gnusto $version, which predates shim support in:"
-  for tool in $stale_tools; do echo "    bin/$tool"; done
-  echo "  Until a newer Gnusto release ships, a tool listed there runs against the"
-  echo "  Gnusto engine checkout instead of $game -- it will build, list or preflight"
-  echo "  the engine's own demo games and report that no product matches $game."
-  echo "  A tool not listed is unaffected. --dep-path is also unaffected: re-run with"
-  echo "  it against a checkout that has the fix, or re-run without it once a newer"
-  echo "  tag exists."
-fi
+echo "  bin/run-game $game   # build and play the terminal development launcher"
 
 if [ -n "$dev_tooling_warning" ]; then
   echo
