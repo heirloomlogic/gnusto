@@ -5,14 +5,14 @@
 ///
 /// These never reach `GameWorld.perform`, so they can't parse as commands, run
 /// rules, or advance a fuse/daemon — the world simulation stays unaware of them.
-enum TesterInput {
+public enum TesterInput {
     /// Whether a line is a play-test comment: its first non-blank characters are
     /// `//` or `#`. The engine never sees it — no parse, no rules, no clock tick
     /// — but it stays in the transcript as a note the way a source comment does.
     ///
     /// - Parameter line: the raw line the tester typed.
     /// - Returns: true when the line should be treated as a comment.
-    static func isComment(_ line: String) -> Bool {
+    public static func isComment(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         return trimmed.hasPrefix("//") || trimmed.hasPrefix("#")
     }

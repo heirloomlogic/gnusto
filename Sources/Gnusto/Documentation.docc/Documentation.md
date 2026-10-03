@@ -200,6 +200,8 @@ Each has its own documentation in this archive. They are not linked from here: a
 
 ### Running a Game
 
+- ``PackagedGame``
+- ``PreparedGame``
 - ``GameWorld``
 - ``TurnResult``
 - ``StatusLine``
@@ -216,6 +218,14 @@ Each has its own documentation in this archive. They are not linked from here: a
 - <doc:CustomFrontEnds>
 - ``Input``
 - ``CompletionCandidates``
+- ``DisplayWidth``
+- ``TextWrap``
+- ``TesterInput``
+- ``SeedRequest``
+- ``StatusFooter``
+- ``TranscriptRequest``
+- ``PlaytestLaunch``
+- ``PlaytestLaunchError``
 
 ### Sharing Your Game
 

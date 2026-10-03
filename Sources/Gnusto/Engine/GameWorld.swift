@@ -18,6 +18,20 @@ public struct StatusLine: Sendable {
     public let score: Int
     /// The number of turns taken so far.
     public let moves: Int
+
+    /// Constructs an immutable status value for a front end to display.
+    ///
+    /// - Parameters:
+    ///   - locationID: the current location's stable identity.
+    ///   - locationName: the current location's display name.
+    ///   - score: the player's current score.
+    ///   - moves: the number of turns taken so far.
+    public init(locationID: EntityID, locationName: String, score: Int, moves: Int) {
+        self.locationID = locationID
+        self.locationName = locationName
+        self.score = score
+        self.moves = moves
+    }
 }
 
 /// The outcome of a single turn: text to show, whether the game ended, and the
@@ -182,10 +196,7 @@ public actor GameWorld {
     ///     per-user saves directory for the game's title.
     /// - Throws: if the game definition is invalid.
     public init(game: some Game, saveDirectory: URL? = nil) throws {
-        try self.init(
-            game: game,
-            seed: UInt64.random(in: .min ... .max),
-            saveDirectory: saveDirectory)
+        self.init(prepared: try PreparedGame(game), saveDirectory: saveDirectory)
     }
 
     /// Builds the world with a fixed random seed: the same seed and the same
@@ -200,6 +211,21 @@ public actor GameWorld {
     /// - Throws: if the game definition is invalid.
     public init(game: some Game, seed: UInt64, saveDirectory: URL? = nil) throws {
         self.init(prepared: try PreparedGame(game), seed: seed, saveDirectory: saveDirectory)
+    }
+
+    /// Builds an independent world from a prepared game with a fresh random seed.
+    ///
+    /// The bootstrap result is shared while mutable session state and the random
+    /// stream belong to this world. RESTART reuses this world's initial seed.
+    ///
+    /// - Parameters:
+    ///   - prepared: the immutable bootstrap result to reuse.
+    ///   - saveDirectory: where bare save names resolve; defaults to the
+    ///     per-user saves directory for the game's title.
+    public init(prepared: PreparedGame, saveDirectory: URL? = nil) {
+        self.init(
+            prepared: prepared, seed: UInt64.random(in: .min ... .max),
+            saveDirectory: saveDirectory)
     }
 
     /// Builds the world from a game booted once via `PreparedGame`, skipping the
@@ -1666,7 +1692,7 @@ public actor GameWorld {
 
     /// Where this game's persistent command history lives — the history
     /// sidecar in the saves directory. `SaveStore` owns the path convention.
-    var historyFileURL: URL {
+    public var historyFileURL: URL {
         SaveStore.historyURL(in: saveDirectory)
     }
 

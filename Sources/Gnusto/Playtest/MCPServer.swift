@@ -279,7 +279,7 @@ enum PlaytestServer {
     ///     where they write. It is a parameter rather than a `ProcessInfo`
     ///     lookup because `GameMain` is the composition root and every other
     ///     environment read in the engine goes through it.
-    static func serve<G: Game>(game: () -> G, environment: [String: String]) async {
+    static func serve(game: () -> any Game, environment: [String: String]) async {
         let protocolOut = claimProtocolChannel()
         let writer = StdioWriter(descriptor: protocolOut)
 
