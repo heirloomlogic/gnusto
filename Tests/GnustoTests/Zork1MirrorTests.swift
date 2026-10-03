@@ -161,6 +161,96 @@ struct Zork1MirrorTests {
         #expect(!transcript.contains("rumble from deep within the earth"))
     }
 
+    @Test(arguments: ["break mirror", "smash mirror", "throw sword at mirror", "attack mirror"], [false, true])
+    func damagingCommandsBreakEitherFace(command: String, southern: Bool) async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + (southern ? ["touch mirror"] : []) + [
+                command, "examine mirror", command, "touch mirror", "north", "inventory",
+            ],
+            seed: 39)
+        #expect(turnOutput(of: command, in: transcript).contains("seven years"))
+        #expect(turnOutput(of: "examine mirror", in: transcript).contains("broken into many pieces"))
+        #expect(turnOutput(ofLast: command, in: transcript).contains("Haven't you done enough damage already?"))
+        #expect(!turnOutput(ofLast: "touch mirror", in: transcript).contains("rumble from deep within the earth"))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains(southern ? "Cold Passage" : "Narrow Passage"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("sword"))
+    }
+
+    @Test func breakingTheNorthFaceAlsoBreaksTheSouthFace() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + [
+                "break mirror", "north", "north",
+                "north", "northeast", "east", "north", "north",
+                "take wrench", "push yellow button", "south", "south", "turn bolt with wrench",
+            ] + Array(repeating: "wait", count: 8) + [
+                "west", "north", "north", "north", "up", "north",
+                "examine mirror", "smash mirror", "touch mirror", "north",
+            ],
+            seed: 39)
+        #expect(turnOutput(of: "break mirror", in: transcript).contains("seven years"))
+        #expect(turnOutput(of: "examine mirror", in: transcript).contains("broken into many pieces"))
+        #expect(turnOutput(of: "smash mirror", in: transcript).contains("Haven't you done enough damage already?"))
+        #expect(!turnOutput(of: "touch mirror", in: transcript).contains("rumble from deep within the earth"))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains("Cold Passage"))
+    }
+
+    @Test func throwingTheMirrorAtAnotherItemDoesNotBreakIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + ["throw mirror at sword", "examine mirror", "touch mirror"],
+            seed: 39)
+        #expect(!turnOutput(of: "throw mirror at sword", in: transcript).contains("seven years"))
+        #expect(turnOutput(of: "examine mirror", in: transcript).contains("ugly person staring back"))
+        #expect(turnOutput(of: "touch mirror", in: transcript).contains("rumble from deep within the earth"))
+    }
+
+    @Test(arguments: [false, true])
+    func anUnheldProjectileLeavesEitherMirrorIntact(southern: Bool) async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + (southern ? ["touch mirror"] : []) + [
+                "drop sword", "throw sword at mirror", "examine mirror", "touch mirror", "north",
+            ],
+            seed: 39)
+        #expect(!turnOutput(of: "throw sword at mirror", in: transcript).contains("seven years"))
+        #expect(turnOutput(of: "examine mirror", in: transcript).contains("ugly person staring back"))
+        #expect(turnOutput(ofLast: "touch mirror", in: transcript).contains("rumble from deep within the earth"))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains(southern ? "Narrow Passage" : "Cold Passage"))
+    }
+
+    @Test(arguments: [false, true])
+    func aMirrorUsedAsASmashingInstrumentRemainsIntact(southern: Bool) async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + (southern ? ["touch mirror"] : []) + [
+                "smash sword with mirror", "examine mirror", "touch mirror", "north",
+            ],
+            seed: 39)
+        #expect(!turnOutput(of: "smash sword with mirror", in: transcript).contains("seven years"))
+        #expect(turnOutput(of: "examine mirror", in: transcript).contains("ugly person staring back"))
+        #expect(turnOutput(ofLast: "touch mirror", in: transcript).contains("rumble from deep within the earth"))
+        #expect(turnOutput(ofLast: "north", in: transcript).contains(southern ? "Narrow Passage" : "Cold Passage"))
+    }
+
+    @Test(arguments: ["carried", "floor", "closed"])
+    func aNestedProjectileRequiresCarriedAccessibleContents(placement: String) async throws {
+        let transcript = try await play(
+            Zork1(),
+            Array(Self.toMirrorRoom.prefix(4)) + ["open sack", "take sack"]
+                + Array(Self.toMirrorRoom.dropFirst(4)) + ["put sword in sack"]
+                + (placement == "floor" ? ["drop sack"] : placement == "closed" ? ["close sack"] : [])
+                + ["throw sword at mirror", "examine mirror", "open sack", "look in sack"],
+            seed: 39)
+        #expect(
+            turnOutput(of: "throw sword at mirror", in: transcript).contains("seven years") == (placement == "carried"))
+        #expect(
+            turnOutput(of: "examine mirror", in: transcript).contains("broken into many pieces")
+                == (placement == "carried"))
+        #expect(turnOutput(of: "look in sack", in: transcript).contains("sword"))
+    }
+
     /// Passing through the mirror swaps whatever lies loose on the two rooms'
     /// floors, as the original does. Drop the sword in the northern room, touch
     /// the mirror, and it has crossed to the southern room with you.
