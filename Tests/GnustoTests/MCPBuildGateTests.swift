@@ -7,21 +7,31 @@ import Darwin
 import Glibc
 #endif
 
-/// Launch the real MCP wrapper against a fake Swift command and product. A
+/// Launch the real MCP wrapper and shared fingerprint builder with fake Swift. A
 /// nested SwiftPM invocation would contend with the test runner's build lock.
 struct MCPBuildGateTests {
     private struct Fixture {
         let root: URL
         let game: URL
         let engine: URL
+        let terminal: URL
 
         var cache: URL { game.appendingPathComponent(".context/playtest/.bin/Zwank.path") }
-        var binary: URL { game.appendingPathComponent("products/Zwank") }
+        var binary: URL { generated.appendingPathComponent("scratch/products/GnustoGeneratedLauncher") }
+        var generated: URL { game.appendingPathComponent(".build-launchers/Zwank/development") }
         var calls: URL { root.appendingPathComponent("swift-calls") }
 
         init(layout: String = "local") throws {
-            root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            // Foundation preserves /var for this temporary URL on macOS; the
+            // builder uses realpath, so literal call expectations must do too.
+            guard let canonical = realpath(FileManager.default.temporaryDirectory.path, nil) else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            let temporaryRoot = String(cString: canonical)
+            free(canonical)
+            root = URL(fileURLWithPath: temporaryRoot).appendingPathComponent(UUID().uuidString)
             game = root.appendingPathComponent("game package")
+            terminal = root.appendingPathComponent("terminal checkout")
             switch layout {
             case "checkout": engine = game.appendingPathComponent(".build/checkouts/gnusto")
             case "direct": engine = game
@@ -30,45 +40,65 @@ struct MCPBuildGateTests {
 
             let repository = URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            for package in Set([game, engine]) {
+            for package in Set([game, engine, terminal]) {
                 try write("// source\n", to: package.appendingPathComponent("Sources/Example/Game.swift"))
-                try write("// manifest\n", to: package.appendingPathComponent("Package.swift"))
+                try write(
+                    "// manifest\n.trait(name: \"Playtest\")\n", to: package.appendingPathComponent("Package.swift"))
                 try write("{}\n", to: package.appendingPathComponent("Package.resolved"))
             }
+            if game != engine {
+                try write(
+                    "// manifest\n.trait(name: \"Playtest\")\n.package(name: \"Gnusto\", path: \"\(engine.path)\")\n",
+                    to: game.appendingPathComponent("Package.swift"))
+            }
             try write(
-                String(contentsOf: repository.appendingPathComponent("bin/gnusto-mcp"), encoding: .utf8),
-                to: engine.appendingPathComponent("bin/gnusto-mcp"), executable: true)
+                #"{"version":1,"package":"Zwank","games":[{"name":"Zwank","product":"StoryLibrary","module":"StoryModule","symbol":"game"}]}"#,
+                to: game.appendingPathComponent("gnusto-games.json"))
+            for tool in ["bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs"] {
+                try write(
+                    String(contentsOf: repository.appendingPathComponent(tool), encoding: .utf8),
+                    to: engine.appendingPathComponent(tool), executable: !tool.hasSuffix(".mjs"))
+            }
             try write(
                 #"""
                 #!/bin/sh
                 printf '{"method":"ready","mode":"%s"}\n' "$1"
                 """#,
-                to: binary, executable: true)
+                to: root.appendingPathComponent("launcher-template"), executable: true)
             try write(
                 #"""
                 #!/bin/sh
                 printf '%s\n' "$*" >> "$FAKE_CALLS"
+                if [ "$1" = --version ]; then echo 'Fake Swift 6.4'; exit 0; fi
                 [ "$1" = build ] || exit 91
-                [ "$2" = --product ] && [ "$3" = Zwank ] || exit 92
-                [ "$PWD" -ef "$GNUSTO_PACKAGE_PATH" ] || exit 93
-                if [ "${4:-}" = --show-bin-path ]; then
-                  printf '%s\n' "$GNUSTO_PACKAGE_PATH/products"
+                shift
+                show=0
+                product=''
+                while [ "$#" -gt 0 ]; do
+                  case "$1" in
+                    --package-path) package="$2"; shift 2 ;;
+                    --scratch-path) scratch="$2"; shift 2 ;;
+                    --configuration) [ "$2" = debug ] || exit 92; shift 2 ;;
+                    --product) product="$2"; shift 2 ;;
+                    --show-bin-path) show=1; shift ;;
+                    *) exit 93 ;;
+                  esac
+                done
+                [ "$package" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/package" ] || exit 94
+                [ -d "$GNUSTO_ENGINE_PATH" ] || exit 95
+                if [ "$show" = 1 ]; then
+                  printf '%s/products\n' "$scratch"
                 else
+                  [ "$product" = GnustoGeneratedLauncher ] || exit 96
                   echo 'fixture build progress'
                   [ -z "${FAKE_BUILD_FAIL:-}" ] || exit 42
+                  if [ -z "${FAKE_MISSING_PRODUCT:-}" ]; then
+                    mkdir -p "$scratch/products"
+                    cp "$FAKE_LAUNCHER" "$scratch/products/$product"
+                  fi
                 fi
                 """#,
                 to: root.appendingPathComponent("fake-bin/swift"), executable: true)
-
-            // Known, separated timestamps keep these checks independent of the
-            // machine's clock resolution and avoid sleeping between launches.
-            for package in Set([game, engine]) {
-                for path in [
-                    "Sources", "Sources/Example", "Sources/Example/Game.swift", "Package.swift", "Package.resolved",
-                ] {
-                    try date(package.appendingPathComponent(path), seconds: 1000)
-                }
-            }
         }
 
         func write(_ text: String, to path: URL, executable: Bool = false) throws {
@@ -93,8 +123,25 @@ struct MCPBuildGateTests {
         }
 
         func warm() throws {
-            try write(binary.path + "\n", to: cache)
+            let built = try run()
+            guard built.status == 0 else {
+                throw NSError(
+                    domain: "MCPBuildGateTests", code: Int(built.status),
+                    userInfo: [NSLocalizedDescriptionKey: built.stderr])
+            }
+            try write("", to: calls)
             try date(cache, seconds: 2000)
+        }
+
+        func edit(_ path: URL) throws {
+            let previous = try String(contentsOf: path, encoding: .utf8)
+            try write(previous + "\n// changed input\n", to: path)
+        }
+
+        var buildCalls: [String] {
+            let arguments =
+                "build --package-path \(generated.appendingPathComponent("package").path) --scratch-path \(generated.appendingPathComponent("scratch").path) --configuration debug"
+            return ["--version", arguments + " --product GnustoGeneratedLauncher", arguments + " --show-bin-path"]
         }
 
         func run(_ environment: [String: String] = [:]) throws -> (status: Int32, stdout: String, stderr: String) {
@@ -102,7 +149,13 @@ struct MCPBuildGateTests {
             variables.removeValue(forKey: "GNUSTO_MCP_BUILD")
             variables["GNUSTO_PACKAGE_PATH"] = game.path
             variables["FAKE_CALLS"] = calls.path
-            variables["PATH"] = root.appendingPathComponent("fake-bin").path + ":/usr/bin:/bin"
+            variables["FAKE_LAUNCHER"] = root.appendingPathComponent("launcher-template").path
+            variables["GNUSTO_REPO"] = engine.path
+            variables["GNUSTO_TERMINAL_PATH"] = terminal.path
+            variables["GNUSTO_SWIFT"] = root.appendingPathComponent("fake-bin/swift").path
+            variables["GNUSTO_SWIFT_BUILD_FLAGS"] = "[]"
+            variables["PATH"] =
+                root.appendingPathComponent("fake-bin").path + ":" + (variables["PATH"] ?? "/usr/bin:/bin")
             variables.merge(environment) { _, value in value }
             return try ToolProcess.run(
                 engine.appendingPathComponent("bin/gnusto-mcp"), ["Zwank"], from: root,
@@ -118,7 +171,6 @@ struct MCPBuildGateTests {
     }
 
     private static let protocolOutput = "{\"method\":\"ready\",\"mode\":\"--mcp\"}\n"
-    private static let buildCalls = ["build --product Zwank", "build --product Zwank --show-bin-path"]
 
     @Test(arguments: ["local", "checkout", "direct"])
     func warmLaunchSkipsEverySwiftInvocation(layout: String) throws {
@@ -139,12 +191,12 @@ struct MCPBuildGateTests {
         #expect(result.status == 0, "\(result.stderr)")
         #expect(result.stdout == Self.protocolOutput)
         #expect(result.stderr.contains("fixture build progress"))
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
         #expect(try String(contentsOf: fixture.cache, encoding: .utf8) == fixture.binary.path + "\n")
         #expect(!FileManager.default.fileExists(atPath: fixture.engine.appendingPathComponent(".context").path))
         let warm = try fixture.run()
         #expect(warm.status == 0)
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
     }
 
     @Test(arguments: ["local", "checkout"], ["Sources/Example/Game.swift", "Package.swift", "Package.resolved"])
@@ -152,14 +204,14 @@ struct MCPBuildGateTests {
         let fixture = try Fixture(layout: layout)
         defer { fixture.remove() }
         try fixture.warm()
-        try fixture.date(fixture.engine.appendingPathComponent(path), seconds: 3000)
+        try fixture.edit(fixture.engine.appendingPathComponent(path))
         let result = try fixture.run()
         #expect(result.status == 0, "\(result.stderr)")
         #expect(result.stdout == Self.protocolOutput)
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
         let warm = try fixture.run()
         #expect(warm.status == 0)
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
     }
 
     @Test(arguments: ["Sources/Example/Game.swift", "Package.swift", "Package.resolved"])
@@ -167,10 +219,10 @@ struct MCPBuildGateTests {
         let fixture = try Fixture()
         defer { fixture.remove() }
         try fixture.warm()
-        try fixture.date(fixture.game.appendingPathComponent(path), seconds: 3000)
+        try fixture.edit(fixture.game.appendingPathComponent(path))
         let result = try fixture.run()
         #expect(result.status == 0, "\(result.stderr)")
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
     }
 
     @Test(arguments: ["local", "checkout"])
@@ -179,10 +231,9 @@ struct MCPBuildGateTests {
         defer { fixture.remove() }
         try fixture.warm()
         try FileManager.default.removeItem(at: fixture.engine.appendingPathComponent("Sources/Example/Game.swift"))
-        try fixture.date(fixture.engine.appendingPathComponent("Sources/Example"), seconds: 3000)
         let result = try fixture.run()
         #expect(result.status == 0, "\(result.stderr)")
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
     }
 
     @Test func forcingAWarmBuildStillBuilds() throws {
@@ -192,16 +243,17 @@ struct MCPBuildGateTests {
         let result = try fixture.run(["GNUSTO_MCP_BUILD": "1"])
         #expect(result.status == 0, "\(result.stderr)")
         #expect(result.stdout == Self.protocolOutput)
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
     }
 
     @Test func missingCachedBinaryBuildsAgain() throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
-        try fixture.write("/no/such/game\n", to: fixture.cache)
+        try fixture.warm()
+        try FileManager.default.removeItem(at: fixture.binary)
         let result = try fixture.run()
         #expect(result.status == 0, "\(result.stderr)")
-        #expect(fixture.swiftCalls == Self.buildCalls)
+        #expect(fixture.swiftCalls == fixture.buildCalls)
         #expect(try String(contentsOf: fixture.cache, encoding: .utf8) == fixture.binary.path + "\n")
     }
 
@@ -212,8 +264,8 @@ struct MCPBuildGateTests {
         let result = try fixture.run(["GNUSTO_MCP_BUILD": "1", "FAKE_BUILD_FAIL": "1"])
         #expect(result.status == 2)
         #expect(result.stdout.isEmpty)
-        #expect(result.stderr.contains("could not build Zwank"))
-        #expect(fixture.swiftCalls == ["build --product Zwank"])
+        #expect(result.stderr.contains("could not build game Zwank"))
+        #expect(fixture.swiftCalls == Array(fixture.buildCalls.prefix(2)))
         let attributes = try FileManager.default.attributesOfItem(atPath: fixture.cache.path)
         #expect(attributes[.modificationDate] as? Date == Date(timeIntervalSince1970: 2000))
     }
@@ -221,11 +273,10 @@ struct MCPBuildGateTests {
     @Test func missingBuiltProductDoesNotRecordASuccess() throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
-        try FileManager.default.removeItem(at: fixture.binary)
-        let result = try fixture.run()
+        let result = try fixture.run(["FAKE_MISSING_PRODUCT": "1"])
         #expect(result.status == 2)
         #expect(result.stdout.isEmpty)
-        #expect(result.stderr.contains("found no executable"))
+        #expect(result.stderr.contains("ENOENT"))
         #expect(!FileManager.default.fileExists(atPath: fixture.cache.path))
     }
 }

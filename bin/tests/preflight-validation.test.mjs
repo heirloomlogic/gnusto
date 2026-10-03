@@ -4,7 +4,7 @@
 //
 // Each fixture fakes just enough to reach the row under test: `bin/playtest-replay`
 // answers `--build` without compiling anything, `swift package describe` answers
-// through a fake on PATH so `resolveGame` can find "Probe", and `bin/gnusto-mcp`
+// through a fake on PATH for the catalog library graph, and `bin/gnusto-mcp`
 // exits immediately so `server.handshake()` fails fast instead of waiting out the
 // real 240s timeout. None of that touches the row being asserted on: the `mcp key`
 // row is computed right after the build step succeeds and before any of it runs.
@@ -49,9 +49,11 @@ exit 1
     }))
   }
 
+  writeFileSync(path.join(root, 'gnusto-games.json'), JSON.stringify({ version: 1, package: 'ProbePackage', games: [{ name: 'Probe', product: 'StoryLibrary', module: 'StoryModule', symbol: 'game' }] }))
+  mkdirSync(path.join(root, 'StorySources'), { recursive: true })
   writeFileSync(path.join(root, 'fake-swift-bin/swift'), `#!/bin/sh
 case "$*" in
-  'package describe --type json') printf '%s\\n' '{"products":[{"name":"Probe","type":{"executable":null}}]}' ;;
+  'package describe --type json') printf '%s\\n' '{"name":"ProbePackage","products":[{"name":"StoryLibrary","type":{"library":["automatic"]},"targets":["Facade","UnrelatedModule"]}],"targets":[{"name":"Facade","path":"FacadeSources","target_dependencies":["Story-Module"]},{"name":"Story-Module","c99name":"StoryModule","path":"StorySources","product_dependencies":["GnustoClock"]},{"name":"UnrelatedModule","product_dependencies":["GnustoSpellcasting"]}]}' ;;
   *) exit 98 ;;
 esac
 `, { mode: 0o755 })
@@ -191,3 +193,29 @@ test('--help wins even alongside another flag', (t) => {
 // Coverage for "every other unknown flag still exits 2 naming it" already lives
 // in 'an unknown flag is rejected rather than silently dropped' above — same
 // shape, same assertions — so --help's arrival doesn't need a second copy of it.
+
+
+test('catalog module selects source and capabilities through a differently named library product', (t) => {
+  const f = fixture(t)
+  // A tempting Sources/<game> directory must not override the catalog module.
+  mkdirSync(path.join(f.root, 'Sources/Probe'), { recursive: true })
+  const file = path.join(repo, 'bin/playtest-preflight')
+  const inspected = spawnSync(process.execPath, ['-e', `
+    const fs = require('node:fs'), Module = require('node:module');
+    const file = process.argv[1], mod = new Module(file);
+    mod.filename = file; mod.paths = Module._nodeModulePaths(require('node:path').dirname(file));
+    const source = fs.readFileSync(file, 'utf8').replace(/main\\(\\)\\.catch[^\\n]+/, '');
+    mod._compile(source + '\\nconsole.log(JSON.stringify({source: gameSourceDirOf(\"Probe\"), capabilities: capabilitiesOf(\"Probe\")}))', file);
+  `, file], { encoding: 'utf8', env: { ...process.env, GNUSTO_PACKAGE_PATH: f.root, PATH: `${path.join(f.root, 'fake-swift-bin')}:${process.env.PATH}` } })
+  assert.equal(inspected.status, 0, inspected.stderr)
+  assert.deepEqual(JSON.parse(inspected.stdout), { source: 'StorySources', capabilities: ['clock'] })
+})
+
+test('catalog entries must name actual library products before preflight builds', (t) => {
+  const f = fixture(t)
+  writeFileSync(path.join(f.root, 'gnusto-games.json'), JSON.stringify({ version: 1, package: 'ProbePackage', games: [{ name: 'Probe', product: 'MissingLibrary', module: 'StoryModule', symbol: 'game' }] }))
+  const result = f.run(['Probe'])
+  assert.equal(result.status, 2, result.stdout + result.stderr)
+  assert.match(result.stderr, /MissingLibrary.*library product/, result.stdout + result.stderr)
+  assert.doesNotMatch(result.stdout, /Probe build/)
+})

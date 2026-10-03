@@ -110,12 +110,11 @@
 # this script lives in. That is worth saying because the script cd's there before
 # it reads a single argument, and until #382 the three flags disagreed about it.
 # For a game written by bin/new-game the shim cd's to that game's package root
-# first, on purpose, so there "where you ran it" means the package root.
+# first, while preserving GNUSTO_INVOCATION_DIR for the caller's relative paths.
 #
-# Why the built binary and not `swift run`: SharingYourGame.md warns that
-# `swift run` interferes with stdin for this project, it prints build chatter
-# into the output, and under a dozen concurrent testers it would trigger a dozen
-# builds. Build once with --build; replaying never builds.
+# Prime the development cache with --build before dispatching testers. Every
+# replay asks the shared builder to validate the fingerprint; a warm replay
+# launches the generated binary without invoking SwiftPM.
 #
 # Where the output lands:
 #
@@ -137,7 +136,7 @@
 # opens `commands.txt`. `SKILL.md`'s "Measuring a change to the harness" says what
 # that cost.
 #
-# Why it prints the transcript FILE and not stdout: the plain ConsoleIOHandler
+# Why it prints the transcript FILE and not stdout: the plain terminal handler
 # writes the "> " prompt but not the piped command, so stdout is answers with
 # the questions missing. GNUSTO_TRANSCRIPT records "> command" interleaved with
 # the output, byte-for-byte what ScriptedIOHandler produces in the test suite —
@@ -257,24 +256,20 @@ playtest_root="$pkg/.context/playtest"
 # checkout it belongs to, so a worktree at an old commit gets its own.
 binpath_cache="$playtest_root/.bin/$game.path"
 
-# --- build mode ---------------------------------------------------------------
-# A one-shot, not a lazy build. A dozen concurrent `swift build` calls serialize
-# on SwiftPM's package lock, so each tester would block on a build it cannot
-# see; and macOS ships bash 3.2, which has no flock to coordinate better.
-# Making the build explicit removes the race, and turns a stale binary into a
-# legible error instead of a mystery.
-if [[ $build_only -eq 1 ]]; then
-  echo "Building $game (debug) in $pkg …" >&2
-  ( cd "$pkg" && swift build --product "$game" ) >&2
-  # Ask for the bin path, never guess it. Under the swiftbuild build system it
-  # is .build/out/Products/Debug, not .build/debug — and a stale .build/debug
-  # copy from an earlier `swift run` may also exist, so guessing is a coin flip
-  # between the binary you just built and one from last week.
-  bindir="$( cd "$pkg" && swift build --product "$game" --show-bin-path )"
-  [[ -x "$bindir/$game" ]] || die "built $game but found no executable at $bindir/$game"
+# The convenience path record belongs to the invoking game package. It is never
+# evidence of freshness: the shared builder validates the development fingerprint
+# before every use, without invoking SwiftPM for a warm cache.
+resolve_binary() {
+  binary="$(GNUSTO_PACKAGE_PATH="$pkg" "$script_dir/build-game" "$game" --mode development)" \
+    || die "could not build game $game"
+  [[ "$binary" == /* && -x "$binary" ]] \
+    || die "builder returned no absolute runnable path for game $game: $binary"
   mkdir -p "$(dirname "$binpath_cache")"
-  printf '%s\n' "$bindir/$game" > "$binpath_cache"
-  echo "$bindir/$game"
+  printf '%s\n' "$binary" > "$binpath_cache"
+}
+if [[ $build_only -eq 1 ]]; then
+  resolve_binary
+  printf '%s\n' "$binary"
   exit 0
 fi
 
@@ -282,9 +277,7 @@ fi
 [[ -f "$commands" ]] || die "no such command file: $commands"
 [[ -f "$binpath_cache" ]] \
   || die "no build recorded for $game — run: bin/playtest-replay --build $game"
-read -r binary < "$binpath_cache"
-[[ -x "$binary" ]] \
-  || die "recorded binary '$binary' is gone — re-run: bin/playtest-replay --build $game"
+resolve_binary
 
 # --- --start: the deep start, read before anything is allocated ---------------
 # Fail here or not at all. A route that cannot be read must not leave a probe
@@ -299,7 +292,7 @@ if [[ -n "$start_route" ]]; then
   [[ -z "$restore_slot" ]] \
     || die "--start '$start_route' and --restore '$restore_slot' are two prologues; a route walked on top of a restored save ends nowhere its manifest describes"
   command -v node >/dev/null 2>&1 \
-    || die "--start reads .playtest/$game/routes/$start_route.json through node, which is not on PATH; no other flag here needs it"
+    || die "--start reads .playtest/$game/routes/$start_route.json through node, which is not on PATH"
   # The reader's own words reach stderr; this only says which run they were about.
   # Resolved against this script rather than the working directory: a shimmed
   # game execs this script from Gnusto's checkout while standing in its own
