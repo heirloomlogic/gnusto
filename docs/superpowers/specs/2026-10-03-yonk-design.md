@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-03
 
-**Status:** Original design approved; revised game packaging approved in conversation; revised written spec awaiting review; not started
+**Status:** Revised written spec approved; replacement implementation plans awaiting review; not started
 
 ## Goal
 

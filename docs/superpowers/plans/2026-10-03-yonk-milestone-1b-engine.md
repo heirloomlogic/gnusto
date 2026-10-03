@@ -1,512 +1,52 @@
-# Yonk Milestone 1: Engine Changes Implementation Plan
-
-**Status: Superseded; do not execute.** The approved packaging revision in `docs/superpowers/specs/2026-10-03-yonk-design.md` replaces maintained per-game executable targets with library-only games, a reusable GnustoTerminal package and generated terminal/Yonk build packages. It also removes terminal launch behavior from `PackagedGame` and retires `GameMain`. Its replacements are `2026-10-03-yonk-milestone-1a-packaging.md` and `2026-10-03-yonk-milestone-1b-engine.md` in this directory. The remaining content is retained as historical planning material, not an executable plan.
+# Yonk Milestone 1B: Engine Reports and Map Queries Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give Gnusto the four things the Yonk front end, the Blorple mapper and the Lobal voice interface need from the engine: importable games, a per-turn report, two read-only queries (`vocabulary()` and `mapView()`), and two map hints for authors (`mapRegion` and `.secret`).
+**Status:** Awaiting plan review and execution-method selection. No implementation has started.
 
-**Architecture:** Each demo game's code becomes a library target that exposes one `public let game = PackagedGame { … }`; its executable becomes a two-line `main.swift`. `TurnResult` gains a `report` computed in `GameWorld.perform(_:)` from the internal `TurnAudit` and the player's location before and after. `vocabulary()` and `mapView()` are actor methods that read the world and change nothing. `mapRegion(_:)` is a new `LocationTrait`; `.secret` is a new modifier on `MapEntry`, recorded by the bootstrap into `GameDefinition.secretExits`.
+**Goal:** Give every front end a public per-turn report, a complete in-scope vocabulary query, a filtered room-map query, and author hints for mazes and secret exits.
 
-**Tech Stack:** Swift 6.2 tools, SwiftPM, Swift Testing, DocC, swift-format (Persnicket config).
+**Architecture:** Library-only games and generated terminal/MCP launchers from milestone 1A remain intact. Gnusto records actual player movement in live turn scratch data and publishes one net arrival on TurnResult; vocabulary and map queries evaluate read-only in throwaway frames. Map hints become declarations validated at bootstrap, with Zork 1's nineteen maze/dead-end rooms annotated.
 
-**Spec:** `docs/superpowers/specs/2026-10-03-yonk-design.md`, sections 1.1–1.4 and milestone 1 of section 5.
+**Tech Stack:** Swift 6.2 manifests, Swift Testing, SwiftPM Playtest trait, DocC and the existing Persnicket formatting configuration.
 
-**One deliberate departure from the spec.** Spec 1.1 says each game type and its `init()` become `public`. A public type conforming to the public `Game` protocol must also make every protocol witness public — `title`, `intro`, `map`, `rules`, `verbs` and the rest, in all seven games and in every game an author ever writes. This plan keeps the game type internal and has each library export one `PackagedGame` value instead. The executable calls `await game.main()`, and a front end calls `Zork1.game.makeGame()`. Task 2 updates the spec's 1.1 and 2.1 to match, so Yonk's per-game app reads `Yonk(Zork1.game)` rather than `Yonk(Zork1.init)`.
+**Spec:** `docs/superpowers/specs/2026-10-03-yonk-design.md`, sections 1.2–1.4 and milestone 1 of section 5. Prerequisite: `docs/superpowers/plans/2026-10-03-yonk-milestone-1a-packaging.md` has produced working terminal builds and play-test tools.
 
 ## Global Constraints
 
 - Swift tools version stays `6.2`; platform floors stay `.macOS(.v15)` and `.iOS(.v18)`.
-- Executable product names do not change: `swift run Zork1`, `bin/gnusto-mcp Zork1`, `bin/playtest-replay`, `bin/playtest-preflight` and `bin/export-game` keep working with the names they use today.
-- Nothing new goes under `Sources/Gnusto/Playtest/`: the traits-off build (`--disable-default-traits`) must still compile everything added here.
-- Every `public` declaration carries a doc comment, with `- Parameter`/`- Parameters:` and `- Returns:` lines wherever the declaration takes or returns something. The strict lint fails otherwise.
-- DocC builds with `--warnings-as-errors`: a double-backtick symbol link may only name a public symbol. Name an internal one in a single-backtick code span.
-- Game-target prose follows `ProseConventionTests`: one plain `"""` literal, no `+`, no trailing `\`.
-- Markdown is never hard-wrapped: one line per paragraph, one line per list item, one line per table row.
-- No deprecated aliases, shims or migration paths for anything replaced.
-- `TurnReport`, `WordsInScope`, `RoomMapView` and `MapExit` expose no public initializer; only the engine builds them.
-- Before claiming done: `swift test` passes, the strict lint passes, `node .claude/workflows/playtest.dryrun.mjs` passes, and DocC builds with `--warnings-as-errors`.
+- No per-game executable target, root executable product, `GameMain` or `PackagedGame.main()` is introduced. Development/play-test/deployment checks use milestone 1A's generated packages.
+- New engine APIs stay outside `Sources/Gnusto/Playtest/` and compile with the Playtest trait disabled.
+- Every public declaration has a doc comment, parameter/return documentation where applicable, and no DocC link to an internal symbol.
+- `TurnReport`, `WordsInScope`, `RoomMapView` and `MapExit` expose no public initializer; only the engine builds these values.
+- Game-target prose follows ProseConventionTests: one plain multi-line literal, no concatenation and no trailing backslash.
+- Map knowledge is owned by the mapper, never serialized or undone by the engine. Exits never expose destinations through mapView.
+- Markdown is never hard-wrapped. Preserve unrelated edits and the current branch name.
+- These tasks derive from the former plan's engine-only tasks; this document is their active replacement. No step in the superseded plan is an execution dependency.
 
 ## Review Focus
 
-- A move the world refuses — a shut gate, a `blocked:` wall, a hidden door, a direction with no exit — must report no movement, even though the parser read a direction. Pinned in Task 4.
-- UNDO and RESTART after a walk must report `.relocated`, never a walk back. Pinned in Task 4.
-- A teleport into a room that happens to be next door (a rule's `arrive(at:)` into a room an exit also reaches) must report `.teleported`, not a walk. Pinned in Task 4.
-- `vocabulary()` asked while a save prompt is open must say the next line is a filename. Pinned in Task 5.
-- `mapView()` must not spend a turn or draw from the random stream, however often a front end calls it. Pinned in Task 6.
+- A parsed direction and an adjacent room are insufficient evidence of walking; Task 2 records actual traversal and tests a GO rule that teleports.
+- ENTER and FOLLOW must report the exit actually taken, including two exits with one destination; Task 2 tests ambiguity and conditional gating.
+- UNDO, RESTART and RESTORE filenames relocate without map edges; Task 2 covers all three state replacements and confirms failed moves report no movement.
+- An open save/restore prompt changes the accepted input context; Task 3 verifies filename context without exposing hidden-object vocabulary.
+- Repeated queries must not advance moves, randomness or mutable globals; Task 4 compares state before and after query evaluation and uses a condition that writes scratch state.
+
+## File Structure
+
+| Files | Responsibility |
+|---|---|
+| `Declarations/Traits.swift`, `WorldMap.swift`, `Engine/Bootstrap.swift`, `GameDefinition.swift` | validated map-region and secret-exit declarations |
+| `Engine/TurnReport.swift`, `TurnFrame.swift`, `GameWorld.swift`, `Actions/DefaultActions.swift` | public report backed by actual traversal records |
+| `Engine/GameWorld+Vocabulary.swift` | full vocabulary, split by word kind and input context |
+| `Engine/GameWorld+MapView.swift` | filtered current-room view with no exit destinations |
+| `Tests/GnustoTests/Support/{MapHintGames,CartographyGames}.swift` and focused suites | declaration, movement, vocabulary and read-only query regressions |
+
+All source paths in this table are relative to `Sources/Gnusto/`. Test paths are relative to the repository root. This plan touches no terminal implementation files.
 
 ---
 
-### Task 1: `PackagedGame`, the importable form of a game
-
-**Files:**
-- Create: `Sources/Gnusto/IO/PackagedGame.swift`
-- Modify: `Sources/Gnusto/IO/GameMain.swift` (lines 22–94: move the body of `main()` into a new internal `ConsoleLaunch`)
-- Modify: `Sources/Gnusto/IO/PlaytestMode.swift:42` and `Sources/Gnusto/Playtest/MCPServer.swift:259` (comments that name `GameMain.defaultIOHandler`)
-- Modify: `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, `Sources/Gnusto/Documentation.docc/Documentation.md`
-- Test: `Tests/GnustoTests/PackagedGameTests.swift`
-
-**Interfaces:**
-- Consumes: `Game`, `GameWorld.init(game:seed:saveDirectory:)`, `PlaytestServer.serve(game:environment:)`, `REPL`.
-- Produces:
-  - `public struct PackagedGame: Sendable` with `public init<G: Game>(_ make: @escaping @Sendable () -> G)`, `public var title: String`, `public func makeGame() -> any Game`, `public func main() async`.
-  - `enum ConsoleLaunch` (internal) with `static func run<G: Game>(_ make: () -> G) async`.
-
-- [ ] **Step 1: Write the failing test**
-
-Create `Tests/GnustoTests/PackagedGameTests.swift`:
-
-```swift
-import Testing
-
-@testable import Gnusto
-
-struct PackagedGameTests {
-    @Test func packagedGameBuildsAWorldFromAFreshGame() async throws {
-        let packaged = PackagedGame { DialRoomGame() }
-        let world = try GameWorld(game: packaged.makeGame(), seed: 0)
-        let opening = await world.begin()
-        #expect(opening.output.contains("A landing, and a room that keeps changing its mind."))
-    }
-
-    @Test func packagedGameReadsTheTitleTheGameDeclares() {
-        #expect(PackagedGame { DialRoomGame() }.title == "The Dial Room")
-    }
-}
-```
-
-`DialRoomGame` is the existing fixture in `Tests/GnustoTests/Support/AlwaysDescribedGames.swift`.
-
-- [ ] **Step 2: Run the test to verify it fails**
-
-Run: `swift test --filter PackagedGameTests`
-Expected: build failure, `cannot find 'PackagedGame' in scope`.
-
-- [ ] **Step 3: Move `main()`'s body into `ConsoleLaunch`**
-
-In `Sources/Gnusto/IO/GameMain.swift`, replace the body of `public static func main() async` with one line, and keep its doc comment. Add one sentence at the end of that doc comment: `` The body is `ConsoleLaunch.run(_:)`, which ``PackagedGame/main()`` runs too. ``
-
-```swift
-    public static func main() async {
-        await ConsoleLaunch.run(Self.init)
-    }
-```
-
-Move `defaultIOHandler(world:environment:)` out of the `GameMain` extension into the new enum. Leave `static func run(world:io:transcriptURL:status:)` where it is: `DslQuickWinsTests` calls it on a `GameMain` fixture. Add the enum below the `GameMain` extension in the same file, so it keeps the file's `Darwin`/`Glibc` imports:
-
-```swift
-/// Running a game as a console program: the one body that ``GameMain/main()``
-/// and ``PackagedGame/main()`` share.
-///
-/// `--mcp` (or `GNUSTO_MCP`) turns the process into a play-test server when the
-/// `Playtest` trait is on, and is refused on standard error when it is off.
-/// Otherwise it boots a world, reports bootstrap warnings and bad environment
-/// values on standard error, and drives a `REPL` until the game ends.
-enum ConsoleLaunch {
-    /// Runs the game `make` builds as a console program.
-    ///
-    /// - Parameter make: builds a fresh instance of the game.
-    static func run<G: Game>(_ make: () -> G) async {
-        let environment = ProcessInfo.processInfo.environment
-        if PlaytestMode.requested(arguments: CommandLine.arguments, environment: environment) {
-            #if Playtest
-            await PlaytestServer.serve(game: make, environment: environment)
-            return
-            #else
-            writeToStandardError(PlaytestMode.unavailable)
-            exit(1)
-            #endif
-        }
-        do {
-            let seed = SeedRequest(environment: environment)
-            let status = StatusFooter(environment: environment)
-            // Unpinned runs go through the unseeded initializer rather than
-            // repeating its `UInt64.random` here, so "random by default" stays
-            // one policy in one place.
-            let world =
-                try seed.value.map { try GameWorld(game: make(), seed: $0) }
-                ?? GameWorld(game: make())
-            // Opens (and, on success, immediately closes) the launch
-            // transcript file now, while a failure can still be reported —
-            // see the comment below on why that reporting has to happen
-            // before the IO handler exists.
-            let transcript = TranscriptRequest(world: world, environment: environment)
-            // Surface non-fatal bootstrap warnings before the IO handler is
-            // built: the full-screen `TerminalIOHandler` enters the alternate
-            // screen buffer in its `init`, so a stderr write after that would be
-            // painted over. Printing here keeps it on the primary screen, and
-            // out of the play transcript (stderr, like the fatal path below).
-            if let complaint = seed.complaint {
-                writeToStandardError(complaint)
-            }
-            if let complaint = status.complaint {
-                writeToStandardError(complaint)
-            }
-            if let complaint = transcript.complaint {
-                writeToStandardError(complaint)
-            }
-            if let report = world.definition.warningReport {
-                writeToStandardError(report)
-            }
-            await REPL(
-                world: world,
-                io: await defaultIOHandler(world: world, environment: environment),
-                transcriptURL: transcript.url,
-                status: status.inForce
-            ).run()
-        } catch {
-            writeToStandardError("\(error)")
-            exit(1)
-        }
-    }
-
-    // `defaultIOHandler(world:environment:)` moves here unchanged, doc comment
-    // included, from the `GameMain` extension.
-}
-```
-
-The last two lines of that block are an instruction, not code: cut the existing `private static func defaultIOHandler(world:environment:) async -> any IOHandler` and its doc comment from the `GameMain` extension and paste them in their place.
-
-- [ ] **Step 4: Fix the two comments that name the moved function**
-
-In `Sources/Gnusto/IO/PlaytestMode.swift:42` and `Sources/Gnusto/Playtest/MCPServer.swift:259`, change `GameMain.defaultIOHandler` to `ConsoleLaunch.defaultIOHandler`. Check for any other mention:
-
-Run: `grep -rn "GameMain.defaultIOHandler\|GameMain\.main()'s body" Sources Tests`
-Expected: no output.
-
-- [ ] **Step 5: Write `PackagedGame`**
-
-Create `Sources/Gnusto/IO/PackagedGame.swift`:
-
-```swift
-/// A game packaged for a program that imports it rather than runs it.
-///
-/// A game's own type stays internal to its library, so nothing outside the
-/// library can name it. The library exports one `PackagedGame` instead, and
-/// every way of starting the game goes through that value:
-///
-/// ```swift
-/// // Sources/Zork1/Packaged.swift, in the library
-/// public let game = PackagedGame { Zork1() }
-///
-/// // Sources/Zork1Main/main.swift, the executable
-/// import Zork1
-///
-/// await game.main()
-///
-/// // a front end that imports the library
-/// let world = try GameWorld(game: Zork1.game.makeGame())
-/// ```
-public struct PackagedGame: Sendable {
-    private let make: @Sendable () -> any Game
-    private let launch: @Sendable () async -> Void
-
-    /// Packages a game.
-    ///
-    /// - Parameter make: builds a fresh instance of the game. It runs once for
-    ///   each world built from it, so every world starts from the game as
-    ///   declared.
-    public init<G: Game>(_ make: @escaping @Sendable () -> G) {
-        self.make = make
-        self.launch = { await ConsoleLaunch.run(make) }
-    }
-
-    /// The title the game declares.
-    public var title: String { make().title }
-
-    /// A fresh instance of the game, to build a ``GameWorld`` from.
-    ///
-    /// - Returns: a new instance of the packaged game.
-    public func makeGame() -> any Game { make() }
-
-    /// Runs the game as a console program, exactly as ``GameMain/main()``
-    /// does: `--mcp` and the `GNUSTO_*` environment variables included.
-    public func main() async { await launch() }
-}
-```
-
-- [ ] **Step 6: Run the test to verify it passes**
-
-Run: `swift test --filter PackagedGameTests`
-Expected: 2 tests pass.
-
-- [ ] **Step 7: Document it**
-
-In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add a section directly before `## What the engine needs from the platform`:
-
-```markdown
-## Importing a game instead of running it
-
-A front end that is its own program, such as a Mac app, cannot import a game's executable target. Put the game in a library target and export one ``PackagedGame`` from it: `public let game = PackagedGame { MyGame() }`. The game type stays internal, so none of its properties need to be `public`. The executable target is then two lines, `import MyGame` and `await game.main()`, and the front end builds its worlds from `MyGame.game.makeGame()`. Every demo game in this package is built this way, and so is the starter `bin/new-game` writes.
-```
-
-In the same file's `## Topics` list, add `- ``PackagedGame``` directly after `- ``GameMain```. In `Sources/Gnusto/Documentation.docc/Documentation.md`, add `- ``PackagedGame``` directly after the `- ``GameMain``` line (line 208).
-
-- [ ] **Step 8: Run the whole suite**
-
-Run: `swift test`
-Expected: all tests pass.
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add Sources/Gnusto/IO/PackagedGame.swift Sources/Gnusto/IO/GameMain.swift Sources/Gnusto/IO/PlaytestMode.swift Sources/Gnusto/Playtest/MCPServer.swift Sources/Gnusto/Documentation.docc/CustomFrontEnds.md Sources/Gnusto/Documentation.docc/Documentation.md Tests/GnustoTests/PackagedGameTests.swift
-git commit -m "feat: add PackagedGame, the importable form of a game"
-```
-
----
-
-### Task 2: Demo games and the starter become importable
-
-**Files:**
-- Modify: `Package.swift` (products at lines 70–76; the seven `.executableTarget` blocks from line 159)
-- Modify: `Sources/Zork1/Zork1.swift:22-23`, `Sources/Dungeon/Dungeon.swift:22-23`, `Sources/Gramarye/Gramarye.swift:34-35`, `Sources/Fulminate/Fulminate.swift:55-56`, `Sources/KindlyDeep/KindlyDeep.swift:39-40`
-- Delete: `Sources/Lighthouse/Entry.swift`, `Sources/CloakOfDarkness/Entry.swift`
-- Create: `Sources/<Game>/Packaged.swift` and `Sources/<Game>Main/main.swift` for each of the seven games
-- Modify: `bin/templates/Package.swift`, `bin/templates/README.md:40`, `bin/new-game:215-219`
-- Delete: `bin/templates/Sources/MyGame/Entry.swift`
-- Create: `bin/templates/Sources/MyGame/Packaged.swift`, `bin/templates/Sources/MyGameMain/main.swift`
-- Modify: `Sources/Gnusto/Documentation.docc/SharingYourGame.md:13-33`, `.github/workflows/documentation.yml:77-79`
-- Modify: `docs/superpowers/specs/2026-10-03-yonk-design.md` (sections 1.1 and 2.1)
-
-**Interfaces:**
-- Consumes: `PackagedGame` from Task 1.
-- Produces: for each game `X` in `CloakOfDarkness`, `Lighthouse`, `Zork1`, `Dungeon`, `Gramarye`, `Fulminate`, `KindlyDeep`: a library target `X` (module `X`) exporting `public let game: PackagedGame`; a library product `XGame`; an executable target `XMain`; the executable product `X`, unchanged. The starter gets the same shape under `MyGame`, `MyGameGame` and `MyGameMain`.
-
-There is no failing unit test to write first: this task changes package structure, and the existing suite plus the tooling checks below are the test. Every one of them already passes; each must still pass afterwards.
-
-- [ ] **Step 1: Record the baseline**
-
-Run: `swift build 2>&1 | tail -1 && bin/export-game`
-Expected: `Build complete!`, then the seven executable product names: CloakOfDarkness, Dungeon, Fulminate, Gramarye, KindlyDeep, Lighthouse, Zork1 (in whatever order the script prints them). Keep the list to compare in Step 8.
-
-- [ ] **Step 2: Rewrite the manifest's game products and targets**
-
-In `Package.swift`, replace the seven `.executable(...)` product lines with:
-
-```swift
-        .executable(name: "CloakOfDarkness", targets: ["CloakOfDarknessMain"]),
-        .executable(name: "Lighthouse", targets: ["LighthouseMain"]),
-        .executable(name: "Zork1", targets: ["Zork1Main"]),
-        .executable(name: "Dungeon", targets: ["DungeonMain"]),
-        .executable(name: "Gramarye", targets: ["GramaryeMain"]),
-        .executable(name: "Fulminate", targets: ["FulminateMain"]),
-        .executable(name: "KindlyDeep", targets: ["KindlyDeepMain"]),
-        // Each game is also a library, so a program that is not the game's own
-        // executable — a Mac front end — can import it. The library exports one
-        // `PackagedGame`; see that type for why the game's own type stays internal.
-        .library(name: "CloakOfDarknessGame", targets: ["CloakOfDarkness"]),
-        .library(name: "LighthouseGame", targets: ["Lighthouse"]),
-        .library(name: "Zork1Game", targets: ["Zork1"]),
-        .library(name: "DungeonGame", targets: ["Dungeon"]),
-        .library(name: "GramaryeGame", targets: ["Gramarye"]),
-        .library(name: "FulminateGame", targets: ["Fulminate"]),
-        .library(name: "KindlyDeepGame", targets: ["KindlyDeep"]),
-```
-
-Then, for each of the seven game targets, change `.executableTarget(` to `.target(` (keep its name, dependencies, plugins and the comment above it) and add an executable target directly after it. For Zork1:
-
-```swift
-        .target(
-            name: "Zork1",
-            dependencies: [
-                "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat",
-            ],
-            plugins: devPlugins
-        ),
-        .executableTarget(
-            name: "Zork1Main",
-            dependencies: ["Zork1"],
-            plugins: devPlugins
-        ),
-```
-
-Do the same for `CloakOfDarkness`, `Lighthouse`, `Dungeon`, `Gramarye`, `Fulminate` and `KindlyDeep`, each executable named `<Game>Main` and depending only on `"<Game>"`. The `GnustoTests` target's dependency list names the seven game targets, which keep their names, so it does not change.
-
-- [ ] **Step 3: Take `@main` off the five games that carry it**
-
-In each of these files, replace the two lines `@main` / `struct X: Game, GameMain {` with the single line `struct X: Game {`, leaving the doc comment above untouched:
-
-- `Sources/Zork1/Zork1.swift:22-23` → `struct Zork1: Game {`
-- `Sources/Dungeon/Dungeon.swift:22-23` → `struct Dungeon: Game {`
-- `Sources/Gramarye/Gramarye.swift:34-35` → `struct Gramarye: Game {`
-- `Sources/Fulminate/Fulminate.swift:55-56` → `struct Fulminate: Game {`
-- `Sources/KindlyDeep/KindlyDeep.swift:39-40` → `struct KindlyDeep: Game {`
-
-Delete `Sources/Lighthouse/Entry.swift` and `Sources/CloakOfDarkness/Entry.swift`.
-
-Check that each doc comment above the five structs still reads truthfully. If one says the type is `@main` or runnable on its own, change that sentence to say the executable lives in `Sources/<Game>Main`.
-
-Run: `grep -rn "@main\|GameMain" Sources/CloakOfDarkness Sources/Lighthouse Sources/Zork1 Sources/Dungeon Sources/Gramarye Sources/Fulminate Sources/KindlyDeep`
-Expected: no output.
-
-- [ ] **Step 4: Export each game and give each its executable**
-
-Create `Sources/<Game>/Packaged.swift` for each game. The game's type is `OperaHouse` for CloakOfDarkness, and the target's own name for the other six. Zork1's:
-
-```swift
-import Gnusto
-
-/// Zork I, for a program that imports this library rather than running it.
-/// `Sources/Zork1Main` runs it as a console game; a front end builds its worlds
-/// from `game.makeGame()`.
-public let game = PackagedGame { Zork1() }
-```
-
-The other six files differ only in the first sentence of the doc comment (name the game: *Cloak of Darkness*, *Lighthouse*, *Dungeon*, *Gramarye*, *Fulminate*, *Kindly Deep*), the `Sources/<Game>Main` path, and the type inside the closure (`OperaHouse()`, `Lighthouse()`, `Dungeon()`, `Gramarye()`, `Fulminate()`, `KindlyDeep()`).
-
-Create `Sources/<Game>Main/main.swift` for each game. Zork1's:
-
-```swift
-import Zork1
-
-await game.main()
-```
-
-The other six differ only in the module they import.
-
-- [ ] **Step 5: Build, run and test**
-
-Run: `swift build 2>&1 | tail -1`
-Expected: `Build complete!`
-
-Run: `printf 'look\nquit\ny\n' | GNUSTO_PLAIN=1 swift run Zork1 2>&1 | head -5`
-Expected: Zork I's intro text.
-
-Run: `swift test`
-Expected: all tests pass.
-
-- [ ] **Step 6: Give the starter the same shape**
-
-In `bin/templates/Package.swift`, add a `products:` argument between `traits:` and the dependency comment, and replace the `.executableTarget` block:
-
-```swift
-    products: [
-        .executable(name: "MyGame", targets: ["MyGameMain"]),
-        // The game as a library, so a front end can import it. See `PackagedGame`.
-        .library(name: "MyGameGame", targets: ["MyGame"]),
-    ],
-```
-
-```swift
-        .target(
-            name: "MyGame",
-            dependencies: [
-                .product(name: "Gnusto", package: "Gnusto"),
-                .product(name: "GnustoScoring", package: "Gnusto"),
-            ]
-        ),
-        .executableTarget(
-            name: "MyGameMain",
-            dependencies: ["MyGame"]
-        ),
-```
-
-Delete `bin/templates/Sources/MyGame/Entry.swift`. Create `bin/templates/Sources/MyGame/Packaged.swift`:
-
-```swift
-import Gnusto
-
-/// The game, for a program that imports this library rather than running it.
-/// `Sources/MyGameMain` runs it as a console game; a front end builds its worlds
-/// from `game.makeGame()`.
-public let game = PackagedGame { MyGame() }
-```
-
-Create `bin/templates/Sources/MyGameMain/main.swift`:
-
-```swift
-import MyGame
-
-await game.main()
-```
-
-In `bin/templates/README.md:40`, replace `- The `@main` entry point via `GameMain`` with:
-
-```markdown
-- A library holding the game, exported as one `PackagedGame`, and a two-line executable that runs it
-```
-
-In `bin/new-game`, add one line after the `mv` for `Sources/MyGame` (line 215), so the executable directory is renamed too:
-
-```bash
-mv "$destination/Sources/MyGameMain" "$destination/Sources/${game}Main"
-```
-
-The `sed` pass that follows rewrites `MyGame` inside every file, which turns `MyGameMain` into `<Game>Main` and `MyGameGame` into `<Game>Game`.
-
-- [ ] **Step 7: Prove the starter and the generator**
-
-Run: `swift test --package-path bin/templates`
-Expected: the starter's tests pass.
-
-Run:
-
-```bash
-rm -rf "$TMPDIR/Zwank" && bin/new-game Zwank "$TMPDIR/Zwank" --dep-path "$PWD" && ls "$TMPDIR/Zwank/Sources" && (cd "$TMPDIR/Zwank" && swift build 2>&1 | tail -1 && bin/export-game)
-```
-
-Expected: `Zwank  ZwankMain`, then `Build complete!`, then `Zwank`.
-
-- [ ] **Step 8: Prove the tooling still resolves every game**
-
-Run: `bin/export-game`
-Expected: the same seven names as Step 1.
-
-Run: `bin/playtest-preflight Zork1`
-Expected: every row green, including `game source` (it resolves `Sources/Zork1`) and the capability list (it walks `Zork1Main` → `Zork1` → its plugins).
-
-Run: `node --test bin/tests/`
-Expected: all pass.
-
-- [ ] **Step 9: Update the prose that describes the old shape**
-
-In `Sources/Gnusto/Documentation.docc/SharingYourGame.md`, replace lines 13–33 (the `## Make a game runnable` section, through the paragraph that ends "Begin with <doc:GettingStarted>.") with:
-
-````markdown
-## Make a game runnable
-
-A game is a library target and a small executable target. The library holds the game and exports it as one ``PackagedGame``; the game's own type stays internal:
-
-```swift
-// Sources/Zork1/Packaged.swift
-import Gnusto
-
-public let game = PackagedGame { Zork1() }
-```
-
-The executable runs it:
-
-```swift
-// Sources/Zork1Main/main.swift
-import Zork1
-
-await game.main()
-```
-
-In `Package.swift`, the executable product keeps the game's name, so `swift run Zork1` runs it, and a library product (`Zork1Game`) lets another program import it. A Mac front end is the reason to split the two. If you started with `bin/new-game`, this is already wired up. New to Gnusto? Begin with <doc:GettingStarted>.
-
-A game that will never be imported can still be one executable target: mark the game type `@main` and conform it to ``GameMain``, which runs the same code ``PackagedGame/main()`` does.
-````
-
-In `.github/workflows/documentation.yml:77-79`, change `ships seven demo executables and a macro target` to `ships seven demo games and a macro target`.
-
-In `docs/superpowers/specs/2026-10-03-yonk-design.md`:
-- Replace the first paragraph of section 1.1 (the one beginning "An app cannot import an executable target.") with: `An app cannot import an executable target. Each of the seven demo games moves its code into a library target that exports one value, `public let game = PackagedGame { Zork1() }`, and its executable becomes a two-line `main.swift` that calls `await game.main()`. The game type stays internal: a public type conforming to `Game` would have to make every protocol witness public too. `bin/new-game` and `bin/templates/` produce the same split.`
-- Replace the second paragraph of section 1.1 (the one beginning "Constraints:") with: `Constraints: `swift run Zork1`, `bin/gnusto-mcp Zork1`, `bin/playtest-replay`, `bin/playtest-preflight` and every test keep working unchanged, which means the executable *product* names do not change.`
-- In section 2.1's code block, change `Yonk(Zork1.init)` to `Yonk(Zork1.game)`.
-
-- [ ] **Step 10: Commit**
-
-```bash
-git add -A Package.swift Sources/CloakOfDarkness Sources/CloakOfDarknessMain Sources/Lighthouse Sources/LighthouseMain Sources/Zork1 Sources/Zork1Main Sources/Dungeon Sources/DungeonMain Sources/Gramarye Sources/GramaryeMain Sources/Fulminate Sources/FulminateMain Sources/KindlyDeep Sources/KindlyDeepMain bin/templates bin/new-game Sources/Gnusto/Documentation.docc/SharingYourGame.md .github/workflows/documentation.yml docs/superpowers/specs/2026-10-03-yonk-design.md
-git commit -m "feat: make every demo game and the starter importable as a library"
-```
-
----
-
-### Task 3: `mapRegion(_:)` and `.secret`
+### Task 1: `mapRegion(_:)` and `.secret`
 
 **Files:**
 - Modify: `Sources/Gnusto/Declarations/Traits.swift` (`LocationTrait.Kind` at line 3; new factory after `alwaysDescribed` at line 501)
@@ -700,8 +240,7 @@ struct MapHintTests {
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `swift test --filter MapHintTests`
-Expected: build failure, `cannot find 'mapRegion' in scope` and `value of type 'MapEntry' has no member 'secret'`.
+Run: `swift test --filter MapHintTests` Expected: build failure, `cannot find 'mapRegion' in scope` and `value of type 'MapEntry' has no member 'secret'`.
 
 - [ ] **Step 4: Add the trait**
 
@@ -711,7 +250,7 @@ In `Sources/Gnusto/Declarations/Traits.swift`, add a case to `LocationTrait.Kind
         case mapRegion(String)
 ```
 
-Every exhaustive `switch` over `LocationTrait.Kind` now fails to compile until it handles the new case. `LocationDefinition.init(traits:onDuplicate:)` is handled in Step 5; find any other with `grep -rn "case .alwaysDescribed" Sources` and give each a `case .mapRegion:` arm that does what that switch does for a trait it does not care about.
+Every exhaustive `switch` over `LocationTrait.Kind` now fails to compile until it handles the new case. `LocationDefinition.init(traits:onDuplicate:)` is handled in Step 5; find any other with `rg -n 'case \.alwaysDescribed' Sources` and give each a `case .mapRegion:` arm that does what that switch does for a trait it does not care about.
 
 After the `alwaysDescribed` declaration (line 501), add:
 
@@ -743,7 +282,7 @@ public func mapRegion(_ label: String) -> LocationTrait {
 }
 ```
 
-Until Task 6 adds `GameWorld/mapView()`, that symbol link does not resolve. Write the last paragraph's link as a code span, `` `GameWorld.mapView()` ``, here; Task 6 Step 7 turns it into a link.
+Until Task 4 adds `GameWorld/mapView()`, that symbol link does not resolve. Write the last paragraph's link as a code span, `` `GameWorld.mapView()` ``, here; Task 4 Step 5 turns it into a link.
 
 - [ ] **Step 5: Store it on the location definition**
 
@@ -874,14 +413,13 @@ In `Sources/Gnusto/Engine/GameDefinition.swift`, add directly after `let reachab
     let secretExits: [EntityID: Set<Direction>]
 ```
 
-As in Step 4, write ``GameWorld/mapView()`` as the code span `` `GameWorld.mapView()` `` until Task 6.
+As in Step 4, write ``GameWorld/mapView()`` as the code span `` `GameWorld.mapView()` `` until Task 4.
 
 In `Sources/Gnusto/Engine/Bootstrap.swift`, in the `GameDefinition(` call (~line 1111), add `secretExits: secretExits,` directly after the `reachableRooms: Set(…)` argument and before `globals:`.
 
 - [ ] **Step 9: Run the tests**
 
-Run: `swift test --filter MapHintTests`
-Expected: everything passes except `zorkOnesMazeIsOneRegion` (`maze.count` is 0).
+Run: `swift test --filter MapHintTests` Expected: everything passes except `zorkOnesMazeIsOneRegion` (`maze.count` is 0).
 
 - [ ] **Step 10: Mark Zork 1's maze**
 
@@ -889,7 +427,7 @@ The fifteen maze rooms and four dead ends are the `Location` blocks at lines 36�
 
 ```bash
 perl -pi -e 'if ($. >= 36 && $. <= 134 && /^        dark$/) { $_ .= "        mapRegion(\"Maze\")\n" }' Sources/Zork1/Regions/Maze.swift
-grep -c 'mapRegion("Maze")' Sources/Zork1/Regions/Maze.swift
+rg -c 'mapRegion\("Maze"\)' Sources/Zork1/Regions/Maze.swift
 ```
 
 Expected: `19`. Then check that `gratingRoom`, `cyclopsRoom`, `treasureRoom` and `strangePassage` were not touched: `git diff Sources/Zork1/Regions/Maze.swift` shows 19 added lines, all above `// MARK: - The grating, cyclops, and treasure`.
@@ -898,11 +436,9 @@ The maze is the `ZorkMaze` content bundle, so its entity IDs are namespaced unde
 
 - [ ] **Step 11: Run the tests to verify they pass**
 
-Run: `swift test --filter MapHintTests`
-Expected: 6 tests pass.
+Run: `swift test --filter MapHintTests` Expected: 6 tests pass.
 
-Run: `swift test`
-Expected: all tests pass. Zork 1 plays exactly as before: the trait changes no prose and no behavior.
+Run: `swift test` Expected: all tests pass. Zork 1 plays exactly as before: the trait changes no prose and no behavior.
 
 - [ ] **Step 12: Document both hints**
 
@@ -946,17 +482,17 @@ git commit -m "feat: add the mapRegion and .secret map hints"
 
 ---
 
-### Task 4: The per-turn report
+### Task 2: The per-turn report
 
 **Files:**
 - Create: `Sources/Gnusto/Engine/TurnReport.swift`
-- Modify: `Sources/Gnusto/Engine/GameWorld.swift` (`TurnResult` at lines 25–51; `perform(_:)` at lines 249–258)
+- Modify: `Sources/Gnusto/Engine/GameWorld.swift` (`TurnResult`, `perform(_:)`, `commit(_:)`), `Sources/Gnusto/Engine/TurnFrame.swift` (`Scratch` movement funnels), and `Sources/Gnusto/Actions/DefaultActions.swift` (`travel` and `enter`)
 - Create: `Tests/GnustoTests/Support/CartographyGames.swift`
 - Test: `Tests/GnustoTests/TurnReportTests.swift`
 - Modify: `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`
 
 **Interfaces:**
-- Consumes: `mapRegion(_:)` and `MapEntry.secret` from Task 3 (the fixture declares both); internal `TurnAudit`, `DefaultActions.engineIntents`, `GameDefinition.exits`, `WorldState.playerLocation`.
+- Consumes: `mapRegion(_:)` and `MapEntry.secret` from Task 1 (the fixture declares both); internal `TurnAudit`, `DefaultActions.engineIntents`, `GameDefinition.exits`, `WorldState.playerLocation`.
 - Produces:
   - `public struct TurnReport: Sendable, Equatable` with `understood: Bool`, `unknownWords: [String]`, `movement: TurnReport.Movement?`
   - `public enum TurnReport.Movement: Sendable, Equatable` with `walked(from: EntityID, to: EntityID, direction: Direction)`, `teleported(from: EntityID, to: EntityID)`, `relocated(to: EntityID)`
@@ -1165,8 +701,7 @@ struct TurnReportTests {
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `swift test --filter TurnReportTests`
-Expected: build failure, `value of type 'TurnResult' has no member 'report'`.
+Run: `swift test --filter TurnReportTests` Expected: build failure, `value of type 'TurnResult' has no member 'report'`.
 
 - [ ] **Step 4: Write the report type and its derivation**
 
@@ -1185,9 +720,9 @@ public struct TurnReport: Sendable, Equatable {
     /// How the player came to stand somewhere else when a turn ended.
     public enum Movement: Sendable, Equatable {
         /// The player went out of `from` through an exit: `north`, `go up`,
-        /// `enter the trap door`, `follow the troll`. `to` is where the turn
-        /// left them, which is the exit's destination unless a rule carried
-        /// them on.
+        /// `enter the trap door`, `follow the troll`. Both the direction and
+        /// destination come from a confirmed traversal, rather than a parsed
+        /// direction or a guess about an adjacent room.
         case walked(from: EntityID, to: EntityID, direction: Direction)
         /// The game put the player in `to` without an exit: a rule's
         /// `arrive(at:)`, a spell, a fall.
@@ -1211,62 +746,133 @@ public struct TurnReport: Sendable, Equatable {
     public internal(set) var movement: Movement?
 }
 
+/// One actual player-location mutation in a live turn, never saved or undone.
+struct MapTransition: Sendable {
+    let from: EntityID
+    let to: EntityID
+    let direction: Direction?
+}
+
 extension GameWorld {
-    /// The report for a line just performed.
-    ///
-    /// - Parameters:
-    ///   - audit: what the parser made of the line.
-    ///   - origin: where the player stood before the line ran.
-    /// - Returns: the turn's report.
-    func report(of audit: TurnAudit, from origin: EntityID) -> TurnReport {
+    /// Combines parser information with the live turn's recorded movement.
+    func report(
+        of audit: TurnAudit, from origin: EntityID,
+        recorded movement: TurnReport.Movement?
+    ) -> TurnReport {
         var report = TurnReport()
         report.understood = audit.understood
         report.unknownWords = audit.unknownWords
-        report.movement = movement(of: audit, from: origin, to: state.playerLocation)
+        let destination = state.playerLocation
+        guard destination != origin else { return report }
+        if audit.answeredPrompt || audit.intent == .undo
+            || audit.intent == .restart || audit.intent == .restore {
+            report.movement = .relocated(to: destination)
+        } else if case .walked(let from, let to, let direction) = movement,
+            from == origin, to == destination {
+            report.movement = .walked(from: from, to: to, direction: direction)
+        } else {
+            report.movement = .teleported(from: origin, to: destination)
+        }
         return report
     }
+}
+```
 
-    /// How the player got from `origin` to `destination`, or `nil` when the two
-    /// are the same room.
-    private func movement(
-        of audit: TurnAudit, from origin: EntityID, to destination: EntityID
-    ) -> TurnReport.Movement? {
-        guard destination != origin else { return nil }
-        // A prompt's answer (RESTORE's filename, the death prompt's choice) and
-        // the engine-level verbs (UNDO, RESTART) swap a whole world in.
-        if audit.answeredPrompt || audit.intent.map(DefaultActions.engineIntents.contains) == true {
-            return .relocated(to: destination)
-        }
-        if let direction = audit.direction ?? exitTaken(by: audit, from: origin, to: destination) {
-            return .walked(from: origin, to: destination, direction: direction)
-        }
-        return .teleported(from: origin, to: destination)
+- [ ] **Step 4a: Record actual traversal direction at the movement funnels**
+
+Add `var mapTransitions: [MapTransition] = []` to `Scratch`. Extend `walkPlayer(to:)` to `walkPlayer(to:direction:)`, defaulting direction to `nil`; record the origin before mutation and append a transition after a real location change. Record directionless changes in `teleportPlayer(to:)` too. These records live only in Scratch, never WorldState, so they add nothing to SAVE or UNDO serialization.
+
+```swift
+mutating func walkPlayer(to room: EntityID, direction: Direction? = nil) {
+    let origin = state.playerLocation
+    state.setPlayerLocation(walkingTo: room)
+    roomsOccupied.append(room)
+    if origin != room {
+        mapTransitions.append(MapTransition(from: origin, to: room, direction: direction))
     }
+}
 
-    /// The exit ENTER or FOLLOW went through, which the parse cannot name
-    /// because the player typed a thing or a person rather than a direction.
-    ///
-    /// Asked of those two verbs only. Every other directionless move is the
-    /// game putting the player somewhere, and a rule that drops them in a room
-    /// one exit away has still not walked there.
-    private func exitTaken(
-        by audit: TurnAudit, from origin: EntityID, to destination: EntityID
-    ) -> Direction? {
-        guard audit.intent == .board || audit.intent == .follow else { return nil }
-        let exits = definition.exits[origin] ?? [:]
-        // Fixed compass order, as FOLLOW uses, so two exits onto one room never
-        // make the answer depend on dictionary iteration.
-        return Direction.allCases.first { direction in
-            switch exits[direction] {
-            case .to(let target), .door(let target, _), .conditional(let target, _, _):
-                return target == destination
-            case .blocked, .dynamic, nil:
-                return false
-            }
+mutating func teleportPlayer(to room: EntityID) {
+    let origin = state.playerLocation
+    state.setPlayerLocation(placingAt: room)
+    roomsOccupied.append(room)
+    if origin != room {
+        mapTransitions.append(MapTransition(from: origin, to: room, direction: nil))
+    }
+}
+```
+
+Add `direction: Direction? = nil` to `DefaultActions.enter` and pass it to `walkPlayer`. In every successful branch of `travel`, pass the actual `direction` to `enter`. ENTER-by-door-name, FOLLOW and EXIT-on-foot already go through travel, so they now record the chosen direction without examining the exit table afterward. An author calling directionless `enter` keeps the default; it produces an arrival without a map line. Never evaluate a conditional/dynamic destination again just to derive a report.
+
+In `GameWorld.commit`, initialize the returned TurnResult's movement from the recorded transitions:
+
+```swift
+var result = TurnResult(
+    output: scratch.output.joined(separator: "\n\n"),
+    isFinished: scratch.state.status.isFinal,
+    status: statusLine(),
+    paragraphs: scratch.command?.intent.isMeta == true ? [] : scratch.output,
+    asides: scratch.asides)
+if let first = scratch.mapTransitions.first,
+    first.from != scratch.state.playerLocation {
+    if scratch.mapTransitions.count == 1,
+        let direction = first.direction {
+        result.report.movement = .walked(
+            from: first.from, to: first.to, direction: direction)
+    } else {
+        result.report.movement = .teleported(
+            from: first.from, to: scratch.state.playerLocation)
+    }
+}
+return result
+```
+
+The public report represents one net arrival, so a turn with multiple player-location changes is conservatively directionless rather than inventing a direct edge across intermediate rooms. A round trip ending at its origin reports no movement, matching the spec's location-change condition. `perform(_:)` subsequently adds parser information and recognizes state replacement; direct REPL/MCP audited paths retain their existing parser-audit behavior.
+
+- [ ] **Step 4b: Pin custom movement and state-replacement cases**
+
+Add a second fixture whose GO-north before rule calls `arrive(at: garden)` and handles the command. Use the existing CartographyGame with a parameterless companion fixture rather than changing its default behavior. Include two distinct exits onto the same room and a gate that blocks only the first compass-order candidate for FOLLOW; the recorded direction must be the one travel actually used. Include an onEnter teleport and a self-loop exit.
+
+```swift
+@Test func aParsedDirectionDoesNotTurnATeleportIntoAWalk() async throws {
+    let world = try GameWorld(game: RedirectedMovementGame(), seed: 0)
+    _ = await world.begin()
+    let report = await world.perform("north").report
+    #expect(report.movement == .teleported(
+        from: EntityID("hall"), to: EntityID("garden")))
+}
+
+@Test func aRestoreFilenameRelocatesInsteadOfDrawingAnExit() async throws {
+    let world = try await world()
+    _ = await world.perform("save")
+    _ = await world.perform("hall-slot")
+    _ = await world.perform("north")
+    _ = await world.perform("restore")
+    #expect(await world.perform("hall-slot").report.movement == .relocated(to: hall))
+}
+```
+
+Add this fixture to CartographyGames.swift:
+
+```swift
+struct RedirectedMovementGame: Game {
+    let title = "Redirected Movement"
+    let hall = Location { name("Hall"); description("A hall.") }
+    let garden = Location { name("Garden"); description("A garden.") }
+    var map: WorldMap {
+        player.starts(in: hall)
+        hall.north(garden)
+    }
+    var rules: Rules {
+        hall.before(.go) {
+            arrive(at: garden)
+            try handled()
         }
     }
 }
 ```
+
+Test FOLLOW and ENTER on the two-exit fixture through the actual default handlers, not a fake audit. Base the FOLLOW routes on the existing FollowTests' two-exit and conditional-gate fixtures and assert the returned report's actual direction as well as their existing transcript behavior. Assert that an onEnter teleport never reports a walked edge to its final non-exit destination, and that the self-loop reports `nil`. These checks prevent the superseded plan's parsed-direction and adjacent-room inference from returning.
 
 - [ ] **Step 5: Carry the report on `TurnResult` and fill it in**
 
@@ -1291,20 +897,18 @@ Replace `perform(_:)` (lines 249–258, doc comment included) with:
         let origin = state.playerLocation
         let (performed, audit) = performAudited(input)
         var result = performed
-        result.report = report(of: audit, from: origin)
+        result.report = report(of: audit, from: origin, recorded: performed.report.movement)
         return result
     }
 ```
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `swift test --filter TurnReportTests`
-Expected: 8 tests pass.
+Run: `swift test --filter TurnReportTests` Expected: the original eight report tests and the added causal-movement/state-replacement tests pass.
 
 - [ ] **Step 7: Run the whole suite**
 
-Run: `swift test`
-Expected: all tests pass.
+Run: `swift test` Expected: all tests pass.
 
 - [ ] **Step 8: Document it**
 
@@ -1327,7 +931,7 @@ git commit -m "feat: report what each turn did, movement included"
 
 ---
 
-### Task 5: `vocabulary()`
+### Task 3: `vocabulary()`
 
 **Files:**
 - Create: `Sources/Gnusto/Engine/GameWorld+Vocabulary.swift`
@@ -1335,7 +939,7 @@ git commit -m "feat: report what each turn did, movement included"
 - Modify: `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`
 
 **Interfaces:**
-- Consumes: `CartographyGame` from Task 4; internal `GameWorld.currentScope(orders:)`, `GameWorld.pendingPrompt`, `Vocabulary` (`itemLexicons`, `sortedVerbWords`, `sortedDirectionWords`, `prepositions`, `noiseWords`, and the statics `reservedWords`, `conjunctions`, `exclusions`, `possessives`).
+- Consumes: `CartographyGame` from Task 2; internal `GameWorld.currentScope(orders:)`, `GameWorld.pendingPrompt`, `Vocabulary` (`itemLexicons`, `sortedVerbWords`, `sortedDirectionWords`, `prepositions`, `noiseWords`, and the statics `reservedWords`, `conjunctions`, `exclusions`, `possessives`).
 - Produces: `public struct WordsInScope: Sendable, Equatable` with `expectsFilename: Bool`, `verbs`, `nouns`, `adjectives`, `directions`, `prepositions`, `filler` (each `[String]`, sorted); `public func vocabulary() -> WordsInScope` on `GameWorld`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1394,8 +998,7 @@ struct VocabularyTests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `swift test --filter VocabularyTests`
-Expected: build failure, `value of type 'GameWorld' has no member 'vocabulary'`.
+Run: `swift test --filter VocabularyTests` Expected: build failure, `value of type 'GameWorld' has no member 'vocabulary'`.
 
 - [ ] **Step 3: Write it**
 
@@ -1473,8 +1076,23 @@ extension GameWorld {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `swift test --filter VocabularyTests`
-Expected: 3 tests pass.
+Run: `swift test --filter VocabularyTests` Expected: 3 tests pass.
+
+- [ ] **Step 4a: Verify repeated vocabulary queries leave state untouched**
+
+Add this test to VocabularyTests and run that suite again:
+
+```swift
+@Test func repeatedVocabularyQueriesDoNotChangeTheWorld() async throws {
+    let world = try await world()
+    let before = await world.snapshot()
+    for _ in 0..<5 { _ = await world.vocabulary() }
+    let after = await world.snapshot()
+    #expect(after.moves == before.moves)
+    #expect(after.rngState == before.rngState)
+    #expect(after.globals == before.globals)
+}
+```
 
 - [ ] **Step 5: Document it**
 
@@ -1495,16 +1113,16 @@ git commit -m "feat: add GameWorld.vocabulary(), every word the parser accepts n
 
 ---
 
-### Task 6: `mapView()`, and the milestone's checks
+### Task 4: `mapView()`, and the milestone's checks
 
 **Files:**
 - Create: `Sources/Gnusto/Engine/GameWorld+MapView.swift`
 - Test: `Tests/GnustoTests/MapViewTests.swift`
-- Modify: `Sources/Gnusto/Declarations/Traits.swift` and `Sources/Gnusto/Engine/GameDefinition.swift` (turn Task 3's two code spans into links)
+- Modify: `Sources/Gnusto/Declarations/Traits.swift` and `Sources/Gnusto/Engine/GameDefinition.swift` (turn Task 1's two code spans into links)
 - Modify: `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`
 
 **Interfaces:**
-- Consumes: `CartographyGame` from Task 4; `LocationDefinition.mapRegion` and `GameDefinition.secretExits` from Task 3; internal `ExitTarget`, `Visibility.isDark(at:definition:state:)`, `Visibility.isPerceivable(_:definition:state:)`, `TurnFrame(definition:state:descriptionMode:)`, `Ctx.$frame`, `TurnFrame.retire()`.
+- Consumes: `CartographyGame` from Task 2; `LocationDefinition.mapRegion` and `GameDefinition.secretExits` from Task 1; internal `ExitTarget`, `Visibility.isDark(at:definition:state:)`, `Visibility.isPerceivable(_:definition:state:)`, `TurnFrame(definition:state:descriptionMode:)`, `Ctx.$frame`, `TurnFrame.retire()`.
 - Produces:
   - `public struct RoomMapView: Sendable, Equatable` with `id: EntityID`, `name: String`, `region: String?`, `exits: [Direction: MapExit]`
   - `public struct MapExit: Sendable, Equatable` with `kind: MapExit.Kind`, `isSecret: Bool`, and `public enum Kind: Sendable, Equatable { case open, blocked, unknownDestination }`
@@ -1593,8 +1211,7 @@ struct MapViewTests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `swift test --filter MapViewTests`
-Expected: build failure, `cannot find 'MapExit' in scope`.
+Run: `swift test --filter MapViewTests` Expected: build failure, `cannot find 'MapExit' in scope`.
 
 - [ ] **Step 3: Write it**
 
@@ -1695,16 +1312,47 @@ extension GameWorld {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `swift test --filter MapViewTests`
-Expected: 6 tests pass.
+Run: `swift test --filter MapViewTests` Expected: the six original tests pass.
 
-- [ ] **Step 5: Turn Task 3's code spans into links**
+- [ ] **Step 4a: Verify exit-condition writes are discarded**
+
+Add the following fixture to CartographyGames.swift and the test to MapViewTests.swift. The exit predicate is deliberately impure; it must execute against the query's throwaway frame rather than the saved/live world.
+
+```swift
+struct QueryMutationGame: Game {
+    let title = "Query Mutation"
+    @Global var probes = 0
+    let hall = Location { name("Hall"); description("A hall.") }
+    let garden = Location { name("Garden"); description("A garden.") }
+    var map: WorldMap {
+        player.starts(in: hall)
+        hall.east(garden, when: { probes += 1; return true }, otherwise: "Closed.")
+    }
+}
+
+@Test func anExitConditionCannotCommitItsWritesThroughAQuery() async throws {
+    let world = try GameWorld(game: QueryMutationGame(), seed: 0)
+    _ = await world.begin()
+    let before = await world.snapshot()
+    for _ in 0..<5 {
+        #expect(await world.mapView().exits[.east]?.kind == .open)
+    }
+    let after = await world.snapshot()
+    #expect(after.globals == before.globals)
+    #expect(after.moves == before.moves)
+    #expect(after.rngState == before.rngState)
+}
+```
+
+Run `swift test --filter MapViewTests` again; expect the original tests and this mutation regression to pass. Expand the fixture's Swift declarations into the repository's normal formatting before committing.
+
+- [ ] **Step 5: Turn Task 1's code spans into links**
 
 In `Sources/Gnusto/Declarations/Traits.swift` (the `mapRegion(_:)` doc comment) and `Sources/Gnusto/Engine/GameDefinition.swift` (the `secretExits` doc comment), replace `` `GameWorld.mapView()` `` with ``` ``GameWorld/mapView()`` ```.
 
 - [ ] **Step 6: Document it**
 
-In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add at the end of the `## What a turn did` section (from Task 4):
+In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add at the end of the `## What a turn did` section (from Task 2):
 
 ```markdown
 A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
@@ -1721,20 +1369,28 @@ git commit -m "feat: add GameWorld.mapView(), what a map may show of this room"
 
 - [ ] **Step 8: Run every check CI runs**
 
-Run: `swift test`
-Expected: all tests pass.
+Run: `swift test` Expected: all tests pass.
 
-Run: `swift build --disable-default-traits 2>&1 | tail -1`
-Expected: `Build complete!` (nothing added lives under `Playtest/`).
+Run: `swift build --disable-default-traits --scratch-path .build-notraits`
 
-Run: `.build/checkouts/Persnicket/bin/ci-lint-setup && xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests`
-Expected: no output. If it reports anything, fix it, re-run, and commit the fix as `style: satisfy the strict lint`.
+Expected: a successful library build (nothing added lives under `Playtest/`). Also run `bin/build-game CloakOfDarkness --mode deployment` and check that the emitted binary refuses `--mcp`; it is the generated package, rather than a root executable product, that now owns the deployed configuration.
 
-Run: `node .claude/workflows/playtest.dryrun.mjs`
-Expected: passes.
+Run: `.build/checkouts/Persnicket/bin/ci-lint-setup && xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests` Expected: no output. If it reports anything, fix it, re-run, and commit the fix as `style: satisfy the strict lint`.
 
-Run: `swift package --allow-writing-to-directory .context/docs generate-documentation --target Gnusto --output-path .context/docs --warnings-as-errors`
-Expected: `Finished building documentation` with no warnings. A warning here is almost always a double-backtick link to an internal symbol; change it to a single-backtick code span.
+Run: `node .claude/workflows/playtest.dryrun.mjs` Expected: passes.
 
-Run: `bin/playtest-preflight Zork1`
-Expected: every row green.
+Run: `swift package --allow-writing-to-directory .context/docs generate-documentation --target Gnusto --output-path .context/docs --warnings-as-errors` Expected: `Finished building documentation` with no warnings. A warning here is almost always a double-backtick link to an internal symbol; change it to a single-backtick code span.
+
+Run: `bin/playtest-preflight Zork1` Expected: every row green using the generated development launcher from milestone 1A.
+
+## Coverage and Completion
+
+| Spec requirement | Task |
+|---|---|
+| mapRegion and secret declarations, bootstrap errors and Zork maze annotation | 1 |
+| understood/unknownWords and causal walked/teleported/relocated movement | 2 |
+| full sorted vocabulary and filename context | 3 |
+| filtered map view, no destination leakage and throwaway query state | 4 |
+| traits-off build, migrated terminal/preflight checks, lint and DocC | 4 |
+
+Before completion, run the migrated terminal deployment/MCP isolation check from milestone 1A against the new engine. Record local results separately from hosted Linux/iOS CI and live terminal checks. Yonk first light, mapper rendering and voice integration remain milestones 2–6.
