@@ -637,13 +637,15 @@ struct Zork1: Game, GameMain {
             try refuse(Prose.cyclopsWontEatThat)
         }
 
-        // Disturbing the dead adventurer's bones — taking, searching, or moving
-        // them — wakes a ghost who banishes your valuables to the Land of the
-        // Dead (a ``ZorkTemple`` room, so the host owns the crossing). The lamp
-        // is spared, exactly as the death scatter spares it, so light is never
-        // lost to the curse. Mirrors `onDeath()`'s scatter loop.
+        // SKELETON calls ROB on HERE and ADVENTURER: direct, revealed objects
+        // with positive TVALUE, excluding SACREDBIT. The coffin stays sacred;
+        // ECHO clears the bar's sacred state. Other equipment has no TVALUE.
+        // The destination crosses into ZorkTemple, so the host owns the rule.
         let banishForDisturbingTheBones: @Sendable () -> Void = {
-            for item in player.inventory where item != house.lantern {
+            for item in player.location.contents + player.inventory {
+                guard item.isRevealed, (item[.depositValue] ?? 0) > 0 else { continue }
+                guard item != temple.coffin else { continue }
+                guard item != roundRoom.platinumBar || roundRoom.loudRoomAcousticsFixed else { continue }
                 item.move(to: temple.landOfDead)
             }
         }
