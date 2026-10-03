@@ -28,7 +28,7 @@ try {
   await fs.writeFile(path.join(author, 'Package.swift'), manifest.replace('ENGINE_DEPENDENCY', `.package(name: "Gnusto", path: ${swiftStringLiteral(engineRoot)}, traits: forwarded)`));
   for (const [packageRoot, game, name] of [[engineRoot, 'CloakOfDarkness', 'CloakOfDarkness'], [author, 'Story', 'ResourceStory']]) {
     const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game, mode: 'deployment'});
-    assert.deepEqual(spec.defaultBuildFlags, ['--static-swift-stdlib']);
+    assert.deepEqual(spec.defaultBuildFlags, ['--static-swift-stdlib', '-Xswiftc', '-static-stdlib']);
     const built = await buildGame(spec, {environment});
     const staged = await stageTerminalExport({...built, destination: path.join(fixtureRoot, 'exports', name)});
     const distribution = path.join(fixtureRoot, 'stage', name);
