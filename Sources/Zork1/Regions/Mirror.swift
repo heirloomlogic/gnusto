@@ -239,8 +239,16 @@ struct ZorkMirror: GameContent {
         // Smashing either mirror breaks both (they are two faces of one
         // passage) and kills the teleport for good — the original's
         // seven-years'-bad-luck `MIRROR-MUNG`.
-        mirrorNorth.before(.attack) { try breakMirror() }
-        mirrorSouth.before(.attack) { try breakMirror() }
+        mirrorNorth.before(.attack, .smash) { try breakMirror() }
+        mirrorSouth.before(.attack, .smash) { try breakMirror() }
+        mirrorNorth.before(.throwAt) {
+            guard command.indirectObject == mirrorNorth else { return }
+            try breakMirror()
+        }
+        mirrorSouth.before(.throwAt) {
+            guard command.indirectObject == mirrorSouth else { return }
+            try breakMirror()
+        }
 
         // A broken mirror reads as shattered glass; whole, it shows the usual
         // ugly reflection.

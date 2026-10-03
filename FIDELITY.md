@@ -570,19 +570,7 @@ graph.
 
 ### The mirror teleport
 
-- **Touching a mirror moves the player to the other Mirror Room** — the only
-  passage between the map's two halves. This is a draw-free, deterministic
-  teleport (`before(.touch)` on each mirror: narrate the rumble, set
-  `player.location`, describe). **The floor swap and the breakable mirror are now
-  modeled (closed in the fidelity pass):** passing through swaps whatever *loose*
-  (takeable) items lie on the two rooms' floors — the fixtures, including the
-  mirrors, stay put — via the new engine accessors `Location.contents` and
-  `Item.isTakable`; and attacking either mirror smashes both (they are two faces
-  of one passage), setting a `mirrorBroken` `@Global` (the original's
-  `MIRROR-MUNG`) that kills the teleport for good — a touch on the shards falls
-  through to the plain reply. One nuance left as-is: held items still ride along
-  with the player (as the original), and the "seven years' bad luck" is narrated,
-  not mechanized.
+- Touching a mirror moves the player to the other Mirror Room and swaps loose, takeable floor items between the rooms; fixtures, including the mirrors, stay put. Held items travel with the player. Attacking, breaking, smashing, or throwing an object at either mirror sets the shared `mirrorBroken` latch, following [MIRROR-MIRROR's MUNG/THROW/ATTACK branch](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1003-L1012). Both faces then describe shattered glass and cease teleporting. Repeated damage answers "Haven't you done enough damage already?" A throw at the mirror leaves its projectile where it was: the source handler replies before [V-THROW's default IDROP](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/gverbs.zil#L1445), without moving it. Tests cover each damaging command on both faces, shared state across a walk between rooms, and retained sword possession after throws. The historical reference is archived ZIL, not a running Z-machine. The "seven years' bad luck" remains prose; the source's `LUCKY` change is not modeled. (#678)
 
 ### Scoring
 
@@ -1221,9 +1209,7 @@ unlocked them:
   and his banked wrath resumes; examining him now reads asleep-vs-awake (`Maze.swift`
   `cyclops.before(.attack)`/`.before(.examine)`, `Prose+Maze.swift`). The room-look mood
   paragraphs stay deferred (they'd double with the actor's own presence line).
-- **Breakable mirror + floor swap** — attacking either mirror smashes both and kills the
-  teleport for good (`mirrorBroken`, the original's `MIRROR-MUNG`); passing through swaps the two
-  rooms' loose floor items, fixtures left in place (`Mirror.swift`, `Prose+Mirror.swift`).
+- Breaking, smashing, attacking, or throwing an object at either mirror shatters both faces and disables teleporting through them; passing through an intact mirror swaps loose floor items while fixtures stay put (`Mirror.swift`, `Prose+Mirror.swift`). See #678 above for command and projectile handling.
 - **Coffin-specific altar block** — the crack refuses the descent only while the gold coffin is
   in hand, not by a generic weight cap (`Temple.swift` `altar.before(.go)`, the original's
   `COFFIN-CURE`).
