@@ -405,13 +405,16 @@ struct ZorkCoalMine: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
-        // The coal gas. At the end of any turn spent in the Gas Room with a lit
-        // open flame in hand — carried in or struck here — the air goes up. The
-        // electric lantern carries no flame and is safe.
+        // HELD? follows containment regardless of whether a holder is open.
+        // A carried flame can ignite the gas even inside a closed container.
         gasRoom.afterEachTurn {
-            guard player.inventory.contains(where: { $0[default: .openFlame] && $0.isLit })
-            else { return }
-            try die(Prose.gasExplosion)
+            var carried = player.inventory
+            while let item = carried.popLast() {
+                if item[default: .openFlame], item.isLit {
+                    try die(Prose.gasExplosion)
+                }
+                carried.append(contentsOf: item.contents)
+            }
         }
 
         // The narrow crack between the Timber Room and the Drafty Room. Nothing
