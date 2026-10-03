@@ -6,7 +6,30 @@ import os from 'node:os';
 import test from 'node:test';
 import {spawnSync, execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {stageTerminalExport} from '../lib/game-export.mjs';
+import {isLinuxRuntimeLibrary, stageTerminalExport} from '../lib/game-export.mjs';
+
+test('Linux runtime classification accepts the aarch64 loader recorded in DT_NEEDED', () => {
+  assert.equal(isLinuxRuntimeLibrary('ld-linux-aarch64.so.1', 183), true);
+});
+
+test('Linux runtime classification accepts the x86-64 loader recorded in DT_NEEDED', () => {
+  assert.equal(isLinuxRuntimeLibrary('ld-linux-x86-64.so.2', 62), true);
+});
+
+test('Linux loader classification is machine-specific and refuses unclassified shared runtimes', () => {
+  for (const [soname, machine] of [
+    ['ld-linux-aarch64.so.1', 62],
+    ['ld-linux-x86-64.so.2', 183],
+    ['ld-linux-aarch64.so.1', 0],
+    ['ld-linux-pretend.so.1', 183],
+    ['ld-linux-aarch64.so.2', 183],
+    ['libswiftCore.so', 183],
+    ['libswiftPretendRuntime.so', 183],
+    ['libLibrary.so', 183]
+  ]) assert.equal(isLinuxRuntimeLibrary(soname, machine), false, `${soname}, e_machine=${machine}`);
+  assert.equal(isLinuxRuntimeLibrary('libc.so.6', 183), true);
+  assert.equal(isLinuxRuntimeLibrary('libgcc_s.so.1', 62), true);
+});
 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gnusto-export-'));
@@ -21,6 +44,33 @@ async function fixture(t) {
   return {root, binDirectory, binary, destination};
 }
 const run = binary => spawnSync(binary, {encoding: 'utf8'});
+
+test('a real Linux loader dependency exports, while a non-system loader copy preserves the prior export', {skip: process.platform !== 'linux'}, async t => {
+  const f = await fixture(t);
+  const execute = promisify(execFile);
+  const source = path.join(f.binDirectory, 'runtime.c');
+  await fs.writeFile(source, '#include <stdio.h>\nint main(void) { puts("LINUX_SYSTEM_LOADER_OK"); return 0; }\n');
+  await execute('clang', [source, '-o', f.binary]);
+  const program = (await execute('readelf', ['-lW', f.binary])).stdout;
+  const interpreter = /Requesting program interpreter: ([^\]]+)\]/.exec(program)?.[1];
+  assert(interpreter, 'The fixture must have an actual ELF interpreter');
+  // Explicitly retain the loader in DT_NEEDED, as the hosted static Swift graph does.
+  await execute('clang', [source, '-Wl,--no-as-needed', interpreter, '-Wl,-rpath,$ORIGIN', '-o', f.binary]);
+  const dynamic = (await execute('readelf', ['-dW', f.binary])).stdout;
+  const needed = [...dynamic.matchAll(/\(NEEDED\).*Shared library: \[([^\]]+)\]/g)].map(match => match[1]);
+  assert(needed.includes(path.basename(interpreter)), 'The loader SONAME must appear in the linked dependency graph');
+  assert.equal(run(f.binary).stdout, 'LINUX_SYSTEM_LOADER_OK\n');
+  await stageTerminalExport(f);
+  const recipient = path.join(f.root, 'recipient');
+  await fs.copyFile(f.destination, recipient);
+  await fs.rename(f.binDirectory, `${f.binDirectory}-hidden`);
+  assert.equal(run(recipient).status, 0);
+  assert.equal(run(recipient).stdout, 'LINUX_SYSTEM_LOADER_OK\n');
+  await fs.rename(`${f.binDirectory}-hidden`, f.binDirectory);
+  await fs.copyFile(await fs.realpath(interpreter), path.join(f.binDirectory, path.basename(interpreter)));
+  await assert.rejects(stageTerminalExport(f), /Unsupported shared library dependency ld-linux/);
+  assert.equal(run(f.destination).stdout, 'LINUX_SYSTEM_LOADER_OK\n');
+});
 
 test('a missing build output leaves the previous executable usable', async t => {
   const f = await fixture(t);

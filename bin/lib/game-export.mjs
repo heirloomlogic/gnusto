@@ -79,6 +79,18 @@ const linuxSystem = file => /^\/(?:usr\/)?lib(?:64)?\//.test(file);
 // toolchain installation. Swift/Foundation and package shared products must be
 // linked statically; their filenames alone never establish runtime availability.
 const linuxRuntime = new Set(['libc.so.6', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0', 'librt.so.1', 'libgcc_s.so.1', 'libstdc++.so.6', 'libatomic.so.1', 'libresolv.so.2', 'libutil.so.1']);
+// ELF e_machine: EM_X86_64 = 62, EM_AARCH64 = 183. Loaders may also
+// appear in DT_NEEDED, independently of the executable's PT_INTERP record.
+const linuxLoader = new Map([[62, 'ld-linux-x86-64.so.2'], [183, 'ld-linux-aarch64.so.1']]);
+/**
+ * Classifies a Linux base-runtime SONAME; resolved path and ELF machine validation remain mandatory.
+ * @param {string} soname Runtime library basename.
+ * @param {number} machine Executable's ELF e_machine value.
+ * @returns {boolean} Whether the SONAME belongs to the supported base runtime.
+ */
+export function isLinuxRuntimeLibrary(soname, machine) {
+  return linuxRuntime.has(soname) || linuxLoader.get(machine) === soname;
+}
 const unsupportedLibrary = (library, detail) => new Error(`Unsupported shared library dependency ${library}${detail ? ` (${detail})` : ''}; use static SwiftPM library products and statically link non-system runtimes before exporting.`);
 async function inspect(tool, arguments_) {
   try { return (await execute(tool, arguments_, {maxBuffer: 8 * 1024 * 1024, env: {PATH: process.env.PATH, LC_ALL: 'C'}})).stdout; }
@@ -150,7 +162,7 @@ async function validateELF(binary, bytes) {
       if (!path.isAbsolute(candidate) || candidate.includes('$')) throw unsupportedLibrary(library, 'unclassified relative loader path');
       if (!await exists(candidate)) continue;
       if (elfMachine(await header(candidate)) !== machine) continue;
-      if (!linuxRuntime.has(path.basename(library)) || !await systemELF(candidate)) throw unsupportedLibrary(library, `resolved to ${candidate}`);
+      if (!isLinuxRuntimeLibrary(path.basename(library), machine) || !await systemELF(candidate)) throw unsupportedLibrary(library, `resolved to ${candidate}`);
       classified = true; break;
     }
     if (!classified) throw unsupportedLibrary(library, 'not resolved to the supported OS runtime');
