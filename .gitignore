@@ -38,3 +38,5 @@ xcuserdata/
 /.docs-build
 # Bytecode from bin/atlas/, the Dungeon atlas generator.
 __pycache__/
+# Per-game generated build packages, dependency symlinks and mode-specific caches.
+/.build-launchers/

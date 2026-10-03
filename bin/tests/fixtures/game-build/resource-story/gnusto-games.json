@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "package": "Story",
+  "games": [{"name": "Story", "product": "StoryLibrary", "module": "Story", "symbol": "game"}]
+}

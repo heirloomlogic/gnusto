@@ -19,6 +19,16 @@ the output as prose. None was found by `swift test`. This document is how you do
 by hand; `.claude/skills/playtest/` is how you hand it to several Claude subagents at
 once.
 
+## Generated terminal builds
+
+`bin/build-game <Game> --json` builds one cataloged game library with GnustoTerminal and reports its absolute executable, binary directory, generated package and scratch paths. Development builds enable `Playtest`; `--mode deployment` uses a separate release scratch directory and disables the trait across the graph. Cached builds fingerprint source contents, path lists, manifests, catalog, toolchain and build flags, so warm calls do not invoke SwiftPM.
+
+Set `GNUSTO_TERMINAL_PATH` to a local GnustoTerminal checkout while working on the coordinated migration. Without it, the generated package depends on `https://github.com/HeirloomLogic/GnustoTerminal` on `main`; that branch is a moving development dependency until coordinated releases establish a version requirement. `GNUSTO_SWIFT_BUILD_FLAGS` accepts a JSON array of literal Swift build arguments, such as `["--jobs","2"]`. Package path, scratch path, product, configuration and trait selection belong to the generator and cannot be overridden through that variable.
+
+Independent games need `gnusto-games.json` with version `1`, the actual package name and explicit game exports containing `name`, `product`, `module` and `symbol: "game"`. A library product may have a different name from its Swift module. The package must declare and forward `Playtest` to Gnusto. Use a distinct package directory identity from Gnusto and GnustoTerminal. A path dependency keeps the exact engine path declared by the author; a URL dependency uses the selected current engine checkout as a generated root override. Build the author package once to obtain its engine checkout or set `GNUSTO_REPO` explicitly.
+
+During preparation, the demo catalog is present while the root products still use their old executable declarations. Actual generated builds use the library fixture until the coordinated demo cutover changes those products; the existing replay command below remains the entry point for the current demos.
+
 ## The one command
 
 ```sh
