@@ -45,15 +45,15 @@ The variable is read by `TerminalLaunch` and handed to ``REPL`` as an argument r
 `bin/playtest-replay` plays a command file non-interactively with the seed pinned, and writes the evidence to disk:
 
 ```sh
-bin/playtest-replay --build Fulminate                    # once, separately
+bin/playtest-replay Fulminate --build                    # record the development launcher
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 ```
 
-Building is a separate one-shot on purpose: a replay that also builds cannot be trusted to have replayed the same binary twice. Output lands under `.context/playtest/<label>/<probe>/` as `transcript.txt`, `commands.txt`, `stderr.txt` and `summary.txt` — the same two evidence files the session server writes, under the same names. Read the transcript file rather than the tail on your terminal — the tail is for checking the run happened.
+The first command records the absolute development launcher path under the invoking game package. Every replay then validates the shared fingerprint before accepting that path: unchanged inputs reuse the cached binary without invoking Swift, while changed inputs rebuild before play. The convenience path record alone never proves freshness. Output lands under `.context/playtest/<label>/<probe>/` as `transcript.txt`, `commands.txt`, `stderr.txt` and `summary.txt` — the same evidence names the session server uses. Read the transcript file rather than the tail on your terminal — the tail is for checking the run happened.
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares, with one exception: `free commands` no longer counts the footer under the opening text, so a figure recorded before that change from a probe with footers is one higher. `bin/playtest-measure --help` says which probes that affects.
 
-A package written by `bin/new-game` has all of them: `bin/playtest-replay`, `bin/playtest-measure`, `bin/export-game`, `bin/playtest-preflight`, `bin/playtest-routes` and `bin/gnusto-mcp` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved. That promise holds once the pinned Gnusto is recent enough for each tool to read `GNUSTO_PACKAGE_PATH` or `GNUSTO_INVOCATION_DIR`, the variables a shim sets to tell the tool which package it meant. `bin/new-game` checks each shimmed tool, and the `bin/lib` modules they load, against the tag it just pinned, and prints a warning listing any the tag lacks or carries without that read. `--dep-path` against a fixed-up checkout is unaffected.
+A package written by `bin/new-game` has `bin/run-game`, `bin/build-game`, `bin/playtest-replay`, `bin/playtest-measure`, `bin/export-game`, `bin/playtest-preflight`, `bin/playtest-routes` and `bin/gnusto-mcp`: shims over the copies in its selected Gnusto checkout. For a released URL dependency, run `swift package resolve` before the first shim so SwiftPM has that checkout available. The shims set `GNUSTO_PACKAGE_PATH` and `GNUSTO_INVOCATION_DIR` to preserve the game package and caller-relative paths. `bin/new-game` checks the factory, tools, shared modules, package-awareness and Playtest forwarding for both released pins and local path dependencies; it refuses an unsupported dependency before writing a package. Until a compatible release exists, use `--dep-path` with the coordinated prerelease checkout, and set `GNUSTO_TERMINAL_PATH` to its matching local GnustoTerminal checkout when running the generated tools.
 
 `docs/playtesting.md` in this repository is the maintainer's operating manual and carries the calibration answer key: the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game. To run a portable author round from your game package, read <doc:PlayTestingYourOwnGame>. It covers preflight, dispatch, the first cold round, and the routes it can create for later rounds.
 
@@ -68,10 +68,10 @@ Nothing in your game has to know about this. The generated terminal launcher cal
 The server is a second program, and it is larger than the engine it rides in. So it is a **package trait** — `Playtest`, on by default — and a build that turns it off does not compile `Sources/Gnusto/Playtest/` at all. `GNUSTO_MCP` is then refused on standard error rather than honoured, because a client has already started writing JSON-RPC into the process's stdin and answering it with parser output would be the worse lie.
 
 ```sh
-swift build -c release --disable-default-traits --product MyGame
+bin/export-game MyGame
 ```
 
-`bin/export-game` and the release workflow already build that way: a binary you hand to somebody else is the one that should not carry a server. Everything else — a development build, `bin/gnusto-mcp`, `swift test` — gets the default and keeps the harness. A package `bin/new-game` wrote declares a `Playtest` trait of its own and forwards it to the engine's, which is what makes `--disable-default-traits` reach past the game and into Gnusto.
+`bin/export-game` builds a generated deployment launcher in release mode with Playtest disabled and writes the executable to `dist/MyGame`. Its package and scratch cache live under `.build-launchers/<Game>/deployment/`, separate from the development launcher under `.build-launchers/<Game>/development/`; exporting cannot replace the development MCP binary. Conditional Playtest forwarding spans the generated launcher, game package, GnustoTerminal and Gnusto, so disabling default traits for deployment removes the server across that whole graph. `bin/build-game`, `bin/run-game` and `bin/gnusto-mcp` select development mode with Playtest enabled. `swift test` keeps the game package’s default Playtest trait; it does not build a terminal launcher.
 
 `bin/gnusto-mcp` is the launcher, and a generated package gets a shim over it:
 
@@ -79,7 +79,7 @@ swift build -c release --disable-default-traits --product MyGame
 bin/gnusto-mcp MyGame
 ```
 
-It builds the game, asks where the binary landed, and hands the process over. **Stdout is the protocol**, so the build's progress goes to stderr and nothing else is printed at all — which is also why the build isn't silenced, since a failing server's stderr is where a client shows you the compile error.
+It validates the shared development fingerprint, builds when needed, and hands the returned executable the MCP request. **Stdout is the protocol**, so the build's progress goes to stderr and nothing else is printed at all — which is also why the build isn't silenced, since a failing server's stderr is where a client shows you the compile error.
 
 Register the game with a `.mcp.json` at your package root, one entry per game:
 
@@ -93,7 +93,7 @@ Register the game with a `.mcp.json` at your package root, one entry per game:
 
 One binary is one game, so no tool ever takes a game name. If you started with `bin/new-game`, both files are already there and already carry your game's name — there is no edit.
 
-Two things worth knowing before the first run. A cold start builds the game, which can take longer than a client's startup timeout — get the build out of the way once with `swift build`, or raise the timeout (`MCP_TIMEOUT`, in milliseconds). And a running server is frozen at the commit it started on, so restart the session after editing the engine.
+Two things worth knowing before the first run. A cold start builds the game, which can take longer than a client's startup timeout — prime the generated development cache once with `bin/build-game MyGame`, or raise the timeout (`MCP_TIMEOUT`, in milliseconds). And a running server uses the binary it started with, so restart the session after editing the game or engine; the next launch validates the updated inputs.
 
 ## The tools
 

@@ -2,7 +2,10 @@
 
 An engine for writing interactive fiction in Swift.
 
-@Metadata { @DisplayName("Gnusto") @TitleHeading("Framework") }
+@Metadata {
+    @DisplayName("Gnusto")
+    @TitleHeading("Framework")
+}
 
 ## Overview
 
