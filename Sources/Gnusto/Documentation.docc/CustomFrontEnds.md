@@ -110,6 +110,10 @@ A front end with no quit gesture — a pipe, a socket — never returns `.quit`,
 
 A front end that dismisses its input field on death loses the game it was about to let the player restore. Read `isFinished`, not the status.
 
+## What a turn did
+
+``TurnResult/report`` says what the turn did besides print, for a front end that draws a map or listens for speech. ``TurnReport/understood`` and ``TurnReport/unknownWords`` say how the parser read the line. ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives. The report is filled in by ``GameWorld/perform(_:)`` only; the opening and a front end's quit carry an empty one.
+
 ## Completion candidates
 
 ``CompletionCandidates`` is a snapshot of what Tab can offer for the *next* input line: every verb word, the nouns and adjectives of the items currently in scope, the movement words, and the save slots on disk.
@@ -198,6 +202,8 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``GameWorld/perform(_:)``
 - ``GameWorld/requestQuit()``
 - ``TurnResult``
+- ``TurnResult/report``
+- ``TurnReport``
 - ``PreparedGame``
 - ``PackagedGame``
 - ``DisplayWidth``

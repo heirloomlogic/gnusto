@@ -80,7 +80,7 @@ struct Scratch: Sendable {
     /// merged, in ``GameWorld/commit(_:)``, and carries the account of why the
     /// tally exists and why it does not live on `WorldState`.
     ///
-    /// Filled only by ``walkPlayer(to:)`` and ``teleportPlayer(to:)`` below,
+    /// Filled only by ``walkPlayer(to:direction:)`` and ``teleportPlayer(to:)`` below,
     /// which are the two moves a turn has, and not deduped: a turn's list runs
     /// to a couple of entries and `commit` dedupes against the session-long
     /// tally anyway, so a second check here would only be the same check twice.
@@ -88,6 +88,9 @@ struct Scratch: Sendable {
     /// the room they stood in throughout; that room is on every status line the
     /// session already reads.
     var roomsOccupied: [EntityID] = []
+
+    /// Actual room changes in this live turn, discarded with the scratch frame.
+    var mapTransitions: [MapTransition] = []
 
     /// The `roomsOccupied` count at the last room description. A nested move
     /// may return the player to an outer `enter(_:)` destination after already
@@ -103,20 +106,30 @@ struct Scratch: Sendable {
     /// complete without `WorldState` carrying anything it would then have to
     /// serialize.
     ///
-    /// - Parameter room: the room the player ends up in.
-    mutating func walkPlayer(to room: EntityID) {
+    /// - Parameters:
+    ///   - room: the room the player ends up in.
+    ///   - direction: the confirmed exit direction, or nil for an author move.
+    mutating func walkPlayer(to room: EntityID, direction: Direction? = nil) {
+        let origin = state.playerLocation
         state.setPlayerLocation(walkingTo: room)
         roomsOccupied.append(room)
+        if origin != room {
+            mapTransitions.append(MapTransition(from: origin, to: room, direction: direction))
+        }
     }
 
     /// The player is put down in `room` —
     /// ``WorldState/setPlayerLocation(placingAt:)``, with the occupancy noted.
-    /// The walk's twin; see ``walkPlayer(to:)``.
+    /// The walk's twin; see ``walkPlayer(to:direction:)``.
     ///
     /// - Parameter room: the room the player ends up in.
     mutating func teleportPlayer(to room: EntityID) {
+        let origin = state.playerLocation
         state.setPlayerLocation(placingAt: room)
         roomsOccupied.append(room)
+        if origin != room {
+            mapTransitions.append(MapTransition(from: origin, to: room, direction: nil))
+        }
     }
 }
 

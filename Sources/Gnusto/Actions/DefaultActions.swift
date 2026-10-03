@@ -553,7 +553,7 @@ enum DefaultActions {
         case .blocked(let message):
             try refuse(message)
         case .to(let destination):
-            try enter(destination, frame: frame, announcing: aside)
+            try enter(destination, frame: frame, direction: direction, announcing: aside)
         case .door(let destination, let doorID):
             // A hidden door isn't there yet: behave as if the exit doesn't
             // exist until it's revealed. Once revealed, a shut door refuses
@@ -587,18 +587,18 @@ enum DefaultActions {
                 }
                 try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
             }
-            try enter(destination, frame: frame, announcing: aside)
+            try enter(destination, frame: frame, direction: direction, announcing: aside)
         case .conditional(let destination, let condition, let blocked):
             // Evaluate the gate inside the live frame so its closure sees the
             // current turn's state (globals, proxies) via `Ctx.current`.
             guard condition() else { try refuse(blocked) }
-            try enter(destination, frame: frame, announcing: aside)
+            try enter(destination, frame: frame, direction: direction, announcing: aside)
         case .dynamic(let destination):
             // Same reason as the conditional gate: the closure reads this
             // turn's state through `Ctx.current`. Nothing downstream checks
             // that the room it names has anything to do with `direction` —
             // which is what makes a non-Euclidean passage possible at all.
-            try enter(destination(), frame: frame, announcing: aside)
+            try enter(destination(), frame: frame, direction: direction, announcing: aside)
         }
     }
 
@@ -615,14 +615,15 @@ enum DefaultActions {
     /// author-facing ``enter(_:)`` delegates here rather than restating it —
     /// which is what keeps "walking in" one behaviour with two spellings.
     static func enter(
-        _ destination: EntityID, frame: TurnFrame, announcing aside: String? = nil
+        _ destination: EntityID, frame: TurnFrame, direction: Direction? = nil,
+        announcing aside: String? = nil
     ) throws {
         // The onEnter rules run from in here, so one of them calling `enter(_:)`
         // back on its own room recurses. Guarded rather than left to overflow
         // the stack: see `TurnFrame.nested(_:within:_:)`, issue #223.
         try frame.nested(.walk, within: destination) {
             if let aside { frame.say(aside) }
-            frame.with { $0.walkPlayer(to: destination) }
+            frame.with { $0.walkPlayer(to: destination, direction: direction) }
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
