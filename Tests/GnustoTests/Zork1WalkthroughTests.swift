@@ -14,17 +14,11 @@ import Testing
 /// the thief's roaming and stealing, and the thief's death in his lair. The
 /// thief is lethal — his stiletto can end the run on the turn you enter the
 /// Treasure Room — so a winning seed is *found by brute-force scan*, not chosen.
-/// Seed 0 is the lowest that survives both combats cleanly and lets the thief's
-/// egg-opening service finish (the canary emerges intact). Once the thief falls,
-/// **no randomness remains** — every source (troll, thief roam/steal/fight, the
-/// coal-mine bat) is dead or guarded — so all of Phase B plays out identically
-/// regardless of seed. A scan of seeds 0–599 finds 235 that win this exact
-/// route.
-///
-/// It was seed 32, on a route only 47 of those 600 won, until #237 gave the
-/// troll and the thief the source's strike-first probabilities. That moved every
-/// draw — hence the re-pin — and it also made the run four times easier to win,
-/// which is the change doing exactly what it was asked to do.
+/// Seed 0 survives both combats and lets the thief's egg-opening service
+/// finish with the canary intact. The same route remains verified after
+/// positive-value gifts gained their one-tick combat distraction (#672).
+/// Once the thief falls, the remaining route has no combat or thief draws;
+/// the coal-mine bat is also guarded by the carried garlic.
 ///
 /// **The strategy.** *Phase A* descends, kills the troll, threads the maze,
 /// routs the cyclops (which opens the Strange Passage shortcut home), arms the
@@ -40,7 +34,7 @@ import Testing
 /// event lines (the two deaths, the map whisper, the barrow epilogue) — now
 /// carrying the original Zork I text; see `THIRD_PARTY_NOTICES`.
 struct Zork1WalkthroughTests {
-    /// The pinned seed (see the type doc): the lowest that wins this route.
+    /// The pinned seed verified by the complete route below.
     static let seed: UInt64 = 0
 
     @Test func cyclopsOpeningAnswersFromBothSidesOnlyAfterTheShortcutOpens() async throws {
