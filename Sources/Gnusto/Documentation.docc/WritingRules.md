@@ -347,6 +347,10 @@ It is legal only from a `before`-phase rule and only once per turn. From an `aft
 
 The engine's own case for ``sayOnceThisTurn(_:)`` is the dark. A dark room has nothing to describe, so the room describer prints ``GameText/pitchBlack``; `GnustoDangerousDark`'s grue prints its warning, because the fairness contract owes the player a warned turn. Point both at one sentence — Zork does, where the dark-room line *is* the threat — and the turn says it once; give them different words and both still print, since what is compared is the text and nothing else. The memory is one turn deep, and dropping a line changes nothing but the output: a schedule that counted the turn has still counted it.
 
+### Redirecting a default action
+
+``redirect(to:directObject:indirectObject:preposition:)`` runs another intent's command stages in the same turn. It belongs in the pipeline's stage-4 action, after the original `before` rules; calling during before/after or each-turn phases, or from an early default invoked by ``proceed()``, traps. The replacement runs its own reach checks and rules, while upkeep and the clock still run once. See <doc:AddingCustomVerbs> for object normalization, pronouns, rollback and the complete contract.
+
 ### Answer in the engine's own words with `gameText`
 
 A rule that is refusing something the engine already has a sentence for should say the engine's sentence, so a game that re-skins the line once gets it everywhere. ``Game/gameText`` is the stock table this turn is being spoken from:

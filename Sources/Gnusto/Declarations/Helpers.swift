@@ -1,6 +1,7 @@
-/// Thrown by `refuse`, `reply`, `handled`, `end`, and `die` to redirect the turn;
+/// Thrown by the turn-control helpers to stop or replace command stages;
 /// caught by the engine, never seen by author code.
 enum TurnInterrupt: Error {
+    case redirected(Command)
     case refused(message: String)
     case replied(message: String)
     case gameOver(won: Bool)
@@ -373,4 +374,48 @@ public func enter(_ room: Location) throws {
 /// exactly as it would have out of the pipeline's own stage 4.
 public func proceed() throws {
     try Ctx.current.proceedToDefaultAction()
+}
+
+/// Replaces the current default action with another command's stages 0–5.
+///
+/// Call from the pipeline's stage-4 action, after the original command's
+/// `before` rules have had their turn. The replacement runs its reach checks,
+/// `before` rules, default and `after` rules in the same turn. The original
+/// action's remaining body and `after` rules do not run. Each-turn upkeep,
+/// timers, the move count and the undo snapshot still happen once.
+///
+/// Supply the replacement's object slots and canonical preposition. The
+/// original actor, direction, topic and typed text remain available. The
+/// replacement direct object binds `it`; end-of-turn rules see the original
+/// command again. An unhandled replacement rolls back the whole typed turn.
+///
+/// Calling during before/after or each-turn phases, from a timer, or from a
+/// default invoked early by `proceed()` traps. Meta/engine destinations and
+/// chains exceeding 32 redirects also trap.
+public func redirect(
+    to intent: Intent,
+    directObject: Item? = nil,
+    indirectObject: Item? = nil,
+    preposition: String? = nil
+) throws -> Never {
+    let frame = Ctx.current
+    guard frame.with({ $0.canRedirect }) else {
+        fatalError("Gnusto: redirect() requires the pipeline's stage-4 default action.")
+    }
+    guard !intent.isMeta, !DefaultActions.engineIntents.contains(intent) else {
+        fatalError("Gnusto: redirect() cannot dispatch a meta or engine command.")
+    }
+    let original = frame.command
+    throw TurnInterrupt.redirected(
+        Command(
+            intent: intent,
+            directObject: directObject,
+            indirectObject: indirectObject,
+            preposition: preposition,
+            direction: original.direction,
+            topic: original.topic,
+            actor: original.actor,
+            verbPhrase: original.verbPhrase,
+            rawInput: original.rawInput
+        ))
 }

@@ -47,6 +47,8 @@ Then the turn counter advances by one and the turn commits.
 
 `before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
 
+The stage-4 default may call ``redirect(to:directObject:indirectObject:preposition:)`` to replace its intent and object slots. The replacement restarts stages 0–5 in the same frame, with ordinary `before` rules but without repeated `beforeEachTurn` upkeep. Its `after` rules run if its action returns; the original action's `after` rules do not. Stage 6 and commit still run once for the typed command. End-of-turn rules see the original command, while the redirected direct object remains the referent of `it`. See <doc:AddingCustomVerbs> for the helper's limits and rollback behavior.
+
 ### Which room a turn's location rules belong to
 
 The world rules run first. The engine then selects the player's current room for its `beforeEachTurn` pass. That selected list runs once: if a rule moves the player, the destination does not get a second upkeep pass.

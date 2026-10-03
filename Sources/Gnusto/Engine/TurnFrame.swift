@@ -27,6 +27,9 @@ struct Scratch: Sendable {
     /// against running it twice and tells the pipeline to skip its own
     /// stage-4 step after a `proceed()`.
     var defaultRan = false
+    /// Only the pipeline's stage-4 default may replace its command. An early
+    /// default invoked by `proceed()` has not finished the before stages.
+    var canRedirect = false
     /// Set when stage 4 found nothing to answer the command with. The turn
     /// prints a line that says nothing happened, so it costs what nothing
     /// costs: no each-turn rules, no timers, no move.

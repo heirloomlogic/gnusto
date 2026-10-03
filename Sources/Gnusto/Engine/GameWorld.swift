@@ -687,10 +687,6 @@ public actor GameWorld {
             break
         }
 
-        // Every early return above was a free reply; from here the turn
-        // really runs, so it becomes the thing UNDO reverses.
-        undoSnapshot = snapshot
-
         // The upkeep pass runs before any object's command exists, but its
         // rules are rule bodies and may ask `command.intent`. What the player
         // typed was the group's intent, so that is what they are handed — no
@@ -726,13 +722,11 @@ public actor GameWorld {
                         message: nothingToTake(from: holder, in: currentState))
                 }
                 for id in objects {
-                    guard frame.with({ $0.state.status }) == .playing else { break }
+                    guard frame.with({ $0.state.status == .playing && !$0.unhandled }) else { break }
                     guard let item = definition.registry.items[id] else { continue }
                     let command = command(from: parsed, overridingDirectObject: item)
-                    // `unhandled` is not reset alongside `defaultRan`: every
-                    // intent in `multiObjectIntents` is a core verb with a
-                    // handler, so stage 4 always answers here and the flag
-                    // can never be set part-way through the loop.
+                    // An unhandled redirect cancels the whole group. Keep
+                    // its flag so later members cannot revive that turn.
                     frame.with { scratch in
                         scratch.command = command
                         scratch.defaultRan = false
@@ -765,7 +759,9 @@ public actor GameWorld {
             }
             finishTurn(intent: intent, frame: frame)
         }
-        return commit(frame)
+        let unhandled = frame.with { $0.unhandled }
+        if !unhandled { undoSnapshot = snapshot }
+        return commit(frame, restoring: unhandled ? snapshot : nil)
     }
 
     private enum MultiObjectExpansion {
@@ -1203,44 +1199,82 @@ public actor GameWorld {
     /// phases are included (the single-command turn); without it they're the
     /// caller's job (`runMultiTurn` runs them once, outside its object loop).
     private func performStages(_ command: Command, frame: TurnFrame, upkeep: Bool) {
-        let intent = command.intent
         let rules = definition.rules
+        var active = command
+        var includeUpkeep = upkeep
+        var redirects = 0
+        defer { frame.with { $0.command = command } }
 
-        do {
-            // Stage 0: the objects' `reach { … }` rules, which have to be
-            // settled ahead of the rules that could pre-empt stage 4.
-            try DefaultActions.requireReachRules(for: command, frame: frame)
+        while true {
+            let intent = active.intent
+            do {
+                // Stage 0: the objects' `reach { … }` rules, which have to be
+                // settled ahead of the rules that could pre-empt stage 4.
+                try DefaultActions.requireReachRules(for: active, frame: frame)
 
-            // Stages 1–3, and with them the room this turn belongs to.
-            let here = try runBeforeStages(command, frame: frame, upkeep: upkeep)
+                // Stages 1–3, and with them the room this turn belongs to.
+                let here = try runBeforeStages(active, frame: frame, upkeep: includeUpkeep)
 
-            // Stage 4: the default action — skipped if a `before` rule
-            // already ran it early via `proceed()`.
-            if !frame.with({ $0.defaultRan }) {
-                try DefaultActions.run(command, frame: frame)
-            }
-
-            // Stage 5: item, location and world `after` rules. A meta intent
-            // has no room of record, and runs none of them.
-            if let here {
-                if let direct = command.directObject {
-                    try run(rules.itemAfter[direct.id] ?? [], matching: intent)
+                // Stage 4: the default action — skipped if a `before` rule
+                // already ran it early via `proceed()`.
+                if !frame.with({ $0.defaultRan }) {
+                    frame.with { $0.canRedirect = true }
+                    defer { frame.with { $0.canRedirect = false } }
+                    try DefaultActions.run(active, frame: frame)
                 }
-                if let indirect = command.indirectObject {
-                    try run(rules.itemAfter[indirect.id] ?? [], matching: intent)
+
+                // Stage 5: item, location and world `after` rules. A meta intent
+                // has no room of record, and runs none of them.
+                if let here {
+                    if let direct = active.directObject {
+                        try run(rules.itemAfter[direct.id] ?? [], matching: intent)
+                    }
+                    if let indirect = active.indirectObject {
+                        try run(rules.itemAfter[indirect.id] ?? [], matching: intent)
+                    }
+                    // No agent pass here: an order can only be *answered* by a
+                    // `before` rule's `reply`/`refuse`, which throws, and an order
+                    // nobody answered throws `unhandled` out of stage 4. Either
+                    // way stage 5 is already unwound — the same contract `reply`
+                    // has always had for the player.
+                    try run(rules.locationAfter[here] ?? [], matching: intent)
+                    try run(rules.worldAfter, matching: intent)
                 }
-                // No agent pass here: an order can only be *answered* by a
-                // `before` rule's `reply`/`refuse`, which throws, and an order
-                // nobody answered throws `unhandled` out of stage 4. Either
-                // way stage 5 is already unwound — the same contract `reply`
-                // has always had for the player.
-                try run(rules.locationAfter[here] ?? [], matching: intent)
-                try run(rules.worldAfter, matching: intent)
+
+                return
+            } catch TurnInterrupt.redirected(let replacement) {
+                redirects += 1
+                guard redirects <= 32 else {
+                    fatalError(
+                        "Gnusto: redirect() exceeded 32 redirects in one command; check the action chain for a cycle.")
+                }
+                active = replacement
+                includeUpkeep = false
+                // Resolving a handle reads Ctx's liveness lock. Keep that
+                // outside the scratch lock, which is not reentrant.
+                let direct = replacement.directObject?.id
+                let named = [replacement.actor?.id, direct, replacement.indirectObject?.id]
+                frame.with { scratch in
+                    scratch.command = replacement
+                    scratch.defaultRan = false
+                    if let direct {
+                        scratch.state.pronounIt = direct
+                        if definition.items[direct]?.isPlural == true {
+                            scratch.state.pronounThem = [direct]
+                        }
+                    }
+                    for named in named {
+                        guard let named else { continue }
+                        bindGenderedPronoun(naming: named, in: &scratch.state)
+                    }
+                }
+            } catch let interrupt as TurnInterrupt {
+                handle(interrupt, frame: frame)
+                return
+            } catch {
+                frame.say("\(error)")
+                return
             }
-        } catch let interrupt as TurnInterrupt {
-            handle(interrupt, frame: frame)
-        } catch {
-            frame.say("\(error)")
         }
     }
 
@@ -1406,6 +1440,8 @@ public actor GameWorld {
 
     private func handle(_ interrupt: TurnInterrupt, frame: TurnFrame) {
         switch interrupt {
+        case .redirected:
+            fatalError("Gnusto: a redirect escaped the command stages.")
         case .refused(let message), .replied(let message), .unhandled(let message):
             // An empty message ends the turn without adding a line — for
             // rule bodies that have already said everything with `say`.
