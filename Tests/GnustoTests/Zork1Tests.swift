@@ -1435,6 +1435,161 @@ struct Zork1Tests {
         for _ in 0..<6 { _ = await world.perform("wait") }
     }
 
+    private static let leakRepairCommands = [
+        "plug leak with tube", "fix drip with gunk", "repair pipe with putty",
+        "patch leak with material", "glue leak with tube", "put gunk in leak", "put putty on pipe",
+    ]
+    private static let leak = EntityID("ZorkDam.leak")
+    private static let leakTube = EntityID("ZorkDam.tube")
+    private static let flood = EntityID("ZorkDam.floodLevel")
+    private static let floodDaemon = "damFlood"
+
+    private static func activeLeakWorld() async throws -> GameWorld {
+        let world = try await maintenanceWorld()
+        _ = await world.perform("take tube")
+        _ = await world.perform("push blue button")
+        #expect((await world.snapshot()).globals[flood] == .int(1))
+        return world
+    }
+
+    @Test(arguments: leakRepairCommands)
+    func puttyRepairsTheActiveLeakWithoutBeingSpent(command: String) async throws {
+        let world = try await Self.activeLeakWorld()
+        let repair = await world.perform(command)
+        #expect(repair.output.contains("managed to stop"))
+        let repaired = await world.snapshot()
+        #expect(repaired.globals[Self.flood] == .int(-1))
+        #expect(!repaired.activeDaemons.contains(Self.floodDaemon))
+        #expect(repaired.placements[Self.leakTube] == .heldBy(.player))
+        #expect(repaired.revealedItems.contains(Self.leak))
+        for command in ["push blue button", "push blue button"] + Array(repeating: "wait", count: 10) {
+            let response = await world.perform(command)
+            if command == "push blue button" { #expect(response.output.contains("appears to be jammed")) }
+            #expect(!response.output.contains("water level"))
+            #expect(!response.output.contains("drowned yourself"))
+            #expect((await world.snapshot()).playerLocation == EntityID("ZorkDam.maintenanceRoom"))
+            #expect((await world.snapshot()).globals[Self.flood] == .int(-1))
+        }
+        #expect(!(await world.perform(command)).output.contains("managed to stop"))
+        _ = await world.perform("south")
+        #expect(!(await world.perform("east")).output.contains("cannot be entered"))
+        #expect((await world.snapshot()).playerLocation == EntityID("ZorkDam.maintenanceRoom"))
+    }
+
+    @Test(arguments: [0, 5, 6])
+    func leakRepairStopsTheNextTickEvenAtNeckHeight(waits: Int) async throws {
+        let world = try await Self.activeLeakWorld()
+        for _ in 0..<waits { _ = await world.perform("wait") }
+        #expect((await world.snapshot()).globals[Self.flood] == .int(waits + 1))
+        let repair = await world.perform("plug leak with tube")
+        #expect(repair.output.contains("managed to stop"))
+        #expect(!repair.output.contains("water level"))
+        #expect(!repair.output.contains("drowned yourself"))
+        #expect((await world.snapshot()).globals[Self.flood] == .int(-1))
+        #expect((await world.snapshot()).playerLocation == EntityID("ZorkDam.maintenanceRoom"))
+    }
+
+    @Test(arguments: ["plug leak with wrench", "put wrench in leak", "put wrench on leak", "fix leak"])
+    func wrongOrMissingLeakMaterialDoesNotStopFlooding(command: String) async throws {
+        let world = try await Self.maintenanceWorld()
+        _ = await world.perform("take wrench")
+        _ = await world.perform("push blue button")
+        #expect(!(await world.perform(command)).output.contains("managed to stop"))
+        let refused = await world.snapshot()
+        #expect(refused.activeDaemons.contains(Self.floodDaemon))
+        #expect(refused.globals[Self.flood] != .int(-1))
+        #expect((await world.perform("wait")).output.contains("water level"))
+    }
+
+    @Test(arguments: ["put tube in leak", "put tube on leak"])
+    func puttingRepairMaterialRequiresItToBeHeld(command: String) async throws {
+        let world = try await Self.activeLeakWorld()
+        _ = await world.perform("drop tube")
+        let result = await world.perform(command)
+        #expect(!result.output.contains("managed to stop"))
+        #expect(result.output.contains("aren't holding"))
+        #expect((await world.snapshot()).globals[Self.flood] != .int(-1))
+        #expect((await world.snapshot()).placements[Self.leakTube] == .room(EntityID("ZorkDam.maintenanceRoom")))
+        #expect((await world.perform("plug leak with tube")).output.contains("managed to stop"))
+        #expect((await world.snapshot()).placements[Self.leakTube] == .room(EntityID("ZorkDam.maintenanceRoom")))
+    }
+
+    @Test(arguments: ["plug leak with tube", "put tube in leak", "put tube on leak"])
+    func repairCannotReachMaterialThroughClosedGlass(command: String) async throws {
+        let world = try await Self.activeLeakWorld()
+        await world.encloseLeakTestTubeBehindGlass()
+        let result = await world.perform(command)
+        #expect(!result.output.contains("managed to stop"))
+        #expect(result.output.contains("can't reach"))
+        #expect((await world.snapshot()).globals[Self.flood] != .int(-1))
+        #expect((await world.snapshot()).activeDaemons.contains(Self.floodDaemon))
+        #expect((await world.snapshot()).placements[Self.leakTube] == .inside(EntityID("ZorkHouse.trophyCase")))
+    }
+
+    @Test func rememberedLeakCannotBeRepairedFromTheLobby() async throws {
+        let world = try await Self.activeLeakWorld()
+        _ = await world.perform("examine leak")
+        _ = await world.perform("south")
+        let result = await world.perform("plug it with tube")
+        #expect(!result.output.contains("managed to stop"))
+        #expect(result.output.contains("can't see any such thing"))
+        #expect((await world.snapshot()).globals[Self.flood] != .int(-1))
+        #expect((await world.snapshot()).activeDaemons.contains(Self.floodDaemon))
+    }
+
+    @Test func undoRestoresTheActiveLeakAndItsNextTick() async throws {
+        let world = try await Self.activeLeakWorld()
+        let before = await world.snapshot()
+        _ = await world.perform("put tube on leak")
+        #expect((await world.snapshot()).globals[Self.flood] == .int(-1))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.globals == before.globals)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect(restored.revealedItems == before.revealedItems)
+        #expect(restored.placements == before.placements)
+        #expect(restored.moves == before.moves)
+        #expect(restored.rngState == before.rngState)
+        #expect((await world.perform("wait")).output.contains("up to your shins"))
+        #expect((await world.perform("plug leak with tube")).output.contains("managed to stop"))
+    }
+
+    @Test func saveAndRestoreKeepTheLeakRepairedAndTheBlueButtonJammed() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-zork-repaired-leak-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let world = try await Self.activeLeakWorld()
+        _ = await world.perform("plug leak with tube")
+        _ = await world.perform("save")
+        #expect((await world.perform(path)).output.contains("Saved."))
+        _ = await world.perform("undo")
+        #expect((await world.snapshot()).globals[Self.flood] == .int(1))
+        _ = await world.perform("restore")
+        #expect((await world.perform(path)).output.contains("Restored."))
+        let restored = await world.snapshot()
+        #expect(restored.globals[Self.flood] == .int(-1))
+        #expect(!restored.activeDaemons.contains(Self.floodDaemon))
+        #expect(restored.revealedItems.contains(Self.leak))
+        #expect(restored.placements[Self.leakTube] == .heldBy(.player))
+        #expect((await world.perform("push blue button")).output.contains("appears to be jammed"))
+        for _ in 0..<10 { #expect(!(await world.perform("wait")).output.contains("water level")) }
+    }
+
+    @Test func undoingBlueButtonActivationConcealsTheLeakAndStopsItsTimer() async throws {
+        let world = try await Self.maintenanceWorld()
+        #expect((await world.perform("examine leak")).output.contains("can't see any such thing"))
+        let before = await world.snapshot()
+        _ = await world.perform("push blue button")
+        #expect((await world.snapshot()).revealedItems.contains(Self.leak))
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.globals == before.globals)
+        #expect(restored.revealedItems == before.revealedItems)
+        #expect(restored.activeDaemons == before.activeDaemons)
+        #expect((await world.perform("examine leak")).output.contains("can't see any such thing"))
+        #expect((await world.perform("push blue button")).output.contains("a leak has occurred"))
+    }
+
     @Test(arguments: ["north", "east"])
     func completedFloodRefusesBothMaintenanceEntrances(direction: String) async throws {
         let world = try await Self.maintenanceWorld()
@@ -1650,6 +1805,13 @@ struct Zork1Tests {
 }
 
 extension GameWorld {
+    fileprivate func encloseLeakTestTubeBehindGlass() {
+        let caseID = EntityID("ZorkHouse.trophyCase")
+        state.place(caseID, .room(EntityID("ZorkDam.maintenanceRoom")))
+        state.openItems.remove(caseID)
+        state.place(EntityID("ZorkDam.tube"), .inside(caseID))
+    }
+
     fileprivate func placeFloodTestPlayer(in room: String) {
         state.setPlayerLocation(placingAt: EntityID("ZorkDam.\(room)"))
         state.place(EntityID("ZorkHouse.lantern"), .heldBy(.player))

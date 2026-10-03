@@ -53,7 +53,7 @@ extension Intent {
     /// The Cyclops's magic word — inert until he's met (later).
     #verb("odysseus", ["odysseus"], ["ulysses"])
 
-    /// Repair something (the punctured boat, sealed with the tube's gunk).
+    /// Repair the boat or plug the Maintenance Room leak with gunk.
     #verb(
         "fix",
         ["fix", .directObject],
@@ -61,7 +61,9 @@ extension Intent {
         ["repair", .directObject],
         ["repair", .directObject, "with", .indirectObject],
         ["patch", .directObject],
-        ["patch", .directObject, "with", .indirectObject])
+        ["patch", .directObject, "with", .indirectObject],
+        ["plug", .directObject, "with", .indirectObject],
+        ["glue", .directObject, "with", .indirectObject])
 
     /// Swing a held weapon without a target.
     #verb("swing", ["swing", .directObject], ["thrust", .directObject])
