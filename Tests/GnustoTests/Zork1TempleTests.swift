@@ -160,6 +160,21 @@ struct Zork1TempleTests {
             ])
     }
 
+    @Test func candlesLitOnTheFloorDoNotAdvanceTheExorcism() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit + [
+                "drop candles", "ring bell", "light matches", "light candles",
+                "read book", "south",
+            ],
+            seed: 0)
+        let lighting = turnOutput(of: "light candles", in: transcript)
+        #expect(lighting.contains("The candles are lit."))
+        #expect(!lighting.contains("flames flicker wildly and appear to dance"))
+        #expect(!turnOutput(of: "read book", in: transcript).contains("flee through the walls"))
+        #expect(turnOutput(ofLast: "south", in: transcript).contains("invisible force prevents you from passing"))
+    }
+
     /// The bell puts out only candles in hand, so candles left burning on the
     /// ground stay lit. Picking them up after the bell is the ritual's second
     /// step, as `LLD-ROOM`'s end-of-turn check (`1actions.zil:1115`) asks only
@@ -174,6 +189,9 @@ struct Zork1TempleTests {
                 "read book",
             ],
             seed: 0)
+        #expect(!turnOutput(of: "ring bell", in: transcript).contains("flames flicker wildly and appear to dance"))
+        #expect(
+            turnOutput(ofLast: "take candles", in: transcript).contains("flames flicker wildly and appear to dance"))
         expectInOrder(
             transcript,
             [

@@ -508,7 +508,7 @@ struct ZorkTemple: GameContent {
             guard !candles.isLit else { try reply(Prose.candlesAlreadyLit) }
             candles.isLit = true
             startCandleFuses()
-            if player.location == entranceToHades && exorcismStage == 1 {
+            if player.location == entranceToHades && exorcismStage == 1 && candles.isHeld {
                 exorcismStage = 2
                 stopFuse("exorcismLapse")
                 startFuse("exorcismLapse", after: 3)
