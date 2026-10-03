@@ -4,7 +4,8 @@ import {watch} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import test from 'node:test';
-import {spawnSync} from 'node:child_process';
+import {spawnSync, execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {stageTerminalExport} from '../lib/game-export.mjs';
 
 async function fixture(t) {
@@ -193,4 +194,59 @@ test('the Swift build linked graph refuses test-only modules before replacing an
   await fs.writeFile(path.join(metadata, 'manifest.json'), JSON.stringify({commands: {link: {description: 'Ld PrivateLauncher normal', outputs: [await fs.realpath(binary)], inputs: [path.join(f.root, 'GnustoTestSupport.build', 'helper.o')]}}}));
   await assert.rejects(stageTerminalExport({...f, binary, binDirectory}), /test.only module/i);
   assert.equal(run(f.destination).stdout, 'previous\n');
+});
+
+
+for (const resourceBearing of [false, true]) {
+  test(`a real SwiftPM dynamic library graph is refused before replacing the previous export (resources: ${resourceBearing})`, async t => {
+    const f = await fixture(t);
+    const sources = path.join(f.root, 'dynamic-sources');
+    const library = path.join(sources, 'Library');
+    const libraryProduct = resourceBearing ? 'swiftPretendRuntime' : 'Library';
+    const consumer = path.join(sources, 'Consumer');
+    await fs.mkdir(path.join(library, 'Sources', 'Library', 'Resources'), {recursive: true});
+    await fs.mkdir(path.join(consumer, 'Sources', 'DynamicConsumer'), {recursive: true});
+    await fs.writeFile(path.join(library, 'Package.swift'), `// swift-tools-version: 6.2
+import PackageDescription
+let package = Package(name: "Library", products: [.library(name: "${libraryProduct}", type: .dynamic, targets: ["Library"])], targets: [.target(name: "Library"${resourceBearing ? ', resources: [.process("Resources")]' : ''})])
+`);
+    await fs.writeFile(path.join(library, 'Sources', 'Library', 'Library.swift'), resourceBearing ? 'import Foundation\npublic func token() -> String { try! String(contentsOf: Bundle.module.url(forResource: "token", withExtension: "txt")!, encoding: .utf8) }\n' : 'public func token() -> String { "DYNAMIC_OK" }\n');
+    if (resourceBearing) await fs.writeFile(path.join(library, 'Sources', 'Library', 'Resources', 'token.txt'), 'DYNAMIC_OK');
+    await fs.writeFile(path.join(consumer, 'Package.swift'), `// swift-tools-version: 6.2\nimport PackageDescription\nlet package = Package(name: "Consumer", products: [.executable(name: "DynamicConsumer", targets: ["DynamicConsumer"])], dependencies: [.package(path: "../Library")], targets: [.executableTarget(name: "DynamicConsumer", dependencies: [.product(name: "${libraryProduct}", package: "Library")])])\n`);
+    await fs.writeFile(path.join(consumer, 'Sources', 'DynamicConsumer', 'main.swift'), 'import Library\nprint(token())\n');
+    const execute = promisify(execFile);
+    await execute('swift', ['build', '--package-path', consumer, '-c', 'release', '--product', 'DynamicConsumer'], {timeout: 120_000, maxBuffer: 4 * 1024 * 1024});
+    const {stdout} = await execute('swift', ['build', '--package-path', consumer, '-c', 'release', '--show-bin-path'], {timeout: 30_000});
+    const binDirectory = stdout.trim();
+    const binary = path.join(binDirectory, 'DynamicConsumer');
+    const original = spawnSync(binary, {encoding: 'utf8', timeout: 10_000});
+    assert.equal(original.status, 0, original.stderr);
+    assert.equal(original.stdout, 'DYNAMIC_OK\n');
+    await assert.rejects(stageTerminalExport({...f, binary, binDirectory}), /unsupported.*(?:shared|dynamic).*library.*static/is);
+    await fs.rename(sources, path.join(f.root, 'dynamic-sources-hidden'));
+    assert.equal(run(f.destination).stdout, 'previous\n');
+    assert.deepEqual(await fs.readdir(path.dirname(f.destination)), ['Story']);
+  });
+}
+
+
+test('an OS Swift runtime resolved through Mach-O rpath remains a relocatable single-file export', {skip: process.platform !== 'darwin'}, async t => {
+  const f = await fixture(t);
+  const source = path.join(f.root, 'main.swift');
+  const binary = path.join(f.binDirectory, 'OSRuntimeProbe');
+  await fs.writeFile(source, 'print("RPATH_SYSTEM_RUNTIME_OK")\n');
+  const execute = promisify(execFile);
+  await execute('swiftc', [source, '-o', binary], {timeout: 30_000});
+  await execute('/usr/bin/install_name_tool', ['-change', '/usr/lib/swift/libswiftCore.dylib', '@rpath/libswiftCore.dylib', binary]);
+  const commands = (await execute('/usr/bin/otool', ['-l', binary])).stdout;
+  if (!/path \/usr\/lib\/swift \(offset/.test(commands)) await execute('/usr/bin/install_name_tool', ['-add_rpath', '/usr/lib/swift', binary]);
+  await execute('/usr/bin/codesign', ['--force', '--sign', '-', binary]);
+  assert.match((await execute('/usr/bin/otool', ['-L', binary])).stdout, /@rpath\/libswiftCore\.dylib/);
+  const staged = await stageTerminalExport({...f, binary});
+  assert.deepEqual(staged.resources, []);
+  assert.equal((await fs.lstat(f.destination)).isSymbolicLink(), false);
+  await fs.rename(f.binDirectory, path.join(f.root, 'build-unavailable'));
+  const launched = run(staged.binary);
+  assert.equal(launched.status, 0, launched.stderr);
+  assert.equal(launched.stdout, 'RPATH_SYSTEM_RUNTIME_OK\n');
 });

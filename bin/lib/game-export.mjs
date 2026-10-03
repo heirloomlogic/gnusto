@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 
 const bundleSuffix = /\.(bundle|resources)$/;
 const forbidden = /(^|[/_])(?:GnustoTestSupport|Testing|SwiftTesting)(?:[._/]|$)/i;
@@ -70,6 +72,105 @@ async function linkedResources(binary, binDirectory) {
   return [...names].sort();
 }
 
+const execute = promisify(execFile);
+const macSystem = file => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
+const linuxSystem = file => /^\/(?:usr\/)?lib(?:64)?\//.test(file);
+// Linux exports require the recipient's base C/C++/POSIX runtime, not a Swift
+// toolchain installation. Swift/Foundation and package shared products must be
+// linked statically; their filenames alone never establish runtime availability.
+const linuxRuntime = new Set(['libc.so.6', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0', 'librt.so.1', 'libgcc_s.so.1', 'libstdc++.so.6', 'libatomic.so.1', 'libresolv.so.2', 'libutil.so.1']);
+const unsupportedLibrary = (library, detail) => new Error(`Unsupported shared library dependency ${library}${detail ? ` (${detail})` : ''}; use static SwiftPM library products and statically link non-system runtimes before exporting.`);
+async function inspect(tool, arguments_) {
+  try { return (await execute(tool, arguments_, {maxBuffer: 8 * 1024 * 1024, env: {PATH: process.env.PATH, LC_ALL: 'C'}})).stdout; }
+  catch (error) { throw new Error(`Cannot validate executable runtime dependencies with ${tool}: ${error.stderr?.trim() || error.message}`); }
+}
+async function header(file) {
+  const handle = await fs.open(file, 'r');
+  try { const bytes = Buffer.alloc(256); const {bytesRead} = await handle.read(bytes, 0, bytes.length, 0); return bytes.subarray(0, bytesRead); }
+  finally { await handle.close(); }
+}
+async function macRuntime(candidate) {
+  if (!macSystem(candidate)) return false;
+  try {
+    // Some OS dylibs exist only in dyld's shared cache; filesystem existence
+    // alone cannot classify them. dyld_info resolves that cache as dyld does.
+    const actual = await fs.realpath(candidate).catch(error => { if (error.code === 'ENOENT') return candidate; throw error; });
+    if (!macSystem(actual)) return false;
+    const result = await inspect('/usr/bin/dyld_info', ['-platform', candidate]);
+    return result.includes('-platform:') && /macOS|zippered/.test(result);
+  } catch { return false; }
+}
+async function validateMachO(binary) {
+  const linked = await inspect('/usr/bin/otool', ['-L', binary]);
+  const commands = await inspect('/usr/bin/otool', ['-l', binary]);
+  const libraries = [...linked.matchAll(/^\s+(.+?) \(compatibility version/gm)].map(match => match[1]);
+  const loadCount = [...commands.matchAll(/cmd LC_(?:LOAD_DYLIB|LOAD_WEAK_DYLIB|REEXPORT_DYLIB|LOAD_UPWARD_DYLIB|LAZY_LOAD_DYLIB)\n/g)].length;
+  if (libraries.length !== loadCount) throw new Error('Cannot classify all Mach-O runtime dependency records');
+  const rpaths = [...commands.matchAll(/cmd LC_RPATH\n\s*cmdsize \d+\n\s*path (.+?) \(offset \d+\)/g)].map(match => match[1]);
+  const origin = path.dirname(await fs.realpath(binary));
+  const expand = value => value.replace(/^@(?:loader_path|executable_path)(?=\/|$)/, origin);
+  for (const library of new Set(libraries)) {
+    const candidates = library.startsWith('@rpath/') ? rpaths.map(rpath => path.resolve(expand(rpath), library.slice('@rpath/'.length))) : [expand(library)];
+    let classified = false;
+    for (const raw of candidates) {
+      if (!path.isAbsolute(raw) || raw.includes('@')) continue;
+      const candidate = path.normalize(raw);
+      if (await macRuntime(candidate)) { classified = true; break; }
+      if (await exists(candidate)) throw unsupportedLibrary(library, `resolved to ${candidate}`);
+    }
+    if (!classified) throw unsupportedLibrary(library, 'not resolved to an OS runtime or framework');
+  }
+}
+function elfMachine(bytes) {
+  if (bytes.length < 20 || bytes[0] !== 0x7f || bytes.subarray(1, 4).toString() !== 'ELF' || ![1, 2].includes(bytes[5])) return null;
+  return bytes[5] === 1 ? bytes.readUInt16LE(18) : bytes.readUInt16BE(18);
+}
+async function validateELF(binary, bytes) {
+  const dynamic = await inspect('readelf', ['-dW', binary]);
+  const program = await inspect('readelf', ['-lW', binary]);
+  const interpreter = /Requesting program interpreter: ([^\]]+)\]/.exec(program)?.[1];
+  const machine = elfMachine(bytes);
+  const systemELF = async candidate => {
+    try { const actual = await fs.realpath(candidate); return linuxSystem(actual) && elfMachine(await header(actual)) === machine; } catch { return false; }
+  };
+  if (interpreter && (!/^ld-(?:linux(?:-[a-zA-Z0-9_-]+)?\.so\.\d+|musl-[a-zA-Z0-9_-]+\.so\.1)$/.test(path.basename(interpreter)) || !await systemELF(interpreter))) throw unsupportedLibrary(interpreter, 'unclassified ELF interpreter');
+  const libraries = [...dynamic.matchAll(/\(NEEDED\).*Shared library: \[([^\]\r\n]+)\]\s*$/gm)].map(match => match[1]);
+  if (libraries.length !== [...dynamic.matchAll(/\(NEEDED\)/g)].length) throw new Error('Cannot classify all ELF runtime dependency records');
+  if (!libraries.length) return;
+  const runpath = /\(RUNPATH\).*Library runpath: \[([^\]]*)\]/.exec(dynamic)?.[1];
+  const rpath = /\(RPATH\).*Library rpath: \[([^\]]*)\]/.exec(dynamic)?.[1];
+  const origin = path.dirname(await fs.realpath(binary));
+  const paths = (runpath ?? rpath ?? '').split(':').filter(Boolean).map(value => value.replace(/\$\{ORIGIN\}|\$ORIGIN/g, origin));
+  const cache = await inspect('ldconfig', ['-p']);
+  const cached = [...cache.matchAll(/^\s*(\S+)\s+\([^\n]+?\) => (\S+)$/gm)];
+  for (const library of new Set(libraries)) {
+    const candidates = library.includes('/') ? [library] : [...paths.map(directory => path.join(directory, library)), ...cached.filter(match => match[1] === library).map(match => match[2])];
+    let classified = false;
+    for (const candidate of candidates) {
+      if (!path.isAbsolute(candidate) || candidate.includes('$')) throw unsupportedLibrary(library, 'unclassified relative loader path');
+      if (!await exists(candidate)) continue;
+      if (elfMachine(await header(candidate)) !== machine) continue;
+      if (!linuxRuntime.has(path.basename(library)) || !await systemELF(candidate)) throw unsupportedLibrary(library, `resolved to ${candidate}`);
+      classified = true; break;
+    }
+    if (!classified) throw unsupportedLibrary(library, 'not resolved to the supported OS runtime');
+  }
+}
+async function validateRuntime(binary) {
+  const bytes = await header(binary);
+  if (bytes.subarray(0, 2).toString() === '#!') {
+    // CLI test/build shims are scripts; their interpreter is explicit, unlike a
+    // native loader graph. Only the OS-provided shell is a portable interpreter.
+    const interpreter = /^#!\s*(\S+)/.exec(bytes.toString())?.[1];
+    if (!['/bin/sh', '/bin/bash'].includes(interpreter)) throw unsupportedLibrary(interpreter, 'unsupported executable interpreter');
+    return;
+  }
+  const magic = bytes.length >= 4 ? bytes.readUInt32LE(0) : 0;
+  if (process.platform === 'darwin' && [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xbebafeca, 0xbfbafeca, 0xcafebabe, 0xcafebabf].includes(magic)) return validateMachO(binary);
+  if (process.platform === 'linux' && elfMachine(bytes) !== null) return validateELF(binary, bytes);
+  throw new Error(`Cannot classify executable runtime dependencies on ${process.platform}: ${binary}`);
+}
+
 async function validateTree(directory) {
   for (const entry of await fs.readdir(directory, {withFileTypes: true})) {
     const file = path.join(directory, entry.name);
@@ -85,6 +186,7 @@ export async function stageTerminalExport({binary, binDirectory = path.dirname(b
   const stat = await fs.stat(binary);
   if (!stat.isFile() || !(stat.mode & 0o111)) throw new Error(`Build output is not executable: ${binary}`);
   await fs.access(binary, fs.constants.X_OK);
+  await validateRuntime(binary);
   const names = await linkedResources(binary, binDirectory);
   for (const name of names) {
     const source = path.join(binDirectory, name);
@@ -108,6 +210,7 @@ export async function stageTerminalExport({binary, binDirectory = path.dirname(b
       await validateTree(path.join(distribution, resource));
     }
     await fs.access(stagedBinary, fs.constants.X_OK);
+    await validateRuntime(stagedBinary);
     signal?.throwIfAborted();
     if (names.length) await fs.symlink(path.relative(parent, stagedBinary), temporary);
     signal?.throwIfAborted();
