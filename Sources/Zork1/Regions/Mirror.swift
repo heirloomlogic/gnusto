@@ -239,16 +239,18 @@ struct ZorkMirror: GameContent {
         // Smashing either mirror breaks both (they are two faces of one
         // passage) and kills the teleport for good — the original's
         // seven-years'-bad-luck `MIRROR-MUNG`.
-        mirrorNorth.before(.attack, .smash) { try breakMirror() }
-        mirrorSouth.before(.attack, .smash) { try breakMirror() }
-        mirrorNorth.before(.throwAt) {
-            guard command.indirectObject == mirrorNorth else { return }
+        mirrorNorth.before(.attack) { try breakMirror() }
+        mirrorSouth.before(.attack) { try breakMirror() }
+        mirrorNorth.before(.smash) {
+            guard command.directObject == mirrorNorth else { return }
             try breakMirror()
         }
-        mirrorSouth.before(.throwAt) {
-            guard command.indirectObject == mirrorSouth else { return }
+        mirrorSouth.before(.smash) {
+            guard command.directObject == mirrorSouth else { return }
             try breakMirror()
         }
+        mirrorNorth.before(.throwAt) { try throwAtMirror(mirrorNorth) }
+        mirrorSouth.before(.throwAt) { try throwAtMirror(mirrorSouth) }
 
         // A broken mirror reads as shattered glass; whole, it shows the usual
         // ugly reflection.
@@ -264,6 +266,17 @@ struct ZorkMirror: GameContent {
         let southLoose = mirrorRoomSouth.contents.filter { $0.isTakable }
         for item in northLoose { item.move(to: mirrorRoomSouth) }
         for item in southLoose { item.move(to: mirrorRoomNorth) }
+    }
+
+    private func throwAtMirror(_ mirror: Item) throws {
+        guard command.indirectObject == mirror, let projectile = command.directObject else { return }
+        try require(projectile.isReachable, else: gameText.cantReach(projectile.definiteNoun))
+        var carried = player.inventory
+        while let item = carried.popLast() {
+            if item == projectile { try breakMirror() }
+            carried.append(contentsOf: item.contents)
+        }
+        try refuse(gameText.notHolding())
     }
 
     /// Break the mirror if it is whole (disabling the teleport), or shrug off a
