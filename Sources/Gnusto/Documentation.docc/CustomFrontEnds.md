@@ -114,6 +114,8 @@ A front end that dismisses its input field on death loses the game it was about 
 
 ``TurnResult/report`` says what the turn did besides print, for a front end that draws a map or listens for speech. ``TurnReport/understood`` and ``TurnReport/unknownWords`` say how the parser read the line. ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives. The report is filled in by ``GameWorld/perform(_:)`` only; the opening and a front end's quit carry an empty one.
 
+A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
+
 ## Completion candidates
 
 ``CompletionCandidates`` is a snapshot of what Tab can offer for the *next* input line: every verb word, the nouns and adjectives of the items currently in scope, the movement words, and the save slots on disk.
@@ -208,6 +210,9 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``TurnResult``
 - ``TurnResult/report``
 - ``TurnReport``
+- ``GameWorld/mapView()``
+- ``RoomMapView``
+- ``MapExit``
 - ``PreparedGame``
 - ``PackagedGame``
 - ``DisplayWidth``

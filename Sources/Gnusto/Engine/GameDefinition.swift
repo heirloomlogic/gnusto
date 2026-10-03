@@ -293,7 +293,7 @@ struct GameDefinition: Sendable {
     /// it to keep from naming somebody the player has no business knowing
     /// about yet.
     let reachableRooms: Set<EntityID>
-    /// The exits declared ``MapEntry/secret``, by room. Nothing in the turn reads it; `GameWorld.mapView()` reports it.
+    /// The exits declared ``MapEntry/secret``, by room. Nothing in the turn reads it; ``GameWorld/mapView()`` reports it.
     let secretExits: [EntityID: Set<Direction>]
     /// Every declared `@Global`: its default, and whether a stored value can
     /// be read back as the type it was declared with. See ``GlobalDefinition``.

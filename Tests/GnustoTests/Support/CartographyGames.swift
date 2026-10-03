@@ -245,3 +245,44 @@ struct ReportOutputHookGame: Game {
         return text
     }
 }
+
+/// Impure exit predicates must be isolated from both the live world and each other.
+struct QueryMutationGame: Game {
+    let title = "Query Mutation"
+    let intro = "A query experiment."
+    @Global var probes = 0
+    var destinationRead: @Sendable () -> Void = {}
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+    let garden = Location {
+        name("Garden")
+        description("A garden.")
+    }
+    let box = Item {
+        name("box")
+        openable
+        container
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        box.starts(in: hall)
+        hall.east(garden, when: { probe() }, otherwise: "Closed.")
+        hall.north(garden, when: { probe() }, otherwise: "Closed.")
+        hall.west {
+            destinationRead()
+            return garden
+        }
+    }
+
+    private func probe() -> Bool {
+        let initiallyShut = !box.isOpen
+        probes += 1
+        _ = random(1...6)
+        box.isOpen = true
+        return initiallyShut && probes == 1
+    }
+}

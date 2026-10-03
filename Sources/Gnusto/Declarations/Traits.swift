@@ -514,7 +514,7 @@ public let alwaysDescribed = LocationTrait(kind: .alwaysDescribed)
 /// }
 /// ```
 ///
-/// Nothing in the engine reads it: it is reported by `GameWorld.mapView()` for a front end that draws a map.
+/// Nothing in the engine reads it: it is reported by ``GameWorld/mapView()`` for a front end that draws a map.
 ///
 /// - Parameter label: the name the shape is drawn with.
 /// - Returns: the trait.
