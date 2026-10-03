@@ -499,12 +499,7 @@ candles → read book) that banishes the spirits guarding the crystal skull.
   swap adds no behavior the flag doesn't already carry. The bell cools after a fixed
   20 turns — a **deliberate anti-softlock kept on purpose** (the original can leave
   the bell permanently hot and unusable); the cool is a plain fuse.
-- **The exorcism is a small stage machine with a three-turn window.** Ringing the
-  bell at the gate freezes the spirits (stage 1) and arms a 3-turn `exorcismLapse`
-  fuse; lighting the candles renews the window and reaches stage 2; reading the
-  book at stage 2 banishes the spirits and opens the way south. Letting the
-  window lapse resets the sequence. This reproduces the original's timed ritual
-  without modeling its exact per-object interrupt bookkeeping.
+- The exorcism uses a three-turn window. Ringing the bell at the gate freezes the spirits (stage 1) and arms `exorcismLapse`; burning candles directly held by the player renew the window and reach stage 2, either when lit in hand or picked up already burning. Lighting candles on the floor does not advance the ritual. Both advancement paths require direct possession, matching [LLD-ROOM's M-END check](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1115-L1129). Reading the book at stage 2 banishes the spirits and opens the way south; a lapsed window resets the sequence. The port retains three turns after the bell where the source queues six, and does not model the source's exact per-object interrupt bookkeeping. Focused tests cover floor lighting, held lighting, and pickup of burning candles; the historical reference is archived ZIL, not a running Z-machine. (#679)
 - **The candles use a two-fuse burn economy** (dim warning, then out for good), banked while unlit, versus the lantern's three fuses — the candles are a shorter-lived light and don't warrant the extra last-gasp stage. The cave's draught snuffs them when they are carried (banking their fuel), which is why the ritual's candles must be lit at the gate below the draught, not carried down alight.
 - **Matches are finite and the burning match is a real, short-lived item.**
   Striking a match (host-wired: the matchbook is a `ZorkDam` item, the burning
