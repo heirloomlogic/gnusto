@@ -2,22 +2,23 @@
 
 **Date:** 2026-10-03
 
-**Status:** Design approved; not started
+**Status:** Original design approved; revised game packaging approved in conversation; revised written spec awaiting review; not started
 
 ## Goal
 
-Play a Gnusto game in a Mac app that looks like an Apple ][ plus on a CRT, with a map that draws itself as you play and an optional voice interface. Games ship as `.app` bundles, one per game.
+Play a Gnusto game in a Mac app that looks like an Apple ][ plus on a CRT, with a map that draws itself as you play and an optional voice interface. Each game is one library, deployable through either the standard terminal front end or Yonk. Terminal deployments produce executables; Yonk deployments produce `.app` bundles, one per game.
 
-**Audience, now:** the author, playing the demo games. **Audience, later:** players receiving a game as an app, and other Gnusto authors whose `bin/new-game` output comes packaged in the front end. Nothing in this design may close those later doors: the app takes any `Game` type, and no API key is compiled into a binary. Nothing in this design builds for them either — no App Store, no sandboxing, no notarization.
+**Audience, now:** the author, playing the demo games. **Audience, later:** players receiving a game as an executable or app, and other Gnusto authors whose `bin/new-game` output can be deployed with either front end. Nothing in this design may close those later doors: front ends consume the same `PackagedGame` interface, and no API key is compiled into a binary. Nothing in this design builds for them either — no App Store, no sandboxing, no notarization.
 
 **Done for the first version:** Zork 1 is playable as `Zork 1.app` in the Apple ][ plus theme.
 
-## The four pieces
+## The five pieces
 
 | Piece | Where | Depends on | Job |
 |---|---|---|---|
 | Engine changes | this repo | — | make games importable; report what each turn did; answer what the map may show |
-| **Yonk** | new repo | Gnusto, Blorple, Lobal | the app: CRT screen, themes, sounds, layouts, settings, one small app per game |
+| **GnustoTerminal** | new Swift package and repo | Gnusto | the standard terminal front end and reusable launcher |
+| **Yonk** | new repo | Gnusto, Blorple, Lobal | the app front end: CRT screen, themes, sounds, layouts, settings |
 | **Blorple** | new repo | nothing in Gnusto | the mapper: knowledge model, grid layout, three drawing styles |
 | **Lobal** | new repo | nothing in Gnusto | voice: listening, speaking, interrupting, correcting misheard words |
 
@@ -27,13 +28,23 @@ Blorple and Lobal take plain types of their own rather than Gnusto's, and Yonk t
 
 The app drives `GameWorld` in-process. Two alternatives were rejected: running each game's executable as a child process over the MCP play-test server (that server is a testing tool, is compiled out of release builds by design, and would put two binaries in every app), and putting either behind a `GameHost` protocol (abstraction for one implementation).
 
-## 1. Engine changes (this repo)
+Both front ends are reusable libraries. Deployment generates an executable entry point and a build package for the selected game and front end; those generated files are build artifacts, not maintained targets in either repo. Gnusto and the game libraries do not depend on either front end, so no dependency cycle is introduced. A deployment links only the selected game, rather than a registry of every demo. There is no runtime loading of arbitrary Swift game libraries.
+
+## 1. Engine, terminal and game builds
 
 ### 1.1 Games become importable
 
-An app cannot import an executable target. Each of the seven demo games moves its code into a library target, and its executable becomes a one-file wrapper. The game type and its `init()` become `public`. `bin/new-game` and `bin/templates/` produce the same split.
+Each of the seven demo games becomes a library target and library product, with no maintained executable target or executable product. `bin/new-game` and `bin/templates/` produce the same library-only structure. Each library exports one value:
 
-Constraints: `swift run Zork1`, `bin/gnusto-mcp Zork1`, `bin/playtest-replay`, `bin/playtest-preflight` and every test keep working unchanged, which means the executable *product* names do not change. How the wrapper spells `@main` (an `@main` extension of the library's type, if the compiler accepts one across modules, or a small launcher type otherwise) is decided in the plan.
+```swift
+import Gnusto
+
+public let game = PackagedGame { Zork1() }
+```
+
+The game type stays internal, so authors do not have to make every `Game` protocol witness public. `PackagedGame` is a presentation-independent, `Sendable` game factory: it provides `init<G: Game>(_ make: @escaping @Sendable () -> G)`, `title`, and `makeGame() -> any Game`. Each factory call creates a fresh game. It has no terminal-specific `main()`; neither game libraries nor engine declarations contain executable entry points. `GameMain` is retired when the terminal launcher replaces it, with no compatibility alias or alternative legacy structure.
+
+`swift run Zork1` is replaced by the script-based development flow in 1.6. Tests continue to import their game libraries. The MCP, replay, preflight, generated-game and release workflows are migrated to the generated build packages; preserving old executable products is no longer a constraint.
 
 ### 1.2 A per-turn report
 
@@ -86,28 +97,59 @@ var map: WorldMap {
 
 The engine keeps no record of which secret exits were used. It reports `isSecret`; Blorple, which owns map knowledge, decides when to draw.
 
-### 1.5 Not changed
+### 1.5 The standard terminal front end
 
-`IOHandler` and `REPL`. Yonk drives `GameWorld` directly, as the MCP server does.
+`GnustoTerminal` is one reusable Swift package, parallel to Yonk. Terminal presentation, interactive input handling and process launch behavior move out of the engine into this package. It accepts a `PackagedGame`, creates a `GameWorld`, and drives the terminal session. Shared engine and front-end contracts remain in Gnusto; Gnusto never imports GnustoTerminal. Yonk continues to drive `GameWorld` directly, without launching a terminal process.
+
+The terminal front end preserves the existing interactive display, command history and completion, plain input/output for pipes or `GNUSTO_PLAIN`, status output, seeded runs, transcript recording, startup diagnostics and exit behavior. Development launchers also preserve the MCP mode. The terminal package provides the reusable launch function; only the generated executable calls it.
+
+### 1.6 Generated builds, running and deployment
+
+The scripts discover game library products through an explicit game export convention, rather than treating every library product as a game. The convention identifies the package, product, module and exported `PackagedGame` value, and applies to both the seven demos and independently generated author packages. Its manifest representation is defined in the implementation plan.
+
+```sh
+bin/run-game Zork1                         # build and run the terminal development executable
+bin/run-game Zork1 --frontend yonk         # build and launch the development app
+bin/export-game Zork1                      # deploy dist/Zork1
+bin/export-game Zork1 --frontend yonk      # deploy dist/Zork 1.app
+```
+
+Terminal is the default front end. Each invocation generates or reuses an ignored build package containing one executable target, its small entry point, the selected game dependency and the selected front-end dependency. It builds against the current game sources during development. No permanent per-game executable targets are added to Gnusto, GnustoTerminal or Yonk. The entry point differs by front end, but the game library does not. Until Yonk is available, selecting it reports a clear unavailable-front-end error.
+
+Development and MCP builds enable the `Playtest` trait; deployed terminal executables and apps disable it through every dependency that forwards it. Their caches and scratch paths are separate, so a deployment cannot replace an MCP-enabled development binary. MCP startup continues to write build diagnostics only to standard error, reuse current builds, and support preflight before clients connect. Replay, preflight, CI and release workflows use the same generated build flow instead of assuming root executable products.
+
+The scripts report an unknown game, missing front-end dependency, failed build or failed packaging step with a nonzero exit status. A failed export preserves the previous successful deployment. Deployment stages any required SwiftPM resource bundles so the result works outside the build directory; the terminal distribution is a single executable when its dependencies require no external resources. Generated manifests, wrappers and dependency state are cached as ignored build artifacts, not committed source.
+
+### 1.7 Migration validation
+
+- Import and test every demo as a library; confirm the root manifest has no per-game executable products or targets.
+- Build and run generated terminal launchers for all seven demos, checking startup and a short scripted session; verify interactive terminal input, history and completion separately in a live terminal.
+- Generate an independent game with `bin/new-game`, then build, test, run, export and preflight it through the same scripts.
+- Exercise MCP initialization and replay through generated development launchers; export the same game and confirm its development launcher still serves MCP while the deployed binary refuses MCP mode.
+- Run exports from outside the package and build directories, including a resource-bearing fixture, and verify a failed export leaves the prior deployment usable.
+- Run the engine tests, terminal-package tests, strict lint, play-test workflow dry run and DocC checks in their owning packages. Milestone 2 adds launch and play checks for generated Yonk apps, including packaged resources.
 
 ## 2. Yonk, the app
 
 ### 2.1 Repository and packaging
 
-- `Yonk` — the library: screen, themes, sounds, layouts, settings, and the session that drives a game.
-- `Apps/Zork1`, `Apps/Dungeon`, … — one executable per game:
+The Yonk repo contains `Yonk`, the reusable library: screen, themes, sounds, layouts, settings, and the session that drives a game. It contains no maintained `Apps/Zork1`, `Apps/Dungeon` or other per-game executable targets. The deployment script generates a wrapper for the selected game, equivalent to:
 
 ```swift
+import SwiftUI
+import Yonk
+import Zork1
+
 @main struct Zork1App: App {
-    var body: some Scene { Yonk(Zork1.init) }
+    var body: some Scene { Yonk(Zork1.game) }
 }
 ```
 
 The scene type shares the module's name. The one cost is that `Yonk.Theme` cannot be written to disambiguate a name another import also declares; rename around it if that ever happens.
 
-The per-game apps live in the Yonk repo, not this one, because Yonk depends on Gnusto.
+The generated package depends on Yonk and the selected game library. This is the only place those dependencies are combined; the engine and games remain independent of Yonk.
 
-**`bin/yonk-bundle <Game>`** builds the executable with SwiftPM and wraps it as `<Title>.app`: Info.plist (bundle identifier, display name, the microphone and speech-recognition usage strings macOS requires before an app may listen), icon, resources, and an ad-hoc signature for local use. No Xcode project. Metal shader source is compiled at launch with `makeLibrary(source:)`, because `swift build` does not compile `.metal` files.
+**`bin/export-game <Game> --frontend yonk`** builds the generated executable with SwiftPM and wraps it as `<Title>.app`: Info.plist (bundle identifier, display name, the microphone and speech-recognition usage strings macOS requires before an app may listen), icon, resources, and an ad-hoc signature for local use. The same packaging logic serves `bin/run-game <Game> --frontend yonk` for local development. No Xcode project or separate user-facing `bin/yonk-bundle` command. Metal shader source is compiled at launch with `makeLibrary(source:)`, because `swift build` does not compile `.metal` files.
 
 ### 2.2 How a turn flows
 
@@ -290,8 +332,8 @@ A wrong silent guess costs one turn, and UNDO is there.
 
 Each milestone ends in something usable, and each gets its own implementation plan.
 
-1. **Gnusto:** importable games (1.1), the report (1.2), `vocabulary()` and `mapView()` (1.3), `mapRegion` and `.secret` (1.4), Zork 1's maze annotated.
-2. **Yonk, first light:** `Zork 1.app` in the Apple ][ plus theme — cell grid, glass, status bar, command line, scrollback, resizing, `bin/yonk-bundle`.
+1. **Gnusto and GnustoTerminal:** library-only games and the shared `PackagedGame` factory (1.1), the terminal package (1.5), generated terminal builds and deployment with migrated development/MCP/release workflows (1.6), the report (1.2), `vocabulary()` and `mapView()` (1.3), `mapRegion` and `.secret` (1.4), Zork 1's maze annotated. The terminal migration ends with playable exports and working play-test tools.
+2. **Yonk, first light:** `Zork 1.app` in the Apple ][ plus theme — cell grid, glass, status bar, command line, scrollback, resizing, generated Yonk launchers and the Yonk front-end option in the shared run/export scripts.
 3. **Yonk, themes:** JSON themes, the four built-ins, the editor, text drawing speed, sounds, warm-up and collapse.
 4. **Blorple:** model, layout, three styles, snapshot tests; Yonk's ⌘1/⌘2/⌘3.
 5. **Lobal, Apple:** providers, turn-taking, correction, interrupting; Yonk's voice mode.

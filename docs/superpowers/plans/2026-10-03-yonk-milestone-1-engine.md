@@ -1,5 +1,7 @@
 # Yonk Milestone 1: Engine Changes Implementation Plan
 
+**Status: Superseded; do not execute.** The approved packaging revision in `docs/superpowers/specs/2026-10-03-yonk-design.md` replaces maintained per-game executable targets with library-only games, a reusable GnustoTerminal package and generated terminal/Yonk build packages. It also removes terminal launch behavior from `PackagedGame` and retires `GameMain`. This plan still describes the former architecture and must be replaced after review of the revised written spec. The remaining content is retained as historical planning material, not an executable plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give Gnusto the four things the Yonk front end, the Blorple mapper and the Lobal voice interface need from the engine: importable games, a per-turn report, two read-only queries (`vocabulary()` and `mapView()`), and two map hints for authors (`mapRegion` and `.secret`).
