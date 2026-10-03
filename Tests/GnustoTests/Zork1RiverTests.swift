@@ -67,6 +67,169 @@ struct Zork1RiverTests {
             "launch boat",
         ]
 
+    static let toSandyCave: [String] =
+        toLaunched + [
+            "down", "down", "down", "east", "disembark", "take shovel", "northeast",
+        ]
+
+    private static let cave = EntityID("ZorkRiver.sandyCave")
+    private static let scarab = EntityID("ZorkRiver.scarab")
+    private static let shovel = EntityID("ZorkRiver.shovel")
+    private static let digs = EntityID("ZorkRiver.digCount")
+    private static let digCommand = "dig sand with shovel"
+    private static let preliminaryDigs = [
+        "You seem to be digging a hole here.",
+        "The hole is getting deeper, but that's about it.",
+        "You are surrounded by a wall of sand on all sides.",
+    ]
+
+    private static func sandyCaveWorld() async throws -> GameWorld {
+        let world = try cachedWorld(Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in toSandyCave { _ = await world.perform(command) }
+        #expect((await world.snapshot()).playerLocation == cave)
+        return world
+    }
+
+    private static func readyToCollapseWorld(scarabPlacement: Placement) async throws -> GameWorld {
+        let world = try await sandyCaveWorld()
+        var state = await world.snapshot()
+        // Arrange the source's fourth-dig state to isolate the fifth-dig
+        // transition from the progression assertions below.
+        state.globals[digs] = .int(3)
+        state.revealedItems.insert(scarab)
+        state.place(EntityID("ZorkRiver.buoy"), .room(cave))
+        state.place(scarab, scarabPlacement)
+        await world.restore(state, mode: .brief)
+        return world
+    }
+
+    @Test func threePreliminaryDigsStayHiddenBeforeFourthRevealAndFifthCollapse() async throws {
+        let world = try await Self.sandyCaveWorld()
+        for (index, message) in Self.preliminaryDigs.enumerated() {
+            let dig = await world.perform(Self.digCommand)
+            #expect(dig.output.contains(message))
+            let state = await world.snapshot()
+            #expect(state.globals[Self.digs] == .int(index))
+            #expect(!state.revealedItems.contains(Self.scarab))
+            #expect(state.playerLocation == Self.cave)
+        }
+        #expect((await world.perform("examine scarab")).output.contains("can't see any such thing"))
+        #expect((await world.perform(Self.digCommand)).output.contains("scarab here in the sand"))
+        let fourth = await world.snapshot()
+        #expect(fourth.globals[Self.digs] == .int(3))
+        #expect(fourth.revealedItems.contains(Self.scarab))
+        #expect(fourth.playerLocation == Self.cave)
+        #expect((await world.perform(Self.digCommand)).output.contains("hole collapses"))
+        let collapsed = await world.snapshot()
+        #expect(collapsed.globals[Self.digs] == .int(-1))
+        #expect(!collapsed.revealedItems.contains(Self.scarab))
+        #expect(collapsed.playerLocation != Self.cave)
+    }
+
+    @Test(arguments: [
+        (Placement.room(Self.cave), false),
+        (Placement.heldBy(.player), true),
+        (Placement.inside(EntityID("ZorkRiver.buoy")), true),
+        (Placement.room(EntityID("ZorkRiver.sandyBeach")), true),
+    ])
+    func collapseConcealsOnlyAScarabDirectlyInTheCave(
+        placement: Placement, staysRevealed: Bool
+    ) async throws {
+        let world = try await Self.readyToCollapseWorld(scarabPlacement: placement)
+        #expect((await world.perform(Self.digCommand)).output.contains("hole collapses"))
+        let state = await world.snapshot()
+        #expect(state.globals[Self.digs] == .int(-1))
+        #expect(state.revealedItems.contains(Self.scarab) == staysRevealed)
+        if placement != .heldBy(.player) {
+            #expect(state.placements[Self.scarab] == placement)
+        } else {
+            #expect(state.placements[Self.scarab] != placement)
+        }
+    }
+
+    @Test func collapseStartsANewFourDigDiscoveryCycle() async throws {
+        let world = try await Self.readyToCollapseWorld(scarabPlacement: .room(Self.cave))
+        _ = await world.perform(Self.digCommand)
+        var returned = await world.snapshot()
+        // Keep the actual death/reset result, arranging only the player's
+        // return and recovered tool. The executable replay walks this return.
+        returned.setPlayerLocation(placingAt: Self.cave)
+        returned.place(Self.shovel, .heldBy(.player))
+        await world.restore(returned, mode: .brief)
+        for message in Self.preliminaryDigs {
+            #expect((await world.perform(Self.digCommand)).output.contains(message))
+            #expect(!(await world.snapshot()).revealedItems.contains(Self.scarab))
+        }
+        #expect((await world.perform(Self.digCommand)).output.contains("scarab here in the sand"))
+        #expect((await world.snapshot()).revealedItems.contains(Self.scarab))
+    }
+
+    @Test func aFourthDigDoesNotAnnounceAnAlreadyCollectedScarab() async throws {
+        let world = try await Self.readyToCollapseWorld(scarabPlacement: .heldBy(.player))
+        var state = await world.snapshot()
+        state.globals[Self.digs] = .int(2)
+        await world.restore(state, mode: .brief)
+        let fourth = await world.perform(Self.digCommand)
+        #expect(fourth.output.contains("no reason to be digging here"))
+        #expect(!fourth.output.contains("scarab here in the sand"))
+        #expect((await world.snapshot()).placements[Self.scarab] == .heldBy(.player))
+        #expect((await world.snapshot()).revealedItems.contains(Self.scarab))
+    }
+
+    @Test func undoRestoresTheCollapsedHoleAndRevealedScarab() async throws {
+        let world = try await Self.readyToCollapseWorld(scarabPlacement: .room(Self.cave))
+        let before = await world.snapshot()
+        let collapse = await world.perform(Self.digCommand)
+        _ = await world.perform("undo")
+        let restored = await world.snapshot()
+        #expect(restored.globals == before.globals)
+        #expect(restored.revealedItems == before.revealedItems)
+        #expect(restored.placements == before.placements)
+        #expect(restored.playerLocation == before.playerLocation)
+        #expect(restored.rngState == before.rngState)
+        #expect(restored.moves == before.moves)
+        #expect((await world.perform(Self.digCommand)).output == collapse.output)
+    }
+
+    @Test func saveAndRestoreKeepPartialDigProgressAndFourthReveal() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scarab-partial-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let world = try await Self.sandyCaveWorld()
+        for _ in 0..<3 { _ = await world.perform(Self.digCommand) }
+        _ = await world.perform("save")
+        #expect((await world.perform(path)).output.contains("Saved."))
+        let reveal = await world.perform(Self.digCommand)
+        #expect(reveal.output.contains("scarab here in the sand"))
+        _ = await world.perform(Self.digCommand)
+        _ = await world.perform("restore")
+        #expect((await world.perform(path)).output.contains("Restored."))
+        let partial = await world.snapshot()
+        #expect(partial.globals[Self.digs] == .int(2))
+        #expect(!partial.revealedItems.contains(Self.scarab))
+        #expect((await world.perform(Self.digCommand)).output == reveal.output)
+    }
+
+    @Test func saveAndRestoreKeepTheCollapseResetAndConcealedScarab() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-scarab-reset-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let world = try await Self.readyToCollapseWorld(scarabPlacement: .room(Self.cave))
+        _ = await world.perform(Self.digCommand)
+        let collapsed = await world.snapshot()
+        _ = await world.perform("save")
+        #expect((await world.perform(path)).output.contains("Saved."))
+        _ = await world.perform("undo")
+        _ = await world.perform("restore")
+        #expect((await world.perform(path)).output.contains("Restored."))
+        let restored = await world.snapshot()
+        #expect(restored.globals[Self.digs] == .int(-1))
+        #expect(!restored.revealedItems.contains(Self.scarab))
+        #expect(restored.playerLocation == collapsed.playerLocation)
+        #expect(restored.placements == collapsed.placements)
+    }
+
     /// `V-STAND` (`gverbs.zil:1305`) branches on the vehicle before it says
     /// anything, and the stub floor's line is only its second branch. Both
     /// frames: on the bank a man is already standing, and in the boat he is not.
@@ -112,7 +275,8 @@ struct Zork1RiverTests {
                 "northeast",  // Sandy Cave
                 "dig sand with shovel",  // first dig
                 "dig sand with shovel",  // second dig
-                "dig sand with shovel",  // third dig bares the scarab
+                "dig sand with shovel",  // third preliminary dig
+                "dig sand with shovel",  // fourth dig bares the scarab
                 "take scarab",  // +5 on the find
                 "score",
             ],
@@ -124,7 +288,7 @@ struct Zork1RiverTests {
                 "Frigid River",
                 "Sandy Beach",
                 "Sandy Cave",
-                "scarab here in the sand",  // the third dig reveals it
+                "scarab here in the sand",  // the fourth dig reveals it
                 "Your score is 50 of a possible 350",
             ])
         // A successful launch must not fall through to the stage-4 default.

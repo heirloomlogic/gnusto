@@ -251,6 +251,8 @@ extension Prose {
     static let digWithoutShovel = "Digging with your hands is silly."
 
     static let digProgress = "You seem to be digging a hole here."
+    static let digDeeper = "The hole is getting deeper, but that's about it."
+    static let digSurrounded = "You are surrounded by a wall of sand on all sides."
 
     static let digRevealsScarab = """
         You can see a scarab here in the sand.

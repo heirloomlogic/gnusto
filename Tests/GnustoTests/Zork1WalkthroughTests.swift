@@ -444,6 +444,7 @@ private enum Walkthrough {
         "take shovel",
         "northeast",  // Sandy Cave
         "dig sand with shovel", "dig sand with shovel", "dig sand with shovel",
+        "dig sand with shovel",  // fourth dig reveals the scarab
         "take scarab",  // +5
         "southwest",  // Sandy Beach
         "south", "south",  // Shore → Aragain Falls
