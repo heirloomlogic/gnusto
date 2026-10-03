@@ -248,6 +248,14 @@ makes the compass vocabulary read uniformly. The price is stated in that file's
 own header: a new exit kind costs one general form on ``Location`` plus twelve
 more one-liners.
 
+## Hints for a map
+
+Two declarations exist only for a front end that draws a map as the player explores. Nothing in a turn reads them, and most games need neither.
+
+``mapRegion(_:)`` draws every room declaring the same label as one shape. A maze is the reason: its rooms look alike to the player, and a map that drew each one would solve it for them. Zork 1's nineteen maze rooms each declare `mapRegion("Maze")`.
+
+``MapEntry/secret``, written after an exit, keeps that exit off a map until the player has gone through it: `behindFalls.west(hiddenCave).secret`. A door declared `hidden` is already left off until it is revealed, and a conditional exit while its condition is false, so `.secret` is only for an exit that is always open and should still be a surprise. After a blocked exit, or after anything that is not an exit, it is a bootstrap error.
+
 ## Topics
 
 ### Declaring exits
@@ -258,6 +266,11 @@ more one-liners.
 - ``Location/exit(_:to:when:otherwise:)``
 - ``Location/exit(_:toward:)``
 - ``Direction``
+
+### Hints for a map
+
+- ``mapRegion(_:)``
+- ``MapEntry/secret``
 
 ### Placing the player, the cast, and the props
 

@@ -353,6 +353,8 @@ enum Bootstrap {
             diagnoseBlank(definition.name, on: "location \"\(id)\"", as: "name(…) trait")
             diagnoseBlank(
                 definition.description, on: "location \"\(id)\"", as: "description(…) trait")
+            diagnoseBlank(
+                definition.mapRegion, on: "location \"\(id)\"", as: "mapRegion(…) trait")
         }
         for (id, definition) in items.sorted(by: { $0.key < $1.key }) {
             let kind = definition.isActor ? "actor" : "item"
@@ -396,6 +398,7 @@ enum Bootstrap {
         }
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
+        var secretExits: [EntityID: Set<Direction>] = [:]
         var placements: [EntityID: Placement] = [:]
         var placementClaims: [EntityID: String] = [:]
         var wornItems: Set<EntityID> = []
@@ -422,12 +425,22 @@ enum Bootstrap {
         /// Files a resolved exit under its direction, complaining first if that
         /// direction has already been claimed. Every exit kind ends here, so a
         /// sixth one cannot forget the check or word it differently.
-        func claimExit(_ target: ExitTarget, _ direction: Direction, from fromID: EntityID) {
+        func claimExit(
+            _ target: ExitTarget, _ direction: Direction, from fromID: EntityID, secret: Bool
+        ) {
             if exits[fromID]?[direction] != nil {
                 diagnostics.append(
                     "\"\(fromID)\" declares its \(direction) exit more than once.")
             }
             exits[fromID, default: [:]][direction] = target
+            guard secret else { return }
+            if case .blocked = target {
+                diagnostics.append(
+                    "\"\(fromID)\"'s \(direction) exit is blocked and declared .secret; "
+                        + "a blocked exit is never walked, so it would never be drawn.")
+            } else {
+                secretExits[fromID, default: []].insert(direction)
+            }
         }
 
         /// Files an item's initial position once. The rendered claim keeps the
@@ -446,15 +459,32 @@ enum Bootstrap {
             placements[itemID] = placement
         }
 
+        /// What a map entry that is not an exit declares, in a diagnostic's words, or `nil` for an exit. Resolves quietly: an unregistered item is reported by the case that resolves it, not here as well.
+        func nonExitSubject(of entry: MapEntry) -> String? {
+            switch entry.kind {
+            case .exit, .blockedExit, .doorExit, .conditionalExit, .dynamicExit:
+                return nil
+            case .placement(let item, _):
+                return "the placement of \"\(registry.id(for: item)?.raw ?? "an item")\""
+            case .playerStart:
+                return "player.starts(in:)"
+            case .lockKey(let item, _):
+                return "the lockedBy entry for \"\(registry.id(for: item)?.raw ?? "an item")\""
+            }
+        }
+
         let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
         for entry in mapEntries {
+            if entry.isSecret, let subject = nonExitSubject(of: entry) {
+                diagnostics.append("\(subject) is declared .secret; only an exit can be secret.")
+            }
             switch entry.kind {
             case .exit(let from, let direction, let to):
                 guard let fromID = resolveLocation(from, role: "the source of a \(direction) exit"),
                     let toID = resolveLocation(
                         to, role: "the \(direction) exit from \"\(fromID)\"")
                 else { continue }
-                claimExit(.to(toID), direction, from: fromID)
+                claimExit(.to(toID), direction, from: fromID, secret: entry.isSecret)
 
             case .blockedExit(let from, let direction, let message):
                 guard
@@ -466,7 +496,7 @@ enum Bootstrap {
                 diagnoseBlank(
                     message, on: "location \"\(fromID)\"",
                     as: "blocked \(direction) exit message")
-                claimExit(.blocked(message), direction, from: fromID)
+                claimExit(.blocked(message), direction, from: fromID, secret: entry.isSecret)
 
             case .doorExit(let from, let direction, let to, let doorToken):
                 guard
@@ -489,7 +519,7 @@ enum Bootstrap {
                             + "which is not declared openable.")
                 }
                 items[doorID]?.isDoor = true
-                claimExit(.door(to: toID, door: doorID), direction, from: fromID)
+                claimExit(.door(to: toID, door: doorID), direction, from: fromID, secret: entry.isSecret)
 
             case .conditionalExit(let from, let direction, let to, let condition, let blocked):
                 guard
@@ -505,7 +535,7 @@ enum Bootstrap {
                 else { continue }
                 claimExit(
                     .conditional(to: toID, condition: condition, blocked: blocked),
-                    direction, from: fromID)
+                    direction, from: fromID, secret: entry.isSecret)
 
             case .dynamicExit(let from, let direction, let destination):
                 guard
@@ -527,7 +557,7 @@ enum Bootstrap {
                             Ctx.current.dynamicDestination(
                                 destination(), from: fromID, toward: direction)
                         }),
-                    direction, from: fromID)
+                    direction, from: fromID, secret: entry.isSecret)
 
             case .placement(let itemToken, let target):
                 guard let itemID = resolveItem(itemToken, role: "a placement") else {
@@ -1135,6 +1165,7 @@ enum Bootstrap {
                         nil
                     }
                 }),
+            secretExits: secretExits,
             globals: globals,
             playerStart: playerStart,
             rules: RuleTable(),

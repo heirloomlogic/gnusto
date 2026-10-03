@@ -42,6 +42,27 @@ public struct MapEntry: Sendable {
     }
 
     let kind: Kind
+
+    /// Whether a map leaves this exit undrawn until the player has gone through it. Set by ``secret``.
+    var isSecret = false
+
+    /// This exit, kept off a map until the player has gone through it.
+    ///
+    /// For an exit that is always open but should still be a surprise: a passage behind a waterfall, a gap in a hedge. Most games never need it. A door the game declares `hidden` is already left off a map until it is revealed, and a conditional exit is left off while its condition is false.
+    ///
+    /// ```swift
+    /// var map: WorldMap {
+    ///     behindFalls.west(hiddenCave).secret
+    ///     hiddenCave.east(behindFalls)
+    /// }
+    /// ```
+    ///
+    /// It changes nothing about how the exit is walked. Written after anything that is not an exit, or after a blocked exit, it is a bootstrap error.
+    public var secret: MapEntry {
+        var entry = self
+        entry.isSecret = true
+        return entry
+    }
 }
 
 /// The geography and initial placements of a game, declared in one block:

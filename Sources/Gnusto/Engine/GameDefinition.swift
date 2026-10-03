@@ -36,6 +36,8 @@ struct LocationDefinition: Sendable {
     /// The description is state the player is changing, so it prints on every
     /// description rather than only the first. See the `alwaysDescribed` trait.
     var isAlwaysDescribed = false
+    /// The map shape this room is drawn as part of, if any. See ``mapRegion(_:)``.
+    var mapRegion: String?
     var customTraits: [String: StateValue] = [:]
 
     init(traits: [LocationTrait], onDuplicate: (String) -> Void = { _ in }) {
@@ -49,6 +51,9 @@ struct LocationDefinition: Sendable {
                 description = text
             case .dark: inherentlyLit = false
             case .alwaysDescribed: isAlwaysDescribed = true
+            case .mapRegion(let label):
+                if mapRegion != nil { onDuplicate("mapRegion(…)") }
+                mapRegion = label
             case .custom(let key, let value):
                 if customTraits[key] != nil {
                     onDuplicate("custom trait \"\(key)\"")
@@ -288,6 +293,8 @@ struct GameDefinition: Sendable {
     /// it to keep from naming somebody the player has no business knowing
     /// about yet.
     let reachableRooms: Set<EntityID>
+    /// The exits declared ``MapEntry/secret``, by room. Nothing in the turn reads it; `GameWorld.mapView()` reports it.
+    let secretExits: [EntityID: Set<Direction>]
     /// Every declared `@Global`: its default, and whether a stored value can
     /// be read back as the type it was declared with. See ``GlobalDefinition``.
     let globals: [EntityID: GlobalDefinition]

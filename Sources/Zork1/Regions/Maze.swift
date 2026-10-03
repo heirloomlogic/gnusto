@@ -37,21 +37,25 @@ struct ZorkMaze: GameContent {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze2 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze3 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze4 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     /// Maze-5, the dead adventurer's resting place: skeleton, rusty knife, the
     /// leather bag of coins, the burned-out lantern, and the skeleton key.
@@ -59,56 +63,67 @@ struct ZorkMaze: GameContent {
         name("Maze")
         description(Prose.maze5)
         dark
+        mapRegion("Maze")
     }
     let maze6 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze7 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze8 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze9 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze10 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze11 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze12 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze13 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze14 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
     let maze15 = Location {
         name("Maze")
         description(Prose.maze)
         dark
+        mapRegion("Maze")
     }
 
     // Four dead ends, all alike.
@@ -116,21 +131,25 @@ struct ZorkMaze: GameContent {
         name("Dead End")
         description(Prose.deadEnd)
         dark
+        mapRegion("Maze")
     }
     let deadEnd2 = Location {
         name("Dead End")
         description(Prose.deadEnd)
         dark
+        mapRegion("Maze")
     }
     let deadEnd3 = Location {
         name("Dead End")
         description(Prose.deadEnd)
         dark
+        mapRegion("Maze")
     }
     let deadEnd4 = Location {
         name("Dead End")
         description(Prose.deadEnd)
         dark
+        mapRegion("Maze")
     }
 
     // MARK: - The grating, cyclops, and treasure
