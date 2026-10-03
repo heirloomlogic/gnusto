@@ -151,6 +151,14 @@ struct NewGameTests {
         let exports = try #require(catalog["games"] as? [[String: String]])
         #expect(exports == [["name": "Zwank", "product": "Zwank", "module": "Zwank", "symbol": "game"]])
         #expect(paths.contains("Tests/ZwankTests/ZwankTests.swift"))
+        if let git = Self.which("git") {
+            let initialized = try Self.run(git, ["init", "--quiet"], currentDirectory: game)
+            #expect(initialized.status == 0, "\(initialized.stderr)")
+            let cacheFile = ".build-launchers/Zwank/terminal/development/package/Package.swift"
+            let ignored = try Self.run(git, ["check-ignore", "--", cacheFile], currentDirectory: game)
+            #expect(ignored.status == 0, "generated launcher package would be tracked: \(ignored)")
+            #expect(ignored.stdout == cacheFile + "\n")
+        }
     }
 
     @Test func mcpEntryIsKeyedLowercaseAndArgumentIsTheProduct() throws {
