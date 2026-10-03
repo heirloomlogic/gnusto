@@ -257,6 +257,8 @@ jobs:
       - name: Qualify actual path and URL author graphs
         env:
           GNUSTO_REAL_GRAPH: '1'
+          GNUSTO_PUBLIC_TERMINAL_GRAPH: '1'
+          GNUSTO_TERMINAL_PATH: '' # Public graph fixtures must not inherit the local override.
           GNUSTO_GRAPH_EVIDENCE: ${{ runner.temp }}/package-graphs.json
         run: node --test bin/tests/game-build.test.mjs
       - name: Qualify MCP isolation and relocated resources on Linux
