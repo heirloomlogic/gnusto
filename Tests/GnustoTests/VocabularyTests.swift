@@ -223,3 +223,86 @@ struct VocabularyTests {
         #expect(!transcript.contains("I don't know the word"))
     }
 }
+
+struct WorldVocabularyTests {
+    /// A fresh ``CartographyGame`` with its opening already printed, saving into a directory of its own.
+    private func world() async throws -> GameWorld {
+        let saves = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let world = try GameWorld(game: CartographyGame(), seed: 0, saveDirectory: saves)
+        _ = await world.begin()
+        return world
+    }
+
+    @Test func everyKindOfWordIsListedSortedAndUnique() async throws {
+        let words = try await world().vocabulary()
+        #expect(!words.expectsFilename)
+        #expect(words.verbs.contains("take"))
+        #expect(words.verbs.contains("undo"))
+        #expect(words.verbs.contains("unlatch"))
+        #expect(words.nouns.contains("rug"))
+        #expect(words.directions.contains("north"))
+        #expect(words.directions.contains("n"))
+        #expect(words.prepositions.contains("with"))
+        #expect(words.filler.contains("the"))
+        #expect(words.filler.contains("and"))
+
+        let lists = [
+            words.verbs, words.nouns, words.adjectives, words.directions,
+            words.prepositions, words.filler,
+        ]
+        for list in lists {
+            #expect(list == list.sorted())
+            #expect(list.count == Set(list).count)
+        }
+    }
+
+    @Test func aHiddenDoorHasNoWordsUntilItIsRevealed() async throws {
+        let world = try await world()
+        let before = await world.vocabulary()
+        #expect(!before.nouns.contains("door"))
+        #expect(!before.adjectives.contains("trap"))
+
+        _ = await world.perform("push rug")
+
+        let after = await world.vocabulary()
+        #expect(after.nouns.contains("door"))
+        #expect(after.adjectives.contains("trap"))
+    }
+
+    @Test func aSavePromptExpectsAFilenameWithoutRevealingTheHiddenDoor() async throws {
+        let world = try await world()
+        _ = await world.perform("save")
+
+        let words = await world.vocabulary()
+        #expect(words.expectsFilename)
+        #expect(!words.nouns.contains("door"))
+        #expect(!words.adjectives.contains("trap"))
+        #expect(words.verbs == words.verbs.sorted())
+    }
+
+    @Test func aRestorePromptExpectsAFilenameWithoutRevealingTheHiddenDoor() async throws {
+        let world = try await world()
+        _ = await world.perform("restore")
+
+        let words = await world.vocabulary()
+        #expect(words.expectsFilename)
+        #expect(!words.nouns.contains("door"))
+        #expect(!words.adjectives.contains("trap"))
+        #expect(words.verbs == words.verbs.sorted())
+    }
+
+    @Test func repeatedVocabularyQueriesDoNotChangeTheWorld() async throws {
+        let world = try await world()
+        let before = await world.snapshot()
+
+        for _ in 0..<5 {
+            _ = await world.vocabulary()
+        }
+
+        let after = await world.snapshot()
+        #expect(after.moves == before.moves)
+        #expect(after.rngState == before.rngState)
+        #expect(after.globals == before.globals)
+    }
+}

@@ -124,6 +124,8 @@ The engine pushes it after each turn rather than the handler pulling it when Tab
 
 Scope is recomputed each turn, so the noun pool follows the player from room to room. It reads the visible set only: an actor the player has met and who has since wandered off is nameable by FOLLOW but is deliberately kept out of Tab completion, since offering their nouns would be a spoiler.
 
+A front end that corrects what a speech recognizer heard needs more than that. ``GameWorld/vocabulary()`` returns ``WordsInScope``: the verbs, nouns, adjectives, directions, prepositions, and filler words the parser accepts, sorted and split by kind. The lists stay populated during a save or restore prompt, and ``WordsInScope/expectsFilename`` tells a front end to ignore them while the player enters a filename.
+
 The candidate assembly runs on the `GameWorld` actor and ``REPL`` is what calls it. A front end driving the world directly gets no completions and does not usually want them — a text field with its own autocomplete has better material than a word list.
 
 ## Ending the session
@@ -192,6 +194,8 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``GameStatus``
 - ``CompletionCandidates``
 - ``CompletionCandidates/Context``
+- ``GameWorld/vocabulary()``
+- ``WordsInScope``
 - ``ScriptedIOHandler``
 - ``ScriptedIOHandler/transcript``
 - ``REPL``
