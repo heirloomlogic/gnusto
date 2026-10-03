@@ -1324,6 +1324,103 @@ struct Zork1Tests {
             ])
     }
 
+    private static let toMaintenanceForFlood = [
+        "south", "east", "open window", "west", "west",
+        "take sword", "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down", "north", "west",
+        "attack troll", "attack troll", "attack troll", "east", "east",
+        "north", "northeast", "east", "north", "north",
+    ]
+
+    private static func maintenanceWorld() async throws -> GameWorld {
+        let world = try GameWorld(game: Zork1(), seed: 39)
+        _ = await world.begin()
+        for command in toMaintenanceForFlood { _ = await world.perform(command) }
+        #expect(await world.snapshot().playerLocation == EntityID("ZorkDam.maintenanceRoom"))
+        return world
+    }
+
+    private static func completeFloodOutside(_ world: GameWorld) async {
+        _ = await world.perform("push blue button")
+        _ = await world.perform("south")
+        for _ in 0..<6 { _ = await world.perform("wait") }
+    }
+
+    @Test(arguments: ["north", "east"])
+    func completedFloodRefusesBothMaintenanceEntrances(direction: String) async throws {
+        let world = try await Self.maintenanceWorld()
+        await Self.completeFloodOutside(world)
+        let result = await world.perform(direction)
+        #expect(result.output.contains("The room is full of water and cannot be entered."))
+        #expect(await world.snapshot().playerLocation == EntityID("ZorkDam.damLobby"))
+    }
+
+    @Test(arguments: ["north", "east"])
+    func maintenanceEntrancesStayOpenBeforeFloodCompletion(direction: String) async throws {
+        let world = try await Self.maintenanceWorld()
+        _ = await world.perform("push blue button")
+        _ = await world.perform("south")
+        for _ in 0..<4 { _ = await world.perform("wait") }
+        let result = await world.perform(direction)
+        #expect(result.output.contains("Maintenance Room"))
+        #expect(!result.output.contains("cannot be entered"))
+        #expect(await world.snapshot().playerLocation == EntityID("ZorkDam.maintenanceRoom"))
+    }
+
+    @Test func theBlueButtonCannotRestartACompletedFlood() async throws {
+        let world = try await Self.maintenanceWorld()
+        await Self.completeFloodOutside(world)
+        await world.placeFloodTestPlayer(in: "maintenanceRoom")
+        let result = await world.perform("push blue button")
+        #expect(result.output.contains("The blue button appears to be jammed."))
+        #expect(!result.output.contains("up to your ankles"))
+        await world.placeFloodTestPlayer(in: "damLobby")
+        #expect((await world.perform("north")).output.contains("cannot be entered"))
+    }
+
+    @Test func savingAndRestoringPreservesTheCompletedFlood() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-zork-flood-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let world = try await Self.maintenanceWorld()
+        await Self.completeFloodOutside(world)
+        _ = await world.perform("save")
+        #expect((await world.perform(path)).output.contains("Saved."))
+        _ = await world.perform("undo")
+        #expect(await world.snapshot().globals[EntityID("ZorkDam.floodLevel")] == .int(7))
+        _ = await world.perform("restore")
+        #expect((await world.perform(path)).output.contains("Restored."))
+        for direction in ["north", "east"] {
+            #expect((await world.perform(direction)).output.contains("cannot be entered"))
+            #expect(await world.snapshot().playerLocation == EntityID("ZorkDam.damLobby"))
+        }
+    }
+
+    @Test func undoingFloodCompletionReopensTheRoomAndResumesDrowning() async throws {
+        let world = try await Self.maintenanceWorld()
+        await Self.completeFloodOutside(world)
+        _ = await world.perform("undo")
+        let entered = await world.perform("north")
+        #expect(entered.output.contains("Maintenance Room"))
+        #expect(!entered.output.contains("cannot be entered"))
+        #expect(entered.output.contains("drowned yourself"))
+        #expect(entered.output.contains("Forest"))
+    }
+
+    @Test func drowningAlsoSealsTheMaintenanceRoom() async throws {
+        let world = try await Self.maintenanceWorld()
+        _ = await world.perform("push blue button")
+        for _ in 0..<6 { _ = await world.perform("wait") }
+        let drowned = await world.perform("wait")
+        #expect(drowned.output.contains("drowned yourself"))
+        #expect(drowned.output.contains("Forest"))
+        await world.placeFloodTestPlayer(in: "damLobby")
+        for direction in ["north", "east"] {
+            #expect((await world.perform(direction)).output.contains("cannot be entered"))
+            #expect(await world.snapshot().playerLocation == EntityID("ZorkDam.damLobby"))
+        }
+    }
+
     /// Draining the reservoir, walking onto the bed, then closing the gates
     /// again floods it back — and anyone still standing on the bed when it
     /// fills drowns.
@@ -1464,6 +1561,12 @@ struct Zork1Tests {
 }
 
 extension GameWorld {
+    fileprivate func placeFloodTestPlayer(in room: String) {
+        state.setPlayerLocation(placingAt: EntityID("ZorkDam.\(room)"))
+        state.place(EntityID("ZorkHouse.lantern"), .heldBy(.player))
+        state.litItems.insert(EntityID("ZorkHouse.lantern"))
+    }
+
     fileprivate func setLivingRoomPresentationState(shortcutOpen: Bool, rugMoved: Bool, trapDoorOpen: Bool) throws {
         let shortcut = EntityID("ZorkMaze.eastWallOpen")
         _ = try #require(definition.globals[shortcut]?.defaultValue == .bool(false))

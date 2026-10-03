@@ -406,16 +406,7 @@ has been waiting on since Phase 10.4.
 
 ### Mechanics simplified or deferred
 
-- **The Maintenance Room flood is a continuous rising level** *(closed in the fidelity
-  pass — was a three-band model)*. The blue button starts a `damFlood` daemon; the water
-  climbs one body-part step every turn along the original's ladder — ankles, shins, knees,
-  hips, waist, chest, neck — narrated each turn, and once it tops the neck the room is full,
-  anyone still here drowns, and the room seals (the daemon stops). The level is a plain
-  deterministic counter (`floodLevel`), not a dice roll, so no seed is needed. **Leaving
-  the room is the only escape** — the flood itself is not tube-pluggable (nor is
-  it in the original). The tube of gunk is no longer inert, though: it now patches
-  the punctured river boat (closed in the fidelity pass — see the Phase 10.9
-  entry below).
+- The Maintenance Room flood climbs one body-part step each turn: ankles, shins, knees, hips, waist, chest, neck, then drowning. The blue button starts `damFlood` only at `floodLevel == 0`; after the terminal tick, the persisted level seals both north and east entrances from the Dam Lobby, stops the daemon, and kills anyone still inside. Save/restore preserves the sealing; undo can restore the preceding rising-water state. [I-MAINT-ROOM](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1343) munges the room before drowning, and [GOTO](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/gverbs.zil#L2067) refuses the destination before moving. The port retains its one-step-per-turn cadence; the original uses `WATER-LEVEL` values through 14 and repeats body-part rungs. The original also allows putty to stop the leak through [LEAK-FUNCTION and FIX-MAINT-LEAK](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1362). That repair is not implemented here, so leaving is the port's only escape. The tube of gunk patches the punctured river boat. Historical evidence is archived ZIL, not a historical executable replay.
 - **`waterMoving` is driven across the bundle boundary by the host.** The Loud
   Room (in `ZorkRoundRoom`) reads `waterMoving`, but a bundle can't reach another
   bundle's `@Global` from its own rules, so the `turn bolt with wrench` rule and
