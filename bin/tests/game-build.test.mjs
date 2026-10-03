@@ -18,7 +18,7 @@ function fixture(t, {url = false} = {}) {
   fs.writeFileSync(path.join(packageRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}\n.package(name: "Gnusto", ${url ? 'url: "https://github.com/HeirloomLogic/Gnusto", branch: "main"' : `path: ${swiftStringLiteral(engineRoot)}`}, traits: forwarded)`);
   fs.writeFileSync(path.join(packageRoot, 'gnusto-games.json'), JSON.stringify({version: 1, package: 'Story', games: [{name: 'Story', product: 'StoryLibrary', module: 'Story', symbol: 'game'}]}));
   const swift = path.join(root, 'fake-swift');
-  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){const scratch=a[a.indexOf('--scratch-path')+1]; fs.mkdirSync(scratch,{recursive:true}); const file=path.join(scratch,'workspace-state.json'); if(a.includes('edit')) fs.writeFileSync(file,JSON.stringify({object:{dependencies:[{packageRef:{identity:a[a.indexOf('edit')+1],kind:'remoteSourceControl',location:'https://github.com/HeirloomLogic/Gnusto'},state:{name:'edited',path:a[a.indexOf('--path')+1]}}]}})); else {const workspace=JSON.parse(fs.readFileSync(file));if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:workspace.object.dependencies[0].state.path}]}));} process.exit(0)}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){\n const scratch=a[a.indexOf('--scratch-path')+1], pkg=a[a.indexOf('--package-path')+1];fs.mkdirSync(scratch,{recursive:true});const file=path.join(scratch,'workspace-state.json');\n const workspace=fs.existsSync(file)?JSON.parse(fs.readFileSync(file)):{object:{dependencies:[]}};\n if(a.includes('edit')){\n  const id=a[a.indexOf('edit')+1];const remote=id==='gnustoterminal';const location='https://github.com/HeirloomLogic/'+(remote?'GnustoTerminal':'Gnusto');\n  const dependency={packageRef:{identity:id,kind:'remoteSourceControl',location},state:{name:'edited',path:remote?null:a[a.indexOf('--path')+1]}};\n  if(remote){dependency.subpath=id;dependency.basedOn={packageRef:dependency.packageRef,state:{name:'sourceControlCheckout',checkoutState:{branch:'main',revision:'a'.repeat(40)}}};const dir=path.join(pkg,'Packages',id);fs.mkdirSync(path.join(dir,'.git'),{recursive:true});fs.writeFileSync(path.join(dir,'.git/HEAD'),'a'.repeat(40));fs.writeFileSync(path.join(dir,'Package.swift'),'traits: [.trait(name: "Playtest")]');fs.writeFileSync(path.join(dir,'source.swift'),'BeforeEdit');}\n  workspace.object.dependencies=workspace.object.dependencies.filter(d=>d.packageRef.identity!==id);workspace.object.dependencies.push(dependency);fs.writeFileSync(file,JSON.stringify(workspace));\n }else{\n  if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}if(process.env.LOSE_FRONTEND_EDIT){workspace.object.dependencies.find(d=>d.packageRef.identity==='gnustoterminal').state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}\n  const edited=workspace.object.dependencies.find(d=>d.packageRef.identity==='gnusto');\n  console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:edited?.state.path||process.env.GNUSTO_ENGINE_PATH},...workspace.object.dependencies.filter(d=>d.packageRef.identity==='gnustoterminal').map(d=>({identity:d.packageRef.identity,name:'GnustoTerminal',path:path.join(pkg,'Packages',d.subpath)}))]}));\n }process.exit(0);\n}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_FRONTEND){const pkg=a[a.indexOf('--package-path')+1];fs.writeFileSync(path.join(pkg,'Packages/gnustoterminal/source.swift'),'AfterEdit');} if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
   fs.chmodSync(swift, 0o755);
   const environment = {...process.env, LOG: path.join(root, 'invocations'), GNUSTO_SWIFT_BUILD_FLAGS: '["--jobs","2"]'};
   const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: loadGames(packageRoot).games[0], mode: 'development'});
@@ -104,7 +104,7 @@ test('CLI prints one absolute binary path or JSON and rejects unknown games befo
 test('real path and URL author graphs share current Gnusto and resource-bearing source edits', {skip: process.env.GNUSTO_REAL_GRAPH !== '1', timeout: 1200000}, async t => {
   const {spawnSync} = await import('node:child_process');
   const engineRoot = fs.realpathSync(process.cwd());
-  const terminalRoot = fs.realpathSync(process.env.GNUSTO_TERMINAL_PATH || '.context/companions/GnustoTerminal');
+  const terminalRoot = process.env.GNUSTO_PUBLIC_TERMINAL_GRAPH === '1' ? null : fs.realpathSync(process.env.GNUSTO_TERMINAL_PATH || '.context/companions/GnustoTerminal');
   const root = process.env.GNUSTO_GRAPH_ROOT || fs.mkdtempSync(path.join(tmpdir(), 'gnusto-real-graph-'));
   fs.mkdirSync(root, {recursive: true});
   const evidence = [];
@@ -137,11 +137,13 @@ test('real path and URL author graphs share current Gnusto and resource-bearing 
     const terminals = [...unique.values()].filter(node => node.name === 'GnustoTerminal');
     assert.equal(engines.length, 1); assert.equal(terminals.length, 1);
     assert.equal(fs.realpathSync(engines[0].path), engineRoot);
-    assert.equal(fs.realpathSync(terminals[0].path), terminalRoot);
+    assert.equal(fs.realpathSync(terminals[0].path), terminalRoot || spec.terminalEdit.path);
+    const terminalSource = spec.terminalEdit ? JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'terminal-source.json'))) : null;
+    if (terminalSource) { assert.equal(terminalSource.url, 'https://github.com/HeirloomLogic/GnustoTerminal'); assert.equal(terminalSource.branch, 'main'); assert.match(terminalSource.revision, /^[a-f0-9]{40}$/); }
     const author = [...unique.values()].find(node => node.name === 'Story');
     assert(author); assert.equal(fs.realpathSync(author.path), fs.realpathSync(packageRoot));
-    const launch = result => spawnSync(result.binary, [], {input: 'quit\ny\n', encoding: 'utf8', env: {...process.env, GNUSTO_PLAIN: '1'}, timeout: 30000});
-    let played = launch(built); assert.equal(played.status, 0, played.stderr); assert.match(played.stdout, /BuildSourceOne ResourceOpeningOne/);
+    const launch = result => spawnSync(result.binary, [], {input: 'frobnicate\nquit\ny\n', encoding: 'utf8', env: {...process.env, GNUSTO_PLAIN: '1'}, timeout: 30000});
+    let played = launch(built); assert.equal(played.status, 0, played.stderr); assert.match(played.stdout, /BuildSourceOne ResourceOpeningOne/); if (process.env.GNUSTO_GRAPH_ENGINE_MARKER) assert(played.stdout.includes(process.env.GNUSTO_GRAPH_ENGINE_MARKER));
     const source = path.join(packageRoot, 'Sources/Story/Story.swift');
     fs.writeFileSync(source, fs.readFileSync(source, 'utf8').replace('BuildSourceOne', 'BuildSourceTwo'));
     const before = built.fingerprint; built = await buildGame(spec, {environment, swift}); assert.notEqual(before, built.fingerprint);
@@ -172,7 +174,7 @@ test('real path and URL author graphs share current Gnusto and resource-bearing 
       const developmentCount = logCount();
       assert.deepEqual(await buildGame(developmentSpec, {environment, swift}), development); assert.equal(logCount(), developmentCount);
     }
-    evidence.push({kind, sameNameProductObserved: true, warmZeroSwift: true, developmentMCP, deploymentMCPUnavailable: true, graphDiagnostics: graph.stderr, editedSourceControl: kind === 'url', identities: [...unique.keys()], enginePath: engines[0].path, terminalPath: terminals[0].path, authorPath: author.path, binary: built.binary, currentSourceEditObserved: true, resourceObserved: true});
+    evidence.push({kind, terminalSource, sameNameProductObserved: true, warmZeroSwift: true, developmentMCP, deploymentMCPUnavailable: true, graphDiagnostics: graph.stderr, editedSourceControl: kind === 'url', identities: [...unique.keys()], enginePath: engines[0].path, terminalPath: terminals[0].path, authorPath: author.path, binary: built.binary, currentSourceEditObserved: true, uncommittedEngineMarker: process.env.GNUSTO_GRAPH_ENGINE_MARKER || null, resourceObserved: true});
   }
   if (process.env.GNUSTO_GRAPH_EVIDENCE) fs.writeFileSync(process.env.GNUSTO_GRAPH_EVIDENCE, JSON.stringify({root, evidence}, null, 2) + '\n');
 });
@@ -261,9 +263,10 @@ test('abandoned native locks and simultaneous recoverers preserve the live succe
 test('Linux deployments request the static Swift runtime and fingerprint platform policy', async t => {
   const f = fixture(t);
   const linux = makeBuildSpec({...f, game: 'Story', mode: 'deployment', platform: 'linux'});
-  assert.deepEqual(linux.defaultBuildFlags, ['--static-swift-stdlib']);
+  assert.deepEqual(linux.defaultBuildFlags, ['--static-swift-stdlib', '-Xswiftc', '-static-stdlib']);
   const built = await buildGame(linux, f);
-  assert(f.log().find(item => item.args.includes('--product')).args.includes('--static-swift-stdlib'));
+  const buildArguments = f.log().find(item => item.args.includes('--product')).args;
+  assert.deepEqual(buildArguments.slice(buildArguments.indexOf('--static-swift-stdlib'), buildArguments.indexOf('--static-swift-stdlib') + 3), linux.defaultBuildFlags);
   const darwin = makeBuildSpec({...f, game: 'Story', mode: 'deployment', platform: 'darwin'});
   const other = await buildGame(darwin, f); assert.notEqual(other.fingerprint, built.fingerprint);
   assert.deepEqual(makeBuildSpec({...f, game: 'Story', mode: 'development', platform: 'linux'}).defaultBuildFlags, []);
@@ -312,4 +315,88 @@ test('a resolver that drops editable state is refused before compilation', async
   await assert.rejects(buildGame(f.spec, {...f, environment: {...f.environment, LOSE_EDIT: '1'}}), /refusing to compile released engine sources/);
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 0);
   assert.equal(fs.existsSync(path.join(f.spec.generatedRoot, 'build-state.json')), false);
+});
+
+
+test('public SCM frontend uses a generated managed edit with exact revision provenance and zero warm Swift', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, terminalRoot: null, game: 'Story'});
+  assert.equal(spec.terminalEdit.identity, 'gnustoterminal');
+  assert.match(spec.bootstrapManifest, /GnustoTerminal/);
+  const built = await buildGame(spec, f);
+  const edit = f.log().find(item => item.args.includes('edit'));
+  assert.equal(edit.engine, undefined);
+  assert.equal(edit.args.includes('--path'), false);
+  assert.equal(f.log().find(item => item.args.includes('--product')).engine, f.engineRoot);
+  const provenance = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'terminal-source.json')));
+  assert.equal(provenance.revision, 'a'.repeat(40));
+  assert.equal(provenance.url, 'https://github.com/HeirloomLogic/GnustoTerminal');
+  assert.equal(provenance.branch, 'main');
+  assert.equal(provenance.path, path.join(spec.packageRoot, 'Packages/gnustoterminal'));
+  const count = f.log().length;
+  assert.deepEqual(await buildGame(spec, f), built); assert.equal(f.log().length, count);
+});
+
+test('lost or stale managed frontend edits repair only generated state before compilation', async t => {
+  const f = fixture(t, {url: true});
+  const spec = makeBuildSpec({...f, terminalRoot: null, game: 'Story'});
+  await buildGame(spec, f);
+  const source = path.join(f.engineRoot, 'Sources/content.swift');
+  const original = fs.readFileSync(source, 'utf8');
+  fs.writeFileSync(path.join(spec.packageRoot, 'Packages/gnustoterminal/.git/HEAD'), 'b'.repeat(40));
+  const before = f.log().filter(item => item.args.includes('edit')).length;
+  await buildGame(spec, f);
+  assert.equal(f.log().filter(item => item.args.includes('edit')).length, before + 2);
+  assert.equal(fs.readFileSync(source, 'utf8'), original);
+  fs.rmSync(path.join(spec.packageRoot, 'Packages/gnustoterminal'), {recursive: true});
+  await buildGame(spec, f);
+  assert.equal(f.log().filter(item => item.args.includes('edit')).length, before + 4);
+  const managedSource = path.join(spec.packageRoot, 'Packages/gnustoterminal/source.swift');
+  fs.writeFileSync(managedSource, 'unexpected edited frontend bytes');
+  await buildGame(spec, f);
+  assert.equal(f.log().filter(item => item.args.includes('edit')).length, before + 6);
+  assert.equal(fs.readFileSync(managedSource, 'utf8'), 'BeforeEdit');
+});
+
+test('managed frontend source changes during compilation cannot publish a fresh fingerprint', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, terminalRoot: null, game: 'Story'});
+  const environment = {...f.environment, MUTATE_FRONTEND: '1'};
+  await assert.rejects(buildGame(spec, {...f, environment}), /frontend compilation inputs changed/);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+});
+
+
+test('real public SCM frontend builds a root game with current local engine and zero warm Swift', {skip: process.env.GNUSTO_REAL_GRAPH !== '1' || process.env.GNUSTO_PUBLIC_TERMINAL_GRAPH !== '1', timeout: 1200000}, async t => {
+  const {spawnSync} = await import('node:child_process');
+  const engineRoot = fs.realpathSync(process.cwd());
+  const spec = makeBuildSpec({packageRoot: engineRoot, engineRoot, terminalRoot: null, game: 'CloakOfDarkness', mode: 'development'});
+  const environment = {...process.env, GNUSTO_SWIFT_BUILD_FLAGS: process.env.GNUSTO_SWIFT_BUILD_FLAGS || '["--jobs","2"]'};
+  const root = process.env.GNUSTO_GRAPH_ROOT || fs.mkdtempSync(path.join(tmpdir(), 'gnusto-public-root-'));
+  fs.mkdirSync(root, {recursive: true});
+  t.after(() => { if (!process.env.GNUSTO_GRAPH_KEEP) fs.rmSync(root, {recursive: true, force: true}); });
+  const swift = path.join(root, 'swift-wrapper');
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs'; import {spawnSync} from 'node:child_process';\nfs.appendFileSync(process.env.GNUSTO_GRAPH_SWIFT_LOG, JSON.stringify(process.argv.slice(2))+'\\n');\nconst result=spawnSync('swift',process.argv.slice(2),{stdio:'inherit'});process.exit(result.status ?? 1);\n`);
+  fs.chmodSync(swift, 0o755);
+  environment.GNUSTO_GRAPH_SWIFT_LOG = path.join(root, 'swift-invocations.jsonl');
+  const built = await buildGame(spec, {environment, swift});
+  const graph = spawnSync('swift', ['package', '--package-path', built.packageRoot, '--scratch-path', built.scratchPath, 'show-dependencies', '--format', 'json'], {encoding: 'utf8', env: {...environment, GNUSTO_ENGINE_PATH: spec.engineDependencyPath}, maxBuffer: 20 * 1024 * 1024});
+  assert.equal(graph.status, 0, graph.stderr); assert.doesNotMatch(graph.stderr, /Conflicting identity/);
+  const enginePaths = new Set(), engineIdentities = new Set();
+  const walk = node => { if (node.name === 'Gnusto') { enginePaths.add(fs.realpathSync(node.path)); engineIdentities.add(node.identity); } for (const dependency of node.dependencies || []) walk(dependency); };
+  walk(JSON.parse(graph.stdout)); assert.deepEqual([...enginePaths], [engineRoot]); assert.deepEqual([...engineIdentities], ['gnusto']);
+  const played = spawnSync(built.binary, [], {input: 'frobnicate\nquit\ny\n', encoding: 'utf8', env: {...environment, GNUSTO_PLAIN: '1'}, timeout: 30000}); assert.equal(played.status, 0, played.stderr); if (process.env.GNUSTO_GRAPH_ENGINE_MARKER) assert(played.stdout.includes(process.env.GNUSTO_GRAPH_ENGINE_MARKER));
+  const initialize = JSON.stringify({jsonrpc: '2.0', id: 1, method: 'initialize', params: {protocolVersion: '2024-11-05', capabilities: {}, clientInfo: {name: 'root-graph', version: '1'}}}) + '\n';
+  const response = spawnSync(built.binary, ['--mcp'], {input: initialize, encoding: 'utf8', timeout: 15000}); assert.equal(response.status, 0, response.stderr); assert(JSON.parse(response.stdout.trim()).result?.protocolVersion);
+  const count = fs.readFileSync(environment.GNUSTO_GRAPH_SWIFT_LOG, 'utf8').trim().split('\n').length;
+  assert.deepEqual(await buildGame(spec, {environment, swift}), built); assert.equal(fs.readFileSync(environment.GNUSTO_GRAPH_SWIFT_LOG, 'utf8').trim().split('\n').length, count);
+  fs.writeFileSync(path.join(root, 'root-graph-evidence.json'), JSON.stringify({built, terminalSource: JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'terminal-source.json'))), currentEnginePaths: [...enginePaths], currentEngineIdentities: [...engineIdentities], warmZeroSwift: true, developmentMCP: true, uncommittedEngineMarker: process.env.GNUSTO_GRAPH_ENGINE_MARKER || null, graphDiagnostics: graph.stderr}, null, 2) + '\n');
+});
+
+
+test('a graph that loses frontend edit provenance is refused before compilation', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, terminalRoot: null, game: 'Story'});
+  await assert.rejects(buildGame(spec, {...f, environment: {...f.environment, LOSE_FRONTEND_EDIT: '1'}}), /refusing to compile/);
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 0);
 });
