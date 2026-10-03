@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Build and run a catalog game with the terminal development frontend.
+# Usage: bin/run-game <Game> [--frontend terminal|yonk]
+set -euo pipefail
+for arg in "$@"; do
+  if [[ "$arg" == '-h' || "$arg" == '--help' ]]; then
+    sed -n '2,${/^#/!q; s/^# \{0,1\}//; p;}' "$0"
+    exit 0
+  fi
+done
+frontend=terminal
+game=''
+fail() { echo "run-game: $*" >&2; exit 2; }
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --frontend)
+      [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || fail '--frontend needs a value'
+      frontend="$2"; shift 2 ;;
+    --frontend=*)
+      frontend="${1#*=}"; [[ -n "$frontend" ]] || fail '--frontend needs a value'; shift ;;
+    -*) fail "unknown option: $1" ;;
+    *) [[ -z "$game" ]] || fail "unexpected argument: $1"; game="$1"; shift ;;
+  esac
+done
+case "$frontend" in
+  terminal) ;;
+  yonk) fail 'yonk frontend is unavailable until milestone 2' ;;
+  *) fail "unknown frontend: $frontend" ;;
+esac
+[[ -n "$game" ]] || fail 'Usage: bin/run-game <Game> [--frontend terminal|yonk]'
+script_root="$(cd "$(dirname "$0")" && pwd)"
+export GNUSTO_PACKAGE_PATH="${GNUSTO_PACKAGE_PATH:-$script_root/..}"
+binary="$("$script_root/build-game" "$game" --mode development)"
+exec "$binary"

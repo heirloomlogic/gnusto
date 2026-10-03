@@ -19,7 +19,7 @@ const repo = fileURLToPath(new URL('../..', import.meta.url))
 // looks at cwd, builds anything or spawns swift, so this runs directly against
 // the repo checkout and stays fast.
 const SCRIPTS = [
-  'export-game', 'gnusto-mcp', 'new-game', 'playtest-measure', 'playtest-preflight',
+  'run-game', 'export-game', 'gnusto-mcp', 'new-game', 'playtest-measure', 'playtest-preflight',
   'playtest-routes', 'playtest-replay',
 ]
 
@@ -35,4 +35,12 @@ for (const script of SCRIPTS) {
       assert.ok(result.stdout.includes(script), result.stdout)
     })
   }
+}
+
+for (const script of ['run-game', 'export-game']) {
+  test(`bin/${script} help works without a package checkout`, () => {
+    const result = spawnSync(`${repo}/bin/${script}`, ['--help'], {cwd: '/tmp', env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package'}, encoding: 'utf8'});
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage:/);
+  });
 }

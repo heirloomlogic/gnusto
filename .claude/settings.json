@@ -32,7 +32,9 @@
       "Workflow",
       "Bash(bin/playtest-routes:*)",
       "Bash(bin/playtest-measure:*)",
-      "Bash(bin/export-game:*)"
+      "Bash(bin/export-game:*)",
+      "Bash(bin/run-game:*)",
+      "Bash(bin/build-game:*)"
     ],
     "ask": [
       "Bash(gh issue create:*)"

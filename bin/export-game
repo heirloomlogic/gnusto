@@ -1,110 +1,41 @@
-#!/usr/bin/env bash
-#
-# Build a Gnusto game as a standalone command-line executable you can hand to a
-# friend. Produces a release binary under ./dist.
-#
-# Usage:  bin/export-game <Product>          (e.g. bin/export-game Zork1)
-#         bin/export-game                    (lists the executable products)
-#
-# On macOS 15+ the binary dynamically links the Swift runtime that ships with
-# the OS, so the recipient runs ./dist/<Product> directly — no Xcode, no Swift
-# toolchain. Cross-platform Linux binaries are best produced in CI (see
-# .github/workflows/release.yml); cross-compiling from a Mac is impractical.
-
-set -euo pipefail
-
-# Checked before anything else needs the package root, a build or a spawn: -h/--help
-# is a request for text, not a mode among the script's other arguments, and it
-# answers the same way regardless of $PWD. Prints this file's own header comment
-# (the block above, lines 2 through the first non-# line) rather than a second
-# hand-typed copy that could drift from it — the same idiom bin/playtest-replay's
-# usage() uses on its own header.
-for arg in "$@"; do
-  if [[ "${arg}" == "-h" || "${arg}" == "--help" ]]; then
-    sed -n '2,${/^#/!q; s/^# \{0,1\}//; p;}' "$0"
-    exit 0
-  fi
-done
-
-# Run from the package root regardless of where the script is invoked. That root
-# is normally this script's own package — but a game written by bin/new-game runs
-# this script through a shim that execs it out of Gnusto's checkout, and then $0
-# points at the engine rather than at the game. GNUSTO_PACKAGE_PATH is how the
-# shim says which package it meant; unset, nothing changes.
-cd "${GNUSTO_PACKAGE_PATH:-$(dirname "$0")/..}"
-
-# Discover this package's executable products from the live manifest, so a game
-# written by bin/new-game can export itself with no edits to
-# this script. `swift package describe` prints each product's Name followed by a
-# Type block; an executable product carries an "Executable:" type line, so the
-# awk filter emits exactly the executable product names. (Read into the array the
-# bash-3.2 way — macOS ships /bin/bash 3.2, which has no `mapfile`.)
-products=()
-while IFS= read -r line; do products+=("$line"); done < <(
-  swift package describe 2>/dev/null \
-    | awk '$1=="Name:"{name=$2} $1=="Executable:"{print name}'
-)
-
-if [[ ${#products[@]} -eq 0 ]]; then
-  echo "error: no executable products found in this package."
-  echo "Add an .executable(...) product to Package.swift, then re-run."
-  exit 2
-fi
-
-# No argument names a genuine mode, not an error: the doc comment above has always
-# promised "bin/export-game (lists the executable products)". List one product per
-# line and exit 0, rather than folding the listing into a usage error — a generated
-# package normally has exactly one product, and the CI step in test.yml pipes this
-# straight into `grep -qx <Product>`, which needs that bare line to match.
-if [[ $# -lt 1 ]]; then
-  printf '%s\n' "${products[@]}"
-  exit 0
-fi
-
-product="$1"
-if [[ ! " ${products[*]} " == *" ${product} "* ]]; then
-  echo "error: unknown product '${product}'"
-  echo "available products: ${products[*]}"
-  exit 2
-fi
-
-# The exported binary is the one that ships, so it is built without the
-# `Playtest` trait: the MCP play-test server is a second program larger than the
-# engine, and a stranger's copy of the game has no business carrying it or
-# answering `GNUSTO_MCP`. The trait is on by default everywhere else, so a
-# development build, `bin/gnusto-mcp` and the test suite are unaffected.
-#
-# `--disable-default-traits` is an error on a root package that declares no
-# traits, which is deliberate on SwiftPM's part — it is how a package adopts
-# traits without breaking its API. So this script requires the package it is
-# standing in to declare a `Playtest` trait and forward it to the engine's, the
-# way bin/templates/Package.swift does. A game generated before that template
-# existed and then moved onto a newer Gnusto gets SwiftPM's "declares no
-# traits" error here; the fix is the three lines in that template, not a flag.
-echo "Building ${product} (release, no play-test server)…"
-swift build -c release --disable-default-traits --product "${product}"
-
-binpath="$(swift build -c release --disable-default-traits --product "${product}" --show-bin-path)/${product}"
-mkdir -p dist
-
-# Never overwrite dist/<Product> in place. If a previously exported copy is
-# still running, rewriting its bytes underneath the kernel corrupts the mapped
-# Mach-O; the kernel then flags that file's code signature invalid and SIGKILLs
-# every future launch of it ("zsh: killed") even though the new bytes and the
-# ad-hoc signature verify fine. Copy to a temp file and atomically move it into
-# place so each export lands on a fresh inode, immune to that poisoning.
-tmp="dist/.${product}.$$.tmp"
-trap 'rm -f "${tmp}"' EXIT
-cp "${binpath}" "${tmp}"
-mv -f "${tmp}" "dist/${product}"
-trap - EXIT
-
-echo
-echo "✔ Exported dist/${product}"
-echo
-echo "Play it:      ./dist/${product}"
-echo "Share it:     send the single file dist/${product} to a friend on macOS 15+."
-echo
-echo "Gatekeeper note: a binary a friend *downloads* is quarantined, and macOS"
-echo "refuses to run it until they clear the flag:"
-echo "  xattr -dr com.apple.quarantine ./${product}"
+#!/usr/bin/env node
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {loadGames, resolveCatalogGame} from './lib/game-catalog.mjs';
+import {findEngineRoot, makeBuildSpec, buildGame} from './lib/game-build.mjs';
+import {stageTerminalExport} from './lib/game-export.mjs';
+const usage = 'Usage: bin/export-game [<Game>] [--frontend terminal|yonk]\nWithout a game, lists catalog game names. Builds a release distribution without Playtest.';
+try {
+  const words = process.argv.slice(2);
+  if (words.includes('--help') || words.includes('-h')) { console.log(usage); process.exit(0); }
+  let frontend = 'terminal', gameName;
+  while (words.length) {
+    const word = words.shift();
+    if (word === '--frontend' || word.startsWith('--frontend=')) {
+      frontend = word === '--frontend' ? words.shift() : word.slice('--frontend='.length);
+      if (!frontend || frontend.startsWith('-')) throw new Error('--frontend needs a value');
+    } else if (word.startsWith('-')) throw new Error(`unknown option: ${word}`);
+    else if (gameName !== undefined) throw new Error(`unexpected argument: ${word}`);
+    else gameName = word;
+  }
+  if (frontend === 'yonk') throw new Error('yonk frontend is unavailable until milestone 2');
+  if (frontend !== 'terminal') throw new Error(`unknown frontend: ${frontend}`);
+  const packageRoot = path.resolve(process.env.GNUSTO_PACKAGE_PATH || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+  const catalog = loadGames(packageRoot);
+  if (gameName === undefined) { console.log(catalog.games.map(game => game.name).join('\n')); process.exit(0); }
+  const game = resolveCatalogGame(catalog, gameName);
+  const spec = makeBuildSpec({packageRoot, engineRoot: findEngineRoot(packageRoot), terminalRoot: process.env.GNUSTO_TERMINAL_PATH, game, mode: 'deployment'});
+  console.error(`Building ${game.name} (release, no play-test server)…`);
+  const built = await buildGame(spec, {swift: process.env.GNUSTO_SWIFT || 'swift'});
+  const controller = new AbortController();
+  const interrupt = () => controller.abort();
+  process.once('SIGINT', interrupt); process.once('SIGTERM', interrupt);
+  let staged;
+  try { staged = await stageTerminalExport({...built, destination: path.join(packageRoot, 'dist', game.name), signal: controller.signal}); }
+  finally { process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt); }
+  console.log(`\n✔ Exported dist/${game.name}\n\nPlay it:      ./dist/${game.name}`);
+  if (staged.resources.length) {
+    console.log(`Share it:     distribute the complete directory ${path.relative(packageRoot, path.dirname(staged.resources[0]))}, including the executable and resource bundles.`);
+  } else console.log(`Share it:     send the single file dist/${game.name} to a friend on the same platform.`);
+  if (process.platform === 'darwin') console.log(`\nRequires macOS 15+. A downloaded distribution may need its quarantine flag cleared:\n  xattr -dr com.apple.quarantine <distribution>`);
+} catch (error) { console.error(`export-game: ${error.message}`); process.exitCode = 2; }

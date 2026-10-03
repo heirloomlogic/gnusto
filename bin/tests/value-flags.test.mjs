@@ -67,3 +67,19 @@ test('bin/gnusto-mcp refuses a malformed game name before building', () => {
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /^gnusto-mcp: bad game name 'not a game'$/m)
 })
+
+for (const script of ['run-game', 'export-game']) {
+  for (const args of [['Story', '--frontend'], ['Story', '--frontend', ''], ['Story', '--frontend=']]) {
+    test(`bin/${script} refuses missing frontend value ${JSON.stringify(args)}`, () => {
+      expectRefusal(run(script, args), script, '--frontend');
+    });
+  }
+  for (const frontend of ['unknown', 'yonk']) {
+    test(`bin/${script} refuses ${frontend} before package resolution or building`, () => {
+      const result = spawnSync(path.join(repo, 'bin', script), ['Story', '--frontend', frontend], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package'}, encoding: 'utf8'});
+      assert.equal(result.status, 2, result.stderr);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, frontend === 'yonk' ? /yonk.*unavailable/i : /unknown.*frontend/i);
+    });
+  }
+}

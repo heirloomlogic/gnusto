@@ -14,9 +14,11 @@ import test from 'node:test'
 
 const repo = fileURLToPath(new URL('../..', import.meta.url))
 
-test('the engine settings allowlist grants bin/playtest-measure and bin/export-game', () => {
+test('the engine settings allowlist grants measurement, build, run and export tools', () => {
   const settings = JSON.parse(readFileSync(`${repo}/.claude/settings.json`, 'utf8'))
   const allow = settings.permissions?.allow ?? []
   assert.ok(allow.includes('Bash(bin/playtest-measure:*)'), allow.join('\n'))
   assert.ok(allow.includes('Bash(bin/export-game:*)'), allow.join('\n'))
+  assert.ok(allow.includes('Bash(bin/run-game:*)'), allow.join('\n'))
+  assert.ok(allow.includes('Bash(bin/build-game:*)'), allow.join('\n'))
 })
