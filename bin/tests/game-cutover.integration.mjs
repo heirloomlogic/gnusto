@@ -27,6 +27,15 @@ const banners = {
   Zork1: 'Zork I: The Great Underground Empire', Dungeon: 'Dungeon',
   Gramarye: 'Gramarye', Fulminate: 'Fulminate', KindlyDeep: 'The Kindly Deep',
 };
+const openings = {
+  CloakOfDarkness: 'Hurrying through the rainswept November night',
+  Lighthouse: "The keeper's boat brought you out",
+  Zork1: 'An adventure awaits amid a ruined empire buried underground.',
+  Dungeon: 'Somewhere under a white house on a forgotten lawn lies',
+  Gramarye: 'The tower has been in an uproar since dawn',
+  Fulminate: 'The letter said somebody had been in his lab',
+  KindlyDeep: 'The roof gave no more warning than a handful of dust',
+};
 const evidence = path.join(root, '.context/task-5-demos');
 fs.mkdirSync(evidence, {recursive: true});
 for (const game of games) {
@@ -46,7 +55,8 @@ for (const game of games) {
   fs.writeFileSync(path.join(evidence, `${game.name}.stdout`), play.stdout);
   fs.writeFileSync(path.join(evidence, `${game.name}.stderr`), play.stderr);
   assert.equal(play.status, 0, play.stderr);
-  assert(play.stdout.trimStart().startsWith(banners[game.name]), `${game.name} wrong opening banner: ${play.stdout.slice(0, 200)}`);
+  assert(play.stdout.trimStart().startsWith(openings[game.name]), `${game.name} wrong opening banner: ${play.stdout.slice(0, 200)}`);
+  assert(play.stdout.includes(banners[game.name]), `${game.name} missing own banner`);
   assert.doesNotMatch(play.stdout, /Building for|Compiling|import Gnusto/);
   const recorded = fs.readFileSync(transcript, 'utf8');
   assert.match(recorded, /> look\n/);
