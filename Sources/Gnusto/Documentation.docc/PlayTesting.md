@@ -38,7 +38,7 @@ That line is the whole point of the exercise. Reading a transcript, you cannot t
 
 `turn=cost|free` is the other half. **Counting commands is not counting turns**: a parse failure and a meta verb are free, and a stub verb is not. Four commands can be three turns, and a tester who assumed four is now reasoning about the wrong minute of a timed game. See <doc:TheTurnPipeline>.
 
-The variable is read by ``GameMain`` and handed to ``REPL`` as an argument rather than read from the environment down inside the engine, so `GNUSTO_STATUS=1 swift test` changes nothing. A ``GameContent`` or ``GamePlugin`` can contribute its own field — see <doc:ContentBundles>.
+The variable is read by `TerminalLaunch` and handed to ``REPL`` as an argument rather than read from the environment down inside the engine, so `GNUSTO_STATUS=1 swift test` changes nothing. A ``GameContent`` or ``GamePlugin`` can contribute its own field — see <doc:ContentBundles>.
 
 ## Replaying a script
 
@@ -59,9 +59,9 @@ A package written by `bin/new-game` has all of them: `bin/playtest-replay`, `bin
 
 ## Serving the game to an agent
 
-Every Gnusto game is also a play-test server. ``GameMain`` answers `--mcp` — or the `GNUSTO_MCP` environment variable, for a client that can set an environment but not an argument vector — by speaking the Model Context Protocol over stdio instead of playing. An agent opens a session, takes turns, reads back its own transcript, and is told what the game has shown it that it never followed up.
+Every Gnusto game is also a play-test server. `TerminalLaunch` answers `--mcp` — or the `GNUSTO_MCP` environment variable, for a client that can set an environment but not an argument vector — by speaking the Model Context Protocol over stdio instead of playing. An agent opens a session, takes turns, reads back its own transcript, and is told what the game has shown it that it never followed up.
 
-Nothing in your game has to know about this. The switch lives in the ``GameMain`` protocol extension every game already conforms to, so a game written by somebody who has never read this page becomes a server for the cost of a flag.
+Nothing in your game has to know about this. The generated terminal launcher calls the engine's trait-safe `PlaytestLaunch` facade, so an importable game becomes a development server without changing its concrete type.
 
 ### Leaving it out
 
@@ -148,6 +148,5 @@ Under `.context/playtest`, or wherever `GNUSTO_PLAYTEST_DIR` points. `GNUSTO_MCP
 - <doc:PlayTestingYourOwnGame>
 - <doc:TheTurnPipeline>
 - <doc:SharingYourGame>
-- ``GameMain``
 - ``REPL``
 - ``ScriptedIOHandler``

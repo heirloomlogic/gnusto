@@ -19,8 +19,7 @@ extension TraitKey<Bool> {
 /// exits and puzzles that cross between them. Everything else about each region
 /// is that region's own concern; the host only owns what genuinely spans two.
 /// A full 350-point playthrough is exercised end-to-end by `Zork1WalkthroughTests`.
-@main
-struct Zork1: Game, GameMain {
+struct Zork1: Game {
     let title = "Zork I: The Great Underground Empire"
     let tagline = "Nineteen treasures wait in the dark beneath a white house."
 

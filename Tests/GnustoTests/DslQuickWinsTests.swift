@@ -4,7 +4,7 @@ import Testing
 @testable import Gnusto
 
 /// Task 7 — four small DSL ergonomic wins: `require`, `TraitKey`, closure
-/// descriptions, and `GameMain`.
+/// descriptions, and the scripted REPL.
 struct DslQuickWinsTests {
     // MARK: - require
 
@@ -171,16 +171,12 @@ struct DslQuickWinsTests {
         }
     }
 
-    // MARK: - GameMain
+    // MARK: - Scripted REPL
 
-    @Test func gameMainCompilesAndDrivesAScriptedIOHandler() async throws {
-        // Compile-level: `MainableGame: Game, GameMain` in the fixture file
-        // is the real assertion. Here, exercise the factored `run` function
-        // (what `main()` calls after bootstrap) with a ScriptedIOHandler,
-        // since invoking `main()` itself needs a live console.
-        let world = try cachedWorld(MainableGame())
+    @Test func replDrivesAScriptedIOHandler() async throws {
+        let world = try cachedWorld(ScriptedLoopGame())
         let io = ScriptedIOHandler(lines: ["look", "quit"])
-        await MainableGame.run(world: world, io: io)
+        await REPL(world: world, io: io).run()
         #expect(io.transcript.contains("Welcome."))
         #expect(io.transcript.contains("Room"))
     }

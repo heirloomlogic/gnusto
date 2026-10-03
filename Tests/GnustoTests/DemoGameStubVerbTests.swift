@@ -78,7 +78,7 @@ struct DemoGameStubVerbTests {
     /// verbs to keep the original's voice, all of them silent since the stub
     /// carve-out, plus `action(.score)`, which shadows real behavior — score is
     /// a meta intent, so no rule can reach it and the override is the only
-    /// seam. `GameMain` prints the report to stderr before the intro, so that
+    /// seam. the terminal launcher prints the report to stderr before the intro, so that
     /// last one reached every player who ran the game in a terminal; the row
     /// now says `overriding: true` and the set is empty. (#502)
     @Test func theDemoGamesBootWithNoWarnings() throws {

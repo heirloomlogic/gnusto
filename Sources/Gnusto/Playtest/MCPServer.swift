@@ -253,10 +253,10 @@ enum PlaytestServer {
 
     /// Serves MCP on stdio until end of input.
     ///
-    /// Called from `GameMain.main()` *before the world is built*, which has
+    /// Called from `PlaytestLaunch.serve` *before the world is built*, which has
     /// three consequences worth stating out loud:
     ///
-    /// - `defaultIOHandler` is never called, so `TerminalIOHandler` never runs
+    /// - The terminal handler is never constructed, so `TerminalIOHandler` never runs
     ///   its `init` and never enters the alternate screen buffer. A server
     ///   that had painted a full-screen UI over the client's terminal would be
     ///   memorable.
@@ -277,7 +277,7 @@ enum PlaytestServer {
     ///     registry through the tool table: `GNUSTO_MCP_MAX_SESSIONS` caps how
     ///     many sessions hold a live world, and `GNUSTO_PLAYTEST_DIR` moves
     ///     where they write. It is a parameter rather than a `ProcessInfo`
-    ///     lookup because `GameMain` is the composition root and every other
+    ///     lookup because the terminal launcher is the composition root and every other
     ///     environment read in the engine goes through it.
     static func serve(game: () -> any Game, environment: [String: String]) async {
         let protocolOut = claimProtocolChannel()

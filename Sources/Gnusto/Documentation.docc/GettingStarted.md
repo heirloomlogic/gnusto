@@ -8,38 +8,35 @@ Build and run your first text adventure, one piece at a time.
 
 By the end of this guide you will have a game with two rooms, one object, one rule, and a test that plays it. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
 
-Prefer to start from something that already runs? `bin/new-game Zwank ~/dev/Zwank` writes a complete starter package named for your game — then skim this guide for the *why* behind each piece.
+Prefer to start from something that already runs? `bin/new-game Zwank ~/dev/Zwank --dep-path /path/to/Gnusto` writes a complete starter package named for your game — then skim this guide for the *why* behind each piece.
 
 ## Add Gnusto to your package
 
-These articles describe the engine on `main`, so pin the newest release: `bin/new-game` reads it from the repository's tags, and if a name an article uses fails to compile in your package, the pin is behind the article. Building against a checkout instead (`bin/new-game --dep-path`) cannot fall behind.
+These articles describe the coordinated packaging migration. Until a compatible Gnusto release includes `PackagedGame` and the generated build tools, point `bin/new-game` at this checkout with `--dep-path`. The generator refuses an incompatible release before writing a package.
 
-Add Gnusto as a dependency, list it in your executable target, and give the test target the `GnustoTestSupport` product (it links the toolchain's Testing library, so it belongs in test targets only):
+Add Gnusto to your game library and keep `GnustoTestSupport` in its test target. A generated starter supplies this manifest, its game catalog and tool shims:
 
 ```swift
 // swift-tools-version: 6.2
 import PackageDescription
 
+let forwarded: Set<Package.Dependency.Trait> = [
+    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))
+]
 let package = Package(
     name: "MyGame",
     platforms: [.macOS(.v15)],
-    dependencies: [
-        .package(url: "https://github.com/HeirloomLogic/Gnusto", from: "0.6.0")
+    products: [.library(name: "MyGame", targets: ["MyGame"])],
+    traits: [
+        .trait(name: "Playtest", description: "Enable development MCP launch."),
+        .default(enabledTraits: ["Playtest"]),
     ],
+    dependencies: [.package(name: "Gnusto", path: "/path/to/Gnusto", traits: forwarded)],
     targets: [
-        .executableTarget(
-            name: "MyGame",
-            dependencies: [
-                .product(name: "Gnusto", package: "Gnusto")
-            ]
-        ),
-        .testTarget(
-            name: "MyGameTests",
-            dependencies: [
-                "MyGame",
-                .product(name: "GnustoTestSupport", package: "Gnusto"),
-            ]
-        ),
+        .target(name: "MyGame", dependencies: [.product(name: "Gnusto", package: "Gnusto")]),
+        .testTarget(name: "MyGameTests", dependencies: [
+            "MyGame", .product(name: "GnustoTestSupport", package: "Gnusto"),
+        ]),
     ]
 )
 ```
@@ -85,29 +82,24 @@ The `map` block is where geography and starting positions live. `player.starts(i
 
 ## Run it
 
-Two lines turn a game value into a running session:
-
-```swift
-let world = try GameWorld(game: MyGame())
-await REPL(world: world, io: ConsoleIOHandler()).run()
-```
-
-``GameWorld`` validates the game and builds its initial state up front — a mistake like an exit to an undeclared room is caught here, as a thrown ``BootstrapError``, not at runtime. ``REPL`` runs the prompt/parse/perform/print loop, and ``ConsoleIOHandler`` reads from and writes to the terminal.
-
-Wrap it in a `do`/`catch` in your `main.swift`:
+Export the game factory from `Sources/MyGame/Packaged.swift`:
 
 ```swift
 import Gnusto
 
-do {
-    let world = try GameWorld(game: MyGame())
-    await REPL(world: world, io: ConsoleIOHandler()).run()
-} catch {
-    print("Couldn't start the game: \(error)")
-}
+/// The importable game used by generated front ends.
+public let game = PackagedGame { MyGame() }
 ```
 
-Run `swift run`, and you can already `look` around and try to move.
+The concrete game stays internal. `gnusto-games.json` identifies the package, library product, module and factory:
+
+```json
+{"version":1,"package":"MyGame","games":[{"name":"MyGame","product":"MyGame","module":"MyGame","symbol":"game"}]}
+```
+
+Run `bin/run-game MyGame`, and you can already `look` around and try to move. The script generates an ignored executable package combining your game library with [GnustoTerminal](https://github.com/HeirloomLogic/GnustoTerminal). Neither your game nor Gnusto depends on a front end. During this coordinated prerelease, set `GNUSTO_TERMINAL_PATH` to the companion checkout if its matching revision is not yet published.
+
+``GameWorld`` validates the game before play; a bad exit throws ``BootstrapError``. The terminal launcher's ``REPL`` drives the prompt/parse/perform/print loop. Custom clients can drive the world directly or provide their own ``IOHandler``; see <doc:CustomFrontEnds>.
 
 ## Add a second room and connect them
 

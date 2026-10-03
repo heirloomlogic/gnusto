@@ -252,7 +252,7 @@ public actor GameWorld {
             ?? SaveStore.defaultDirectory(forGameTitled: definition.title)
         // An injected directory counts either way it arrives: the initializer
         // argument, or `GNUSTO_SAVE_DIR`, which replay tools like
-        // `bin/playtest-replay` set for a world built through `GameMain` with
+        // `bin/playtest-replay` set for a world built through the terminal launcher with
         // no `saveDirectory:` of its own.
         self.savePathsRestricted =
             saveDirectory != nil || SaveStore.directoryIsInjected()

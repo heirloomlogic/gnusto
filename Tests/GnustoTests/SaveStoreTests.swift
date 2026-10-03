@@ -365,7 +365,7 @@ struct SaveStoreTests {
     // MARK: directoryIsInjected
 
     /// `GNUSTO_SAVE_DIR` set to a non-empty value is what makes a session
-    /// program-driven, and so slot-only — including the `GameMain` path where
+    /// program-driven, and so slot-only — including the the terminal launcher path where
     /// no `saveDirectory:` argument was passed and the injection is invisible
     /// to the initializer.
     @Test func directoryIsInjectedReadsTheEnvOverride() {

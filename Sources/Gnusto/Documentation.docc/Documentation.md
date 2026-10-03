@@ -2,10 +2,7 @@
 
 An engine for writing interactive fiction in Swift.
 
-@Metadata {
-    @DisplayName("Gnusto")
-    @TitleHeading("Framework")
-}
+@Metadata { @DisplayName("Gnusto") @TitleHeading("Framework") }
 
 ## Overview
 
@@ -19,7 +16,7 @@ Each line the player types is parsed into a ``Command`` and run through a fixed 
 
 ### Which article to read
 
-<doc:GettingStarted> first, then the **Lighthouse** demo (`Sources/Lighthouse/`, `swift run Lighthouse`) — one small winnable game that exercises containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins. Most of the guides below link back to it.
+<doc:GettingStarted> first, then the **Lighthouse** demo (`Sources/Lighthouse/`, `bin/run-game Lighthouse`) — one small winnable game that exercises containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins. Most of the guides below link back to it.
 
 After that the articles are a reference, not a sequence: read <doc:WritingRules> and <doc:WorldMapAndExits> when you are building, <doc:TestingYourGame> and <doc:PlayTesting> when you want to know whether it works, <doc:PlayTestingYourOwnGame> when you are ready to run a round, and <doc:BootstrapDiagnostics> when the game refuses to start.
 
@@ -207,10 +204,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``StatusLine``
 - ``GameStatus``
 - ``REPL``
-- ``GameMain``
 - ``IOHandler``
-- ``ConsoleIOHandler``
-- ``TerminalIOHandler``
 - ``ScriptedIOHandler``
 
 ### Writing a Front End

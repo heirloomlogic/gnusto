@@ -36,8 +36,7 @@ extension Intent {
 ///
 /// Fully original title, world, and prose. The mechanics here are the general
 /// survival and companion paradigms, not any specific game's.
-@main
-struct KindlyDeep: Game, GameMain {
+struct KindlyDeep: Game {
     let title = "The Kindly Deep"
     let tagline = "Two went down; two come up."
     let maxScore = 25

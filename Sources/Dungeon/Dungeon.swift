@@ -19,8 +19,7 @@ import GnustoScoring
 /// their crossings to ``rules`` and ``map``, and raises ``maxScore`` by exactly
 /// what it makes payable — see the note on that property. Nothing here has to
 /// move for a region to land.
-@main
-struct Dungeon: Game, GameMain {
+struct Dungeon: Game {
     let title = "Dungeon"
     let tagline = "The Great Underground Empire, as it stood on a PDP-10."
 

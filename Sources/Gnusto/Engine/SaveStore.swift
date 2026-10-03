@@ -292,7 +292,7 @@ enum SaveStore {
 
     /// Whether the given environment injects a saves directory via
     /// `GNUSTO_SAVE_DIR` — the way replay tools and scripted drivers point a
-    /// world they built through `GameMain` at a scratch directory. Such a
+    /// world they built through the terminal launcher at a scratch directory. Such a
     /// session is program-driven, not a human at a terminal, and its save
     /// prompts are slot-only; see `GameWorld.savePathsRestricted`.
     ///

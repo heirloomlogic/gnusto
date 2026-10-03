@@ -19,7 +19,7 @@ struct SeedRequestTests {
     }
 
     /// Empty means unset, matching `GNUSTO_TRANSCRIPT`'s `!value.isEmpty`
-    /// guard: `GNUSTO_SEED= swift run` should behave as if it were never typed.
+    /// guard: `GNUSTO_SEED= bin/run-game` should behave as if it were never typed.
     @Test(arguments: ["", "  \n", "\t"])
     func aBlankValueLeavesTheSeedUnset(value: String) {
         #expect(SeedRequest(environment: ["GNUSTO_SEED": value]) == .unset)

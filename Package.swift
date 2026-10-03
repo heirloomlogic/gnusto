@@ -23,14 +23,16 @@ let isDevBuild = FileManager.default.fileExists(atPath: devSentinel)
 // Persnicket, it is gated behind the dev sentinel so it doesn't leak into
 // downstream consumers' dependency graphs; the Documentation CI workflow creates
 // `.dev-tooling` before generating the docs.
-let devDependencies: [Package.Dependency] = isDevBuild
+let devDependencies: [Package.Dependency] =
+    isDevBuild
     ? [
         .package(url: "https://github.com/HeirloomLogic/Persnicket", from: "2.1.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.5.0"),
     ]
     : []
 
-let devPlugins: [Target.PluginUsage] = isDevBuild
+let devPlugins: [Target.PluginUsage] =
+    isDevBuild
     ? [.plugin(name: "Persnoop", package: "Persnicket")]
     : []
 
@@ -49,7 +51,7 @@ let package = Package(
     name: "Gnusto",
     // The iOS floor is `Synchronization.Mutex`, the same thing that sets the
     // macOS one; nothing else in the engine is platform-bound. Why an iOS front
-    // end works and what it has to supply instead of `GameMain` is the
+    // end works and what it has to supply for its presentation is the
     // CustomFrontEnds article. `.github/workflows/ios.yml` builds the package
     // for iOS on every PR, so the claim cannot rot unseen — that job and this
     // line are a matched pair.
@@ -67,24 +69,24 @@ let package = Package(
         .library(name: "GnustoClock", targets: ["GnustoClock"]),
         .library(name: "GnustoConversation", targets: ["GnustoConversation"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
-        .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
-        .executable(name: "Lighthouse", targets: ["Lighthouse"]),
-        .executable(name: "Zork1", targets: ["Zork1"]),
-        .executable(name: "Dungeon", targets: ["Dungeon"]),
-        .executable(name: "Gramarye", targets: ["Gramarye"]),
-        .executable(name: "Fulminate", targets: ["Fulminate"]),
-        .executable(name: "KindlyDeep", targets: ["KindlyDeep"]),
+        .library(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
+        .library(name: "Lighthouse", targets: ["Lighthouse"]),
+        .library(name: "Zork1", targets: ["Zork1"]),
+        .library(name: "Dungeon", targets: ["Dungeon"]),
+        .library(name: "Gramarye", targets: ["Gramarye"]),
+        .library(name: "Fulminate", targets: ["Fulminate"]),
+        .library(name: "KindlyDeep", targets: ["KindlyDeep"]),
     ],
     // `Sources/Gnusto/Playtest/` is a second program — an MCP server that hands
     // an agent a live world over stdio — and it is larger than the engine it
-    // rides in. Every game is `@main struct G: Game, GameMain`, so it used to
+    // rides in. Generated launchers compose the game library and front end; it used to
     // compile into all of them and switch on from an environment variable, with
     // no way for an author to say no. The trait is that word.
     //
-    // Default **on**, because the point of putting the switch in `GameMain` was
+    // Default **on**, because the point of enabling the launch switch by default was
     // that a game whose author has never heard of the harness is still
     // play-testable for the cost of one `.mcp.json` entry. Off, the directory
-    // does not compile and `PlaytestMode` answers `.unavailable`.
+    // does not compile and `PlaytestLaunch` reports `.unavailable`.
     //
     // SwiftPM passes an enabled trait's name to the compiler as a conditional
     // compilation flag, so the gate in the sources is `#if Playtest` and there
@@ -156,7 +158,7 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
-        .executableTarget(
+        .target(
             name: "CloakOfDarkness",
             dependencies: ["Gnusto", "GnustoScoring"],
             plugins: devPlugins
@@ -166,12 +168,12 @@ let package = Package(
         // doors, fuses and daemons, a roaming actor, `@Global` state, a
         // content bundle, and the scoring/actor plugins — in one buildable,
         // transcript-tested place. Sits between CloakOfDarkness and Zork1.
-        .executableTarget(
+        .target(
             name: "Lighthouse",
             dependencies: ["Gnusto", "GnustoActors", "GnustoScoring"],
             plugins: devPlugins
         ),
-        .executableTarget(
+        .target(
             name: "Zork1",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
@@ -185,7 +187,7 @@ let package = Package(
         // charter, the mechanics contract and the prose rule are in
         // `docs/games/dungeon.md`, and `FIDELITY.md`'s Dungeon section states
         // that prose rule before any region entry.
-        .executableTarget(
+        .target(
             name: "Dungeon",
             dependencies: [
                 "Gnusto", "GnustoActors", "GnustoDangerousDark", "GnustoScoring",
@@ -196,7 +198,7 @@ let package = Package(
         // The spellcasting demo: a small original game that exercises all four
         // magic paradigms (cantrip, memorized, energy, scroll) via
         // GnustoSpellcasting — the "prove the engine hosts a spell system" game.
-        .executableTarget(
+        .target(
             name: "Gramarye",
             dependencies: ["Gnusto", "GnustoScoring", "GnustoSpellcasting"],
             plugins: devPlugins
@@ -205,7 +207,7 @@ let package = Package(
         // suspects keep a timetable and their movements are the evidence — the
         // "prove the engine hosts a clock-driven mystery" game. Design notes
         // and the story's mechanics contract live in `docs/games/fulminate.md`.
-        .executableTarget(
+        .target(
             name: "Fulminate",
             dependencies: ["Gnusto", "GnustoClock", "GnustoConversation"],
             plugins: devPlugins
@@ -213,7 +215,7 @@ let package = Package(
         // The survival demo: two failing clocks (thirst, fatigue) and a mule
         // who follows, is parked, and rejoins — issue #39's companion/survival
         // substrate, via GnustoActors and GnustoScoring.
-        .executableTarget(
+        .target(
             name: "KindlyDeep",
             dependencies: ["Gnusto", "GnustoActors", "GnustoScoring"],
             plugins: devPlugins

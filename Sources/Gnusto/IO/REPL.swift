@@ -12,11 +12,11 @@ public struct REPL: Sendable {
     private let world: GameWorld
     private let io: any IOHandler
     /// A transcript file to record from the first turn, or `nil` to start idle
-    /// (the tester can still begin recording with `script`). Set by `GameMain`
+    /// (the tester can still begin recording with `script`). Set by the terminal launcher
     /// from `GNUSTO_TRANSCRIPT`; tests pass it explicitly.
     private let transcriptURL: URL?
     /// The `[status]` footer to append to every turn, or `nil` for none. Set by
-    /// `GameMain` from `GNUSTO_STATUS`; tests pass it explicitly.
+    /// the terminal launcher from `GNUSTO_STATUS`; tests pass it explicitly.
     ///
     /// Defaulting to `nil` is the whole safety argument: `play(_:_:)` builds its
     /// REPL without the argument, so no environment variable can make the suite's

@@ -62,9 +62,9 @@ struct PipeHandler: IOHandler {
 }
 ```
 
-That is ``ConsoleIOHandler`` in full, minus the `<br>` translation below. The other three — ``IOHandler/showStatus(_:)``, ``IOHandler/updateCompletions(_:)`` and ``IOHandler/finish(_:)`` — default to doing nothing, which is the right answer for a handler whose output is a stream rather than a screen. ``IOHandler/wantsCompletions`` defaults to `false` beside them: the candidates cost a scope walk and a read of the save directory after every turn, so the REPL computes them only for a handler that says it will use them, and only ``TerminalIOHandler`` does.
+That is `ConsoleIOHandler` in full, minus the `<br>` translation below. The other three — ``IOHandler/showStatus(_:)``, ``IOHandler/updateCompletions(_:)`` and ``IOHandler/finish(_:)`` — default to doing nothing, which is the right answer for a handler whose output is a stream rather than a screen. ``IOHandler/wantsCompletions`` defaults to `false` beside them: the candidates cost a scope walk and a read of the save directory after every turn, so the REPL computes them only for a handler that says it will use them, and only `TerminalIOHandler` does.
 
-The protocol is `Sendable`, so a handler that keeps state keeps it behind a lock. ``ScriptedIOHandler`` and ``TerminalIOHandler`` both box theirs in a `Mutex`.
+The protocol is `Sendable`, so a handler that keeps state keeps it behind a lock. ``ScriptedIOHandler`` and `TerminalIOHandler` both box theirs in a `Mutex`.
 
 ### Rendering the text you are handed
 
@@ -98,7 +98,7 @@ A front end with no quit gesture — a pipe, a socket — never returns `.quit`,
 
 ## The status line
 
-``StatusLine`` is the location name, the score and the move count, handed over after every turn. It also carries the location's ``EntityID``, which is not for display: a display name is prose and two rooms may share one, so anything *recording* where the player has been needs the key the room roster is in. ``TerminalIOHandler`` paints it as a reverse-video bar; everything else ignores it.
+``StatusLine`` is the location name, the score and the move count, handed over after every turn. It also carries the location's ``EntityID``, which is not for display: a display name is prose and two rooms may share one, so anything *recording* where the player has been needs the key the room roster is in. `TerminalIOHandler` paints it as a reverse-video bar; everything else ignores it.
 
 ``StatusLine/init(locationID:locationName:score:moves:)`` also lets an external renderer construct an immutable status value without importing engine internals.
 
@@ -126,17 +126,17 @@ The candidate assembly runs on the `GameWorld` actor and ``REPL`` is what calls 
 
 ``IOHandler/finish(_:)`` is called once, after the last turn's output has already been written, and only when the game actually reached an ending. A bare end of input stops the loop without it.
 
-The argument is the ending text — the game's last words, not the last line the handler printed. A stream-backed handler ignores it, because its output already persists. ``TerminalIOHandler`` uses it for the one thing an alternate screen buffer makes hard: it holds the final frame until the player presses a key, restores the primary screen, and reprints the ending there, so the last paragraph of the game survives into the shell's scrollback instead of vanishing with the buffer.
+The argument is the ending text — the game's last words, not the last line the handler printed. A stream-backed handler ignores it, because its output already persists. `TerminalIOHandler` uses it for the one thing an alternate screen buffer makes hard: it holds the final frame until the player presses a key, restores the primary screen, and reprints the ending there, so the last paragraph of the game survives into the shell's scrollback instead of vanishing with the buffer.
 
-## The three handlers that ship
+## Shared and terminal handlers
 
 | Handler | Output | Chosen when |
 |---|---|---|
-| ``TerminalIOHandler`` | Full-screen: status bar, reflow-on-resize, line editor with history, PageUp/PageDown scrollback | stdin **and** stdout are both an interactive terminal |
-| ``ConsoleIOHandler`` | `print` to stdout, `readLine` from stdin | anything else — piped input, redirected output, CI |
+| `TerminalIOHandler` | Full-screen: status bar, reflow-on-resize, line editor with history, PageUp/PageDown scrollback | stdin **and** stdout are both an interactive terminal |
+| `ConsoleIOHandler` | `print` to stdout, `readLine` from stdin | anything else — piped input, redirected output, CI |
 | ``ScriptedIOHandler`` | An in-memory transcript | constructed by hand; never chosen automatically |
 
-``GameMain`` picks between the first two with an `isatty` check on both descriptors, and `GNUSTO_PLAIN` forces the plain one. `GNUSTO_PLAIN` is a flag rather than a setting, so any value at all turns it on, including an empty one. The TTY check is what keeps a transcript test, a `bin/playtest-replay` run and a CI job on the plain path without any of them having to ask.
+`TerminalLaunch` in [GnustoTerminal](https://github.com/HeirloomLogic/GnustoTerminal) picks between the first two with an `isatty` check on both descriptors, and `GNUSTO_PLAIN` forces the plain one. `GNUSTO_PLAIN` is a flag rather than a setting, so any value at all turns it on, including an empty one. The TTY check is what keeps a transcript test, a `bin/playtest-replay` run and a CI job on the plain path without any of them having to ask.
 
 The terminal handler is around 980 lines of hand-rolled `termios` and ANSI with no dependencies. The console handler is 25. Both satisfy the same protocol, which is the argument for the protocol.
 
@@ -152,7 +152,7 @@ let io = ScriptedIOHandler(inputs: [.line("north"), .line("take lamp"), .quit])
 
 ## Driving the loop yourself
 
-``REPL`` is the outer loop, and it holds the only `await` in a Gnusto game:
+``REPL`` is the engine-owned outer loop:
 
 ```swift
 let world = try GameWorld(game: MyGame())
@@ -161,17 +161,17 @@ await REPL(world: world, io: MyHandler()).run()
 
 Two tester conveniences are filtered inside it, ahead of the parser. A line beginning `//` or `#` is a comment: it lands in the transcript and re-prompts, and never reaches ``GameWorld/perform(_:)``, so no fuse or daemon advances. `script` and `unscript` toggle recording the session to a file. Both are front-end concerns by construction — the world simulation cannot see them, so a tester's notes cost no turns.
 
-``REPL/init(world:io:transcriptURL:status:environment:)`` takes two optional output settings. `transcriptURL` records from the first turn. `status` appends the one-line `[status] room=… | moves=… | score=… | turn=cost|free` footer described in `docs/playtesting.md`. Both default to `nil`, and that default is the safety argument: the test suite builds its REPLs without either argument, so no environment variable can enable recording at launch or add a status footer. ``GameMain`` is the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and passes what it found.
+``REPL/init(world:io:transcriptURL:status:environment:)`` takes two optional output settings. `transcriptURL` records from the first turn. `status` appends the one-line `[status] room=… | moves=… | score=… | turn=cost|free` footer described in `docs/playtesting.md`. Both default to `nil`, and that default is the safety argument: the test suite builds its REPLs without either argument, so no environment variable can enable recording at launch or add a status footer. `TerminalLaunch` is the composition root that reads `GNUSTO_TRANSCRIPT` and `GNUSTO_STATUS` and passes what it found.
 
 The `environment` argument defaults to the process environment. A mid-session `script` command uses its `GNUSTO_TRANSCRIPT_DIR` value to resolve a bare transcript name; pass an explicit environment to keep those recordings in a test's own directory.
 
-If your game type conforms to ``GameMain``, all of this is already wired — `@main struct MyGame: Game, GameMain {}` is a complete executable. Write your own entry point when you need a handler `GameMain` would not have picked, or a world built from a ``PreparedGame`` shared across several sessions.
+`bin/run-game <Game>` wires the standard terminal launcher to your library's `game` factory through an ignored generated package. A custom executable can instead supply its own handler, or share one ``PreparedGame`` across several worlds. Maintained game libraries contain no executable entry points.
 
 ## What the engine needs from the platform
 
-Nothing in the engine imports anything but Foundation, `Synchronization` (three files) and `Dispatch` (one). Five files reach for platform C, and all five do it behind `#if canImport(Darwin)` / `#elseif canImport(Glibc)`: the terminal handler, the `isatty` check in ``GameMain``, the MCP play-test server, its stdio transport, and a thread-priority hint in `Engine/DeepStack.swift`. Nothing in the parser, the turn pipeline, the rule table or the world state touches any of it.
+The engine uses Foundation, `Synchronization` and `Dispatch`. Its platform C calls stay behind Darwin/Glibc guards in the MCP transport and thread-priority support. Terminal byte decoding, raw mode, ANSI rendering and process launch belong to GnustoTerminal, which supports macOS 15 and Linux.
 
-The library therefore compiles for iOS unchanged, and the manifest declares `.iOS(.v18)`, so that is a configuration this package supports and builds rather than a line you add yourself. The floor is `Synchronization.Mutex`, the same thing that sets the macOS 15 floor, and CI builds every product for `generic/platform=iOS` on each pull request. The terminal handler compiles there and is useless there; a front end that never constructs one never pays for it. That is all an iOS app does differently: it supplies its own handler, because ``GameMain``'s `isatty` check would hand it a console nobody reads.
+Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keeps the terminal package out of its dependency graph. An iOS app drives ``GameWorld`` directly or supplies its own handler. CI builds Gnusto's library products for iOS; terminal launchers are separate generated packages.
 
 ## Topics
 
@@ -188,14 +188,11 @@ The library therefore compiles for iOS unchanged, and the manifest declares `.iO
 - ``GameStatus``
 - ``CompletionCandidates``
 - ``CompletionCandidates/Context``
-- ``TerminalIOHandler``
-- ``ConsoleIOHandler``
 - ``ScriptedIOHandler``
 - ``ScriptedIOHandler/transcript``
 - ``REPL``
 - ``REPL/init(world:io:transcriptURL:status:environment:)``
 - ``REPL/run()``
-- ``GameMain``
 - ``GameWorld``
 - ``GameWorld/begin()``
 - ``GameWorld/perform(_:)``
