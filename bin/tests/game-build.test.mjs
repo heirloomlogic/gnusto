@@ -18,7 +18,7 @@ function fixture(t, {url = false} = {}) {
   fs.writeFileSync(path.join(packageRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}\n.package(name: "Gnusto", ${url ? 'url: "https://github.com/HeirloomLogic/Gnusto", branch: "main"' : `path: ${swiftStringLiteral(engineRoot)}`}, traits: forwarded)`);
   fs.writeFileSync(path.join(packageRoot, 'gnusto-games.json'), JSON.stringify({version: 1, package: 'Story', games: [{name: 'Story', product: 'StoryLibrary', module: 'Story', symbol: 'game'}]}));
   const swift = path.join(root, 'fake-swift');
-  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){\n const scratch=a[a.indexOf('--scratch-path')+1], pkg=a[a.indexOf('--package-path')+1];fs.mkdirSync(scratch,{recursive:true});const file=path.join(scratch,'workspace-state.json');\n const workspace=fs.existsSync(file)?JSON.parse(fs.readFileSync(file)):{object:{dependencies:[]}};\n if(a.includes('edit')){\n  const id=a[a.indexOf('edit')+1];const remote=id==='gnustoterminal';const location='https://github.com/HeirloomLogic/'+(remote?'GnustoTerminal':'Gnusto');\n  const dependency={packageRef:{identity:id,kind:'remoteSourceControl',location},state:{name:'edited',path:remote?null:a[a.indexOf('--path')+1]}};\n  if(remote){dependency.subpath=id;dependency.basedOn={packageRef:dependency.packageRef,state:{name:'sourceControlCheckout',checkoutState:{branch:'main',revision:'a'.repeat(40)}}};const dir=path.join(pkg,'Packages',id);fs.mkdirSync(path.join(dir,'.git'),{recursive:true});fs.writeFileSync(path.join(dir,'.git/HEAD'),'a'.repeat(40));fs.writeFileSync(path.join(dir,'Package.swift'),'traits: [.trait(name: "Playtest")]');fs.writeFileSync(path.join(dir,'source.swift'),'BeforeEdit');}\n  workspace.object.dependencies=workspace.object.dependencies.filter(d=>d.packageRef.identity!==id);workspace.object.dependencies.push(dependency);fs.writeFileSync(file,JSON.stringify(workspace));\n }else{\n  if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}if(process.env.LOSE_FRONTEND_EDIT){workspace.object.dependencies.find(d=>d.packageRef.identity==='gnustoterminal').state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}\n  const edited=workspace.object.dependencies.find(d=>d.packageRef.identity==='gnusto');\n  console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:edited?.state.path||process.env.GNUSTO_ENGINE_PATH},...workspace.object.dependencies.filter(d=>d.packageRef.identity==='gnustoterminal').map(d=>({identity:d.packageRef.identity,name:'GnustoTerminal',path:path.join(pkg,'Packages',d.subpath)}))]}));\n }process.exit(0);\n}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_FRONTEND){const pkg=a[a.indexOf('--package-path')+1];fs.writeFileSync(path.join(pkg,'Packages/gnustoterminal/source.swift'),'AfterEdit');} if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){\n const scratch=a[a.indexOf('--scratch-path')+1], pkg=a[a.indexOf('--package-path')+1];fs.mkdirSync(scratch,{recursive:true});const file=path.join(scratch,'workspace-state.json');\n const workspace=fs.existsSync(file)?JSON.parse(fs.readFileSync(file)):{object:{dependencies:[]}};\n if(a.includes('edit')){\n  const id=a[a.indexOf('edit')+1];const remote=id==='gnustoterminal';const location='https://github.com/HeirloomLogic/'+(remote?'GnustoTerminal':'Gnusto');\n  const dependency={packageRef:{identity:id,kind:'remoteSourceControl',location},state:{name:'edited',path:remote?null:a[a.indexOf('--path')+1]}};\n  if(remote){dependency.subpath=id;dependency.basedOn={packageRef:dependency.packageRef,state:{name:'sourceControlCheckout',checkoutState:{branch:'main',revision:'a'.repeat(40)}}};const dir=path.join(pkg,'Packages',id);fs.mkdirSync(path.join(dir,'.git'),{recursive:true});fs.writeFileSync(path.join(dir,'.git/HEAD'),'a'.repeat(40));fs.writeFileSync(path.join(dir,'Package.swift'),'traits: [.trait(name: "Playtest")]');fs.writeFileSync(path.join(dir,'source.swift'),'BeforeEdit');}\n  workspace.object.dependencies=workspace.object.dependencies.filter(d=>d.packageRef.identity!==id);workspace.object.dependencies.push(dependency);fs.writeFileSync(file,JSON.stringify(workspace));\n }else{\n  if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}if(process.env.LOSE_FRONTEND_EDIT){workspace.object.dependencies.find(d=>d.packageRef.identity==='gnustoterminal').state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}\n  const edited=workspace.object.dependencies.find(d=>d.packageRef.identity==='gnusto');\n  console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:edited?.state.path||process.env.GNUSTO_ENGINE_PATH},...workspace.object.dependencies.filter(d=>d.packageRef.identity==='gnustoterminal').map(d=>({identity:d.packageRef.identity,name:'GnustoTerminal',path:path.join(pkg,'Packages',d.subpath)}))]}));\n }process.exit(0);\n}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_DEPENDENCY){if(process.env.DELETE_DEPENDENCY)fs.unlinkSync(process.env.MUTATE_DEPENDENCY);else fs.writeFileSync(process.env.MUTATE_DEPENDENCY,'AfterEdit');} if(process.env.MUTATE_FRONTEND){const pkg=a[a.indexOf('--package-path')+1];fs.writeFileSync(path.join(pkg,'Packages/gnustoterminal/source.swift'),'AfterEdit');} if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),a.includes('--disable-default-traits') ? '#!/usr/bin/env node\\n' + (process.env.PROBE_MODE === 'enabled' ? 'process.exit(1)' : 'console.log("Gnusto.PlaytestLaunchError.unavailable")') : process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
   fs.chmodSync(swift, 0o755);
   const environment = {...process.env, LOG: path.join(root, 'invocations'), GNUSTO_SWIFT_BUILD_FLAGS: '["--jobs","2"]'};
   const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: loadGames(packageRoot).games[0], mode: 'development'});
@@ -399,4 +399,74 @@ test('a graph that loses frontend edit provenance is refused before compilation'
   const spec = makeBuildSpec({...f, terminalRoot: null, game: 'Story'});
   await assert.rejects(buildGame(spec, {...f, environment: {...f.environment, LOSE_FRONTEND_EDIT: '1'}}), /refusing to compile/);
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 0);
+});
+
+
+function recordAdditionalDependency(f, kind) {
+  const root = path.join(f.root, `separate-${kind}`);
+  fs.mkdirSync(path.join(root, 'Sources'), {recursive: true});
+  fs.writeFileSync(path.join(root, 'Sources/shared.swift'), 'BeforeEdit');
+  fs.writeFileSync(path.join(root, 'resource.txt'), 'BeforeResource');
+  fs.mkdirSync(f.spec.scratchPath, {recursive: true});
+  fs.writeFileSync(path.join(f.spec.scratchPath, 'workspace-state.json'), JSON.stringify({object: {dependencies: [{packageRef: {identity: 'shared', kind: kind === 'edited' ? 'remoteSourceControl' : 'fileSystem', location: kind === 'edited' ? 'https://example.invalid/shared' : root}, state: {name: kind, path: root}, subpath: 'shared'}]}}));
+  return root;
+}
+for (const kind of ['fileSystem', 'edited']) {
+  test(`${kind} dependency source, resource and deletion invalidate warm caches without warm Swift`, async t => {
+    const f = fixture(t);
+    const dependency = recordAdditionalDependency(f, kind);
+    let previous = await buildGame(f.spec, f);
+    for (const change of [
+      () => fs.writeFileSync(path.join(dependency, 'Sources/shared.swift'), 'AfterEdit'),
+      () => fs.writeFileSync(path.join(dependency, 'resource.txt'), 'AfterResource'),
+      () => fs.unlinkSync(path.join(dependency, 'Sources/shared.swift')),
+      () => fs.unlinkSync(path.join(dependency, 'resource.txt')),
+      () => fs.rmSync(dependency, {recursive: true}),
+    ]) {
+      change();
+      const next = await buildGame(f.spec, f);
+      assert.notEqual(next.fingerprint, previous.fingerprint);
+      const count = f.log().length;
+      assert.deepEqual(await buildGame(f.spec, f), next);
+      assert.equal(f.log().length, count);
+      previous = next;
+    }
+    assert.equal(f.log().filter(item => item.args.includes('--product')).length, 6);
+  });
+  test(`${kind} compilation rejects a dependency edit after compilation`, async t => {
+    const f = fixture(t);
+    const dependency = recordAdditionalDependency(f, kind);
+    const environment = {...f.environment, READ_SOURCE: path.join(dependency, 'Sources/shared.swift'), MUTATE_SOURCE: '1', MUTATE_MARKER: path.join(f.root, 'mutated')};
+    await assert.rejects(buildGame(f.spec, {...f, environment}), /inputs changed during build/);
+    assert.equal(fs.existsSync(path.join(f.spec.generatedRoot, 'build-state.json')), false);
+    const built = await buildGame(f.spec, {...f, environment});
+    assert.equal(fs.readFileSync(built.binary, 'utf8'), 'AfterEdit');
+  });
+}
+
+for (const kind of ['fileSystem', 'edited']) for (const input of ['Sources/shared.swift', 'resource.txt']) for (const deletion of [false, true]) {
+  test(`${kind} ${input} ${deletion ? 'deletion' : 'edit'} during compilation refuses publication`, async t => {
+    const f = fixture(t);
+    const dependency = recordAdditionalDependency(f, kind);
+    const environment = {...f.environment, MUTATE_DEPENDENCY: path.join(dependency, input), ...(deletion ? {DELETE_DEPENDENCY: '1'} : {})};
+    await assert.rejects(buildGame(f.spec, {...f, environment}), /inputs changed during build/);
+    assert.equal(fs.existsSync(path.join(f.spec.generatedRoot, 'build-state.json')), false);
+    const built = await buildGame(f.spec, f);
+    const count = f.log().length; assert.deepEqual(await buildGame(f.spec, f), built); assert.equal(f.log().length, count);
+  });
+}
+test('deployment publishes state only after the direct engine probe returns unavailable', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, game: 'Story', mode: 'deployment'});
+  assert.match(spec.entryPoint, /try await PlaytestLaunch.serve/);
+  assert.match(spec.entryPoint, /catch PlaytestLaunchError.unavailable/);
+  await buildGame(spec, f);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), true);
+  // A failed forced build overwrites the old binary, then fails its engine probe.
+  await assert.rejects(buildGame(spec, {...f, force: true, environment: {...f.environment, PROBE_MODE: 'enabled'}}), /engine.*Playtest/);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+  // Returning to unchanged inputs must rebuild, never reuse the earlier proof.
+  const built = await buildGame(spec, f);
+  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 3);
+  const count = f.log().length; assert.deepEqual(await buildGame(spec, f), built); assert.equal(f.log().length, count);
 });

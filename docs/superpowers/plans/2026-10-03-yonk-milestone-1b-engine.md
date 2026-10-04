@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Awaiting plan review and execution-method selection. No implementation has started.
+**Status:** Milestones 1A and 1B are implemented, with engine/terminal qualification recorded at root `1c3717aa` and companion `827956bb`. The final cache, deployment-trait and documentation fixes are implemented and focused local qualification has passed; the single scoped re-review, latest-source hosted Linux/macOS qualification and native Terminal visual acceptance remain pending. Companion documentation is locally updated at `6c051a49`; public companion remains `827956bb` until coordinated publication. Release compatibility, immutable versions, signing, notarization and upload are separate unperformed handoff checks. Yonk, Blorple and Lobal remain future milestones.
+
+**Tracking:** Checked implementation steps record the delivered code and local task evidence in `.superpowers/sdd/2026-10-03-yonk-milestone-1a-packaging/` and `.superpowers/sdd/2026-10-03-yonk-milestone-1b-engine/`; they do not certify latest hosted or release acceptance. The default SwiftBuild maintainer-plugin failure remains a reproduced baseline; passing local maintainer qualification used the supported native backend with its deprecation warning retained. Final fixes are tracked in `.context/yonk-final-review.md` and `.context/yonk-final-fixes-report.md`.
 
 **Goal:** Give every front end a public per-turn report, a complete in-scope vocabulary query, a filtered room-map query, and author hints for mazes and secret exits.
 
@@ -66,7 +68,7 @@ All source paths in this table are relative to `Sources/Gnusto/`. Test paths are
   - `LocationDefinition.mapRegion: String?` (internal)
   - `GameDefinition.secretExits: [EntityID: Set<Direction>]` (internal)
 
-- [ ] **Step 1: Write the fixtures**
+- [x] **Step 1: Write the fixtures**
 
 Create `Tests/GnustoTests/Support/MapHintGames.swift`:
 
@@ -169,7 +171,7 @@ struct BadRegionGame: Game {
 }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `Tests/GnustoTests/MapHintTests.swift`:
 
@@ -238,11 +240,11 @@ struct MapHintTests {
 }
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `swift test --filter MapHintTests` Expected: build failure, `cannot find 'mapRegion' in scope` and `value of type 'MapEntry' has no member 'secret'`.
 
-- [ ] **Step 4: Add the trait**
+- [x] **Step 4: Add the trait**
 
 In `Sources/Gnusto/Declarations/Traits.swift`, add a case to `LocationTrait.Kind` after `case alwaysDescribed`:
 
@@ -284,7 +286,7 @@ public func mapRegion(_ label: String) -> LocationTrait {
 
 Until Task 4 adds `GameWorld/mapView()`, that symbol link does not resolve. Write the last paragraph's link as a code span, `` `GameWorld.mapView()` ``, here; Task 4 Step 5 turns it into a link.
 
-- [ ] **Step 5: Store it on the location definition**
+- [x] **Step 5: Store it on the location definition**
 
 In `Sources/Gnusto/Engine/GameDefinition.swift`, add a stored property to `LocationDefinition` after `isAlwaysDescribed`:
 
@@ -308,7 +310,7 @@ In `Sources/Gnusto/Engine/Bootstrap.swift`, in the location diagnostics loop (af
                 definition.mapRegion, on: "location \"\(id)\"", as: "mapRegion(…) trait")
 ```
 
-- [ ] **Step 6: Add the `.secret` modifier**
+- [x] **Step 6: Add the `.secret` modifier**
 
 In `Sources/Gnusto/Declarations/WorldMap.swift`, add a stored property to `MapEntry` after `let kind: Kind`, and the modifier below it:
 
@@ -341,7 +343,7 @@ In `Sources/Gnusto/Declarations/WorldMap.swift`, add a stored property to `MapEn
     }
 ```
 
-- [ ] **Step 7: Record secret exits at bootstrap**
+- [x] **Step 7: Record secret exits at bootstrap**
 
 In `Sources/Gnusto/Engine/Bootstrap.swift`:
 
@@ -403,7 +405,7 @@ and define the helper beside `claimPlacement`:
         }
 ```
 
-- [ ] **Step 8: Carry secret exits on the definition**
+- [x] **Step 8: Carry secret exits on the definition**
 
 In `Sources/Gnusto/Engine/GameDefinition.swift`, add directly after `let reachableRooms: Set<EntityID>`:
 
@@ -417,11 +419,11 @@ As in Step 4, write ``GameWorld/mapView()`` as the code span `` `GameWorld.mapVi
 
 In `Sources/Gnusto/Engine/Bootstrap.swift`, in the `GameDefinition(` call (~line 1111), add `secretExits: secretExits,` directly after the `reachableRooms: Set(…)` argument and before `globals:`.
 
-- [ ] **Step 9: Run the tests**
+- [x] **Step 9: Run the tests**
 
 Run: `swift test --filter MapHintTests` Expected: everything passes except `zorkOnesMazeIsOneRegion` (`maze.count` is 0).
 
-- [ ] **Step 10: Mark Zork 1's maze**
+- [x] **Step 10: Mark Zork 1's maze**
 
 The fifteen maze rooms and four dead ends are the `Location` blocks at lines 36–134 of `Sources/Zork1/Regions/Maze.swift`; each ends with a `dark` line. Add `mapRegion("Maze")` after each one:
 
@@ -434,13 +436,13 @@ Expected: `19`. Then check that `gratingRoom`, `cyclopsRoom`, `treasureRoom` and
 
 The maze is the `ZorkMaze` content bundle, so its entity IDs are namespaced under the bundle type: `ZorkMaze.maze1`, which is what the test names.
 
-- [ ] **Step 11: Run the tests to verify they pass**
+- [x] **Step 11: Run the tests to verify they pass**
 
 Run: `swift test --filter MapHintTests` Expected: 6 tests pass.
 
 Run: `swift test` Expected: all tests pass. Zork 1 plays exactly as before: the trait changes no prose and no behavior.
 
-- [ ] **Step 12: Document both hints**
+- [x] **Step 12: Document both hints**
 
 In `Sources/Gnusto/Documentation.docc/WorldMapAndExits.md`, add a section directly before `## Topics`:
 
@@ -473,7 +475,7 @@ In `Sources/Gnusto/Documentation.docc/BootstrapDiagnostics.md`, in the Gate 1 ta
 | `the placement of "coin" is declared .secret; only an exit can be secret.` | Also `player.starts(in:)` and `the lockedBy entry for "…"`. `.secret` was written after a map entry that is not an exit. Remove it. |
 ```
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add Sources/Gnusto/Declarations/Traits.swift Sources/Gnusto/Declarations/WorldMap.swift Sources/Gnusto/Engine/GameDefinition.swift Sources/Gnusto/Engine/Bootstrap.swift Sources/Zork1/Regions/Maze.swift Sources/Gnusto/Documentation.docc/WorldMapAndExits.md Sources/Gnusto/Documentation.docc/BootstrapDiagnostics.md Tests/GnustoTests/Support/MapHintGames.swift Tests/GnustoTests/MapHintTests.swift
@@ -499,7 +501,7 @@ git commit -m "feat: add the mapRegion and .secret map hints"
   - `public internal(set) var report: TurnReport` on `TurnResult`
   - The fixture `CartographyGame`, which Tasks 5 and 6 use.
 
-- [ ] **Step 1: Write the fixture**
+- [x] **Step 1: Write the fixture**
 
 Create `Tests/GnustoTests/Support/CartographyGames.swift`:
 
@@ -609,7 +611,7 @@ struct CartographyGame: Game {
 }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `Tests/GnustoTests/TurnReportTests.swift`:
 
@@ -699,11 +701,11 @@ struct TurnReportTests {
 }
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `swift test --filter TurnReportTests` Expected: build failure, `value of type 'TurnResult' has no member 'report'`.
 
-- [ ] **Step 4: Write the report type and its derivation**
+- [x] **Step 4: Write the report type and its derivation**
 
 Create `Sources/Gnusto/Engine/TurnReport.swift`:
 
@@ -778,7 +780,7 @@ extension GameWorld {
 }
 ```
 
-- [ ] **Step 4a: Record actual traversal direction at the movement funnels**
+- [x] **Step 4a: Record actual traversal direction at the movement funnels**
 
 Add `var mapTransitions: [MapTransition] = []` to `Scratch`. Extend `walkPlayer(to:)` to `walkPlayer(to:direction:)`, defaulting direction to `nil`; record the origin before mutation and append a transition after a real location change. Record directionless changes in `teleportPlayer(to:)` too. These records live only in Scratch, never WorldState, so they add nothing to SAVE or UNDO serialization.
 
@@ -829,7 +831,7 @@ return result
 
 The public report represents one net arrival, so a turn with multiple player-location changes is conservatively directionless rather than inventing a direct edge across intermediate rooms. A round trip ending at its origin reports no movement, matching the spec's location-change condition. `perform(_:)` subsequently adds parser information and recognizes state replacement; direct REPL/MCP audited paths retain their existing parser-audit behavior.
 
-- [ ] **Step 4b: Pin custom movement and state-replacement cases**
+- [x] **Step 4b: Pin custom movement and state-replacement cases**
 
 Add a second fixture whose GO-north before rule calls `arrive(at: garden)` and handles the command. Use the existing CartographyGame with a parameterless companion fixture rather than changing its default behavior. Include two distinct exits onto the same room and a gate that blocks only the first compass-order candidate for FOLLOW; the recorded direction must be the one travel actually used. Include an onEnter teleport and a self-loop exit.
 
@@ -874,7 +876,7 @@ struct RedirectedMovementGame: Game {
 
 Test FOLLOW and ENTER on the two-exit fixture through the actual default handlers, not a fake audit. Base the FOLLOW routes on the existing FollowTests' two-exit and conditional-gate fixtures and assert the returned report's actual direction as well as their existing transcript behavior. Assert that an onEnter teleport never reports a walked edge to its final non-exit destination, and that the self-loop reports `nil`. These checks prevent the superseded plan's parsed-direction and adjacent-room inference from returning.
 
-- [ ] **Step 5: Carry the report on `TurnResult` and fill it in**
+- [x] **Step 5: Carry the report on `TurnResult` and fill it in**
 
 In `Sources/Gnusto/Engine/GameWorld.swift`, add to `TurnResult` directly after `public let status: StatusLine`:
 
@@ -902,15 +904,15 @@ Replace `perform(_:)` (lines 249–258, doc comment included) with:
     }
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `swift test --filter TurnReportTests` Expected: the original eight report tests and the added causal-movement/state-replacement tests pass.
 
-- [ ] **Step 7: Run the whole suite**
+- [x] **Step 7: Run the whole suite**
 
 Run: `swift test` Expected: all tests pass.
 
-- [ ] **Step 8: Document it**
+- [x] **Step 8: Document it**
 
 In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add a section directly after `## The status line` and its paragraphs (before `## Completion candidates`):
 
@@ -922,7 +924,7 @@ In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add a section directl
 
 In the `## Topics` list, add `- ``TurnResult/report``` and `- ``TurnReport``` directly after `- ``TurnResult```.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add Sources/Gnusto/Engine/TurnReport.swift Sources/Gnusto/Engine/GameWorld.swift Sources/Gnusto/Documentation.docc/CustomFrontEnds.md Tests/GnustoTests/Support/CartographyGames.swift Tests/GnustoTests/TurnReportTests.swift
@@ -942,7 +944,7 @@ git commit -m "feat: report what each turn did, movement included"
 - Consumes: `CartographyGame` from Task 2; internal `GameWorld.currentScope(orders:)`, `GameWorld.pendingPrompt`, `Vocabulary` (`itemLexicons`, `sortedVerbWords`, `sortedDirectionWords`, `prepositions`, `noiseWords`, and the statics `reservedWords`, `conjunctions`, `exclusions`, `possessives`).
 - Produces: `public struct WordsInScope: Sendable, Equatable` with `expectsFilename: Bool`, `verbs`, `nouns`, `adjectives`, `directions`, `prepositions`, `filler` (each `[String]`, sorted); `public func vocabulary() -> WordsInScope` on `GameWorld`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `Tests/GnustoTests/VocabularyTests.swift`:
 
@@ -996,11 +998,11 @@ struct VocabularyTests {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `swift test --filter VocabularyTests` Expected: build failure, `value of type 'GameWorld' has no member 'vocabulary'`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 Create `Sources/Gnusto/Engine/GameWorld+Vocabulary.swift`:
 
@@ -1074,11 +1076,11 @@ extension GameWorld {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter VocabularyTests` Expected: 3 tests pass.
 
-- [ ] **Step 4a: Verify repeated vocabulary queries leave state untouched**
+- [x] **Step 4a: Verify repeated vocabulary queries leave state untouched**
 
 Add this test to VocabularyTests and run that suite again:
 
@@ -1094,7 +1096,7 @@ Add this test to VocabularyTests and run that suite again:
 }
 ```
 
-- [ ] **Step 5: Document it**
+- [x] **Step 5: Document it**
 
 In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add at the end of the `## Completion candidates` section:
 
@@ -1104,7 +1106,7 @@ A front end that corrects what a speech recognizer heard needs more than that. `
 
 In the `## Topics` list, add `- ``GameWorld/vocabulary()``` and `- ``WordsInScope``` directly after `- ``CompletionCandidates/Context```.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/Gnusto/Engine/GameWorld+Vocabulary.swift Sources/Gnusto/Documentation.docc/CustomFrontEnds.md Tests/GnustoTests/VocabularyTests.swift
@@ -1128,7 +1130,7 @@ git commit -m "feat: add GameWorld.vocabulary(), every word the parser accepts n
   - `public struct MapExit: Sendable, Equatable` with `kind: MapExit.Kind`, `isSecret: Bool`, and `public enum Kind: Sendable, Equatable { case open, blocked, unknownDestination }`
   - `public func mapView() -> RoomMapView` on `GameWorld`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `Tests/GnustoTests/MapViewTests.swift`:
 
@@ -1209,11 +1211,11 @@ struct MapViewTests {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `swift test --filter MapViewTests` Expected: build failure, `cannot find 'MapExit' in scope`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 Create `Sources/Gnusto/Engine/GameWorld+MapView.swift`:
 
@@ -1310,11 +1312,11 @@ extension GameWorld {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter MapViewTests` Expected: the six original tests pass.
 
-- [ ] **Step 4a: Verify exit-condition writes are discarded**
+- [x] **Step 4a: Verify exit-condition writes are discarded**
 
 Add the following fixture to CartographyGames.swift and the test to MapViewTests.swift. The exit predicate is deliberately impure; it must execute against the query's throwaway frame rather than the saved/live world.
 
@@ -1346,11 +1348,11 @@ struct QueryMutationGame: Game {
 
 Run `swift test --filter MapViewTests` again; expect the original tests and this mutation regression to pass. Expand the fixture's Swift declarations into the repository's normal formatting before committing.
 
-- [ ] **Step 5: Turn Task 1's code spans into links**
+- [x] **Step 5: Turn Task 1's code spans into links**
 
 In `Sources/Gnusto/Declarations/Traits.swift` (the `mapRegion(_:)` doc comment) and `Sources/Gnusto/Engine/GameDefinition.swift` (the `secretExits` doc comment), replace `` `GameWorld.mapView()` `` with ``` ``GameWorld/mapView()`` ```.
 
-- [ ] **Step 6: Document it**
+- [x] **Step 6: Document it**
 
 In `Sources/Gnusto/Documentation.docc/CustomFrontEnds.md`, add at the end of the `## What a turn did` section (from Task 2):
 
@@ -1360,14 +1362,14 @@ A map also needs to know what to draw around the room the player is in. ``GameWo
 
 In the `## Topics` list, add `- ``GameWorld/mapView()```, `- ``RoomMapView``` and `- ``MapExit``` directly after `- ``TurnReport```.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/Gnusto/Engine/GameWorld+MapView.swift Sources/Gnusto/Declarations/Traits.swift Sources/Gnusto/Engine/GameDefinition.swift Sources/Gnusto/Documentation.docc/CustomFrontEnds.md Tests/GnustoTests/MapViewTests.swift
 git commit -m "feat: add GameWorld.mapView(), what a map may show of this room"
 ```
 
-- [ ] **Step 8: Run every check CI runs**
+- [x] **Step 8: Run every check CI runs**
 
 Run: `swift test` Expected: all tests pass.
 

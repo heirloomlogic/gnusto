@@ -200,7 +200,7 @@ fi
 mkdir -p "$destination"
 destination="$(cd "$destination" && pwd)"
 
-# bin/templates/.build can run to hundreds of megabytes on any machine that has
+# bin/templates/.build and .build-launchers can run to hundreds of megabytes on any machine that has
 # ever run `swift test --package-path bin/templates` (Tasks 1 and 3 both did, and
 # so does CI). Copying it and then deleting it would multiply that cost by every
 # game generated, so it is excluded from the copy itself -- via a tar pipe rather
@@ -208,7 +208,7 @@ destination="$(cd "$destination" && pwd)"
 # have to walk the tree it is throwing away. Both BSD tar (macOS) and GNU tar
 # (Linux/CI) accept -C and --exclude, and both preserve the executable bits the
 # shims need.
-tar -c -f - -C bin/templates --exclude .build --exclude Package.resolved . \
+tar -c -f - -C bin/templates --exclude .build --exclude .build-launchers --exclude Package.resolved . \
   | tar -x -f - -C "$destination"
 
 lower="$(echo "$game" | tr '[:upper:]' '[:lower:]')"

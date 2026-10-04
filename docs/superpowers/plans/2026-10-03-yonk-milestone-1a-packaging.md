@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Awaiting plan review and execution-method selection. No implementation has started.
+**Status:** Milestones 1A and 1B are implemented, with engine/terminal qualification recorded at root `1c3717aa` and companion `827956bb`. The final cache, deployment-trait and documentation fixes are implemented and focused local qualification has passed; the single scoped re-review, latest-source hosted Linux/macOS qualification and native Terminal visual acceptance remain pending. Companion documentation is locally updated at `6c051a49`; public companion remains `827956bb` until coordinated publication. Release compatibility, immutable versions, signing, notarization and upload are separate unperformed handoff checks. Yonk, Blorple and Lobal remain future milestones.
+
+**Tracking:** Checked implementation steps record the delivered code and local task evidence in `.superpowers/sdd/2026-10-03-yonk-milestone-1a-packaging/` and `.superpowers/sdd/2026-10-03-yonk-milestone-1b-engine/`; they do not certify latest hosted or release acceptance. The default SwiftBuild maintainer-plugin failure remains a reproduced baseline; passing local maintainer qualification used the supported native backend with its deprecation warning retained. Final fixes are tracked in `.context/yonk-final-review.md` and `.context/yonk-final-fixes-report.md`.
 
 **Goal:** Make all seven demos and generated author games library-only packages, deployable through one reusable terminal package and generated build packages, with working development, MCP, replay, preflight and release workflows.
 
@@ -82,7 +84,7 @@ Tasks 1–4 establish tested interfaces and tools before the package cutover. Du
 - Produces public `TranscriptRequest.init(gameTitled: String, environment: [String: String])`, `url: URL?` and `complaint: String?`. Keep the existing cases, path rules and preflight-open behavior.
 - Produces `public enum PlaytestLaunch` with `public static func serve(_ game: PackagedGame, environment: [String: String]) async throws` and `public enum PlaytestLaunchError: Error, CustomStringConvertible { case unavailable }`.
 
-- [ ] **Step 1: Write the factory regression**
+- [x] **Step 1: Write the factory regression**
 
 ```swift
 import GnustoTestSupport
@@ -107,7 +109,7 @@ struct PackagedGameTests {
 
 Run `swift test --filter PackagedGameTests`. Expect an unknown-type failure before implementation. DialRoomGame begins on the landing; moving north reaches the room whose `notch` rule changes state. Do not use a parse-failure command to test independence.
 
-- [ ] **Step 2: Add the presentation-independent factory**
+- [x] **Step 2: Add the presentation-independent factory**
 
 ```swift
 public struct PackagedGame: Sendable {
@@ -125,7 +127,7 @@ public struct PackagedGame: Sendable {
 
 Add full public documentation before committing. The factory stores no console closure, actor, mutable world, dependency on a front end or executable entry point.
 
-- [ ] **Step 3: Extract shared request values and expose the required read-only data**
+- [x] **Step 3: Extract shared request values and expose the required read-only data**
 
 Move `SeedRequest` unchanged into its own file. Move `TranscriptRequest` into its own file, make its initializer and result properties public, and replace `world.definition.title` with the `gameTitled` argument. Update the existing tests and temporary GameMain call site to pass the title. Keep `TranscriptStore` and `TranscriptRecorder` internal; their implementation is reused through the request value and REPL.
 
@@ -140,7 +142,7 @@ Make the existing `historyFileURL` property and `DisplayWidth` type/methods publ
 
 Add the public StatusLine initializer with those four arguments assigned to its existing immutable fields. Add the unseeded prepared-game initializer and make `init(game:saveDirectory:)` prepare once and delegate to it; that initializer remains the single place choosing `UInt64.random(in: .min ... .max)`. The terminal launcher must not introduce a second random-seed policy.
 
-- [ ] **Step 4: Add the trait-safe MCP facade**
+- [x] **Step 4: Add the trait-safe MCP facade**
 
 ```swift
 public enum PlaytestLaunchError: Error, CustomStringConvertible {
@@ -166,11 +168,11 @@ public enum PlaytestLaunch {
 
 Change the internal `PlaytestServer.serve` parameter to `game: () -> any Game`; its immediate `PreparedGame(game())` call opens the existential. Preserve the protocol-channel claiming, output interception and bootstrap-failure path. The facade file lives outside `Playtest/` and therefore compiles when that directory is excluded. Preserve the existing full refusal message in the actual error implementation so its documented wording and diagnostics do not drift.
 
-- [ ] **Step 5: Verify the shared interfaces**
+- [x] **Step 5: Verify the shared interfaces**
 
 Run `swift test --filter 'PackagedGameTests|TranscriptRequestTests|SeedRequestTests|PlaytestModeTests'`. Run a traits-off library build with `swift build --disable-default-traits --scratch-path .build-notraits`. Add the traits-off subprocess refusal check to the integration suite in Task 4, where an executable exists. The companion package in Task 2 is the cross-module compilation check; an `@testable` engine test alone is insufficient.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add Sources/Gnusto Tests/GnustoTests/PackagedGameTests.swift Tests/GnustoTests/TranscriptRequestTests.swift
@@ -196,7 +198,7 @@ Before staging, inspect the diff and exclude unrelated changes. The integrated h
 - Produces internal `static func usesInteractiveIO(arguments: [String], environment: [String: String], stdinIsTTY: Bool, stdoutIsTTY: Bool) -> Bool` for deterministic launcher-policy tests.
 - TerminalLaunch returns `0` on normal completion and `1` on bootstrap or unavailable-MCP failure; the generated executable owns `exit`.
 
-- [ ] **Step 1: Initialize the companion and manifest**
+- [x] **Step 1: Initialize the companion and manifest**
 
 ```sh
 mkdir -p .context/companions/GnustoTerminal
@@ -243,7 +245,7 @@ let package = Package(
 
 `GNUSTO_ENGINE_PATH` is a development override for testing this coordinated change. Generated builds must use the dependency-identity policy and graph checks in Task 3. The default branch reference is for prerelease integration; replace it with the coordinated published version in the release handoff. Do not label a branch reference as an immutable release pin.
 
-- [ ] **Step 2: Write the launcher-selection tests**
+- [x] **Step 2: Write the launcher-selection tests**
 
 ```swift
 import Testing
@@ -269,7 +271,7 @@ struct TerminalLaunchTests {
 
 Run `GNUSTO_ENGINE_PATH="$PWD" swift test --package-path .context/companions/GnustoTerminal`; expect missing launcher symbols before implementation.
 
-- [ ] **Step 3: Preserve the handlers and implement the launcher**
+- [x] **Step 3: Preserve the handlers and implement the launcher**
 
 Add `import Gnusto` to moved handler files. Keep terminal signal restoration, raw-mode handling, bracketed paste, end-of-game presentation and history limits unchanged. Use Gnusto's public `DisplayWidth` and `TextWrap`; do not copy either.
 
@@ -321,13 +323,13 @@ Add Foundation and conditional Darwin/Glibc imports. Warnings must be emitted be
 
 `usesInteractiveIO` is `stdinIsTTY && stdoutIsTTY && environment["GNUSTO_PLAIN"] == nil`. It ignores ordinary arguments; MCP has already selected its separate path.
 
-- [ ] **Step 4: Adapt cross-package terminal tests**
+- [x] **Step 4: Adapt cross-package terminal tests**
 
 Keep tests that only exercise KeyDecoder or TerminalIOHandler internals under `@testable import GnustoTerminal`. Add ordinary `import Gnusto` for public shared types. Status-bar tests use Task 1's public StatusLine initializer, retaining the existing names, scores, move counts, clipping and width assertions. No copied engine fixture or `@testable import Gnusto` is needed in the companion suite.
 
 The split core completion suite retains its existing `MiniGame` and `RecordingIOHandler` fixtures and never imports GnustoTerminal. Do not make engine test fixtures public just to copy them into a second package.
 
-- [ ] **Step 5: Run the terminal regressions and commit the companion**
+- [x] **Step 5: Run the terminal regressions and commit the companion**
 
 Run the companion suite with `GNUSTO_ENGINE_PATH="$PWD"`. Compare test names/assertions before and after moving them; every existing line-editor, paste, status and history assertion must still be exercised. Run strict swift-format using the copied configuration. Commit the companion's files locally; record its commit in `.context/yonk-milestone-1.md`. Publication occurs after Task 6's coordinated checks.
 
@@ -349,7 +351,7 @@ Run the companion suite with `GNUSTO_ENGINE_PATH="$PWD"`. Compare test names/ass
 - `bin/build-game <Game> [--mode development|deployment] [--force] [--json]` defaults to development; stdout contains exactly one absolute binary path or one JSON result. Diagnostics go to stderr.
 - `GNUSTO_TERMINAL_PATH` selects an explicit companion checkout during development; unset, use `https://github.com/HeirloomLogic/GnustoTerminal` on `main` until coordinated releases establish a version requirement.
 
-- [ ] **Step 1: Define and test the catalog**
+- [x] **Step 1: Define and test the catalog**
 
 Use version 1, the actual root package name and an explicit list of game exports:
 
@@ -400,7 +402,7 @@ test("ambiguous names and executable Swift fragments are refused", () => {
 
 Export `validateCatalog(value: unknown): GameCatalog` for these tests. Run `node --test bin/tests/game-catalog.test.mjs` and observe the missing-module failure before implementation.
 
-- [ ] **Step 2: Define the generated package and process entry point**
+- [x] **Step 2: Define the generated package and process entry point**
 
 Use `.build-launchers/<Game>/development/package` and `.build-launchers/<Game>/deployment/package` for generated sources, with separate sibling `scratch` directories. The generated executable product is the catalog's `name`; the target is `GameLauncher`. The generated manifest depends only on the selected game package and GnustoTerminal, plus a root override for their shared engine when needed. All products/modules come from the validated catalog.
 
@@ -454,7 +456,7 @@ let package = Package(
 )
 ```
 
-- [ ] **Step 3: Pin dependency identity and current-source behavior with a real graph test**
+- [x] **Step 3: Pin dependency identity and current-source behavior with a real graph test**
 
 For the demo root, the game package is Gnusto itself: reference its ignored `Dependencies/gnusto` symlink from the generated root and pass that same dependency path to the terminal manifest through `GNUSTO_ENGINE_PATH`. The frontend reference uses `Dependencies/gnustoterminal`. For an independent author package, resolve its engine through the existing `gnusto_find_repo` behavior and inspect its dependency declaration before deciding the identity policy.
 
@@ -464,7 +466,7 @@ Run `swift package --package-path <generated-package> show-dependencies --format
 
 If a user game has a package identity colliding with an engine/front-end identity, report the collision before generating a graph. Cover that error explicitly and teach independent authors to use a distinct package identity; do not disguise two packages under aliases.
 
-- [ ] **Step 4: Implement cache validity and warm-start behavior**
+- [x] **Step 4: Implement cache validity and warm-start behavior**
 
 Fingerprint generated manifest/entry-point text, the catalog, tool version, build mode, source file contents and relative path lists for the game, engine and local front end, plus dependency manifests/lockfiles and toolchain selection. Enumerate directories as well as files so deletion changes the fingerprint. Exclude generated output, `.git`, `.context` and all build directories. Remote resolved checkout inputs and the generated `Package.resolved` also participate.
 
@@ -472,7 +474,7 @@ A cache hit requires the fingerprint and an existing executable binary. It reads
 
 Add fake-Swift tests whose executable records each argument vector. Assert zero invocations on a warm cache hit, one effective build under concurrent identical callers, invalidation on edit/deletion/catalog/frontend changes, and distinct scratch paths for development/deployment. Run the test once with an engine path containing spaces, a quote and the literal `$(touch sentinel)`; assert the sentinel does not exist and the recorded path is unchanged.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run `node --test bin/tests/game-catalog.test.mjs bin/tests/game-build.test.mjs`. Run the real graph tests with the local companion and both independent game dependency forms. Until Task 5 changes the manifest, use the fixtures for actual generated builds; the demo catalog is ready for the cutover but its entries still refer to the old root executable products.
 
@@ -494,7 +496,7 @@ Commit the catalog/build generator/tests only after those checks pass. Record gr
 - `stageTerminalExport({binary, binDirectory, destination}): Promise<{binary: string, resources: string[]}>` validates and atomically stages a distribution.
 - `yonk` is recognized and returns a clear unavailable-front-end error before building. Unknown frontend names and missing flag values are errors.
 
-- [ ] **Step 1: Write the deployment failure regression**
+- [x] **Step 1: Write the deployment failure regression**
 
 ```javascript
 import assert from "node:assert/strict";
@@ -524,7 +526,7 @@ test("a missing build output leaves the previous export intact", async () => {
 
 Run `node --test bin/tests/game-export.test.mjs` and observe the missing-module failure.
 
-- [ ] **Step 2: Implement run/export command parsing and trait policy**
+- [x] **Step 2: Implement run/export command parsing and trait policy**
 
 The Bash run shim locates the package through `GNUSTO_PACKAGE_PATH` or its own root, calls build-game, and uses `exec "$binary"` after build diagnostics finish. This preserves interactive stdin and process signals. Keep `-h`/`--help` independent of package resolution.
 
@@ -532,7 +534,7 @@ Export builds with `-c release --disable-default-traits` against the generated p
 
 Replace executable-product discovery with the catalog; update user-facing terminology to game names. Preserve the current no-argument listing behavior, atomic fresh-inode replacement and useful deployment instructions.
 
-- [ ] **Step 3: Stage binary and resource bundles**
+- [x] **Step 3: Stage binary and resource bundles**
 
 Inspect the generated product's bin directory for the resource bundles belonging to its resolved dependency graph, using `.bundle` on macOS and `.resources` where SwiftPM uses that suffix. Validate the complete staged output before changing `dist`. For a resource-free graph, retain the single-file `dist/<Game>` deployment. For a resource-bearing graph, create a sibling, versioned distribution directory containing the executable and resource bundles, then atomically switch `dist/<Game>` to that distribution's executable; retain the old distribution until the switch succeeds. Use relative links and tell the user to distribute the complete directory for that case.
 
@@ -540,13 +542,13 @@ Prove the accessor lookup works with a fixture that reads `Bundle.module` at sta
 
 Never copy `GnustoTestSupport` or Swift Testing into a shipped graph. Preserve executable permissions and avoid modifying a binary inode that may be mapped by a running process.
 
-- [ ] **Step 4: Prove trait isolation and protocol refusal**
+- [x] **Step 4: Prove trait isolation and protocol refusal**
 
 The integration script builds a development fixture, performs an MCP initialize handshake, exports the same fixture, and invokes the deployed binary with both `--mcp` and `GNUSTO_MCP=1`. Expect nonzero exit, the existing built-without-it message on stderr and no game/protocol text on stdout. Reconnect to the development binary and expect the same valid handshake with no rebuild. Assert their binary paths and scratch paths differ.
 
 Run failure tests for missing terminal checkout, invalid front-end name, missing `--frontend` value, failed Swift build and interrupted staging. Every failed export leaves the prior executable usable.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run `node --test bin/tests/game-export.test.mjs bin/tests/help-flags.test.mjs bin/tests/value-flags.test.mjs bin/tests/settings-permissions.test.mjs` and the deployment integration script with the local companion. Commit the CLI changes and fixtures. The demo CLI becomes fully usable in the next task's atomic library cutover.
 
@@ -570,13 +572,13 @@ Run `node --test bin/tests/game-export.test.mjs bin/tests/help-flags.test.mjs bi
 - `bin/playtest-replay <Game> --build` still prints the absolute development binary path; its recorded path continues to belong to the invoking game package.
 - `bin/gnusto-mcp <Game>` uses build-game's cache policy and launches the returned binary with `--mcp`.
 
-- [ ] **Step 1: Write the library-only starter assertions**
+- [x] **Step 1: Write the library-only starter assertions**
 
 Change NewGameTests' executable-target assertion to require a library product and `.target(`, reject `.executableTarget(` and `@main`, and require `Sources/Zwank/Packaged.swift`, `gnusto-games.json` and `bin/run-game`. Parse the catalog and check package/product/module/name `Zwank` and symbol `game`. Check that no template spelling remains.
 
 In generated-paths tests, stub the new build-game path response and assert that a generated package's run/export/replay/MCP shims forward its package root and caller-relative paths. Keep the existing wrong-package discriminators rather than only testing an exit code.
 
-- [ ] **Step 2: Convert the manifest and exports**
+- [x] **Step 2: Convert the manifest and exports**
 
 Replace the seven executable products with:
 
@@ -594,7 +596,7 @@ Change their seven `.executableTarget` declarations to `.target` without changin
 
 Move the terminal files/tests staged in Task 2 out of Gnusto. Keep the shared types extracted in Task 1. Remove the fixture's `GameMain` conformance and replace its old `MainableGame.run` test with `await REPL(world: world, io: io).run()`; retain the scripted-loop assertion. Remove obsolete GameMain and terminal-handler DocC symbol links from engine Topics and replace narrative references with code spans or the external package's documentation link.
 
-- [ ] **Step 3: Change catalog consumers and build paths**
+- [x] **Step 3: Change catalog consumers and build paths**
 
 Replace playtest-focus's executable filtering with `loadGames(ROOT)` and `gameNames()`. Validate each catalog product against the actual manifest's library products when preflight describes the package, and derive its target closure with `targetsOfProduct`; do not assume product and target names match. Preflight's selected source target is the one containing the catalog module. Update error messages from “no executable product” to “no game”.
 
@@ -602,7 +604,7 @@ Replace replay's `swift build --product` block and MCP's build block with `bin/b
 
 Update template shims to dispatch `run-game` and the internal build tool through the existing `gnusto_exec` mechanism. New-game's default version-pin path must refuse a released Gnusto that lacks `PackagedGame` or the new build tools instead of generating a broken package and printing the old compatibility warnings. Its error explains `--dep-path` for the coordinated prerelease checkout. Preserve generated source name substitution, path quoting, MCP/settings key matching and the existing tool-location probes.
 
-- [ ] **Step 4: Verify demos and an independent author package**
+- [x] **Step 4: Verify demos and an independent author package**
 
 ```sh
 swift test
@@ -617,6 +619,8 @@ Create `.context/packaging-check/AuthorStory` with `bin/new-game AuthorStory .co
 Use the integration script to run `look` and `quit` in each of the seven demos with isolated save directories. Confirm stdout begins with each game's own banner and no import/build text. Replay an existing committed Zork1 and Dungeon deep-start route with the recorded seed and landing checks.
 
 - [ ] **Step 5: Verify real terminal behavior and commit the coordinated cutover**
+
+The cutover is committed and actual PTY checks passed. The native visual, scrollback, PageUp and PageDown portion remains a human acceptance gate after CUA access to Terminal was denied; this combined step stays open for that portion.
 
 In a real terminal, test editing, arrow-key history, Tab completion, bracketed paste, resizing, scrollback, Ctrl-C during a save prompt, EOF and the final-frame return to shell. Save the transcript/checklist under `.context/`; passing renderer tests alone does not prove raw-terminal restoration.
 
@@ -637,7 +641,7 @@ Search active source/docs/tools for `GameMain`, `swift run <Game>`, `swift build
 - Gnusto CI selects the reviewed companion revision for migration checks; companion CI selects the reviewed Gnusto revision. Neither published Gnusto library manifest gains a terminal dependency.
 - Existing release jobs enumerate catalog games and consume staged deployment outputs; signing, compression and uploads remain their current separate steps.
 
-- [ ] **Step 1: Test workflow command changes before publication**
+- [x] **Step 1: Test workflow command changes before publication**
 
 Replace test.yml's traits-off root-product build with `bin/build-game CloakOfDarkness --mode deployment --json` and use its returned binary for refusal checks. Replace the generated Scratch product build with the same tool invoked through Scratch's shim. Keep `--build-system swiftbuild --disable-experimental-prebuilts` where the existing Linux workflow requires them; `GNUSTO_SWIFT_BUILD_FLAGS` contains a JSON string array such as `["--build-system","swiftbuild","--disable-experimental-prebuilts"]`, parsed without shell evaluation and included in fingerprints. Reject a value that is not a JSON array of strings.
 
@@ -645,7 +649,7 @@ Harness CI runs the new Node suites on Node 22. Linux test CI installs Node 22 f
 
 Change release discovery to the catalog and build every terminal distribution through export-game. Signing receives the staged executable; resource-bearing outputs are archived with their complete distribution directory. Preserve current Darwin signing/notarization configuration and Linux artifact naming. Update documentation workflow comments about demo libraries. iOS continues to build Gnusto-Package and must not resolve GnustoTerminal.
 
-- [ ] **Step 2: Run the integrated local checks**
+- [x] **Step 2: Run the integrated local checks**
 
 ```sh
 swift test
@@ -658,7 +662,7 @@ swift package --allow-writing-to-directory .context/docs generate-documentation 
 
 Resolve maintainer-only tooling through the existing `.dev-tooling` setup before lint/DocC if it is not already available. Run the companion's lint/DocC checks with its own tooling setup. Run the dependency graph, traits-off refusal, relocated-resource and generated-author integration checks. Record which checks ran locally and which require hosted Linux/macOS runners.
 
-- [ ] **Step 3: Publish the reviewed companion branch**
+- [x] **Step 3: Publish the reviewed companion branch**
 
 Read `gh repo view HeirloomLogic/GnustoTerminal --json nameWithOwner` first. If it exists, use its existing repository and preserve its history; do not create or overwrite it. If it does not exist, publish the prepared local repository:
 
@@ -670,9 +674,9 @@ Publish a development integration branch containing the coordinated package and 
 
 Push the reviewed current Gnusto feature branch with `git push -u origin HEAD` before running the companion's hosted integration job, so its recorded engine revision is actually fetchable. Keep the current branch name and do not push these changes to origin/main directly.
 
-Use generated `Package.resolved` files for prerelease dependency state. At the release handoff, replace branch requirements with compatible immutable package versions and test a fresh author package against those versions; release/tag creation is a separate release action, not proof supplied by this plan.
+Use generated `Package.resolved` files for ordinary prerelease pins. Managed frontend edits are omitted from that lockfile; their branch/revision is retained in workspace `basedOn` state and their exact source provenance in generated `terminal-source.json` and `build-state.json`. At the release handoff, replace branch requirements with compatible immutable package versions and test a fresh author package against those versions; release/tag creation is a separate release action, not proof supplied by this plan.
 
-- [ ] **Step 4: Record completion and commit CI/docs**
+- [x] **Step 4: Record completion and commit CI/docs**
 
 The handoff file records engine and companion branch/revision, graph provenance, local checks, hosted CI URLs/results when available, the live-terminal checklist and any release acceptance still outstanding. Milestone 1A is locally complete only when all seven demos and an independent starter run/export/preflight through generated terminal launchers and the deployment/MCP/resource checks pass.
 

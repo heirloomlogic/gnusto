@@ -4,7 +4,9 @@ import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
 import {loadGames, resolveCatalogGame} from './game-catalog.mjs';
-const TOOL_VERSION = 2;
+const TOOL_VERSION = 3;
+const DEPLOYMENT_PROBE = '--gnusto-verify-engine-without-playtest';
+const DEPLOYMENT_PROOF = 'Gnusto.PlaytestLaunchError.unavailable';
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REMOTE_TERMINAL = 'https://github.com/HeirloomLogic/GnustoTerminal';
 const identity = location => path.basename(location.replace(/\/$/, '')).replace(/\.git$/i, '').toLowerCase();
@@ -63,8 +65,8 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
   const generatedRoot = path.join(packageRoot, '.build-launchers', game.name, mode);
   const generatedPackage = path.join(generatedRoot, 'package');
   const scratchPath = path.join(generatedRoot, 'scratch');
-  const links = [{name: sameEngine ? 'gnusto' : identity(packageRoot), source: packageRoot}];
-  const gameIdentity = links[0].name;
+  const gameIdentity = sameEngine ? 'gnusto' : identity(packageRoot);
+  const links = sameEngine ? [{name: gameIdentity, source: packageRoot}] : [];
   const engineIdentity = declaration?.kind === 'path' ? identity(declaration.location) : declaration?.kind === 'url' ? identity(declaration.location) : 'gnusto';
   if (!sameEngine && (gameIdentity === engineIdentity || gameIdentity === 'gnustoterminal' || catalog.package.toLowerCase() === 'gnusto' || catalog.package.toLowerCase() === 'gnustoterminal')) throw new Error(`Package identity collision: ${gameIdentity}; independent authors must use a distinct package identity.`);
   if (engineIdentity === 'gnustoterminal') throw new Error('Engine package identity collision with GnustoTerminal');
@@ -79,10 +81,12 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
   const bootstrapDependencies = [engineEdit && `.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: forwarded)`, terminalEdit && `.package(url: ${swiftStringLiteral(terminalEdit.url)}, branch: "main", traits: forwarded)`].filter(Boolean);
   const bootstrapManifest = bootstrapDependencies.length ? `// swift-tools-version: 6.2\nimport PackageDescription\nlet forwarded: Set<Package.Dependency.Trait> = [.trait(name: "Playtest", condition: .when(traits: ["Playtest"]))]\nlet package = Package(name: "GnustoDependencyEditBootstrap", traits: [.trait(name: "Playtest", description: "Attach exact development sources."), .default(enabledTraits: ["Playtest"])], dependencies: [${bootstrapDependencies.join(', ')}])\n` : null;
   const dependency = (name, location) => `.package(name: ${swiftStringLiteral(name)}, path: ${swiftStringLiteral(location)}, traits: forwarded)`;
-  const dependencies = [dependency(catalog.package, `Dependencies/${gameIdentity}`), terminalRoot ? dependency('GnustoTerminal', 'Dependencies/gnustoterminal') : `.package(url: ${swiftStringLiteral(REMOTE_TERMINAL)}, branch: "main", traits: forwarded)`];
+  // Keep independent authors at their real location so relative sibling dependencies resolve.
+  const dependencies = [dependency(catalog.package, sameEngine ? `Dependencies/${gameIdentity}` : packageRoot), terminalRoot ? dependency('GnustoTerminal', 'Dependencies/gnustoterminal') : `.package(url: ${swiftStringLiteral(REMOTE_TERMINAL)}, branch: "main", traits: forwarded)`];
+  if (!sameEngine && !engineEdit) dependencies.push(dependency('Gnusto', declaration.location));
   if (engineEdit) dependencies.push(`.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: forwarded)`);
-  const manifest = `// swift-tools-version: 6.2\nimport PackageDescription\n\nlet forwarded: Set<Package.Dependency.Trait> = [\n    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))\n]\nlet package = Package(\n    name: ${swiftStringLiteral(game.name + 'TerminalBuild')},\n    platforms: [.macOS(.v15)],\n    products: [.executable(name: ${swiftStringLiteral(launcherProduct)}, targets: [${swiftStringLiteral(launcherTarget)}])],\n    traits: [\n        .trait(name: "Playtest", description: "Enable the development MCP server."),\n        .default(enabledTraits: ["Playtest"]),\n    ],\n    dependencies: [\n        ${dependencies.join(',\n        ')},\n    ],\n    targets: [\n        .executableTarget(name: ${swiftStringLiteral(launcherTarget)}, dependencies: [\n            .product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)}),\n            .product(name: "GnustoTerminal", package: "GnustoTerminal"),\n        ]),\n    ]\n)\n`;
-  const entryPoint = `import GnustoTerminal\nimport ${game.module}\n\n#if canImport(Darwin)\nimport Darwin\n#elseif canImport(Glibc)\nimport Glibc\n#endif\n\nlet result = await TerminalLaunch.run(${game.module}.${game.symbol})\nexit(result)\n`;
+  const manifest = `// swift-tools-version: 6.2\nimport PackageDescription\n\nlet forwarded: Set<Package.Dependency.Trait> = [\n    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))\n]\nlet package = Package(\n    name: ${swiftStringLiteral(game.name + 'TerminalBuild')},\n    platforms: [.macOS(.v15)],\n    products: [.executable(name: ${swiftStringLiteral(launcherProduct)}, targets: [${swiftStringLiteral(launcherTarget)}])],\n    traits: [\n        .trait(name: "Playtest", description: "Enable the development MCP server."),\n        .default(enabledTraits: ["Playtest"]),\n    ],\n    dependencies: [\n        ${dependencies.join(',\n        ')},\n    ],\n    targets: [\n        .executableTarget(name: ${swiftStringLiteral(launcherTarget)}, dependencies: [\n            .product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)}),\n            .product(name: "GnustoTerminal", package: "GnustoTerminal"),\n            .product(name: "Gnusto", package: ${swiftStringLiteral(sameEngine ? catalog.package : "Gnusto")}),\n        ]),\n    ]\n)\n`;
+  const entryPoint = `import Gnusto\nimport GnustoTerminal\nimport ${game.module}\n\n#if canImport(Darwin)\nimport Darwin\n#elseif canImport(Glibc)\nimport Glibc\n#endif\n\n${mode === 'deployment' ? `// Build verification calls the engine directly; frontend policy cannot mask its trait.\nif CommandLine.arguments.dropFirst().elementsEqual([${swiftStringLiteral(DEPLOYMENT_PROBE)}]) {\n    do {\n        try await PlaytestLaunch.serve(${game.module}.${game.symbol}, environment: [:])\n    } catch PlaytestLaunchError.unavailable {\n        print(${swiftStringLiteral(DEPLOYMENT_PROOF)})\n        exit(0)\n    } catch {}\n    exit(1)\n}\n\n` : ''}let result = await TerminalLaunch.run(${game.module}.${game.symbol})\nexit(result)\n`;
   return {packageRoot: generatedPackage, gamePackageRoot: packageRoot, engineRoot, terminalRoot, game, mode, manifest, entryPoint, scratchPath, generatedRoot, links, engineDependencyPath, launcherProduct, launcherTarget, engineEdit, terminalEdit, bootstrapManifest, platform, defaultBuildFlags};
 }
 function buildFlags(environment) {
@@ -123,8 +127,29 @@ function resolutionFingerprint(spec) {
   hashTree(hash, path.join(spec.generatedRoot, 'terminal-source.json'));
   return hash.digest('hex');
 }
+function resolvedLocalFingerprint(spec) {
+  const hash = createHash('sha256');
+  const stateFile = path.join(spec.scratchPath, 'workspace-state.json');
+  const dependencies = fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, 'utf8')).object.dependencies : [];
+  const principalRoots = new Set([spec.gamePackageRoot, spec.engineRoot, spec.terminalRoot].filter(Boolean).map(root => fs.realpathSync(root)));
+  const roots = new Set();
+  for (const dependency of dependencies) {
+    const state = dependency.state;
+    const root = state.name === 'fileSystem' ? state.path : state.name === 'edited' ? state.path ?? path.join(spec.packageRoot, 'Packages', dependency.subpath) : null;
+    if (root === null) continue;
+    if (typeof root !== 'string' || !path.isAbsolute(root)) throw new Error('SwiftPM recorded a nonabsolute local dependency path.');
+    roots.add(root);
+  }
+  for (const root of [...roots].sort()) {
+    const actual = fs.existsSync(root) ? fs.realpathSync(root) : null;
+    hash.update(JSON.stringify([root, actual]));
+    // Principal sources already belong to the independent pre-resolution snapshot.
+    if (!principalRoots.has(actual)) hashTree(hash, root);
+  }
+  return hash.digest('hex');
+}
 function fingerprint(spec, swift, flags, environment, withResolution = true) {
-  if (withResolution) return combineFingerprints(fingerprint(spec, swift, flags, environment, false), resolutionFingerprint(spec));
+  if (withResolution) return combineFingerprints(combineFingerprints(fingerprint(spec, swift, flags, environment, false), resolvedLocalFingerprint(spec)), resolutionFingerprint(spec));
   const hash = createHash('sha256');
   let selectedDeveloper = environment.DEVELOPER_DIR;
   if (!selectedDeveloper && process.platform === 'darwin') {
@@ -216,6 +241,27 @@ function run(swift, args, environment, capture = false) {
     child.on('close', code => code === 0 ? resolve(output.trim()) : reject(new Error(`Swift exited ${code}: ${args[0]}`)));
   });
 }
+async function verifyDeploymentEngine(binary, environment) {
+  await new Promise((resolve, reject) => {
+    // Closed stdin makes a trait-enabled MCP server terminate; the deadline also
+    // bounds bootstrap failures/hangs. Only the engine's exact error is success.
+    const child = spawn(binary, [DEPLOYMENT_PROBE], {env: environment, stdio: ['ignore', 'pipe', 'pipe']});
+    let stdout = '', stderr = '', limited = false;
+    const timer = setTimeout(() => { limited = true; child.kill('SIGKILL'); }, 15_000);
+    const collect = (stream, data) => {
+      if (stream === 'stdout') stdout += data; else stderr += data;
+      if (stdout.length + stderr.length > 1024 * 1024) { limited = true; child.kill('SIGKILL'); }
+    };
+    child.stdout.on('data', data => collect('stdout', data));
+    child.stderr.on('data', data => collect('stderr', data));
+    child.on('error', error => { clearTimeout(timer); reject(new Error(`Cannot verify deployment engine Playtest exclusion: ${error.message}`)); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (!limited && code === 0 && stdout === DEPLOYMENT_PROOF + '\n' && stderr === '') resolve();
+      else reject(new Error('Deployment requires a Gnusto engine built without Playtest; the compiled engine did not return PlaytestLaunchError.unavailable. Check every incoming dependency trait selection.'));
+    });
+  });
+}
 export async function buildGame(spec, {force = false, swift = 'swift', environment = process.env} = {}) {
   const flags = buildFlags(environment);
   swift = swiftExecutable(swift, environment);
@@ -258,7 +304,8 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
       } finally { atomicWrite(path.join(spec.packageRoot, 'Package.swift'), spec.manifest); }
       if (!engineEditReady(spec) || !terminalEditReady(spec)) throw new Error('SwiftPM did not attach the exact editable dependencies.');
     }
-    if (spec.engineEdit || spec.terminalEdit) {
+    {
+      // Resolve before snapshotting every local/editable dependency, including siblings.
       const graph = JSON.parse(await run(swift, ['package', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), 'show-dependencies', '--format', 'json'], env, true));
       const identities = new Set(), paths = new Set(), terminals = new Set();
       const visit = node => {
@@ -270,6 +317,7 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
       if (!engineEditReady(spec) || identities.size !== 1 || (spec.engineEdit && !identities.has(spec.engineEdit.identity)) || paths.size !== 1 || !paths.has(spec.engineRoot)) throw new Error('Generated graph lost the editable current engine dependency; refusing to compile released engine sources.');
       if (!terminalEditReady(spec) || (spec.terminalEdit && (terminals.size !== 1 || !terminals.has(spec.terminalEdit.path)))) throw new Error('Generated graph lost its exact edited frontend; refusing to compile.');
     }
+    const stableLocalDependencies = resolvedLocalFingerprint(spec);
     const stableTerminalSource = spec.terminalEdit ? terminalSource(spec) : null;
     const stableFrontend = frontendFingerprint(spec);
     const args = ['build', '--package-path', spec.packageRoot, '--scratch-path', spec.scratchPath, '--configuration', spec.mode === 'deployment' ? 'release' : 'debug', ...(spec.mode === 'deployment' ? ['--disable-default-traits'] : []), ...spec.defaultBuildFlags, ...flags];
@@ -278,12 +326,14 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
     if (!path.isAbsolute(binDirectory)) throw new Error(`Swift returned a nonabsolute binary directory: ${binDirectory}`);
     const binary = path.join(binDirectory, spec.launcherProduct);
     fs.accessSync(binary, fs.constants.X_OK);
+    if (spec.mode === 'deployment') await verifyDeploymentEngine(binary, env);
     if (frontendFingerprint(spec) !== stableFrontend) throw new Error('Managed frontend compilation inputs changed during build; retry to compile the resolved sources.');
     if (!engineEditReady(spec) || !terminalEditReady(spec)) throw new Error('Generated workspace lost its exact editable dependencies during build; refusing to publish current state.');
     const resolvedInputs = resolutionFingerprint(spec);
     if (frontendFingerprint(spec) !== stableFrontend) throw new Error('Managed frontend compilation inputs changed during build; retry to compile the resolved sources.');
     if (fingerprint(spec, swift, flags, environment, false) !== stableInputs) throw new Error('Local compilation inputs changed during build; retry to compile the current sources.');
-    const state = {binary, binDirectory, fingerprint: combineFingerprints(stableInputs, resolvedInputs), toolchainVersion, ...(spec.terminalEdit ? {terminalSource: stableTerminalSource} : {})};
+    if (resolvedLocalFingerprint(spec) !== stableLocalDependencies) throw new Error('Resolved local dependency compilation inputs changed during build; retry to compile the current sources.');
+    const state = {binary, binDirectory, fingerprint: combineFingerprints(combineFingerprints(stableInputs, stableLocalDependencies), resolvedInputs), toolchainVersion, ...(spec.terminalEdit ? {terminalSource: stableTerminalSource} : {})};
     atomicWrite(path.join(spec.generatedRoot, 'build-state.json'), JSON.stringify(state, null, 2) + '\n');
     return resultFor(spec, state);
   } finally { await unlock(); }

@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-03
 
-**Status:** Revised written spec approved; replacement implementation plans awaiting review; not started
+**Status:** Milestones 1A and 1B are implemented, with engine/terminal qualification recorded at root `1c3717aa` and companion `827956bb`. The final cache, deployment-trait and documentation fixes are implemented and focused local qualification has passed; the single scoped re-review, latest-source hosted Linux/macOS qualification and native Terminal visual acceptance remain pending. Companion documentation is locally updated at `6c051a49`; public companion remains `827956bb` until coordinated publication. Release compatibility, immutable versions, signing, notarization and upload are separate unperformed handoff checks. Yonk, Blorple and Lobal remain future milestones.
 
 ## Goal
 
