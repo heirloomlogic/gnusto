@@ -277,12 +277,14 @@ jobs:
         with:
           name: linux-recipient
           path: recipient
+      # The two static distributions occupy ~150 MiB together before session output.
+      # Bound writable scratch at 256 MiB so both can remain extracted until cleanup.
       - name: Play without a development toolchain
         run: |
           docker run --rm --network none --read-only --cap-drop=ALL \
             --security-opt=no-new-privileges \
             --user "$(id -u):$(id -g)" \
-            --tmpfs /tmp:rw,exec,nosuid,nodev,size=64m \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=256m \
             --mount "type=bind,source=$PWD/recipient,target=/recipient,readonly" \
             ubuntu:24.04 /bin/bash /recipient/check.sh
 
