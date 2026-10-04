@@ -98,7 +98,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: HeirloomLogic/GnustoTerminal
-          ref: 6c051a49e6afdf8cf270d520e91590d112258a46
+          ref: 95c5a7abd42771b09a6103c9e89988c9b55b703d
           path: .context/companions/GnustoTerminal
           persist-credentials: false
 
@@ -245,7 +245,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: HeirloomLogic/GnustoTerminal
-          ref: 6c051a49e6afdf8cf270d520e91590d112258a46
+          ref: 95c5a7abd42771b09a6103c9e89988c9b55b703d
           path: .context/companions/GnustoTerminal
           persist-credentials: false
       - name: Trust the workspace
@@ -324,7 +324,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: HeirloomLogic/GnustoTerminal
-          ref: 6c051a49e6afdf8cf270d520e91590d112258a46
+          ref: 95c5a7abd42771b09a6103c9e89988c9b55b703d
           path: .context/companions/GnustoTerminal
           persist-credentials: false
 
