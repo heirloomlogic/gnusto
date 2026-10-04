@@ -70,6 +70,16 @@ struct MCPBuildGateTests {
                 #!/bin/sh
                 printf '%s\n' "$*" >> "$FAKE_CALLS"
                 if [ "$1" = --version ]; then echo 'Fake Swift 6.4'; exit 0; fi
+                if [ "$1" = package ]; then
+                  shift
+                  [ "$#" = 7 ] || exit 93
+                  [ "$1" = --package-path ] && [ "$2" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/package" ] || exit 94
+                  [ "$3" = --scratch-path ] && [ "$4" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/scratch" ] || exit 93
+                  [ "$5" = show-dependencies ] && [ "$6" = --format ] && [ "$7" = json ] || exit 93
+                  [ -d "$GNUSTO_ENGINE_PATH" ] || exit 95
+                  printf '{"identity":"package","dependencies":[{"identity":"gnusto","name":"Gnusto","path":"%s","dependencies":[]}]}\n' "$GNUSTO_REPO"
+                  exit 0
+                fi
                 [ "$1" = build ] || exit 91
                 shift
                 show=0
@@ -139,9 +149,14 @@ struct MCPBuildGateTests {
         }
 
         var buildCalls: [String] {
+            let packageArguments =
+                "--package-path \(generated.appendingPathComponent("package").path) --scratch-path \(generated.appendingPathComponent("scratch").path)"
             let arguments =
-                "build --package-path \(generated.appendingPathComponent("package").path) --scratch-path \(generated.appendingPathComponent("scratch").path) --configuration debug"
-            return ["--version", arguments + " --product GnustoGeneratedLauncher", arguments + " --show-bin-path"]
+                "build \(packageArguments) --configuration debug"
+            return [
+                "--version", "package \(packageArguments) show-dependencies --format json",
+                arguments + " --product GnustoGeneratedLauncher", arguments + " --show-bin-path",
+            ]
         }
 
         func run(_ environment: [String: String] = [:]) throws -> (status: Int32, stdout: String, stderr: String) {
@@ -265,7 +280,7 @@ struct MCPBuildGateTests {
         #expect(result.status == 2)
         #expect(result.stdout.isEmpty)
         #expect(result.stderr.contains("could not build game Zwank"))
-        #expect(fixture.swiftCalls == Array(fixture.buildCalls.prefix(2)))
+        #expect(fixture.swiftCalls == Array(fixture.buildCalls.prefix(3)))
         let attributes = try FileManager.default.attributesOfItem(atPath: fixture.cache.path)
         #expect(attributes[.modificationDate] as? Date == Date(timeIntervalSince1970: 2000))
     }
