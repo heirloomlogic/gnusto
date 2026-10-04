@@ -1,9 +1,8 @@
 name: Release
 
 # Publish your game's binaries for macOS and Linux whenever you push a version
-# tag. It discovers your executable products from the manifest the same way
-# `bin/export-game` does, so it publishes whatever your package ships with no
-# edits — tag `1.0.0` and a GitHub release appears with runnable binaries.
+# tag. It discovers game libraries from gnusto-games.json through
+# bin/export-game and stages terminal distributions with their resources.
 #
 # To exclude a product from releases, add its name to EXCLUDE_PRODUCTS below.
 
@@ -41,20 +40,33 @@ jobs:
           # Nothing here pushes, and `swift build` runs your package's plugin code.
           persist-credentials: false
 
-      # On macOS 15+ the binary links the OS Swift runtime, so the single file is
-      # the game.
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Resolve the author package first so its shims can find Gnusto's tools.
+      - name: Resolve game dependencies
+        run: swift package resolve
+
+      # Staging is separate from signing and compression. A resource-bearing
+      # export uses an atomic symlink; copy its complete adjacent distribution.
       - name: Build release binaries
         run: |
           set -euo pipefail
           mkdir -p stage
-          # Ships without the `Playtest` trait, exactly as bin/export-game does.
-          bindir="$(swift build -c release --disable-default-traits --show-bin-path)"
-          for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
+          bin/export-game > "$RUNNER_TEMP/catalog-games.txt"
+          while IFS= read -r product; do
             case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
-            echo "Building $product (release)…"
-            swift build -c release --disable-default-traits --product "$product"
-            cp "$bindir/$product" stage/
-          done
+            bin/export-game "$product"
+            source="$(node -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "dist/$product")"
+            mkdir -p "stage/$product"
+            if [[ -L "dist/$product" ]]; then
+              cp -R "$(dirname "$source")/." "stage/$product/"
+            else
+              cp "$source" "stage/$product/$product"
+            fi
+          done < "$RUNNER_TEMP/catalog-games.txt"
           ls -la stage
 
       # A downloaded binary carries the quarantine flag, and Gatekeeper runs a
@@ -124,7 +136,8 @@ jobs:
             exit 1
           fi
 
-          for bin in stage/*; do
+          for distribution in stage/*; do
+            bin="$distribution/$(basename "$distribution")"
             codesign --force --options runtime --timestamp --keychain "$keychain" -s "$identity" "$bin"
             codesign --verify --strict --verbose=2 "$bin"
           done
@@ -151,9 +164,9 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           arch="$(uname -m)"
-          for bin in stage/*; do
-            product="$(basename "$bin")"
-            tar czf "dist/${product}-macos-${arch}.tar.gz" -C stage "$product"
+          for distribution in stage/*; do
+            product="$(basename "$distribution")"
+            tar czf "dist/${product}-macos-${arch}.tar.gz" -C "$distribution" .
           done
           ls -la dist
 
@@ -195,20 +208,34 @@ jobs:
       - name: Trust the workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Resolve the author package first so its shims can find Gnusto's tools.
+      - name: Resolve game dependencies
+        run: swift package resolve
+
       - name: Build and package release binaries
         run: |
           set -euo pipefail
           swift --version
-          mkdir -p dist
+          mkdir -p dist stage
           arch="$(uname -m)"
-          # Ships without the `Playtest` trait, exactly as bin/export-game does.
-          bindir="$(swift build -c release --disable-default-traits --show-bin-path)"
-          for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
+          bin/export-game > "$RUNNER_TEMP/catalog-games.txt"
+          while IFS= read -r product; do
             case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
-            echo "Building $product (release)…"
-            swift build -c release --disable-default-traits --product "$product"
-            tar czf "dist/${product}-linux-${arch}.tar.gz" -C "$bindir" "$product"
-          done
+            bin/export-game "$product"
+            source="$(node -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "dist/$product")"
+            mkdir -p "stage/$product"
+            if [[ -L "dist/$product" ]]; then
+              cp -R "$(dirname "$source")/." "stage/$product/"
+            else
+              cp "$source" "stage/$product/$product"
+            fi
+            tar czf "dist/${product}-linux-${arch}.tar.gz" -C "stage/$product" .
+          done < "$RUNNER_TEMP/catalog-games.txt"
           ls -la dist
 
       - name: Upload Linux artifacts
@@ -264,7 +291,7 @@ jobs:
           cat > release-notes.md <<'EOF'
           Standalone builds of this game for macOS and Linux.
 
-          Each asset is a `.tar.gz` holding a single executable for the named platform. On macOS 15+ the binary links the Swift runtime that ships with the OS, so it runs directly — no Xcode, no toolchain.
+          Each asset is a `.tar.gz` holding the executable and any adjacent resource bundles for the named platform. Extract and keep the complete contents together. On macOS 15+ the binary links the Swift runtime that ships with the OS, so it runs directly — no Xcode, no toolchain.
           EOF
           if [[ "$MACOS_SIGNING" == "notarized" ]]; then
             cat >> release-notes.md <<'EOF'

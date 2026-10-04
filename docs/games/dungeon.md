@@ -154,12 +154,7 @@ bootstrap check earns its keep that way. See the atlas for the full reasoning.
 what `Dungeon.maxScore` reads on the way, and this section is the revisiting the
 contract asks for.
 
-The bootstrap totals the `Scoring` award table against `maxScore` and warns on a
-mismatch — and `GameMain.main` writes that warning to standard error on **every
-launch**. Declaring 716 at M1 would mean seven milestones of a complaint everybody
-learns to scroll past, on the one check that keeps the award table honest. So each
-milestone declares the ceiling its own content can pay, and M8 lands on 716.
-`Sources/Zork1/` set the precedent: a placeholder 20, raised phase by phase.
+The bootstrap totals the `Scoring` award table against `maxScore` and warns on a mismatch — and the terminal launcher writes that warning to standard error on **every launch**. Declaring 716 at M1 would mean seven milestones of a complaint everybody learns to scroll past, on the one check that keeps the award table honest. So each milestone declares the ceiling its own content can pay, and M8 lands on 716. `Sources/Zork1/` set the precedent: a placeholder 20, raised phase by phase.
 
 Two consequences worth stating.
 

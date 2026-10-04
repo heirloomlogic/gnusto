@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "package": "Gnusto",
+  "games": [
+    {
+      "name": "CloakOfDarkness",
+      "product": "CloakOfDarkness",
+      "module": "CloakOfDarkness",
+      "symbol": "game"
+    },
+    {
+      "name": "Lighthouse",
+      "product": "Lighthouse",
+      "module": "Lighthouse",
+      "symbol": "game"
+    },
+    {
+      "name": "Zork1",
+      "product": "Zork1",
+      "module": "Zork1",
+      "symbol": "game"
+    },
+    {
+      "name": "Dungeon",
+      "product": "Dungeon",
+      "module": "Dungeon",
+      "symbol": "game"
+    },
+    {
+      "name": "Gramarye",
+      "product": "Gramarye",
+      "module": "Gramarye",
+      "symbol": "game"
+    },
+    {
+      "name": "Fulminate",
+      "product": "Fulminate",
+      "module": "Fulminate",
+      "symbol": "game"
+    },
+    {
+      "name": "KindlyDeep",
+      "product": "KindlyDeep",
+      "module": "KindlyDeep",
+      "symbol": "game"
+    }
+  ]
+}

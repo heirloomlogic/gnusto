@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Build the generated development launcher and print its absolute binary path.
+# Usage: bin/build-game <Game> [--mode development|deployment] [--force] [--json]
+# A shim over the resolved Gnusto checkout; see bin/lib/gnusto-tooling.sh.
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec build-game "$@"

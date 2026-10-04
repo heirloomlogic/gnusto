@@ -44,11 +44,22 @@ jobs:
       # The `Gnusto-Package` scheme rather than `Gnusto`: it covers the optional
       # libraries, GnustoTestSupport and the seven demo games, which are the
       # corpus that would notice an author-facing API going iOS-unavailable.
+      # GnustoTerminal belongs only to generated macOS/Linux launchers; it is
+      # deliberately absent from this package and this iOS dependency graph.
       # `.dev-tooling` is deliberately not touched, so Persnicket and the DocC
       # plugin stay out of the graph. `-skipMacroValidation` because the #verb
       # macro is a source dependency and xcodebuild otherwise wants an
       # interactive trust decision for it. The version is logged so a rolled
       # image is diagnosable in one look.
+      - name: Verify the iOS dependency boundary
+        run: |
+          set -eu
+          swift package --manifest-cache none show-dependencies --format json > "$RUNNER_TEMP/ios-dependencies.json"
+          if grep -qi GnustoTerminal "$RUNNER_TEMP/ios-dependencies.json"; then
+            echo "error: terminal presentation entered Gnusto's iOS dependency graph" >&2
+            exit 1
+          fi
+
       - name: Build for iOS
         run: |
           xcodebuild -version

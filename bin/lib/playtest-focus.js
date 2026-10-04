@@ -392,8 +392,8 @@ function seedFor(game) {
 }
 
 // One manifest read per invocation. Every caller wants the same answer and each
-// swiftpm launch takes the package lock for about a second — the very cost
-// `bin/gnusto-mcp`'s mtime gate exists to stop paying.
+// swiftpm launch takes the package lock for about a second. Warm MCP launches
+// use the shared fingerprint cache and never describe the package.
 let describedPackage
 function describePackage() {
   if (describedPackage === undefined) {
@@ -404,42 +404,64 @@ function describePackage() {
   return describedPackage
 }
 
-/// Every game this package builds, as the manifest describes it. SwiftPM emits a
-/// product's type in two shapes depending on its version, and this is the one place
-/// that knows both.
-const gameProducts = () => (describePackage()?.products || [])
-  .filter((p) => p.type === 'executable' || (p.type && 'executable' in p.type))
-
-/// Every game this package builds, as the identifiers a product name can be.
-function executableProducts() {
-  return gameProducts().map((p) => p.name)
+// Catalog reads are lazy: route/root-only consumers work in scratch packages that
+// have no game catalog. Node 22 loads this synchronous ESM module without copying
+// its catalog validation into the CommonJS play-test helpers.
+let catalog
+function gameCatalog() {
+  if (catalog === undefined) catalog = require('./game-catalog.mjs').loadGames(ROOT)
+  return catalog
 }
 
-/// The targets a game is built from.
-///
-/// **A product name is not a target name.** Every game in this package has the two
-/// equal, so looking a product up in `describePackage().targets` has been right in
-/// every round ever run and is wrong by construction: SwiftPM lets an author name
-/// them separately, and a package that does gets an empty target graph with nothing
-/// anywhere saying so — no game source path, and a capability list that reads exactly
-/// like a game with no clock in it.
-function targetsOfProduct(name) {
-  return gameProducts().find((p) => p.name === name)?.targets || []
+/// Every explicitly exported game in this package, in catalog order.
+function gameNames() {
+  return gameCatalog().games.map((game) => game.name)
 }
 
-/// The product somebody's words meant, or `null`.
-///
-/// Fold both sides so a phrase can find an identifier: `Zork IV` and `zork-iv`
-/// both reach `ZorkIV`. Shared rather than copied because this is the contract a
-/// person sees — which words find which game, and what they are told when none
-/// does — and two front doors disagreeing about it is worse than either being
-/// wrong.
-function resolveGame(words) {
-  const products = executableProducts()
-  return {
-    game: products.find((p) => fold(p) === fold(words)) || null,
-    products,
+/// The catalog export selected by its public game name.
+function gameExport(name) {
+  return gameCatalog().games.find((game) => game.name === name) || null
+}
+
+const isLibrary = (product) => product.type === 'library'
+  || (product.type && typeof product.type === 'object' && 'library' in product.type)
+
+/// Validate catalog products against the package's actual library graph.
+function validateGameProducts() {
+  const manifest = describePackage()
+  if (!manifest) throw new Error('Could not describe game package')
+  for (const game of gameCatalog().games) {
+    const product = (manifest.products || []).find((p) => p.name === game.product && isLibrary(p))
+    if (!product) throw new Error(`${game.product} is not a library product in the game package`)
+    const owned = new Set(targetsOfProduct(game.name))
+    if (!(manifest.targets || []).some((target) => owned.has(target.name) && (target.c99name || target.name) === game.module)) {
+      throw new Error(`${game.product} does not contain catalog module ${game.module}`)
+    }
   }
+}
+
+/// The actual target closure of the catalog game's library product.
+/// Product names, module names and public game names may all differ.
+function targetsOfProduct(name) {
+  const game = gameExport(name)
+  const manifest = describePackage()
+  const product = (manifest?.products || []).find((p) => p.name === game?.product && isLibrary(p))
+  const targets = manifest?.targets || []
+  const seen = new Set()
+  const walk = (targetName) => {
+    if (seen.has(targetName)) return
+    seen.add(targetName)
+    const target = targets.find((t) => t.name === targetName)
+    for (const dependency of target?.target_dependencies || []) walk(dependency)
+  }
+  for (const target of product?.targets || []) walk(target)
+  return [...seen]
+}
+
+/// The game somebody's words meant, or `null`, retaining the resolver's shape.
+function resolveGame(words) {
+  const products = gameNames()
+  return { game: products.find((name) => fold(name) === fold(words)) || null, products }
 }
 
 /// A stored key with the noise taken off its path half: a leading `./`, which is what
@@ -556,7 +578,9 @@ module.exports = {
   OFF,
   fold,
   describePackage,
-  executableProducts,
+  gameNames,
+  gameExport,
+  validateGameProducts,
   targetsOfProduct,
   resolveGame,
   gameDoc,

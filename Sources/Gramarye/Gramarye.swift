@@ -31,8 +31,7 @@ extension Intent {
 ///
 /// Original title and prose: "Enchanter" and its spell words are trademarks;
 /// the mechanics here are the general RPG paradigms, not that specific game.
-@main
-struct Gramarye: Game, GameMain {
+struct Gramarye: Game {
     let title = "Gramarye"
     let tagline = "A novice's first working."
     /// One award, paid on taking the amulet. It is declared in ``scoring``'s

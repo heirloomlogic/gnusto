@@ -52,8 +52,7 @@ extension Fact {
 /// 1952 Pasadena explosion; the crime, the household, and every person in it
 /// are invented, and no accusation here is made of anyone who lived. Every
 /// character is a type of the period, never a portrait of a person.
-@main
-struct Fulminate: Game, GameMain {
+struct Fulminate: Game {
     let title = "Fulminate"
     let tagline = "Pasadena, June 1952."
     let intro = """

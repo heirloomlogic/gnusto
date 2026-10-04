@@ -6,30 +6,15 @@ Every message the bootstrap can print, and what to change.
 
 ![An engineer uses a lantern to inspect the exposed workings of a machine.](bootstrap-diagnostics.png)
 
-A Gnusto game is validated once, at boot. `Bootstrap.build` reads every
-declaration the game and its content bundles make, checks them against each
-other, and either hands back a definition or reports every problem it found at
-once — never the first one, because a game with four mistakes in its map should
-cost one build to find all four.
+A Gnusto game is validated once, at boot. `Bootstrap.build` reads every declaration the game and its content bundles make, checks them against each other, and either hands back a definition or reports every problem it found at once — never the first one, because a game with four mistakes in its map should cost one build to find all four.
 
-Reports use a stable order. A build with the same mistakes therefore prints
-the same list in the same order.
+Reports use a stable order. A build with the same mistakes therefore prints the same list in the same order.
 
-A problem that would leave the world incoherent is fatal: ``BootstrapError`` is
-thrown and the game never starts. A problem that only leaves a declaration inert
-is a warning on standard error, and play continues. The distinction is worth
-holding on to, because a warning describes a line of your source that does
-nothing at all — a flag with no effect, a rule that can never fire, a
-description with nowhere to print — and nothing at runtime will ever mention it
-again.
+A problem that would leave the world incoherent is fatal: ``BootstrapError`` is thrown and the game never starts. A problem that only leaves a declaration inert is a warning on standard error, and play continues. The distinction is worth holding on to, because a warning describes a line of your source that does nothing at all — a flag with no effect, a rule that can never fire, a description with nowhere to print — and nothing at runtime will ever mention it again.
 
-Warnings print **before** the IO handler is built. ``TerminalIOHandler`` enters
-the alternate screen buffer in its initializer, so a stderr write after that
-would be painted over and lost; ``GameMain`` writes the report first, on the
-primary screen, where it is still there after the game exits. It goes to stderr
-rather than stdout so it stays out of the play transcript.
+Warnings print **before** the IO handler is built. `TerminalIOHandler` enters the alternate screen buffer in its initializer, so a stderr write after that would be painted over and lost; `TerminalLaunch` writes the report first, on the primary screen, where it is still there after the game exits. It goes to stderr rather than stdout so it stays out of the play transcript.
 
-That is the ``GameMain`` path and the MCP play-test server, which writes the same report to standard error and also carries it in the `survey` tool's result, so an agent sees it without reading the client's log. A world built by hand — a test calling `play(_:_:)`, a custom front end constructing ``GameWorld`` itself — prints nothing, so run the game once as a binary after changing declarations.
+That is the `TerminalLaunch` path and the MCP play-test server, which writes the same report to standard error and also carries it in the `survey` tool's result, so an agent sees it without reading the client's log. A world built by hand — a test calling `play(_:_:)`, a custom front end constructing ``GameWorld`` itself — prints nothing, so run the game once as a binary after changing declarations.
 
 The report reads:
 
@@ -39,8 +24,7 @@ Gnusto: the game definition has 2 warning(s) (play continues):
   • location "cellar" declares alwaysDescribed but has no description(…) trait and no describe { … } rule; the flag has nothing to print.
 ```
 
-A fatal error reads the same way, deliberately, so the two are one thing to
-learn:
+A fatal error reads the same way, deliberately, so the two are one thing to learn:
 
 ```
 Gnusto: the game definition is invalid (1 problem(s)):
@@ -49,24 +33,17 @@ Gnusto: the game definition is invalid (1 problem(s)):
 
 ## Fatal: `BootstrapError`
 
-``BootstrapError`` carries every diagnostic in ``BootstrapError/diagnostics``
-and renders them all in its `description`. It is thrown at three gates, and each
-gate has to pass before the next one runs:
+``BootstrapError`` carries every diagnostic in ``BootstrapError/diagnostics`` and renders them all in its `description`. It is thrown at three gates, and each gate has to pass before the next one runs:
 
-1. **Placement and map**, after reflection has discovered the declarations and
-   the `map` block has been evaluated.
+1. **Placement and map**, after reflection has discovered the declarations and the `map` block has been evaluated.
 2. **Vocabulary**, after every item's and actor's declared name, synonym and adjective, every verb-pattern literal and every noise word has been split the way the tokenizer splits player input. A location's name is not vocabulary — nothing parses a room name — so it is not split or checked.
-3. **Rules and timers**, after the `rules` and `timers` blocks have been
-   evaluated in a registration frame.
+3. **Rules and timers**, after the `rules` and `timers` blocks have been evaluated in a registration frame.
 
-The gating is why a game with a broken map and a duplicate rule reports only the
-map: the rules block has not been read yet. Fix the first list, build again, and
-the second appears. Each gate reports everything it found.
+The gating is why a game with a broken map and a duplicate rule reports only the map: the rules block has not been read yet. Fix the first list, build again, and the second appears. Each gate reports everything it found.
 
 ### Gate 1 — declarations, map and placement
 
-Some of these lines contain backticks; they are shown below as single quotes so
-the table renders.
+Some of these lines contain backticks; they are shown below as single quotes so the table renders.
 
 | Diagnostic | Cause and fix |
 |---|---|
@@ -80,11 +57,13 @@ the table renders.
 | `entity "coin" is declared by both MyGame and Attic.` | Two declarations minted the same `EntityID`. Rename one, or namespace the bundle. |
 | `"a" and "b" are the same Location value; each location must be its own declaration.` | One `Location` (or `Item`, or `Actor`) value assigned to two properties. Each entity is its own `let`. |
 | `location "hall" has no name(…) trait.` | Also `item "…"` and `actor "…"`. Every entity needs a `name(…)` trait. |
-| `location "hall" declares an empty name(…) trait.` | Also `whitespace-only`. A room name is not parser vocabulary, but it is its heading; give the room a name that can print. |
+| `location "hall" declares an empty name(…) trait.` | Also `whitespace-only`. A room name is not parser vocabulary, but it is its heading; give the room a name that can print. Also `mapRegion(…)`. |
 | `item "coin" declares an empty description(…) trait.` | Also `location`, `actor`, `firstSight(…)`, `article(…)`, `whitespace-only`, and either `text` or `otherwise text` branch of the `when:_:otherwise:` forms. Omit optional text to use stock behavior; explicitly blank text is an author error. |
-| `item "coin" declares name(…) more than once.` | Also `description(…)`, `firstSight(…)`, the two-state description forms, `article(…)`, `pronoun(…)`, `capacity(…)`, `surfaceCapacity(…)`, custom traits, and location names/descriptions/custom traits. These are single-valued declarations; remove the duplicate instead of relying on the later value. `adjectives` and `synonyms` deliberately accumulate. |
+| `item "coin" declares name(…) more than once.` | Also `description(…)`, `firstSight(…)`, the two-state description forms, `article(…)`, `pronoun(…)`, `capacity(…)`, `surfaceCapacity(…)`, custom traits, and location names/descriptions/`mapRegion(…)`/custom traits. These are single-valued declarations; remove the duplicate instead of relying on the later value. `adjectives` and `synonyms` deliberately accumulate. |
 | `the north exit from "hall" references a location the bootstrap never registered; it must be a stored property of the game, or of a content bundle the game both stores and lists in 'var content'.` | Also `… door from "hall" references an item …`. The `map` block named something the reflection walk never saw — usually a computed property, one declared in an extension, or one on a bundle that is stored but not listed. If the source is also unresolved, the diagnostic names the direction instead. |
 | `"attic" declares its north exit more than once.` | Two `map` entries claim one direction. |
+| `"hall"'s west exit is blocked and declared .secret; a blocked exit is never walked, so it would never be drawn.` | ``MapEntry/secret`` hides an exit until the player has gone through it, and nobody goes through a blocked exit. Remove `.secret`. |
+| `the placement of "coin" is declared .secret; only an exit can be secret.` | Also `player.starts(in:)` and `the lockedBy entry for "…"`. `.secret` was written after a map entry that is not an exit. Remove it. |
 | `"coin" declares its placement more than once: first in "hall", then inside "box".` | An item can have one initial position. This applies to every placement spelling: `starts(in:)`, `starts(on:)`, `starts(inside:)`, `startsWorn`, `startsHeld`, and `starts(heldBy:)`, including declarations split between the host map and a content bundle's map. Remove one entry. |
 | `"attic"'s north exit uses "door" as a door, which is not declared openable.` | A door exit needs an ``openable`` item; `go` has no open state to gate on otherwise. |
 | `location "hall" declares an empty blocked north exit message.` | Also `whitespace-only` and `conditional north exit otherwise message`. A refusal that prints nothing still costs a turn, so supply real prose or remove the exit declaration. |
@@ -105,10 +84,7 @@ the table renders.
 
 ### Gate 2 — vocabulary
 
-Every declared phrase goes through the same splitter as player input:
-lowercased, a trailing `'s` dropped, every other non-alphanumeric a separator.
-A declaration the splitter cannot turn into a word is dead on arrival, and used
-to be silently so.
+Every declared phrase goes through the same splitter as player input: lowercased, a trailing `'s` dropped, every other non-alphanumeric a separator. A declaration the splitter cannot turn into a word is dead on arrival, and used to be silently so.
 
 | Diagnostic | Cause and fix |
 |---|---|
@@ -134,8 +110,7 @@ to be silently so.
 
 ## Non-fatal: the warning list
 
-Warnings accumulate in the definition and are rendered by its warning report.
-Each one describes a declaration that compiles, reads as live, and does nothing.
+Warnings accumulate in the definition and are rendered by its warning report. Each one describes a declaration that compiles, reads as live, and does nothing.
 
 | Warning | Cause and fix |
 |---|---|
@@ -157,7 +132,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `actor "troll" declares the item trait "container"; actors hold things via their inventory, and it will behave item-like if left in place.` | Checked for `wearable`, `scenery`, `surface`, `container`, `openable`, `startsOpen`, `transparent`, `startsUnlocked`, `capacity`, `surfaceCapacity`, and a `lockedBy` map entry — the message reads `actor "troll" declares a lockedBy entry; …` for that one, since there is no `lockable` trait to declare. Legal, almost never meant; the actor is left as declared rather than stripped of the trait. |
 | `actor "troll" declares the item trait "alwaysListed"; an actor's listing line is never spent on a first touch, so there is nothing for the trait to keep.` | ``alwaysListed`` buys an *item* out of the listing channel's touch gate, and an actor was never behind that gate — a person is still news on every look. Its own sentence rather than a row in the list above, because the trait is inert on an actor rather than item-like. Remove it. |
 | `custom action for intent "undo" will never run; the engine answers undo before the turn pipeline.` | UNDO and the other engine-level verbs listed in <doc:AddingCustomVerbs> are answered before any stage runs. Nothing can override them. |
-| `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb with a *closure* row or a rule is silent: a stub has no behavior to shadow, so the warning would be noise. The *line* form is the one exception, next row. See <doc:StubVerbs>. A deliberate override says so at the declaration — `action(.score, overriding: true) { … }` — which silences this warning for that row alone and changes nothing about dispatch, precedence or the reach guard. It is an acknowledgement, not a suppression switch: the two rows below still fire for an acknowledged line, a row for `undo` still warns that the engine answers it first, and every diagnostic the rest of the game earns is untouched. It is what keeps an author-facing warning off a released game's stderr, which `GameMain` writes before the intro. |
+| `custom action for intent "take" overrides the built-in default of the same intent.` | Keyed off the **core** verb table, not the whole standard table, which is why overriding a stub verb with a *closure* row or a rule is silent: a stub has no behavior to shadow, so the warning would be noise. The *line* form is the one exception, next row. See <doc:StubVerbs>. A deliberate override says so at the declaration — `action(.score, overriding: true) { … }` — which silences this warning for that row alone and changes nothing about dispatch, precedence or the reach guard. It is an acknowledgement, not a suppression switch: the two rows below still fire for an acknowledged line, a row for `undo` still warns that the engine answers it first, and every diagnostic the rest of the game earns is untouched. It is what keeps an author-facing warning off a released game's stderr, which `TerminalLaunch` writes before the intro. |
 | `default line for intent "sing" replaces the engine's stub verb; assign text.stubs.sing instead, which keeps the verb's own guards.` | `action(.sing, say: …)` on an intent the engine already answers with a stub. The line works, but `text.stubs.sing = …` is the same sentence and keeps the verb's reach guard, the object's rendered name and the `yourself`/`somebodyElse` guards. |
 | `the default line for intent "wind" names its object, but the verb row "wind" takes none; that command would answer with a parse error. Use action(.wind, orBare:naming:), which asks for both halves.` | A `naming:` line is built out of the object's name and has nothing to say without one, so a bare row for the same verb would fall through to the parser's failure and cost a turn. Give the bare half its own sentence with `orBare:`. |
 | `custom action for intent "brawl" overrides an earlier custom action of the same intent.` | Two `actions` rows for one intent; the later wins. Bundle rows come before the host game's. |
@@ -173,8 +148,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 
 ## Reading diagnostics in a test
 
-``BootstrapError`` is public and so is ``BootstrapError/diagnostics``, so a test
-asserts on a bad game directly rather than through a transcript:
+``BootstrapError`` is public and so is ``BootstrapError/diagnostics``, so a test asserts on a bad game directly rather than through a transcript:
 
 ```swift
 #expect(throws: BootstrapError.self) {
@@ -182,10 +156,7 @@ asserts on a bad game directly rather than through a transcript:
 }
 ```
 
-Inside the engine's own suite, where `Bootstrap` is visible, calling
-`Bootstrap.build(BadGame())` directly gets at the diagnostic array itself, which
-is how the exact strings above are pinned. <doc:TestingYourGame> covers that
-side, including the fixture games in `Tests/GnustoTests/Support/`.
+Inside the engine's own suite, where `Bootstrap` is visible, calling `Bootstrap.build(BadGame())` directly gets at the diagnostic array itself, which is how the exact strings above are pinned. <doc:TestingYourGame> covers that side, including the fixture games in `Tests/GnustoTests/Support/`.
 
 ## `GNUSTO_STACK_REPORT`
 
@@ -222,16 +193,9 @@ It is a flag in the manner of `GNUSTO_PLAIN`, so any value counts, including an 
 
 ## Entity interpolation warns at compile time
 
-Interpolating an `Item`, `Actor`, or `Location` directly into a `String` produces a
-compiler warning. Use `item.definiteName` or `item.indefiniteName`, the corresponding
-actor properties, or `location.name` in prose. Ignoring the warning preserves the
-existing struct dump; interpolation does not read live game state for you.
+Interpolating an `Item`, `Actor`, or `Location` directly into a `String` produces a compiler warning. Use `item.definiteName` or `item.indefiniteName`, the corresponding actor properties, or `location.name` in prose. Ignoring the warning preserves the existing struct dump; interpolation does not read live game state for you.
 
-Swift skips unavailable interpolation overloads and falls back to its generic
-implementation, so Gnusto uses deprecated overloads to issue this warning. Build
-with `-warnings-as-errors` (`swift build -Xswiftc -warnings-as-errors`) to reject it.
-Values erased to `Any` or passed through an unconstrained generic still use Swift's
-generic interpolation and cannot receive this type-specific warning.
+Swift skips unavailable interpolation overloads and falls back to its generic implementation, so Gnusto uses deprecated overloads to issue this warning. Build with `-warnings-as-errors` (`swift build -Xswiftc -warnings-as-errors`) to reject it. Values erased to `Any` or passed through an unconstrained generic still use Swift's generic interpolation and cannot receive this type-specific warning.
 
 
 ## See also

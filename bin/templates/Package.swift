@@ -16,13 +16,7 @@ import PackageDescription
 // whatever the root package does, so without this line the engine's server
 // would ship even from a build that asked for no traits at all.
 //
-// `bin/new-game` writes the dependency below without `traits:` when the Gnusto it
-// is pinning predates the trait, and says so as it writes: SwiftPM refuses at
-// resolution to enable a trait the dependency never declared, so forwarding to
-// such a release would leave a package that does not resolve at all. In that
-// state `gnusto` is declared and unused, and the trait above reaches only this
-// package. Repointing the dependency at a Gnusto that declares the trait is the
-// whole of putting it back.
+// `bin/new-game` refuses releases that lack the factory, tools or Playtest trait.
 let gnusto: Set<Package.Dependency.Trait> = [
     .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))
 ]
@@ -31,6 +25,9 @@ let package = Package(
     name: "MyGame",
     platforms: [
         .macOS(.v15)
+    ],
+    products: [
+        .library(name: "MyGame", targets: ["MyGame"])
     ],
     traits: [
         .trait(name: "Playtest", description: "Compile the Gnusto play-test server into this game."),
@@ -45,7 +42,7 @@ let package = Package(
         .package(name: "Gnusto", path: "../..", traits: gnusto)  // gnusto-dependency
     ],
     targets: [
-        .executableTarget(
+        .target(
             name: "MyGame",
             dependencies: [
                 .product(name: "Gnusto", package: "Gnusto"),

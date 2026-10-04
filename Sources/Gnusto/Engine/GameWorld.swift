@@ -18,10 +18,24 @@ public struct StatusLine: Sendable {
     public let score: Int
     /// The number of turns taken so far.
     public let moves: Int
+
+    /// Constructs an immutable status value for a front end to display.
+    ///
+    /// - Parameters:
+    ///   - locationID: the current location's stable identity.
+    ///   - locationName: the current location's display name.
+    ///   - score: the player's current score.
+    ///   - moves: the number of turns taken so far.
+    public init(locationID: EntityID, locationName: String, score: Int, moves: Int) {
+        self.locationID = locationID
+        self.locationName = locationName
+        self.score = score
+        self.moves = moves
+    }
 }
 
-/// The outcome of a single turn: text to show, whether the game ended, and the
-/// status line to display.
+/// The outcome of a single turn: text to show, whether the game ended, the
+/// status line to display, and a report of what happened.
 public struct TurnResult: Sendable {
     /// The text to present to the player.
     public let output: String
@@ -29,6 +43,8 @@ public struct TurnResult: Sendable {
     public let isFinished: Bool
     /// The status line to display alongside the output.
     public let status: StatusLine
+    /// What the turn did besides print. See ``TurnReport``.
+    public internal(set) var report = TurnReport()
     /// The paragraphs ``prose`` is read from: the turn's output, or none for
     /// a free reply or a meta intent, which are the engine answering by
     /// itself.
@@ -182,10 +198,7 @@ public actor GameWorld {
     ///     per-user saves directory for the game's title.
     /// - Throws: if the game definition is invalid.
     public init(game: some Game, saveDirectory: URL? = nil) throws {
-        try self.init(
-            game: game,
-            seed: UInt64.random(in: .min ... .max),
-            saveDirectory: saveDirectory)
+        self.init(prepared: try PreparedGame(game), saveDirectory: saveDirectory)
     }
 
     /// Builds the world with a fixed random seed: the same seed and the same
@@ -200,6 +213,21 @@ public actor GameWorld {
     /// - Throws: if the game definition is invalid.
     public init(game: some Game, seed: UInt64, saveDirectory: URL? = nil) throws {
         self.init(prepared: try PreparedGame(game), seed: seed, saveDirectory: saveDirectory)
+    }
+
+    /// Builds an independent world from a prepared game with a fresh random seed.
+    ///
+    /// The bootstrap result is shared while mutable session state and the random
+    /// stream belong to this world. RESTART reuses this world's initial seed.
+    ///
+    /// - Parameters:
+    ///   - prepared: the immutable bootstrap result to reuse.
+    ///   - saveDirectory: where bare save names resolve; defaults to the
+    ///     per-user saves directory for the game's title.
+    public init(prepared: PreparedGame, saveDirectory: URL? = nil) {
+        self.init(
+            prepared: prepared, seed: UInt64.random(in: .min ... .max),
+            saveDirectory: saveDirectory)
     }
 
     /// Builds the world from a game booted once via `PreparedGame`, skipping the
@@ -226,7 +254,7 @@ public actor GameWorld {
             ?? SaveStore.defaultDirectory(forGameTitled: definition.title)
         // An injected directory counts either way it arrives: the initializer
         // argument, or `GNUSTO_SAVE_DIR`, which replay tools like
-        // `bin/playtest-replay` set for a world built through `GameMain` with
+        // `bin/playtest-replay` set for a world built through the terminal launcher with
         // no `saveDirectory:` of its own.
         self.savePathsRestricted =
             saveDirectory != nil || SaveStore.directoryIsInjected()
@@ -234,7 +262,7 @@ public actor GameWorld {
 
     /// The opening of the game: intro, banner, and the first look around.
     ///
-    /// - Returns: the opening turn's output and status.
+    /// - Returns: the opening turn's output and status, with an empty report.
     public func begin() -> TurnResult {
         let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
@@ -243,7 +271,9 @@ public actor GameWorld {
                 definition.text.banner(definition.title, definition.tagline), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
-        return commit(frame)
+        var result = commit(frame)
+        result.report = TurnReport()
+        return result
     }
 
     /// Parses and performs one line of player input. Parse errors are free:
@@ -252,9 +282,13 @@ public actor GameWorld {
     /// tried as their answer, and falls back to being a fresh command.
     ///
     /// - Parameter input: one line of player input.
-    /// - Returns: the turn's output and status.
+    /// - Returns: the turn's output, status and ``TurnReport``.
     public func perform(_ input: String) -> TurnResult {
-        performAudited(input).result
+        let origin = state.playerLocation
+        let (performed, audit) = performAudited(input)
+        var result = performed
+        result.report = report(of: audit, from: origin, recorded: performed.report.movement)
+        return result
     }
 
     /// `perform`, plus what the parser made of the line — see ``TurnAudit`` for
@@ -486,14 +520,16 @@ public actor GameWorld {
     /// exit the typed `quit` answer takes at the death prompt: stop reading,
     /// say nothing more.
     ///
-    /// - Returns: the final turn's output and status (`isFinished == true`).
+    /// - Returns: the final turn's output and status (`isFinished == true`), with an empty report.
     public func requestQuit() -> TurnResult {
         pendingPrompt = nil
         pendingClarification = nil
         if state.status != .playing { return quitAfterGameEnded() }
-        return runTurn(
+        var result = runTurn(
             Command(intent: .quit, verbPhrase: "quit", rawInput: "quit"),
             snapshot: state)
+        result.report = TurnReport()
+        return result
     }
 
     /// Leaves the game silently once it has already ended: the turn that
@@ -1666,7 +1702,7 @@ public actor GameWorld {
 
     /// Where this game's persistent command history lives — the history
     /// sidecar in the saves directory. `SaveStore` owns the path convention.
-    var historyFileURL: URL {
+    public var historyFileURL: URL {
         SaveStore.historyURL(in: saveDirectory)
     }
 
@@ -1742,7 +1778,7 @@ public actor GameWorld {
         // moved the counter, so live state is the world their words were
         // written in.
         statusFieldState = scratch.statusFieldState
-        return TurnResult(
+        var result = TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
             isFinished: scratch.state.status.isFinal,
             status: statusLine(),
@@ -1750,6 +1786,18 @@ public actor GameWorld {
             // VERSION are the engine answering by itself, as a free reply is.
             paragraphs: scratch.command?.intent.isMeta == true ? [] : scratch.output,
             asides: scratch.asides)
+        // Rolled-back scratch mutations did not happen in the committed world.
+        if restoring == nil, let first = scratch.mapTransitions.first,
+            first.from != state.playerLocation
+        {
+            if scratch.mapTransitions.count == 1, let direction = first.direction {
+                result.report.movement = .walked(
+                    from: first.from, to: first.to, direction: direction)
+            } else {
+                result.report.movement = .teleported(from: first.from, to: state.playerLocation)
+            }
+        }
+        return result
     }
 
     private func displayName(of id: EntityID) -> String {

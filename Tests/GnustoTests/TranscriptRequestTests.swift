@@ -1,11 +1,8 @@
 import Foundation
-import GnustoTestSupport
+import Gnusto
 import Testing
 
-@testable import CloakOfDarkness
-@testable import Gnusto
-
-/// `GameMain.main()` reads `GNUSTO_TRANSCRIPT` through `TranscriptRequest`,
+/// A launcher reads `GNUSTO_TRANSCRIPT` through `TranscriptRequest`,
 /// which actually opens the resolved file so a bad path is caught at launch —
 /// see #494. This exercises the value type directly, the way
 /// `SeedRequestTests` and `StatusFooterTests` exercise their siblings: `main()`
@@ -16,26 +13,25 @@ struct TranscriptRequestTests {
             .appendingPathComponent(UUID().uuidString)
     }
 
-    @Test func anAbsentVariableIsUnset() async throws {
-        let world = try cachedWorld(OperaHouse())
-        let request = TranscriptRequest(world: world, environment: [:])
+    @Test func anAbsentVariableIsUnset() throws {
+        let request = TranscriptRequest(gameTitled: "Cloak of Darkness", environment: [:])
         #expect(request.url == nil)
         #expect(request.complaint == nil)
     }
 
-    @Test func anEmptyVariableIsUnset() async throws {
-        let world = try cachedWorld(OperaHouse())
+    @Test func anEmptyVariableIsUnset() throws {
         let request = TranscriptRequest(
-            world: world, environment: ["GNUSTO_TRANSCRIPT": ""])
+            gameTitled: "Cloak of Darkness", environment: ["GNUSTO_TRANSCRIPT": ""])
         #expect(request.url == nil)
         #expect(request.complaint == nil)
     }
 
-    @Test func aWritablePathOpensCleanlyAndComplainsNotAtAll() async throws {
-        let world = try cachedWorld(OperaHouse())
-        let file = tempDirectory().appendingPathComponent("session.txt")
+    @Test func aWritablePathOpensCleanlyAndComplainsNotAtAll() throws {
+        let directory = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("session.txt")
         let request = TranscriptRequest(
-            world: world, environment: ["GNUSTO_TRANSCRIPT": file.path])
+            gameTitled: "Cloak of Darkness", environment: ["GNUSTO_TRANSCRIPT": file.path])
         #expect(request.url == file)
         #expect(request.complaint == nil)
     }
@@ -44,13 +40,13 @@ struct TranscriptRequestTests {
     /// unwritable path stands in the same way) can't be opened as a file, and
     /// used to be swallowed by `transcriptURL.flatMap { try? ... }` with no
     /// word on stderr and no transcript on disk.
-    @Test func aPathThatCannotBeOpenedComplainsAndRecordsNothing() async throws {
-        let world = try cachedWorld(OperaHouse())
+    @Test func aPathThatCannotBeOpenedComplainsAndRecordsNothing() throws {
         let directory = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
         let request = TranscriptRequest(
-            world: world, environment: ["GNUSTO_TRANSCRIPT": directory.path])
+            gameTitled: "Cloak of Darkness", environment: ["GNUSTO_TRANSCRIPT": directory.path])
         #expect(request.url == nil)
         let complaint = try #require(request.complaint)
         #expect(complaint.contains("GNUSTO_TRANSCRIPT"))
@@ -58,17 +54,19 @@ struct TranscriptRequestTests {
         #expect(complaint.contains("without a transcript"))
     }
 
-    @Test func aBareFlagRecordsToTheGamesDefaultTranscriptsDirectory() async throws {
-        let world = try cachedWorld(OperaHouse())
+    @Test func aBareFlagRecordsToTheGamesDefaultTranscriptsDirectory() throws {
         let directory = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
         let request = TranscriptRequest(
-            world: world,
+            gameTitled: "Cloak of Darkness",
             environment: [
                 "GNUSTO_TRANSCRIPT": "1",
                 "GNUSTO_TRANSCRIPT_DIR": directory.path,
             ])
         let url = try #require(request.url)
-        #expect(url.path.hasPrefix(directory.path))
+        #expect(url.deletingLastPathComponent().path == directory.path)
+        #expect(url.lastPathComponent.hasPrefix("Cloak-of-Darkness-"))
+        #expect(url.pathExtension == "txt")
         #expect(request.complaint == nil)
     }
 }

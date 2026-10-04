@@ -387,12 +387,10 @@ struct DoublePresenceGame: Game {
     }
 }
 
-// MARK: - GameMain
+// MARK: - Scripted REPL
 
-/// A trivial fixture proving `GameMain` compiles when a `Game` opts in.
-/// Never invoked as `@main` (that would require stdin); tests call the
-/// factored `run(world:io:)` directly with a `ScriptedIOHandler`.
-struct MainableGame: Game, GameMain {
+/// A minimal fixture for the engine-owned scripted input/output loop.
+struct ScriptedLoopGame: Game {
     let title = "Mainable"
     let intro = "Welcome."
 

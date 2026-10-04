@@ -385,35 +385,10 @@ struct MCPProtocolTests {
     /// `--mcp` and `GNUSTO_MCP`, which decide whether a game binary plays or
     /// serves.
     struct ModeSwitch {
-        @Test func theFlagOnTheCommandLineAsksForTheServer() {
-            #expect(PlaytestMode.requested(arguments: ["Fulminate", "--mcp"], environment: [:]))
-            #expect(!PlaytestMode.requested(arguments: ["Fulminate"], environment: [:]))
-        }
-
-        /// Element zero is the executable path, not something the operator
-        /// typed — a binary that happened to live in a directory called
-        /// `--mcp` would otherwise never be playable.
-        @Test func theExecutablePathIsNotAnArgument() {
-            #expect(!PlaytestMode.requested(arguments: ["/tmp/--mcp/Fulminate"], environment: [:]))
-            #expect(!PlaytestMode.requested(arguments: ["--mcp"], environment: [:]))
-        }
-
-        /// A flag, not a setting: any value counts, an empty one included.
-        /// That is `GNUSTO_PLAIN`'s policy, and the right one for a mode
-        /// switch — there is no value to misread, so there is nothing to
-        /// complain about. `GNUSTO_STATUS` chose on/off words instead because
-        /// it writes into the transcript.
-        @Test func theEnvironmentVariableIsAFlagAndTakesAnyValue() {
-            for value in ["1", "", "0", "off", "no", "yes please"] {
-                #expect(PlaytestMode.requested(arguments: ["Fulminate"], environment: ["GNUSTO_MCP": value]))
-            }
-            #expect(!PlaytestMode.requested(arguments: ["Fulminate"], environment: ["GNUSTO_PLAIN": "1"]))
-        }
-
         /// A build without the `Playtest` trait refuses rather than plays, and
         /// the refusal has to name both channels and the way out — an operator
         /// reading it has a client's stderr pane and no other clue. The branch
-        /// that prints it is a `#if` in `GameMain`, so this suite can only
+        /// that prints it is the terminal launcher, so this suite can only
         /// check the words; `.github/workflows/test.yml` builds the other
         /// configuration and drives a binary through it.
         ///
@@ -425,7 +400,7 @@ struct MCPProtocolTests {
             for fragment in [
                 "--mcp", "GNUSTO_MCP", "Playtest", "--disable-default-traits", "built without it",
             ] {
-                #expect(PlaytestMode.unavailable.contains(fragment))
+                #expect(PlaytestLaunchError.unavailable.description.contains(fragment))
             }
         }
 
@@ -433,7 +408,7 @@ struct MCPProtocolTests {
         /// as a directory rather than trusted file by file.
         ///
         /// The gate cannot be a separate target — the harness reaches
-        /// `internal` seams on `GameWorld`, and `GameMain` has to dispatch to
+        /// `internal` seams on `GameWorld`, and `PlaytestLaunch` has to dispatch to
         /// the server without an author ever naming it, so a target would have
         /// to depend back on `Gnusto` — which leaves ten `#if`s and no
         /// structural reason a new file would carry one. A new file that

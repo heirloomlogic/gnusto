@@ -1,0 +1,17 @@
+// swift-tools-version: 6.2
+import PackageDescription
+
+let forwarded: Set<Package.Dependency.Trait> = [
+    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))
+]
+let package = Package(
+    name: "Story",
+    platforms: [.macOS(.v15)],
+    products: [.library(name: "StoryLibrary", targets: ["Story"])],
+    traits: [
+        .trait(name: "Playtest", description: "Enable development MCP."),
+        .default(enabledTraits: ["Playtest"]),
+    ],
+    dependencies: [ENGINE_DEPENDENCY],
+    targets: [.target(name: "Story", dependencies: [.product(name: "Gnusto", package: "Gnusto")], resources: [.process("Resources")])]
+)

@@ -17,9 +17,12 @@ import Foundation
 /// (including multi-scalar ZWJ sequences and flags) forced to two. It is not a
 /// full Unicode UAX #11 table, but it is correct for the text games actually
 /// render.
-enum DisplayWidth {
-    /// The number of terminal columns `character` occupies (0, 1, or 2).
-    static func columns(of character: Character) -> Int {
+public enum DisplayWidth {
+    /// Measures a grapheme cluster in terminal columns.
+    ///
+    /// - Parameter character: the character to measure.
+    /// - Returns: the number of terminal columns the character occupies.
+    public static func columns(of character: Character) -> Int {
         // Emoji render two cells wide as a whole cluster, including ZWJ
         // sequences (families, professions), flags (regional indicators), and
         // text-default symbols upgraded to emoji presentation by VS16.
@@ -42,14 +45,22 @@ enum DisplayWidth {
 
     /// The number of terminal columns a sequence of characters occupies —
     /// covers `String`, `Substring`, and `ArraySlice<Character>`.
-    static func columns<S: Sequence>(of characters: S) -> Int where S.Element == Character {
+    ///
+    /// - Parameter characters: the sequence to measure.
+    /// - Returns: the total terminal-column width of the sequence.
+    public static func columns<S: Sequence>(of characters: S) -> Int where S.Element == Character {
         characters.reduce(0) { $0 + columns(of: $1) }
     }
 
     /// The longest prefix of `text` that fits within `limit` columns, stopping
     /// before a glyph that would overflow (so a trailing wide glyph is dropped
     /// whole rather than half-drawn). Used to clip the status bar.
-    static func truncated(_ text: some StringProtocol, toColumns limit: Int) -> String {
+    ///
+    /// - Parameters:
+    ///   - text: the text to clip.
+    ///   - limit: the maximum terminal-column width of the prefix.
+    /// - Returns: the prefix that fits without splitting a character.
+    public static func truncated(_ text: some StringProtocol, toColumns limit: Int) -> String {
         var result = ""
         var used = 0
         for character in text {

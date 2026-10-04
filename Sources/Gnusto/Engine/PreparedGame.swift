@@ -11,6 +11,14 @@
 /// definition and state and applies its own seed. `Sendable`, so a prepared
 /// game is safe to share across concurrently-running worlds.
 public struct PreparedGame: Sendable {
+    /// The game's display title, as validated during bootstrap.
+    public var title: String { definition.title }
+
+    /// Non-fatal bootstrap diagnostics, or `nil` when there are none.
+    ///
+    /// A launcher reports these before starting an alternate-screen handler.
+    public var warningReport: String? { definition.warningReport }
+
     let definition: GameDefinition
     let state: WorldState
     /// The parser, built once from the definition's vocabulary and (sorted)

@@ -22,7 +22,7 @@ public protocol IOHandler: Sendable {
     /// delivers. Computing them costs a scope walk and a read of the save
     /// directory after every turn, so the REPL asks first and a handler with
     /// no line editor — the console, a script, a test — never pays for a set
-    /// it would throw away. Defaults to `false`; ``TerminalIOHandler`` says
+    /// it would throw away. Defaults to `false`; `TerminalIOHandler` says
     /// `true`.
     var wantsCompletions: Bool { get }
 

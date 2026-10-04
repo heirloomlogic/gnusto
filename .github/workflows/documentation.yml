@@ -75,7 +75,7 @@ jobs:
           grep -q '"synthesized-landing-page-name"' "$features"
 
       # Targets are named explicitly rather than discovered: the package also
-      # ships seven demo executables and a macro target, and none of them
+      # ships seven demo game libraries and a macro target, and none of them
       # belongs on the site.
       - name: Build documentation
         run: |

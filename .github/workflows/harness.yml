@@ -8,7 +8,7 @@ name: Harness
 #
 # Its own file, not a step elsewhere, for two reasons. Nobody looks for `playtest`
 # in a workflow called Lint. And `test.yml` runs in `swift:6.3.3-noble`, which ships
-# no Node, so putting it there means adding a runtime to the container.
+# no Node; each generated-build job installs its own runtime explicitly.
 on:
   pull_request:
   push:
@@ -36,12 +36,12 @@ jobs:
           # Nothing here pushes, and the step below runs a script from the checkout.
           persist-credentials: false
 
-      # No `paths:` filter above and no setup-node here, both deliberate. The job
-      # costs a runner boot and a second, so running it on every PR is cheaper than
-      # reasoning about which edits can reach the harness — and a filtered job
-      # becomes a permanently pending check the day branch protection is turned on.
-      # The runner ships Node and the script needs only ESM and `node:fs`; the
-      # version is logged so that a rolled image is diagnosable in one look.
+      # No paths filter: every PR reports this required harness check.
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
       - name: Play-test harness dry run
         run: |
           node --version
@@ -60,3 +60,5 @@ jobs:
         run: node --test bin/tests/help-flags.test.mjs
       - name: A value flag with no value is refused by name
         run: node --test bin/tests/value-flags.test.mjs
+      - name: Game catalog, generated builds and atomic resource exports
+        run: node --test bin/tests/game-*.test.mjs

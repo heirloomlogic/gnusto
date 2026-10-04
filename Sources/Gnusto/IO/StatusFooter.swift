@@ -19,7 +19,7 @@ import Foundation
 /// names the minute the turn's own words were written in. See
 /// `statusFields`.
 ///
-/// Off unless asked for. `GNUSTO_STATUS` is read by ``GameMain`` — the
+/// Off unless asked for. `GNUSTO_STATUS` is read by `TerminalLaunch` — the
 /// composition root — and the value handed to ``REPL/init(world:io:transcriptURL:status:environment:)``,
 /// which defaults to `nil`. The test suite constructs its REPLs without the
 /// argument, so `GNUSTO_STATUS=1 swift test` changes nothing: the footer is

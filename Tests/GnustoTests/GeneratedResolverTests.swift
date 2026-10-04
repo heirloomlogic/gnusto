@@ -70,6 +70,22 @@ struct GeneratedResolverTests {
     func generatedDependencyRoundTripsSpecialCharacters(_ name: String) throws {
         let fixture = try Fixture(engineName: name)
         defer { fixture.clean() }
+        // Only this test generates a package; the resolver-only fixtures deliberately omit tools so their refusal checks still discriminate.
+        let templateTools = try FileManager.default.contentsOfDirectory(
+            atPath: Self.root.appendingPathComponent("bin/templates/bin").path
+        )
+        .filter { $0 != "lib" && !$0.hasPrefix(".") }.map { "bin/\($0)" }
+        let libraries = try FileManager.default.contentsOfDirectory(
+            atPath: Self.root.appendingPathComponent("bin/lib").path
+        )
+        .map { "bin/lib/\($0)" }
+        let dependencyFiles = ["Package.swift", "Sources/Gnusto/Engine/PackagedGame.swift"] + templateTools + libraries
+        for file in dependencyFiles where file != "bin/playtest-measure" {
+            let source = Self.root.appendingPathComponent(file)
+            try fixture.write(
+                String(contentsOf: source, encoding: .utf8), at: fixture.engine.appendingPathComponent(file),
+                executable: FileManager.default.isExecutableFile(atPath: source.path))
+        }
         let generated = fixture.directory.appendingPathComponent("Generated")
         let result = try Self.run(
             [

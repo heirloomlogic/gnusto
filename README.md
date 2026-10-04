@@ -4,7 +4,7 @@
 
 Gnusto is a Swift engine for writing interactive fiction. One type is one game: rooms, things, and rules are ordinary stored properties, and the engine takes it from the player's sentence to the next prompt.
 
-You declare the world and the engine finds those declarations by reflection, naming each one after the property it was stored in. Nothing has to be registered anywhere, and every reference is ordinary property access, so a room you misspell is a build error rather than a bug report. `swift run` and it is a game.
+You declare the world and the engine finds those declarations by reflection, naming each one after the property it was stored in. Nothing has to be registered anywhere, and every reference is ordinary property access, so a room you misspell is a build error rather than a bug report. `bin/run-game <Game>` builds a generated terminal launcher and starts it.
 
 It also answers for about fifty verbs your game does not implement — `attack`, `dig`, `smell`, `xyzzy` — with a line of stock prose each. `I don't know the word "attack"` tells the player the *program* is unfinished. *"You shout. Nothing shouts back."* tells them the world is. Every one of those lines is yours to replace.
 
@@ -37,7 +37,7 @@ struct TinyGame: Game {
 }
 ```
 
-That is a complete game. The player can `look`, `examine coin`, `take coin`, check their `inventory`, and try to go `north`. To build one from scratch, read [Getting Started](https://heirloomlogic.github.io/gnusto/documentation/gnusto/gettingstarted); to skip the setup, run `bin/new-game Zwank ~/dev/Zwank` and start writing rooms.
+That is a complete game. The player can `look`, `examine coin`, `take coin`, check their `inventory`, and try to go `north`. To build one from scratch, read [Getting Started](https://heirloomlogic.github.io/gnusto/documentation/gnusto/gettingstarted); to skip the setup, run `bin/new-game Zwank ~/dev/Zwank --dep-path /path/to/Gnusto` and start writing rooms.
 
 ## What it plays like
 
@@ -76,7 +76,7 @@ Your score is 0 of a possible 25, in 4 turns.
 Nobody wrote a rule for any of those four commands. The stock lines came from the engine, the tide came from a daemon, and the drowning came from a fuse that had been running since turn one.
 
 ```sh
-printf 'shout\nwish\nxyzzy\nthink\n' | GNUSTO_SEED=0 swift run Lighthouse
+printf 'shout\nwish\nxyzzy\nthink\n' | GNUSTO_SEED=0 bin/run-game Lighthouse
 ```
 
 ## The demo games
@@ -85,13 +85,13 @@ Seven of them, and they are the engine's real test corpus as well as its documen
 
 | Run it | | |
 |---|---|---|
-| `swift run CloakOfDarkness` | three rooms, a velvet cloak, a message in sawdust | the standard IF acceptance benchmark |
-| `swift run Lighthouse` | a rock, a tower, a rising sea, and one job: keep the light | four rooms, twelve moves, one idiom per entity |
-| `swift run Gramarye` | an apprentice alone in his master's tower for one morning | four spells in four casting paradigms, all load-bearing |
-| `swift run Fulminate` | Pasadena, June 1952 — a rocketry man dies in his own carriage house and you have an hour and four minutes to name the killer | a wall clock and a conversation system |
-| `swift run KindlyDeep` | a fall of rock, two clocks that run down, and a mule who follows | thirst and fatigue, and a companion who parks and rejoins |
-| `swift run Zork1` | the full 350-point reconstruction | prose reproduced verbatim from the published Zork I source |
-| `swift run Dungeon` | the MIT mainframe Zork, the one Zork I was cut down from | 195 rooms of the original's 196, built one region at a time |
+| `bin/run-game CloakOfDarkness` | three rooms, a velvet cloak, a message in sawdust | the standard IF acceptance benchmark |
+| `bin/run-game Lighthouse` | a rock, a tower, a rising sea, and one job: keep the light | four rooms, twelve moves, one idiom per entity |
+| `bin/run-game Gramarye` | an apprentice alone in his master's tower for one morning | four spells in four casting paradigms, all load-bearing |
+| `bin/run-game Fulminate` | Pasadena, June 1952 — a rocketry man dies in his own carriage house and you have an hour and four minutes to name the killer | a wall clock and a conversation system |
+| `bin/run-game KindlyDeep` | a fall of rock, two clocks that run down, and a mule who follows | thirst and fatigue, and a companion who parks and rejoins |
+| `bin/run-game Zork1` | the full 350-point reconstruction | prose reproduced verbatim from the published Zork I source |
+| `bin/run-game Dungeon` | the MIT mainframe Zork, the one Zork I was cut down from | 195 rooms of the original's 196, built one region at a time |
 
 **Lighthouse** is the one to read first: containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins, in a game you can finish in a few minutes. **Dungeon** is the scale test, and it is what finds the bugs a four-room game cannot.
 
@@ -138,7 +138,7 @@ So every Gnusto game is also a play-test server. An agent opens a session, takes
 bin/gnusto-mcp Fulminate       # registered per game in .mcp.json
 ```
 
-Nothing in your game has to know about this — the switch lives in the `GameMain` extension every game already conforms to. To replay a script non-interactively instead, seed pinned:
+Nothing in your game has to know about this — the generated terminal launcher selects MCP mode before creating a playing world. To replay a script non-interactively instead, seed pinned:
 
 ```sh
 bin/playtest-replay --build Fulminate
@@ -151,13 +151,13 @@ To run an automated author round from a game package, start with [Run a Play-tes
 
 ## Share your game
 
-Conform a game type to `GameMain`, mark it `@main`, and it is an executable. Export a single binary from it:
+Export `public let game = PackagedGame { MyGame() }` from a game library and identify it in `gnusto-games.json`. Generate a deployment from it:
 
 ```sh
 bin/export-game Lighthouse       # → dist/Lighthouse
 ```
 
-On macOS 15+ that binary links the Swift runtime that ships with the OS, so the recipient runs it with no Xcode and no toolchain. `bin/export-game` builds only for the machine you are standing at; pushing a version tag builds every product for macOS and Linux and attaches them to the release. The release workflow notarizes the macOS binaries when the repository has a Developer ID and an App Store Connect API key; without them, and for `bin/export-game`, a downloaded macOS binary stays quarantined until it is cleared. The full workflow is in [Sharing Your Game](https://heirloomlogic.github.io/gnusto/documentation/gnusto/sharingyourgame).
+On macOS 15+ that binary links the Swift runtime that ships with the OS, so the recipient runs it with no Xcode and no toolchain. `bin/export-game` builds only for the machine you are standing at; pushing a version tag builds every catalog game for macOS and Linux and attaches them to the release. The release workflow notarizes the macOS binaries when the repository has a Developer ID and an App Store Connect API key; without them, and for `bin/export-game`, a downloaded macOS binary stays quarantined until it is cleared. Resource-bearing games include a complete distribution directory; distribute that directory rather than the executable alone. During coordinated prerelease integration, set `GNUSTO_TERMINAL_PATH` to the matching local companion checkout; remote branch requirements are not immutable release pins. The full workflow is in [Sharing Your Game](https://heirloomlogic.github.io/gnusto/documentation/gnusto/sharingyourgame).
 
 ## Documentation
 
@@ -177,7 +177,7 @@ Write to `.docs-build`, never to `docs/`. The plugin deletes its output path bef
 - Swift 6.2 toolchain, Swift 6 language mode
 - macOS 15 or newer, iOS 18 or newer, or Linux. Both Apple floors are `Synchronization.Mutex`.
 
-CI tests on Linux and builds every product for iOS; the release workflow ships macOS and Linux binaries. Beyond Foundation the engine imports `Synchronization` and `Dispatch` and nothing else; every platform-specific call sits behind `#if canImport(Darwin)` in five files, four of them the terminal front end or the play-test transport and the fifth a thread-priority hint. So a game can run wherever you can supply an `IOHandler`. On iOS you supply one rather than let `GameMain` pick; see [Custom Front Ends](https://heirloomlogic.github.io/gnusto/documentation/gnusto/customfrontends).
+CI tests on Linux and builds every product for iOS; the release workflow ships macOS and Linux binaries. Beyond Foundation the engine imports `Synchronization` and `Dispatch` and nothing else; every platform-specific call sits behind `#if canImport(Darwin)` in the play-test transport and thread-priority support. So a game can run wherever you can supply an `IOHandler`. On iOS you supply one; see [Custom Front Ends](https://heirloomlogic.github.io/gnusto/documentation/gnusto/customfrontends).
 
 ## Licence
 

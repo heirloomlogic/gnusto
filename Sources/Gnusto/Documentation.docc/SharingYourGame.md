@@ -6,54 +6,34 @@ Turn a finished game into a single command-line binary you can hand to a friend.
 
 ![A hand offers an open box containing a miniature path to a glowing doorway.](sharing-your-game.png)
 
-The person you want to play your game should not need Xcode, a toolchain, or any idea what SwiftPM is. This guide takes a game from *runs on my machine* to *one file that runs on somebody else's*, which is `bin/export-game` and a short conversation with Gatekeeper.
+The person you want to play your game should not need Xcode, a toolchain, or any idea what SwiftPM is. This guide takes a game from *runs on my machine* to *a distribution that runs on somebody else's*, which is `bin/export-game` and a short conversation with Gatekeeper.
 
-`bin/export-game` builds macOS only, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every executable product for macOS and Linux and attaches them to the release. Only the release workflow can notarize a macOS binary so that it runs on download; "Notarize the release binaries" below says how.
+`bin/export-game` builds for the current host, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every catalog game for macOS and Linux and attaches them to the release. Only the release workflow can notarize a macOS binary so that it runs on download; "Notarize the release binaries" below says how.
 
-## Make a game runnable
+## Export a game factory
 
-An executable game is one type that conforms to both ``Game`` and ``GameMain``, marked `@main`. ``GameMain`` supplies the `main()` entry point — it boots a ``GameWorld`` from your game and drives it to completion — so you never write a `main.swift`:
+Your game is a library product and target exporting one ``PackagedGame``. Keep the concrete ``Game`` type internal:
 
 ```swift
 import Gnusto
 
-@main struct Zork1: Game, GameMain {
-    let title = "Zork I: The Great Underground Empire"
-    // rooms, items, map, rules…
-}
+/// The importable game used by generated front ends.
+public let game = PackagedGame { Zork1() }
 ```
 
-When the game's declarations live in one place, `@main` sits right on the game type, as in `Sources/Zork1/Zork1.swift`. When you'd rather keep the entry point in its own file, put `@main` on a one-line conformance instead — `Sources/CloakOfDarkness/Entry.swift` does exactly that:
+The package's `gnusto-games.json` names each game, its library product, module and `game` symbol. `bin/new-game` writes that catalog, library manifest, tests and shims together. During the coordinated prerelease, use `--dep-path /path/to/Gnusto`; an incompatible published release is refused before generation.
 
-```swift
-@main
-extension OperaHouse: GameMain {}
-```
+## Playing in a terminal
 
-Either way, the executable target in your `Package.swift` produces a binary you can run with `swift run`. If you started with `bin/new-game`, this is already wired up. New to Gnusto? Begin with <doc:GettingStarted>.
-
-## What running gives the player
-
-Run the game in a real terminal and ``GameMain`` reaches for the full-screen ``TerminalIOHandler``: a fixed status bar (room name, score, moves) above a story window that re-wraps the whole transcript to the window width — so **resizing the window reflows the text** — with its own line editor (arrow keys, input history, Home/End, bracketed paste), and PageUp/PageDown scrollback. It's the classic Infocom interpreter feel, hand-rolled from `termios` and ANSI with no added dependencies.
-
-That front end is chosen automatically, and only when it's safe:
-
-- **Interactive terminal** (stdin *and* stdout are both a TTY) → ``TerminalIOHandler``.
-- **Piped, redirected, or CI** → the plain ``ConsoleIOHandler``, so transcripts and scripted runs stay clean, escape-code-free text.
-- **`GNUSTO_PLAIN`** in the environment forces the plain handler even in a terminal, for anyone who wants it. See <doc:SharingYourGame#Environment-variables> for the full set.
+[GnustoTerminal](https://github.com/HeirloomLogic/GnustoTerminal) provides the reusable `TerminalLaunch` client. `bin/run-game` builds an ignored executable package containing the selected game library and terminal front end, then replaces its process with the binary. Interactive stdin and stdout select the full-screen status bar, reflow, history, completion and scrollback; pipes or `GNUSTO_PLAIN` select plain input/output.
 
 ```sh
-swift run Zork1                     # full-screen interpreter
-printf 'look\nquit\n' | swift run Zork1   # plain text, no escape codes
-GNUSTO_PLAIN=1 swift run Zork1      # plain, even in a terminal
+bin/run-game Zork1
+printf 'look\nquit\nyes\n' | bin/run-game Zork1
+GNUSTO_PLAIN=1 bin/run-game Zork1
 ```
 
-One caveat: `swift run` has been observed to interfere with stdin for this project, which the raw-mode interpreter is sensitive to. If interactive input misbehaves under `swift run`, run the built binary directly, or use the exported binary from the next section. Ask for the binary's location rather than assuming it — the directory differs between build systems, and a stale copy from an earlier run may be sitting in the other one:
-
-```sh
-swift build --product Zork1
-"$(swift build --product Zork1 --show-bin-path)/Zork1"
-```
+Set `GNUSTO_TERMINAL_PATH` to a matching companion checkout during unpublished integration. The default remote dependency uses `main` until coordinated immutable releases exist. `bin/run-game Zork1 --frontend yonk` reports that the app front end is unavailable until milestone 2.
 
 ## Environment variables
 
@@ -61,12 +41,12 @@ These variables configure a running game, report on one, or replace it with a pl
 
 | Variable | Effect |
 |---|---|
-| `GNUSTO_PLAIN` | Forces the plain ``ConsoleIOHandler`` even in a terminal. A flag, not a setting: *any* value counts, including an empty one. |
+| `GNUSTO_PLAIN` | Forces the plain `ConsoleIOHandler` even in a terminal. A flag, not a setting: *any* value counts, including an empty one. |
 | `GNUSTO_SEED` | Pins the random stream to a whole number, so the whole session replays identically. Also seeds the test suite's unpinned `play(_:_:)` calls — see <doc:TestingYourGame#Sweep-for-tests-that-pass-by-luck>. |
 | `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. A path that can't be opened (a directory, an unwritable location) is a complaint on stderr, and the session plays on without recording. |
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
-| `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | score=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by ``GameMain`` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |
+| `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | score=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by `TerminalLaunch` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |
 | `GNUSTO_PLAYTEST_DIR` | Where play-test sessions write. Defaults to `.context/playtest`. Same reason as `GNUSTO_SAVE_DIR`: a harness driving a checkout it doesn't own has to keep its output away from yours. |
 | `GNUSTO_PLAYTEST_ROUTES` | Where play-test sessions look for committed deep starts. Replaces `.playtest` in `.playtest/<Game>/routes/`; the `<Game>/routes/` part of the path stays. `bin/playtest-routes`, `bin/playtest-preflight` and `bin/playtest-replay --start` read it too. See <doc:PlayTesting#Deep-starts>. |
 | `GNUSTO_MCP_MAX_SESSIONS` | How many play-test sessions may hold a live world at once. Defaults to 32. Over the cap the oldest is evicted to its command list and replays itself on next use, so an evicted session answers exactly as it did before — it just costs more to ask. |
@@ -76,7 +56,7 @@ These variables configure a running game, report on one, or replace it with a pl
 `GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
 
 ```sh
-GNUSTO_SEED=0 GNUSTO_TRANSCRIPT=1 swift run Lighthouse
+GNUSTO_SEED=0 GNUSTO_TRANSCRIPT=1 bin/run-game Lighthouse
 ```
 
 A value that isn't a whole number from 0 to 18446744073709551615 is reported on standard error and ignored, and the game seeds at random as usual. Silence would be worse than a complaint: the one thing the variable is for is reproducibility, so a typo that quietly handed back a random stream would defeat it.
@@ -96,14 +76,16 @@ See <doc:TextAndRandomness> for where game text like the startup banner is custo
 
 ## Export a standalone binary
 
-`bin/export-game` release-builds an executable product and copies the single binary into `dist/`:
+`bin/export-game` discovers games from the catalog and builds a separate deployment launcher with the `Playtest` trait disabled across its dependency graph:
 
 ```sh
-bin/export-game Lighthouse   # → dist/Lighthouse
-bin/export-game              # lists the available products
+bin/export-game Lighthouse   # stages dist/Lighthouse
+bin/export-game              # lists catalog game names
 ```
 
-It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the one game in a package `bin/new-game` wrote, with no edits to the script. Under the hood it's `swift build -c release --disable-default-traits --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file. The trait flag leaves the MCP play-test server out: it is on by default so that any game is play-testable out of the box, and off here because a stranger's copy has no business carrying a second program or answering `GNUSTO_MCP`. See <doc:PlayTesting>.
+Development/MCP and deployment have separate generated packages and caches under `.build-launchers/<Game>/`. Exporting cannot overwrite a development server. Warm launchers validate fingerprints without invoking SwiftPM; source edits, deletion, catalogs, dependencies and local front-end changes invalidate them. Build diagnostics go to stderr.
+
+A resource-free game is one executable at `dist/<Game>`. A resource-bearing game has a complete versioned distribution directory beside that path, which points to its executable through a relative link. Distribute the whole directory in that case. A failed build, invalid resource staging or unsupported package-built dynamic library leaves the prior export untouched. macOS uses the OS Swift runtime; Linux deployment defaults to a static Swift runtime. The scripts require Node during development and export; recipients do not.
 
 ## Share it on macOS 15+
 
@@ -123,14 +105,14 @@ An ad-hoc signature (`codesign -s -`) does not help. Every arm64 binary already 
 
 ## Publish binaries for a tag
 
-`bin/export-game` only builds for the Mac you run it on. To publish binaries for both macOS and Linux, push a version tag. The release workflow (`.github/workflows/release.yml`) builds every executable product for macOS (arm64) and Linux (x86_64) and attaches them to the GitHub release for that tag:
+`bin/export-game` builds for the host you run it on. To publish binaries for both macOS and Linux, push a version tag. The release workflow (`.github/workflows/release.yml`) builds every catalog game for macOS (arm64) and Linux (x86_64) and attaches them to the GitHub release for that tag:
 
 ```sh
 git tag 1.0.0
 git push origin 1.0.0        # → a release with runnable macOS + Linux binaries
 ```
 
-The workflow reads your products from the manifest the same way `bin/export-game` does, so it needs no edits as products change. A generated package already has it at `.github/workflows/release.yml`, so tagging publishes your game unchanged.
+The workflow reads the same game catalog as `bin/export-game`, and uses generated deployment launchers. A generated package already has it at `.github/workflows/release.yml`, so tagging publishes your game unchanged.
 
 In this repo the workflow excludes the `Zork1` demo, and the binaries it publishes exist to exercise the workflow, not to feature a game.
 
@@ -154,4 +136,4 @@ The next tag publishes notarized binaries, and the release notes say which kind 
 
 ### Current limits
 
-- **`bin/export-game` builds one product for one platform.** It exports a single executable product per run, for the Mac you run it on. Run it with no arguments to list your products, then name the one you want. For every product across both platforms, tag a release instead.
+- **`bin/export-game` builds one game for the current host.** Run it with no arguments to list catalog game names, then name the one you want. For every product across both platforms, tag a release instead.

@@ -10,7 +10,7 @@ A Gnusto game is a value, and a play session is a function of its typed input �
 
 ## Add the product to your test target
 
-`GnustoTestSupport` links against the Swift Testing library, which ships in the toolchain rather than the OS — so add it to your **test target only**, never to the game executable:
+`GnustoTestSupport` links against the Swift Testing library, which ships in the toolchain rather than the OS — so add it to your **test target only**, never to the game library or generated launcher:
 
 ```swift
 .testTarget(

@@ -79,14 +79,14 @@ The struct file stays a readable table of contents — what exists and how the r
 
 ## Split for reading, not for the stack
 
-Split a `map` or a `rules` body when it has stopped reading as one thing, and for no other reason. There is no size limit to keep under: `Bootstrap.build` runs on a thread the engine sizes at 16 MB, not on whatever stack it happened to be called from, so a game boots the same under `swift run` as it does inside a test — where a Swift Testing body has only 512 KB of its own.
+Split a `map` or a `rules` body when it has stopped reading as one thing, and for no other reason. There is no size limit to keep under: `Bootstrap.build` runs on a thread the engine sizes at 16 MB, not on whatever stack it happened to be called from, so a game boots the same under `bin/run-game` as it does inside a test — where a Swift Testing body has only 512 KB of its own.
 
 That symmetry is the point of the fixed budget. Without it, a game grows until the *tests* die and the shipped binary does not, and the failure arrives as an unattributed signal that names no game, no bundle and no declaration. Gnusto's own Dungeon spent four milestones paying for that: bodies split, then content deleted, against a cliff nobody could measure.
 
 If you ever want the measurement rather than the assurance, set `GNUSTO_STACK_REPORT` and the boot prints what it used:
 
 ```
-$ GNUSTO_STACK_REPORT=1 swift run Dungeon
+$ GNUSTO_STACK_REPORT=1 bin/run-game Dungeon
 Gnusto: Dungeon bootstrapped using 492 KB of the 16384 KB bootstrap stack.
 ```
 

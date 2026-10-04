@@ -36,13 +36,28 @@ struct PlaytestPathTests {
         from currentDirectory: URL,
         shimPackage: URL? = nil
     ) throws -> (status: Int32, stdout: String, stderr: String) {
+        let tools = FileManager.default.temporaryDirectory.appendingPathComponent("replay-tools-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tools) }
+        let bin = tools.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: tools.appendingPathComponent("Sources/Gnusto"), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(
+            at: packageRoot.appendingPathComponent("bin/lib"), to: bin.appendingPathComponent("lib"))
+        for tool in ["playtest-replay", "gnusto-mcp"] {
+            try FileManager.default.copyItem(
+                at: packageRoot.appendingPathComponent("bin/\(tool)"), to: bin.appendingPathComponent(tool))
+        }
+        let builder = bin.appendingPathComponent("build-game")
+        try "#!/bin/sh\nprintf '/bin/echo\\n'\n".write(to: builder, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: builder.path)
         var environment = ProcessInfo.processInfo.environment
         for name in ["GNUSTO_PACKAGE_PATH", "GNUSTO_INVOCATION_DIR", "GNUSTO_REPO"] {
             environment.removeValue(forKey: name)
         }
-        if shimPackage != nil { environment["GNUSTO_REPO"] = packageRoot.path }
+        if shimPackage != nil { environment["GNUSTO_REPO"] = tools.path }
         return try ToolProcess.run(
-            (shimPackage ?? packageRoot).appendingPathComponent("bin/playtest-replay"),
+            (shimPackage ?? tools).appendingPathComponent("bin/playtest-replay"),
             arguments, from: currentDirectory, environment: environment)
     }
 
@@ -65,8 +80,7 @@ struct PlaytestPathTests {
     }
 
     /// Make `directory` look like a package `bin/playtest-replay --build` has
-    /// already been run in, without building anything: the script reads the
-    /// recorded path and asks only that it be executable.
+    /// already been run in, without building anything: the replay path exists and its sibling builder validates it without SwiftPM.
     private static func recordBinary(_ game: String, in directory: URL) throws {
         let cache = directory.appendingPathComponent(".context/playtest/.bin")
         try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)

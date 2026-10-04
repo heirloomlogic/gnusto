@@ -1,0 +1,41 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+MCP_TIMEOUT = "180000"
+CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = "0"
+
+[mcp_servers.cloakofdarkness]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["CloakOfDarkness"]
+
+[mcp_servers.dungeon]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["Dungeon"]
+
+[mcp_servers.fulminate]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["Fulminate"]
+
+[mcp_servers.gramarye]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["Gramarye"]
+
+[mcp_servers.kindlydeep]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["KindlyDeep"]
+
+[mcp_servers.lighthouse]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["Lighthouse"]
+
+[mcp_servers.zork1]
+startup_timeout_sec = 180
+command = "bin/gnusto-mcp"
+args = ["Zork1"]

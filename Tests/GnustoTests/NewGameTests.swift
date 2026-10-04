@@ -83,7 +83,7 @@ struct NewGameTests {
     }
 
     @Test func generatedPackageKeepsNoTraceOfTheTemplateName() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         let entries = Self.entries(under: game)
@@ -112,7 +112,8 @@ struct NewGameTests {
         #expect(!filesRead.isEmpty, "no file under \(game.path) was read as text")
         let namedFiles = [
             "Package.swift", ".mcp.json", ".claude/settings.json", "README.md",
-            "Sources/Zwank/Zwank.swift", "Tests/ZwankTests/ZwankTests.swift",
+            "Sources/Zwank/Zwank.swift", "Sources/Zwank/Packaged.swift", "gnusto-games.json",
+            "bin/run-game", "bin/build-game", "Tests/ZwankTests/ZwankTests.swift",
         ]
         for file in namedFiles {
             #expect(
@@ -122,23 +123,46 @@ struct NewGameTests {
     }
 
     @Test func generatedPackageIsNamedForTheGame() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         let manifest = try String(
             contentsOf: game.appendingPathComponent("Package.swift"), encoding: .utf8)
         #expect(manifest.contains(#"name: "Zwank""#))
-        #expect(manifest.contains(#".executableTarget("#))
+        #expect(manifest.contains(#".library(name: "Zwank""#))
+        #expect(manifest.contains(#".target("#))
+        #expect(!manifest.contains(".executableTarget("))
+        #expect(!manifest.contains(".executable("))
         #expect(manifest.contains(#"name: "ZwankTests""#))
 
         let paths = Self.entries(under: game)
         #expect(paths.contains("Sources/Zwank/Zwank.swift"))
-        #expect(paths.contains("Sources/Zwank/Entry.swift"))
+        #expect(paths.contains("Sources/Zwank/Packaged.swift"))
+        #expect(!paths.contains("Sources/Zwank/Entry.swift"))
+        #expect(paths.contains("gnusto-games.json"))
+        #expect(paths.contains("bin/run-game"))
+        let exported = try String(
+            contentsOf: game.appendingPathComponent("Sources/Zwank/Packaged.swift"), encoding: .utf8)
+        #expect(exported.contains("public let game = PackagedGame { Zwank() }"))
+        #expect(!exported.contains("@main"))
+        let catalog = try Self.json(at: game.appendingPathComponent("gnusto-games.json"))
+        #expect(catalog["version"] as? Int == 1)
+        #expect(catalog["package"] as? String == "Zwank")
+        let exports = try #require(catalog["games"] as? [[String: String]])
+        #expect(exports == [["name": "Zwank", "product": "Zwank", "module": "Zwank", "symbol": "game"]])
         #expect(paths.contains("Tests/ZwankTests/ZwankTests.swift"))
+        if let git = Self.which("git") {
+            let initialized = try Self.run(git, ["init", "--quiet"], currentDirectory: game)
+            #expect(initialized.status == 0, "\(initialized.stderr)")
+            let cacheFile = ".build-launchers/Zwank/terminal/development/package/Package.swift"
+            let ignored = try Self.run(git, ["check-ignore", "--", cacheFile], currentDirectory: game)
+            #expect(ignored.status == 0, "generated launcher package would be tracked: \(ignored)")
+            #expect(ignored.stdout == cacheFile + "\n")
+        }
     }
 
     @Test func mcpEntryIsKeyedLowercaseAndArgumentIsTheProduct() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         let json = try String(
@@ -156,7 +180,7 @@ struct NewGameTests {
     /// round dispatches, at which point every tester's `ToolSearch` returns nothing
     /// and each of them reports, accurately and uselessly, that it cannot use MCP.
     @Test func theMcpKeyAndTheEnabledServerAreTheSameWord() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         let mcp = try Self.json(at: game.appendingPathComponent(".mcp.json"))
@@ -194,7 +218,7 @@ struct NewGameTests {
     }
 
     @Test func generatedPlaytestEntryPointsUseTheResolvedWorkflow() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         let skill = try String(
@@ -207,12 +231,12 @@ struct NewGameTests {
     }
 
     @Test func toolsAreShimsAndTheLibraryIsNotExecutable() throws {
-        let game = try Self.generate()
+        let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }
 
         for tool in [
             "export-game", "gnusto-mcp", "playtest-replay", "playtest-measure",
-            "playtest-preflight", "playtest-routes",
+            "playtest-preflight", "playtest-routes", "run-game", "build-game",
         ] {
             let path = game.appendingPathComponent("bin/\(tool)").path
             #expect(
@@ -242,75 +266,111 @@ struct NewGameTests {
             "the library is sourced, not run, so it should carry no executable bit")
     }
 
-    @Test func dependencyIsAPinnedURLByDefault() throws {
-        let game = try Self.generate()
-        defer { try? FileManager.default.removeItem(at: game) }
+    /// A supported release fixture keeps URL pinning independent of whether the coordinated migration has shipped.
+    private static func supportedRelease(in root: URL) throws -> [String: String] {
+        let fakeBin = root.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: fakeBin, withIntermediateDirectories: true)
+        let released = root.appendingPathComponent("released")
+        try "GNUSTO_PACKAGE_PATH\n".write(to: released, atomically: true, encoding: .utf8)
+        let git = fakeBin.appendingPathComponent("git")
+        try #"""
+        #!/bin/sh
+        case "$1" in
+          tag) echo 99.0.0 ;;
+          show)
+            [ "$2" != "99.0.0:${GNUSTO_TEST_MISSING_RELEASED_FILE:-}" ] || exit 1
+            case "$2" in
+              *:Package.swift) printf '%s\n' "${GNUSTO_TEST_RELEASED_MANIFEST:-.trait(name: \"Playtest\")} " ;;
+              *:Sources/Gnusto/Engine/PackagedGame.swift) cat "$GNUSTO_TEST_FACTORY" ;;
+              *) cat "$GNUSTO_TEST_RELEASED_TOOL" ;;
+            esac ;;
+          *) exit 1 ;;
+        esac
+        """#.write(to: git, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: git.path)
+        return [
+            "PATH": fakeBin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? ""),
+            "GNUSTO_TEST_RELEASED_TOOL": released.path,
+            "GNUSTO_TEST_FACTORY": packageRoot.appendingPathComponent("Sources/Gnusto/Engine/PackagedGame.swift").path,
+        ]
+    }
 
-        let manifest = try String(
-            contentsOf: game.appendingPathComponent("Package.swift"), encoding: .utf8)
+    @Test func dependencyIsAPinnedURLForASupportedRelease() throws {
+        let root = Self.scratch().deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = try Self.supportedRelease(in: root)
+        let destination = root.appendingPathComponent("Zwank")
+        let generated = try Self.run(
+            Self.packageRoot.appendingPathComponent("bin/new-game"), ["Zwank", destination.path],
+            environment: environment)
+        #expect(generated.status == 0, "\(generated.stderr)")
+        let manifest = try String(contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
         #expect(manifest.contains(#"url: "https://github.com/HeirloomLogic/Gnusto""#))
-        #expect(manifest.contains("from: \""))
+        #expect(manifest.contains(#"from: "99.0.0", traits: gnusto"#))
         #expect(!manifest.contains("path: \"../..\""))
     }
 
-    /// The default pin may forward a trait only if the release it pins declares one.
-    ///
-    /// SwiftPM validates trait forwarding at resolution, not at compile time, and
-    /// refuses a dependency that enables a trait the dependency never declared:
-    /// *"Package 'zwank' (Zwank) enables traits [Playtest] on package 'gnusto'
-    /// (Gnusto) that declares no traits."* Every release up to and including 0.5.0
-    /// declares none, so the generated package would not resolve at all — and a
-    /// suite that only string-matches the manifest is exactly what let that
-    /// through, since the emitted line looks perfectly correct on its own.
-    ///
-    /// So this asks the pinned tag rather than a constant: read the version out of
-    /// the line the generator wrote, read that tag's own manifest out of git, and
-    /// require the two to agree. It costs a `git show` rather than a resolve, which
-    /// keeps this suite's no-`swift` rule, and it retires itself — the day a tag
-    /// declaring the trait ships, the same assertion starts demanding the
-    /// forwarding instead of forbidding it.
-    @Test func theDefaultPinForwardsTheTraitOnlyIfTheReleaseDeclaresIt() throws {
-        guard let git = Self.which("git") else { return }  // no git, no check
+    @Test(arguments: [
+        "Sources/Gnusto/Engine/PackagedGame.swift", "bin/build-game", "bin/run-game", "bin/playtest-preflight",
+        "bin/lib/game-build.mjs",
+    ])
+    func anUnsupportedReleaseIsRefusedBeforeWritingThePackage(missing: String) throws {
+        let root = Self.scratch().deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var environment = try Self.supportedRelease(in: root)
+        environment["GNUSTO_TEST_MISSING_RELEASED_FILE"] = missing
+        let destination = root.appendingPathComponent("Zwank")
+        let generated = try Self.run(
+            Self.packageRoot.appendingPathComponent("bin/new-game"), ["Zwank", destination.path],
+            environment: environment)
+        #expect(generated.status == 2, "\(generated)")
+        #expect(generated.stderr.contains("--dep-path"), "\(generated.stderr)")
+        #expect(generated.stderr.contains(missing), "\(generated.stderr)")
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+        #expect(!generated.stdout.contains("Wrote"))
+    }
 
-        let destination = Self.scratch()
-        defer { try? FileManager.default.removeItem(at: destination) }
-        let generated = try Self.newGame(["Zwank", destination.path])
-        #expect(generated.status == 0, "bin/new-game failed: \(generated.stderr)")
+    @Test func aTraitlessReleaseIsRefusedBeforeWritingThePackage() throws {
+        let root = Self.scratch().deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var environment = try Self.supportedRelease(in: root)
+        environment["GNUSTO_TEST_RELEASED_MANIFEST"] = "let package = Package(name: \"Gnusto\")"
+        let destination = root.appendingPathComponent("Zwank")
+        let generated = try Self.run(
+            Self.packageRoot.appendingPathComponent("bin/new-game"), ["Zwank", destination.path],
+            environment: environment)
+        #expect(generated.status == 2, "\(generated)")
+        #expect(generated.stderr.contains("Playtest"))
+        #expect(generated.stderr.contains("--dep-path"))
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
 
-        let manifest = try String(
-            contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
-        let dependency = try #require(
-            manifest.split(separator: "\n").first { $0.contains("HeirloomLogic/Gnusto") },
-            "the generated manifest carries no pinned Gnusto dependency")
-
-        let version = try #require(
-            dependency.range(of: #"from: ""#).map { start in
-                String(dependency[start.upperBound...].prefix { $0 != "\"" })
-            },
-            "no `from:` version in \(dependency)")
-
-        let released = try Self.run(git, ["show", "\(version):Package.swift"])
-        #expect(released.status == 0, "could not read the pinned tag's manifest: \(released.stderr)")
-        // Whitespace-stripped, because the declaration is one line in the template
-        // and four in the engine's own manifest, and only one of those spellings
-        // would survive a literal grep.
-        let declares = released.stdout
-            .filter { !$0.isWhitespace }
-            .contains(#".trait(name:"Playtest""#)
-
-        #expect(
-            dependency.contains("traits: gnusto") == declares,
-            declares
-                ? "Gnusto \(version) declares the Playtest trait, so the generated package should forward it: \(dependency)"
-                : "Gnusto \(version) declares no Playtest trait, so forwarding one makes the generated package unresolvable: \(dependency)"
+    @Test(arguments: ["Package.swift", "Sources/Gnusto/Engine/PackagedGame.swift", "bin/build-game", "bin/run-game"])
+    func anUnsupportedDepPathIsRefusedBeforeWritingThePackage(missing: String) throws {
+        let root = Self.scratch().deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let engine = root.appendingPathComponent("Engine")
+        let shims = try FileManager.default.contentsOfDirectory(
+            atPath: Self.packageRoot.appendingPathComponent("bin/templates/bin").path
         )
-
-        // A pin that cannot carry the forwarding is a pin whose `--disable-default-traits`
-        // does not reach the engine, and the author has to be told so at the one
-        // moment they are looking at this output.
-        #expect(
-            generated.stdout.contains("predates the Playtest trait") == !declares,
-            "the traitless-pin warning does not match what was emitted: \(generated.stdout)")
+        .filter { $0 != "lib" && !$0.hasPrefix(".") }.map { "bin/\($0)" }
+        let libraries = try FileManager.default.contentsOfDirectory(
+            atPath: Self.packageRoot.appendingPathComponent("bin/lib").path
+        )
+        .map { "bin/lib/\($0)" }
+        let files = ["Package.swift", "Sources/Gnusto/Engine/PackagedGame.swift"] + shims + libraries
+        for file in files where file != missing {
+            let target = engine.appendingPathComponent(file)
+            try FileManager.default.createDirectory(
+                at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: Self.packageRoot.appendingPathComponent(file), to: target)
+        }
+        let destination = root.appendingPathComponent("Zwank")
+        let generated = try Self.newGame(["Zwank", destination.path, "--dep-path", engine.path])
+        #expect(generated.status == 2, "\(generated)")
+        #expect(generated.stderr.contains("coordinated prerelease"), "\(generated.stderr)")
+        if missing != "Package.swift" { #expect(generated.stderr.contains(missing), "\(generated.stderr)") }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
     }
 
     @Test func depPathOverridesTheURL() throws {
@@ -354,7 +414,7 @@ struct NewGameTests {
                 at: Self.packageRoot.appendingPathComponent("Zwank"))
         }
 
-        let result = try Self.newGame(["Zwank", "./Zwank"], currentDirectory: cwd)
+        let result = try Self.newGame(["Zwank", "./Zwank", "--dep-path", Self.packageRoot.path], currentDirectory: cwd)
         #expect(result.status == 0, "bin/new-game failed: \(result.stderr)")
 
         let landedWhereCalled = cwd.appendingPathComponent("Zwank/Package.swift")
@@ -411,100 +471,34 @@ struct NewGameTests {
         }
     }
 
-    /// The stale-pin warning has to be keyed on every tool the template shims,
-    /// not on one of them.
-    ///
-    /// 0.5.0 shipped `bin/export-game` reading `GNUSTO_PACKAGE_PATH` and
-    /// `bin/playtest-preflight` not, so a guard that only asked export-game let a
-    /// package pin a tag whose preflight listed the engine's own demo games, with
-    /// no warning at all (#441). This mirrors
-    /// ``theDefaultPinForwardsTheTraitOnlyIfTheReleaseDeclaresIt``: read the tag
-    /// out of the line the generator wrote, then ask git the same question the
-    /// generator should be asking -- for every shim in `bin/templates/bin`, and for
-    /// every `bin/lib` module they route through, does the tag's copy make the
-    /// package-aware read the current copy makes? -- and require the warning to
-    /// match the answer. Self-retiring in both directions: green on a tag that has
-    /// everything, red the day a new shim lands ahead of the tag that carries it.
-    @Test func theStalePinWarningTracksEveryShimmedTool() throws {
-        guard let git = Self.which("git") else { return }  // no git, no check
-
-        let destination = Self.scratch()
-        defer { try? FileManager.default.removeItem(at: destination) }
-        let generated = try Self.newGame(["Zwank", destination.path])
-        #expect(generated.status == 0, "bin/new-game failed: \(generated.stderr)")
-
-        let manifest = try String(
-            contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
-        let dependency = try #require(
-            manifest.split(separator: "\n").first { $0.contains("HeirloomLogic/Gnusto") })
-        let version = try #require(
-            dependency.range(of: #"from: ""#).map { start in
-                String(dependency[start.upperBound...].prefix { $0 != "\"" })
-            })
-
-        let templateBin = Self.packageRoot.appendingPathComponent("bin/templates/bin")
-        let shims = try FileManager.default.contentsOfDirectory(atPath: templateBin.path)
-            .filter { !$0.hasPrefix(".") && $0 != "lib" }
-            .sorted()
-        let libs = try FileManager.default.contentsOfDirectory(
-            atPath: Self.packageRoot.appendingPathComponent("bin/lib").path
-        ).map { "lib/\($0)" }
-        #expect(!shims.isEmpty, "the template ships no shims")
-
-        var stale: [String] = []
-        for tool in shims + libs {
-            let current = try String(
-                contentsOf: Self.packageRoot.appendingPathComponent("bin/\(tool)"), encoding: .utf8)
-            let released = try Self.run(git, ["show", "\(version):bin/\(tool)"])
-            let awareNow = current.contains("GNUSTO_PACKAGE_PATH") || current.contains("GNUSTO_INVOCATION_DIR")
-            let awareThen =
-                released.stdout.contains("GNUSTO_PACKAGE_PATH") || released.stdout.contains("GNUSTO_INVOCATION_DIR")
-            if released.status != 0 || (awareNow && !awareThen) { stale.append(tool) }
-        }
-
-        #expect(
-            generated.stdout.contains("predates shim support") == !stale.isEmpty,
-            stale.isEmpty
-                ? "Gnusto \(version) carries every shimmed tool, so nothing should warn: \(generated.stdout)"
-                : "Gnusto \(version) is stale for \(stale) and the generator said nothing: \(generated.stdout)")
-        for tool in stale where !tool.hasPrefix("lib/") {
-            #expect(generated.stdout.contains(tool), "the warning does not name \(tool): \(generated.stdout)")
-        }
+    @Test func aReleasedToolWithoutPackageAwarenessIsRefused() throws {
+        let root = Self.scratch().deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = try Self.supportedRelease(in: root)
+        try "# stale tool\n".write(to: root.appendingPathComponent("released"), atomically: true, encoding: .utf8)
+        let destination = root.appendingPathComponent("Zwank")
+        let generated = try Self.run(
+            Self.packageRoot.appendingPathComponent("bin/new-game"), ["Zwank", destination.path],
+            environment: environment)
+        #expect(generated.status == 2, "\(generated)")
+        #expect(generated.stderr.contains("shim support"), "\(generated.stderr)")
+        #expect(generated.stderr.contains("--dep-path"))
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
     }
 
-    /// An early match must not close the pipe while the released tool is still
-    /// being written: with pipefail, SIGPIPE looks like missing shim support.
-    @Test func aLargeReleasedToolDoesNotProduceAStalePinWarning() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    /// Consume the entire supported released file: an early match must not close the pipe and turn SIGPIPE into a refusal under pipefail.
+    @Test func aLargeSupportedReleasedToolIsConsumedCompletely() throws {
+        let root = Self.scratch().deletingLastPathComponent()
         defer { try? FileManager.default.removeItem(at: root) }
-        let fakeBin = root.appendingPathComponent("bin")
-        try FileManager.default.createDirectory(at: fakeBin, withIntermediateDirectories: true)
-        let released = root.appendingPathComponent("released")
+        let environment = try Self.supportedRelease(in: root)
         try ("GNUSTO_PACKAGE_PATH\n" + String(repeating: "# padding\n", count: 100_000))
-            .write(to: released, atomically: true, encoding: .utf8)
-        let git = fakeBin.appendingPathComponent("git")
-        try #"""
-        #!/bin/sh
-        case "$1" in
-          tag) echo 99.0.0 ;;
-          show)
-            case "$2" in
-              *:Package.swift) echo '.trait(name: "Playtest")' ;;
-              *) cat "$GNUSTO_TEST_RELEASED_TOOL" ;;
-            esac ;;
-          *) exit 1 ;;
-        esac
-        """#.write(to: git, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: git.path)
+            .write(to: root.appendingPathComponent("released"), atomically: true, encoding: .utf8)
         let generated = try Self.run(
             Self.packageRoot.appendingPathComponent("bin/new-game"),
-            ["Zwank", root.appendingPathComponent("Zwank").path],
-            environment: [
-                "PATH": fakeBin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? ""),
-                "GNUSTO_TEST_RELEASED_TOOL": released.path,
-            ])
+            ["Zwank", root.appendingPathComponent("Zwank").path], environment: environment)
         #expect(generated.status == 0, "\(generated.stderr)")
-        #expect(!generated.stdout.contains("predates shim support"), "\(generated.stdout)")
+        #expect(!generated.stdout.contains("warning"), "\(generated.stdout)")
+        #expect(generated.stdout.contains("Wrote Zwank"))
     }
 
     /// A `--dep-path` at a maintainer's checkout drags the maintainer's dev tooling

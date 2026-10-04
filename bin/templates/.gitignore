@@ -7,6 +7,7 @@
 # arrives at `git status` as a few hundred untracked files.
 .context/
 /.build
+/.build-launchers
 /dist
 .DS_Store
 

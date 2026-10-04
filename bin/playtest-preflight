@@ -41,7 +41,7 @@ const { checkHeadlessCLI, dispatchHeadless } = require('./lib/playtest-headless'
 const {
   ROOT, SCRATCH, GREEN, RED, DIM, OFF,
   gameDoc, focusParts, seedFor, routesDir, routeManifests, usableRoutes, routeSeeds,
-  describePackage, executableProducts, targetsOfProduct, resolveGame, ledgerScan,
+  describePackage, gameExport, validateGameProducts, targetsOfProduct, resolveGame, ledgerScan,
   GAME_DOCS_DIR,
 } = require('./lib/playtest-focus')
 
@@ -207,7 +207,7 @@ async function checkGame(game, mcpEntry, enabled) {
     // act on; the line carrying `error:` is the one worth the width.
     const out = `${build.stderr || ''}\n${build.stdout || ''}`.split('\n').map((l) => l.trim())
     const detail = out.find((l) => /error:/.test(l)) || out.filter(Boolean).slice(-1)[0] || ''
-    add('build', false, detail.slice(0, 100), `swift build --product ${game}`)
+    add('build', false, detail.slice(0, 100), `bin/playtest-replay --build ${game}`)
     return rows // nothing below could mean anything
   }
   add('build', true, path.basename(String(build.stdout).trim()))
@@ -344,8 +344,8 @@ async function checkGame(game, mcpEntry, enabled) {
   //    back `unlocated`, dedup degrades to per-excerpt, and the round reports more
   //    distinct defect classes than it found — none of which looks like a failure.
   const gameSource = gameSourceDirOf(game)
-  add('game source', !!gameSource, gameSource || 'neither Sources/ nor the manifest names it',
-    gameSource ? null : `add a target named ${game}, or put its sources in Sources/${game}`)
+  add('game source', !!gameSource, gameSource || 'the manifest does not name the catalog module source',
+    gameSource ? null : `check the library product and module for ${game} in gnusto-games.json`)
 
   // 7. What the ledger can actually hand over. A dedupe set that silently holds
   //    nothing looks exactly like a game nothing has ever been refuted about, and
@@ -508,22 +508,12 @@ const localDate = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-// Where the game's own source sits, which the clusterer greps and `ownerClass` reads.
-// `Sources/<Game>` is SwiftPM's default and what `bin/new-game` writes, but a package
-// is free to say otherwise, so the manifest is asked second rather than assumed first.
-//
-// Returns `''` when neither answers, and the `game source` row turns red on that. A
-// wrong game source path does not produce an error anywhere downstream; it produces a
-// plausible round whose clusterer cites declarations in files nobody has.
+// Select the catalog module inside the library's actual target closure. A
+// Sources/<game> directory may belong to something else entirely.
 function gameSourceDirOf(game) {
-  const conventional = path.join('Sources', game)
-  if (exists(path.join(ROOT, conventional))) return conventional
-  // The product's own targets, never a target that happens to share its name — see
-  // `targetsOfProduct`. The executable among them is the game; a product with none is
-  // not one this script was asked about, so the first target is the honest fallback.
   const owned = new Set(targetsOfProduct(game))
-  const mine = (describePackage()?.targets || []).filter((t) => owned.has(t.name))
-  const target = mine.find((t) => t.type === 'executable') || mine[0]
+  const module = gameExport(game)?.module
+  const target = (describePackage()?.targets || []).find((t) => owned.has(t.name) && (t.c99name || t.name) === module)
   return target?.path || ''
 }
 
@@ -666,9 +656,12 @@ function capabilitiesOf(game) {
     for (const d of t.product_dependencies || []) seen.add(d)
     for (const d of t.target_dependencies || []) walk(d)
   }
-  // From the product's own targets, never from a target that happens to share its
-  // name — see `targetsOfProduct`.
-  for (const root of targetsOfProduct(game)) walk(root)
+  // Start at the imported catalog module within its library's target closure.
+  // Other targets exposed by the same product need not be part of this game.
+  const owned = new Set(targetsOfProduct(game))
+  const module = gameExport(game)?.module
+  const root = targets.find((target) => owned.has(target.name) && (target.c99name || target.name) === module)
+  if (root) walk(root.name)
   const caps = []
   for (const name of seen) {
     const cap = byProduct[name]
@@ -781,12 +774,14 @@ async function main() {
     }
     const { game: product, products } = resolveGame(words)
     if (!product) {
-      console.error(`playtest-preflight: no executable product matches "${words}"`)
+      console.error(`playtest-preflight: no game matches "${words}"`)
       console.error(`  this package builds: ${products.join(', ') || '(none)'}`)
       process.exit(2)
     }
     games = [product]
   }
+
+  validateGameProducts()
 
   const servers = new Map(games.map((g) => [g, mcpServerFor(g)]))
   const headlessOptions = {

@@ -5,6 +5,7 @@ public struct LocationTrait: Sendable {
         case description(String)
         case dark
         case alwaysDescribed
+        case mapRegion(String)
         case custom(key: String, value: StateValue)
     }
 
@@ -499,6 +500,27 @@ public let dark = LocationTrait(kind: .dark)
 /// no `description(…)` trait and no `describe { … }` rule — is a bootstrap
 /// warning, since the flag then has no text to un-hide.
 public let alwaysDescribed = LocationTrait(kind: .alwaysDescribed)
+
+/// Draws this room as part of one shape on a map, with every other room declaring the same label.
+///
+/// A maze is the case it exists for. Its rooms look alike to the player, and that is the puzzle; a map that drew each one separately, keyed on rooms the player cannot tell apart, would solve it for them. Rooms sharing a label draw as one shape with that label, and moves inside it draw nothing.
+///
+/// ```swift
+/// let maze1 = Location {
+///     name("Maze")
+///     description(Prose.maze)
+///     dark
+///     mapRegion("Maze")
+/// }
+/// ```
+///
+/// Nothing in the engine reads it: it is reported by ``GameWorld/mapView()`` for a front end that draws a map.
+///
+/// - Parameter label: the name the shape is drawn with.
+/// - Returns: the trait.
+public func mapRegion(_ label: String) -> LocationTrait {
+    LocationTrait(kind: .mapRegion(label))
+}
 
 /// The item can be worn.
 public let wearable = ItemTrait(kind: .wearable)

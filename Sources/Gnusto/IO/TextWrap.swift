@@ -42,9 +42,9 @@ import Foundation
 /// ``plain(_:)`` and the reflowing renderer are built on it, so the two channels
 /// cannot drift apart again about what a paragraph is.
 ///
-/// Only ``plain(_:)`` and ``lineBreak`` are public: a front end that prints text
-/// needs to render the marker and the fold, and the terminal-column machinery
-/// behind the full-screen handler is the engine's own.
+/// Front ends share ``plain(_:)`` for stream output and ``wrap(_:width:)`` for
+/// character-cell rendering. Both honor ``lineBreak`` and the same paragraph
+/// rules, so transcript text and reflowed terminal text preserve one meaning.
 public enum TextWrap {
     /// The in-band hard line-break marker (as in Markdown/HTML): a break within
     /// a paragraph, no blank line, formatter-proof. The full-screen renderer
@@ -183,7 +183,7 @@ public enum TextWrap {
     ///     paragraph breaks, `<br>` is a hard break, an indented line is a form.
     ///   - width: the column width to wrap to; values below 1 are treated as 1.
     /// - Returns: the visual lines, top to bottom (empty if `text` is blank).
-    static func wrap(_ text: String, width: Int) -> [String] {
+    public static func wrap(_ text: String, width: Int) -> [String] {
         let width = max(1, width)
 
         // After the fold, every non-blank line is either one whole paragraph or
@@ -291,7 +291,7 @@ public enum TextWrap {
     ///   - text: the text to chunk.
     ///   - width: the chunk width in columns; values below 1 are treated as 1.
     /// - Returns: the chunks in order; a single element when `text` fits.
-    static func hardSplit(_ text: Substring, width: Int) -> [String] {
+    public static func hardSplit(_ text: Substring, width: Int) -> [String] {
         let starts = lineStarts(of: text, width: width)
         let characters = Array(text)
         var chunks: [String] = []
@@ -306,11 +306,17 @@ public enum TextWrap {
     /// the logical cursor is before character `charOffset` — the visual line
     /// index (0-based from the first line) and the column within it (0-based).
     ///
-    /// Uses the same ``lineStarts(of:width:)`` breaks as ``hardSplit(_:width:)``
+    /// Uses the same internal line breaks as ``hardSplit(_:width:)``
     /// so the caret always lands on the glyph the layout drew. A caret that
     /// exactly fills a line wraps to the start of the next line, matching a
     /// terminal's behavior when the next keystroke would overflow.
-    static func caretPosition(
+    ///
+    /// - Parameters:
+    ///   - text: the input line whose visual caret position is needed.
+    ///   - charOffset: the character offset, clamped to the input's bounds.
+    ///   - width: the column width; values below 1 are treated as 1.
+    /// - Returns: the zero-based visual line and column of the caret.
+    public static func caretPosition(
         in text: Substring, charOffset: Int, width: Int
     ) -> (line: Int, column: Int) {
         let width = max(1, width)

@@ -58,12 +58,27 @@ test('bin/new-game refuses a trailing --dep-path by name', () => {
   expectRefusal(run('new-game', ['Zwank', '/nonexistent/Zwank', '--dep-path']), 'new-game', '--dep-path')
 })
 
-// Not a value flag, but the same class of mistake: bin/gnusto-mcp passed its first
-// argument straight to `swift build --product`, so a mistyped name started a build.
-test('bin/gnusto-mcp refuses a malformed game name before building', () => {
+// Catalog resolution rejects an unknown game before any Swift build begins.
+test('bin/gnusto-mcp refuses an unknown game before building', () => {
   const result = run('gnusto-mcp', ['not a game'])
   assert.ifError(result.error)
   assert.equal(result.status, 2, result.stderr)
   assert.equal(result.stdout, '')
-  assert.match(result.stderr, /^gnusto-mcp: bad game name 'not a game'$/m)
+  assert.match(result.stderr, /Unknown game: not a game\. Available games:/)
 })
+
+for (const script of ['run-game', 'export-game']) {
+  for (const args of [['Story', '--frontend'], ['Story', '--frontend', ''], ['Story', '--frontend=']]) {
+    test(`bin/${script} refuses missing frontend value ${JSON.stringify(args)}`, () => {
+      expectRefusal(run(script, args), script, '--frontend');
+    });
+  }
+  for (const frontend of ['unknown', 'yonk']) {
+    test(`bin/${script} refuses ${frontend} before package resolution or building`, () => {
+      const result = spawnSync(path.join(repo, 'bin', script), ['Story', '--frontend', frontend], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package'}, encoding: 'utf8'});
+      assert.equal(result.status, 2, result.stderr);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, frontend === 'yonk' ? /yonk.*unavailable/i : /unknown.*frontend/i);
+    });
+  }
+}
