@@ -2,13 +2,23 @@
 ///
 /// It names exits and never says where they lead: a map knows a way out exists, and learns where it goes when the player walks it. What it leaves out is what the player could not know is there. Built by ``GameWorld/mapView()``.
 public struct RoomMapView: Sendable, Equatable {
+    /// Whether ``exits`` is a complete observation of the exits a map may currently draw.
+    public enum ExitObservation: Sendable, Equatable {
+        /// ``exits`` contains every currently drawable exit. Hidden exits and unavailable conditional exits remain omitted, so an empty dictionary does not mean the game declares no exits here.
+        case complete
+        /// The exits could not be observed. Keep any map knowledge learned on earlier visits.
+        case unobserved
+    }
+
     /// The room, by the ID the game declared it under.
     public let id: EntityID
     /// The room's name, as the status line shows it.
     public let name: String
     /// The ``mapRegion(_:)`` label the room declares, if any.
     public let region: String?
-    /// The exits a map may draw, by direction. Empty in a dark room.
+    /// Whether ``exits`` is complete or could not be observed.
+    public let exitObservation: ExitObservation
+    /// The exits a map may draw, by direction. Empty when ``exitObservation`` is ``ExitObservation/unobserved``.
     public let exits: [Direction: MapExit]
 }
 
@@ -41,7 +51,9 @@ extension GameWorld {
         let location = definition.locations[here]
         let name = location?.name ?? here.raw
         guard !Visibility.isDark(at: here, definition: definition, state: state) else {
-            return RoomMapView(id: here, name: name, region: location?.mapRegion, exits: [:])
+            return RoomMapView(
+                id: here, name: name, region: location?.mapRegion,
+                exitObservation: .unobserved, exits: [:])
         }
 
         let secret = definition.secretExits[here] ?? []
@@ -50,7 +62,9 @@ extension GameWorld {
             guard let kind = mapKind(of: target) else { continue }
             exits[direction] = MapExit(kind: kind, isSecret: secret.contains(direction))
         }
-        return RoomMapView(id: here, name: name, region: location?.mapRegion, exits: exits)
+        return RoomMapView(
+            id: here, name: name, region: location?.mapRegion,
+            exitObservation: .complete, exits: exits)
     }
 
     /// How a map draws one declared exit, or `nil` when it does not draw it at all. Conditional predicates run outside the frame's lock in an isolated scratch snapshot.
