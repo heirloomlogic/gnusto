@@ -22,11 +22,10 @@
 //
 // **Why verification is replay and never a hash.** A save file cannot be asked what
 // it is a save of, which is why the slots needed a fingerprint receipt. A command
-// list can simply be run: `verify` replays each route at its manifest seed in a
-// fresh run — never the cut run's own footer — and refuses it if the landing room
-// is not the room the manifest claims. A route that no longer lands right is stale,
-// and the sentence that helps is *the route now ends in a different room*, not a
-// hash comparison.
+// list can simply be run: `verify` replays each route at its manifest seed, once per
+// landing observer, rather than trusting the cut run's own footer. Both observers
+// must begin at the same status, and the result is compared with the complete
+// landing record. A stale route's error names the field and both values.
 //
 // **Where routes come from.** `cut` takes a hand-written command file. `distill`
 // takes a round's own play: `--from-session` names the probe directory of a session
@@ -54,11 +53,11 @@ const path = require('node:path')
 const distill = require('./lib/playtest-distill')
 const focus = require('./lib/playtest-focus')
 const {
-  replay, turnCap, timeoutFor, runReplay,
+  observationBefore, replay, turnCap, timeoutFor, runReplay,
 } = require('./lib/playtest-replay')
 const {
   GREEN, RED, DIM, OFF, LANDING_PROBE, LANDING_INVENTORY, landingFeed,
-  isPlainName, routesDir, routeNames, routePrefix,
+  isPlainName, landingMismatch, routesDir, routeNames, routePrefix,
 } = focus
 
 // Captured before the chdir, and for the same reason bin/playtest-replay captures
@@ -130,14 +129,30 @@ function readCommands(file, { dropComments = false, upto } = {}) {
 // Cut and verify
 // ---------------------------------------------------------------------------
 
-function readLanding(label) {
+function readLanding(label, inventoryLabel) {
   const file = newestTranscript(label)
   if (!file) return { ok: false, detail: `no transcript under ${label}` }
   // One reader, and the same one the shrink's oracle uses — so a landing this accepts
   // and a landing the shrink was preserving are the same fact rather than two
-  // spellings of it, and the footer grammar is known in one place.
+  // spellings of it. It reads status before the observer's `look` and `inventory`,
+  // whose answers describe that landing but whose own turns are not part of it.
   const sig = distill.landingSignature(fs.readFileSync(file, 'utf8'))
   if (!sig || !sig.room) return { ok: false, detail: 'no [status] footer in the transcript' }
+  const inventoryFile = newestTranscript(inventoryLabel)
+  if (!inventoryFile) return { ok: false, detail: `no transcript under ${inventoryLabel}` }
+  const inventory = observationBefore(
+    fs.readFileSync(inventoryFile, 'utf8'), LANDING_INVENTORY)
+  if (!inventory) {
+    return { ok: false, detail: 'no inventory observation in the landing transcript' }
+  }
+  const status = { room: sig.room, moves: sig.moves, score: sig.score }
+  const mismatch = ['room', 'moves', 'score']
+    .filter((field) => inventory.fields[field] !== status[field])
+    .map((field) => `${field} is ${JSON.stringify(inventory.fields[field])} after replaying for inventory, not ${JSON.stringify(status[field])} after replaying for look`)
+  if (mismatch.length) {
+    return { ok: false, detail: `the two landing replays disagree: ${mismatch.join('; ')}` }
+  }
+  const carrying = inventory.answer
   // **A landing has to be somewhere a tester can play from.** An ended game answers
   // the landing probe and `inventory` with the same line — the death prompt, or
   // whatever a game has re-skinned it to — because neither was parsed as itself, and
@@ -145,16 +160,16 @@ function readLanding(label) {
   // `distill`, which learns its routes from a round's own play and so is the one
   // caller whose input regularly ends in a corpse; it is checked here, where `cut`
   // and `verify` reach it too, rather than three times.
-  if (!sig.playable) {
+  if (!sig.look || sig.look === carrying) {
     return {
       ok: false,
       detail: `it ends on a frame the game will not take a command in — \`${LANDING_PROBE}\``
-        + ` and \`${LANDING_INVENTORY}\` both answered "${sig.inventory.slice(0, 60)}", which is a death,`
+        + ` and \`${LANDING_INVENTORY}\` both answered "${carrying.slice(0, 60)}", which is a death,`
         + ' a win, or an open prompt. A deep start has to be somewhere a tester can play.',
     }
   }
   return {
-    ok: true, room: sig.room, moves: sig.moves, score: sig.score, carrying: sig.inventory,
+    ok: true, room: sig.room, moves: sig.moves, score: sig.score, carrying,
   }
 }
 
@@ -169,32 +184,34 @@ function probeLanding(game, name, commands, seed, verb) {
   // A fresh label per route: the cut run's transcript is the evidence the manifest
   // was written from, and re-using one label would bury it under the next cut.
   const label = `routes-${verb}-${name}`
-  // The route, then the engine's own landing probe (`PlaytestRoute.landingProbe`,
-  // which every session appends and every verifier must too), then `inventory` so the
-  // manifest can record what is held. A route ends wherever its last command left the
-  // player; these two make the landing a frame somebody can read. `landingFeed` is
-  // where that rule lives, so the shrink's oracle and the reader that parses the
-  // answers back cannot spell it differently.
-  const fed = landingFeed(commands)
-  clearSaves(label)
-  const r = runReplay('playtest-routes', `${verb}-${name}`, fed, [
-    game,
-    '--seed', String(seed),
-    '--label', label,
-    '--max-turns', turnCap(commands.length),
-    '--timeout', timeoutFor(commands.length),
-    '--tail', '4',
-  ])
-  if (!r.ok) return r
-  return readLanding(label)
+  const inventoryLabel = `${label}-inventory`
+  // Each observer is the first command after a fresh replay. `look` is the frame a
+  // session opens on; `inventory` is the manifest's carried-items query. Running one
+  // after the other would let the first observer's turn change what the second sees.
+  const run = (observer, runLabel, suffix) => {
+    clearSaves(runLabel)
+    return runReplay(
+      'playtest-routes', `${verb}-${name}-${suffix}`, [...commands, observer], [
+        game,
+        '--seed', String(seed),
+        '--label', runLabel,
+        '--max-turns', turnCap(commands.length),
+        '--timeout', timeoutFor(commands.length),
+        '--tail', '4',
+      ])
+  }
+  const looked = run(LANDING_PROBE, label, 'look')
+  if (!looked.ok) return looked
+  const inventoried = run(LANDING_INVENTORY, inventoryLabel, 'inventory')
+  if (!inventoried.ok) return inventoried
+  return readLanding(label, inventoryLabel)
 }
 
 function writeRoute(dir, name, { seed, commands, derivedFrom, landing }) {
   fs.mkdirSync(dir, { recursive: true })
-  // One file, commands and landing both: `landing.room` is the one field the
-  // engine checks at `open` (`PlaytestRoute` reads it and nothing else), but the
-  // rest is written because a person choosing between routes reads it — a deep
-  // start is chosen by what is true there, not by the room name alone.
+  // One file, commands and landing both: `landing.room` is the one field the engine
+  // checks at `open`, while `verify` checks the complete record. A person chooses a
+  // deep start by what is true there, not by the room name alone.
   fs.writeFileSync(path.join(dir, `${name}.json`), `${JSON.stringify({
     seed,
     commands,
@@ -220,39 +237,24 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
 // fresh, a route that no longer lands where it claims is caught here,
 // which is the check a hash could never make.
 function verifyOne(game, dir, name) {
-  // The same reader `bin/playtest-replay --start` plays a route through, so a route
-  // that verifies here is a route that opens there. `inventory` is verify's own and
-  // is appended after it.
+  // The same reader `bin/playtest-replay --start` uses for its prefix. The verifier
+  // replays the unobserved route twice so both landing queries begin at its endpoint.
   const route = routePrefix(name, dir)
   if (route.error) return { ok: false, detail: route.error }
-  const fed = [...route.commands, 'inventory']
-
-  const label = `routes-verify-${name}`
-  clearSaves(label)
-  const r = runReplay('playtest-routes', `verify-${name}`, fed, [
-    game,
-    '--seed', String(route.seed),
-    '--label', label,
-    '--max-turns', turnCap(fed.length),
-    '--timeout', timeoutFor(fed.length),
-    '--tail', '4',
-  ])
-  if (!r.ok) return r
-
-  const landing = readLanding(label)
+  const landing = probeLanding(game, name, route.routeCommands, route.seed, 'verify')
   if (!landing.ok) return landing
   // A route that declares no landing is unchecked, not failed: the engine loads one
   // and does not check it either (it is what lets a route be hand-written before
   // anything exists to fill the field in). The replay above still proves the
   // commands run to the end; there is simply no claimed room to hold them to.
-  if (!route.landing) {
+  if (!route.landingRecord) {
     return { ok: true, ...landing, note: 'no landing declared — replayed, not checked' }
   }
-  if (landing.room !== route.landing) {
+  const mismatch = landingMismatch(route.landingRecord, landing)
+  if (mismatch) {
     return {
       ok: false,
-      detail: `the route now ends in ${landing.room},`
-        + ` not the ${route.landing} it claims`,
+      detail: `the route landing differs from its manifest: ${mismatch}`,
     }
   }
   return { ok: true, ...landing }

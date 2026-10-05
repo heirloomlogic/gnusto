@@ -216,8 +216,12 @@ const landingFeed = (commands) => [...commands, ...LANDING_SUFFIX]
 /// drives a worktree at an older commit, and its routes are the ones its binary was
 /// cut against. `routesDir(game)` is the resolver.
 ///
-/// - Returns: `{ seed, commands, landing }`, or `{ error }` naming the directory it
-///   looked in and what is in it. Never both.
+/// `landing` remains the room-name header consumed by the shell replay shim;
+/// `landingRecord` retains the whole declaration for the verifier, and
+/// `routeCommands` is the unobserved route for a fresh landing measurement.
+///
+/// - Returns: `{ seed, commands, routeCommands, landing, landingRecord }`, or
+///   `{ error }` naming the directory it looked in and what is in it. Never both.
 function routePrefix(name, dir) {
   const route = loadRoute(name, dir)
   if (route.error) {
@@ -228,8 +232,28 @@ function routePrefix(name, dir) {
   return {
     seed: route.seed,
     commands: [...route.commands, LANDING_PROBE],
+    routeCommands: route.commands,
     landing: route.landing?.room || '',
+    landingRecord: route.landing,
   }
+}
+
+/// The first complete landing comparison used by route verification.
+///
+/// Moves and scores pass through JSON and status footers, so compare their printed
+/// values. Room and inventory remain exact text. A missing declaration is the
+/// existing unchecked-route state and therefore has no mismatch.
+function landingMismatch(declared, observed) {
+  if (!declared) return null
+  const fields = [
+    ['room', declared.room, observed.room],
+    ['moves', declared.moves, observed.moves],
+    ['score', declared.score, observed.score],
+    ['inventory', declared.inventory, observed.carrying],
+  ]
+  const different = fields.filter(([, expected, actual]) => String(expected) !== String(actual))
+  if (!different.length) return null
+  return different.map(([name, expected, actual]) => `${name} is ${JSON.stringify(actual)}, not ${JSON.stringify(expected)} as declared`).join('; ')
 }
 
 /// The scalars Swift's `Character.isNewline` is true for, which is the check
@@ -592,6 +616,7 @@ module.exports = {
   LANDING_INVENTORY,
   LANDING_SUFFIX,
   landingFeed,
+  landingMismatch,
   loadRoute,
   routePrefix,
   routeManifests,

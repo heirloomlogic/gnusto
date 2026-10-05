@@ -128,7 +128,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:123]",
   "landing": {
     "room": "Reservoir",
-    "moves": "122",
+    "moves": "120",
     "score": "142",
     "inventory": "You are carrying a matchbook, a screwdriver, a brass lantern, a platinum bar, and an ivory torch."
   }

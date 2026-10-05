@@ -130,7 +130,7 @@ A game whose map outruns a session's budget cannot be tested at its far end on f
 
 `open` takes a route by name and plays it silently. The tester is handed the frame it stopped on and never the commands: `recall` will not read them back, and the rooms the route crossed are not credited as anything the tester covered. `closing.json` records `prefixTurns`, so a round can say how much of a session was the harness walking rather than the tester playing.
 
-A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. If it no longer ends where its manifest claims, it is stale, and the failure says which room it ends in now.
+A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. Verification replays the route twice at its declared seed, with `look` and `inventory` each serving as the first observer of the route endpoint. Their pre-observer room, engine move count and score must agree, then the complete result is compared with the declared landing. The move count comes from game status and is independent of the number of commands or captured frames. A difference in any field makes the route stale, and the failure names the field and both values.
 
 **A game with no routes needs nothing.** `.playtest/` starts empty, every session opens at turn zero, and a game's routes accumulate out of the sessions that found somewhere worth returning to.
 
