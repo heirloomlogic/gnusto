@@ -17,6 +17,9 @@
 /// Built by `GameWorld.performAudited(_:)`, which is where the parse result is
 /// still in hand.
 struct TurnAudit: Sendable {
+    /// How this result consumed input, for the public turn report.
+    var input: TurnReport.InputEvent = .none
+
     /// True when the parser produced a command. False for a parse error, an
     /// open clarifying question, and for the line that answered an engine
     /// prompt — none of which named a verb.
@@ -56,13 +59,21 @@ struct TurnAudit: Sendable {
     var answeredPrompt: Bool = false
 
     /// A line the parser never got a command out of.
-    init(unknownWords: [String] = [], answeredPrompt: Bool = false) {
+    init(
+        unknownWords: [String] = [], answeredPrompt: Bool = false,
+        input: TurnReport.InputEvent = .none
+    ) {
         self.unknownWords = unknownWords
         self.answeredPrompt = answeredPrompt
+        self.input = input
     }
 
     /// A line the parser did get a command out of.
-    init(_ parsed: ParsedCommand, unknownWords: [String]) {
+    init(
+        _ parsed: ParsedCommand, unknownWords: [String],
+        input: TurnReport.InputEvent = .command
+    ) {
+        self.input = input
         self.understood = true
         self.intent = parsed.intent
         self.directObject = parsed.directObject
