@@ -19,8 +19,17 @@ struct MapViewTests {
         #expect(view.id == EntityID("hall"))
         #expect(view.name == "Hall")
         #expect(view.region == nil)
+        #expect(view.exitObservation == .complete)
         // The trap door is hidden and the gate is latched: neither is drawn yet.
         #expect(view.exits == [.north: open, .west: blocked])
+    }
+
+    @Test func aLitRoomWithoutDrawableExitsIsACompleteObservation() async throws {
+        let world = try GameWorld(game: HeartbeatGame(), seed: 0)
+        _ = await world.begin()
+        let view = await world.mapView()
+        #expect(view.exitObservation == .complete)
+        #expect(view.exits.isEmpty)
     }
 
     @Test func aRevealedDoorAndAnOpenedGateAppear() async throws {
@@ -43,16 +52,25 @@ struct MapViewTests {
             ])
     }
 
-    @Test func aDarkRoomShowsNoExits() async throws {
+    @Test func exitObservationTracksLightWithoutLeakingDarkRoomExits() async throws {
         let world = try await world()
+        let lit = await world.mapView()
+        #expect(lit.exitObservation == .complete)
+        #expect(lit.exits[.north] == open)
         _ = await world.perform("push rug")
         _ = await world.perform("open trap door")
         let arrival = await world.perform("down")
-        let view = await world.mapView()
-        #expect(view.id == EntityID("cellar"))
-        #expect(view.name == "Cellar")
-        #expect(view.name == arrival.status.locationName)
-        #expect(view.exits.isEmpty)
+        let dark = await world.mapView()
+        #expect(dark.id == EntityID("cellar"))
+        #expect(dark.name == "Cellar")
+        #expect(dark.name == arrival.status.locationName)
+        #expect(dark.exitObservation == .unobserved)
+        #expect(dark.exits.isEmpty)
+        _ = await world.perform("up")
+        let litAgain = await world.mapView()
+        #expect(litAgain.exitObservation == .complete)
+        #expect(litAgain.exits[.north] == open)
+        #expect(litAgain.exits[.down] == open)
     }
 
     @Test func aMazeRoomCarriesItsRegion() async throws {
@@ -75,12 +93,45 @@ struct MapViewTests {
         #expect(after.globals == before.globals)
     }
 
+    @Test func askingDoesNotChangeTimersOrTheNextTurnReport() async throws {
+        let queried = try GameWorld(game: HeartbeatGame(), seed: 17)
+        let control = try GameWorld(game: HeartbeatGame(), seed: 17)
+        _ = await queried.begin()
+        _ = await control.begin()
+        let before = await queried.snapshot()
+        for _ in 0..<5 { _ = await queried.mapView() }
+        let after = await queried.snapshot()
+        #expect(after.moves == before.moves)
+        #expect(after.activeFuses == before.activeFuses)
+        #expect(after.activeDaemons == before.activeDaemons)
+        #expect(after.rngState == before.rngState)
+        #expect(after.globals == before.globals)
+
+        let queriedTurn = await queried.perform("look")
+        let controlTurn = await control.perform("look")
+        #expect(queriedTurn.output == controlTurn.output)
+        #expect(queriedTurn.isFinished == controlTurn.isFinished)
+        #expect(queriedTurn.status.locationID == controlTurn.status.locationID)
+        #expect(queriedTurn.status.locationName == controlTurn.status.locationName)
+        #expect(queriedTurn.status.moves == controlTurn.status.moves)
+        #expect(queriedTurn.status.score == controlTurn.status.score)
+        #expect(queriedTurn.report == controlTurn.report)
+
+        let queriedState = await queried.snapshot()
+        let controlState = await control.snapshot()
+        #expect(queriedState.activeFuses == controlState.activeFuses)
+        #expect(queriedState.activeDaemons == controlState.activeDaemons)
+        #expect(queriedState.rngState == controlState.rngState)
+        #expect(queriedState.globals == controlState.globals)
+    }
+
     @Test func exitConditionsCannotCommitOrShareTheirWritesThroughAQuery() async throws {
         let world = try GameWorld(game: QueryMutationGame(), seed: 0)
         _ = await world.begin()
         let before = await world.snapshot()
         for _ in 0..<5 {
             let view = await world.mapView()
+            #expect(view.exitObservation == .complete)
             // Each condition opens the same item and increments the same global.
             // A shared frame would expose exactly one of these two exits, in any order.
             #expect(view.exits[.east] == open)

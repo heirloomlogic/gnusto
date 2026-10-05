@@ -142,7 +142,7 @@ The filename answer that opens an overwrite confirmation has no second `requeste
 
 ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives.
 
-A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
+A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. ``RoomMapView/exitObservation`` is ``RoomMapView/ExitObservation/complete`` when the exit dictionary is authoritative for what the player can currently observe. An empty complete dictionary removes unwalked stubs, but it does not claim the game's authored topology has no hidden or currently unavailable exits. ``RoomMapView/ExitObservation/unobserved`` means the exits could not be observed, as in darkness, so a map keeps what it learned on earlier visits. The dictionary is empty in that case. A hidden door remains omitted until it is revealed, and a conditional exit remains omitted while its condition is false. An exit declared ``MapEntry/secret`` is flagged so a map can leave it undrawn until the player has walked it.
 
 ## Completion candidates
 
@@ -245,6 +245,7 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``TurnReport/OperationEvent``
 - ``GameWorld/mapView()``
 - ``RoomMapView``
+- ``RoomMapView/ExitObservation``
 - ``MapExit``
 - ``PreparedGame``
 - ``PackagedGame``
