@@ -99,6 +99,8 @@ The concrete game stays internal. `gnusto-games.json` identifies the package, li
 
 Run `bin/run-game MyGame`, and you can already `look` around and try to move. The script generates an ignored executable package combining your game library with [GnustoTerminal](https://github.com/HeirloomLogic/GnustoTerminal). Neither your game nor Gnusto depends on a front end. During this coordinated prerelease, set `GNUSTO_TERMINAL_PATH` to the companion checkout if its matching revision is not yet published.
 
+On macOS, set `GNUSTO_YONK_PATH` to a coordinated [Yonk](https://github.com/HeirloomLogic/Yonk) checkout and run `bin/run-game MyGame --frontend yonk` to generate and launch the same game through Yonk. Terminal remains the default. Yonk export is a later app-packaging step; `bin/export-game` continues to produce the terminal distribution.
+
 ``GameWorld`` validates the game before play; a bad exit throws ``BootstrapError``. The terminal launcher's ``REPL`` drives the prompt/parse/perform/print loop. Custom clients can drive the world directly or provide their own ``IOHandler``; see <doc:CustomFrontEnds>.
 
 ## Add a second room and connect them

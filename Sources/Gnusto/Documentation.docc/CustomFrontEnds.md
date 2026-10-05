@@ -52,6 +52,12 @@ let world = GameWorld(prepared: prepared)
 
 Launchers that support the engine's environment settings read ``SeedRequest``, ``StatusFooter`` and ``TranscriptRequest`` before constructing their handler. ``TranscriptRequest/init(gameTitled:environment:)`` takes the prepared game's title, resolves `GNUSTO_TRANSCRIPT`, and preflights the file by opening and closing it. Report its ``TranscriptRequest/complaint`` before an alternate-screen handler starts, then pass ``TranscriptRequest/url`` to the REPL. The request uses the same path rules and recorder as in-session `script` commands.
 
+Gnusto can generate a development launcher for the [Yonk](https://github.com/HeirloomLogic/Yonk) SwiftUI front end on macOS. Set `GNUSTO_YONK_PATH` to the coordinated Yonk checkout, then run `bin/run-game MyGame --frontend yonk`. The ignored package imports the selected game library and constructs `Yonk(MyGame.game)`; the game and engine libraries do not depend on Yonk. `bin/build-game MyGame --frontend yonk` prints the generated executable path without launching it.
+
+The generator records the exact Yonk path, its declared Gnusto revision and a source fingerprint. Its generated dependency overlay points at that source tree while binding Yonk to the same selected engine as the game, including an independent author package that declares Gnusto by path or URL. Terminal and Yonk use separate caches under `.build-launchers/<Game>/<Frontend>/<Mode>/`; edits and deletions in the game, engine or selected front end invalidate the corresponding warm launcher.
+
+Yonk deployment is not part of this development path. `bin/export-game --frontend yonk` remains unavailable until the app exporter can stage and sign a complete `.app` with its resources and privacy metadata.
+
 An MCP launcher calls ``PlaytestLaunch/serve(_:environment:)`` with the factory and environment. The facade serves the real play-test server when the `Playtest` package trait is enabled, and throws ``PlaytestLaunchError/unavailable`` when it is disabled. Call it before creating a playing world or IO handler: MCP stdout belongs exclusively to the protocol.
 
 ## What a handler has to implement
