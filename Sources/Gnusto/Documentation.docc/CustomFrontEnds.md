@@ -56,7 +56,7 @@ Gnusto can generate a development launcher for the [Yonk](https://github.com/Hei
 
 The generator records the exact Yonk path, its declared Gnusto revision and a source fingerprint. Its generated dependency overlay points at that source tree while binding Yonk to the same selected engine as the game, including an independent author package that declares Gnusto by path or URL. Terminal and Yonk use separate caches under `.build-launchers/<Game>/<Frontend>/<Mode>/`; edits and deletions in the game, engine or selected front end invalidate the corresponding warm launcher.
 
-Yonk deployment is not part of this development path. `bin/export-game --frontend yonk` remains unavailable until the app exporter can stage and sign a complete `.app` with its resources and privacy metadata.
+Development and export use the same app assembler. `bin/export-game <Game> --frontend yonk` stages an ad-hoc-signed `.app` with linked resource bundles, stable bundle metadata and microphone/speech usage descriptions. See <doc:SharingYourGame> for the supported resource layout, optional ICNS icon, atomic replacement and remaining frontend qualification gates.
 
 An MCP launcher calls ``PlaytestLaunch/serve(_:environment:)`` with the factory and environment. The facade serves the real play-test server when the `Playtest` package trait is enabled, and throws ``PlaytestLaunchError/unavailable`` when it is disabled. Call it before creating a playing world or IO handler: MCP stdout belongs exclusively to the protocol.
 

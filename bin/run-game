@@ -32,5 +32,9 @@ esac
 [[ -n "$game" ]] || fail 'Usage: bin/run-game <Game> [--frontend terminal|yonk]'
 script_root="$(cd "$(dirname "$0")" && pwd)"
 export GNUSTO_PACKAGE_PATH="${GNUSTO_PACKAGE_PATH:-$script_root/..}"
+if [[ "$frontend" == yonk ]]; then
+  app="$("$script_root/build-game" "$game" --frontend yonk --mode development --app)"
+  exec /usr/bin/open -n -W "$app"
+fi
 binary="$("$script_root/build-game" "$game" --frontend "$frontend" --mode development)"
 exec "$binary"
