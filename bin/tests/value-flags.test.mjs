@@ -87,7 +87,7 @@ test('bin/run-game refuses a missing Yonk checkout before package resolution or 
   const result = spawnSync(path.join(repo, 'bin/run-game'), ['Story', '--frontend', 'yonk'], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
   assert.equal(result.status, 2, result.stderr);
   assert.equal(result.stdout, '');
-  assert.match(result.stderr, /GNUSTO_YONK_PATH|requires macOS/);
+  assert.match(result.stderr, process.platform === 'darwin' ? /GNUSTO_YONK_PATH/ : /requires macOS/);
 });
 
 test('bin/export-game refuses unavailable Yonk export', () => {
