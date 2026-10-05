@@ -146,12 +146,11 @@ struct ${launcherTarget}App: App {
 struct ${launcherTarget} {
     @MainActor static func verifyResources() throws {
         guard let resources = Bundle.main.resourceURL,
-            let files = FileManager.default.enumerator(at: resources, includingPropertiesForKeys: nil)
+            let bundle = Bundle(url: resources.appendingPathComponent("Yonk_Yonk.bundle")),
+            let shader = bundle.url(forResource: "CRTShaders", withExtension: "metal")
         else { throw CocoaError(.fileReadNoSuchFile) }
-        for case let file as URL in files where file.pathExtension == "metal" {
-            guard let device = MTLCreateSystemDefaultDevice() else { throw CocoaError(.featureUnsupported) }
-            _ = try device.makeLibrary(source: String(contentsOf: file, encoding: .utf8), options: nil)
-        }
+        guard let device = MTLCreateSystemDefaultDevice() else { throw CocoaError(.featureUnsupported) }
+        _ = try device.makeLibrary(source: String(contentsOf: shader, encoding: .utf8), options: nil)
     }
 
     @MainActor static func main() async {
@@ -341,19 +340,31 @@ function yonkOverlayReady(spec) {
 }
 export async function assertBuildCurrent(spec, built, {swift = 'swift', environment = process.env} = {}) {
   const current = fingerprint(spec, swiftExecutable(swift, environment), buildFlags(environment), environment);
-  if (current !== built.fingerprint || !cacheHit(spec, current)) throw new Error('Build inputs changed before app publication; rebuild and retry.');
+  if (current !== built.fingerprint || !cacheMetadataHit(spec, current)) throw new Error('Build inputs changed before app publication; rebuild and retry.');
   const state = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'build-state.json'), 'utf8'));
   if (!state.artifacts || await artifactDigest(built.binary, built.binDirectory) !== state.artifacts) throw new Error('Build artifacts changed before app publication; rebuild and retry.');
   if (fingerprint(spec, swiftExecutable(swift, environment), buildFlags(environment), environment) !== current) throw new Error('Build inputs changed during app validation; rebuild and retry.');
 }
 function resultFor(spec, state) { return {binary: state.binary, binDirectory: state.binDirectory, packageRoot: spec.packageRoot, scratchPath: spec.scratchPath, fingerprint: state.fingerprint}; }
-function cacheHit(spec, expected) {
+function cacheMetadataHit(spec, expected) {
   try {
     const state = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'build-state.json'), 'utf8'));
     fs.accessSync(state.binary, fs.constants.X_OK);
     if (engineEditReady(spec) && terminalEditReady(spec) && yonkOverlayReady(spec) && state.fingerprint === expected && fs.statSync(state.binary).isFile()) return resultFor(spec, state);
   } catch {}
   return null;
+}
+async function artifactCacheCurrent(spec) {
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'build-state.json'), 'utf8'));
+    return Boolean(state.artifacts) && await artifactDigest(state.binary, state.binDirectory) === state.artifacts;
+  } catch { return false; }
+}
+async function cacheHit(spec, expected, swift, flags, environment) {
+  const hit = cacheMetadataHit(spec, expected);
+  if (!hit || spec.frontend !== 'yonk') return hit;
+  if (!await artifactCacheCurrent(spec)) return null;
+  return fingerprint(spec, swift, flags, environment) === expected ? hit : null;
 }
 function atomicWrite(file, text) {
   fs.mkdirSync(path.dirname(file), {recursive: true});
@@ -423,11 +434,16 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
   const flags = buildFlags(environment);
   swift = swiftExecutable(swift, environment);
   let expected = fingerprint(spec, swift, flags, environment);
-  if (!force) { const hit = cacheHit(spec, expected); if (hit) return hit; }
+  if (!force) { const hit = await cacheHit(spec, expected, swift, flags, environment); if (hit) return hit; }
   const unlock = await acquireBuildLock(spec.generatedRoot);
   try {
     expected = fingerprint(spec, swift, flags, environment);
-    if (!force) { const hit = cacheHit(spec, expected); if (hit) return hit; }
+    if (!force) { const hit = await cacheHit(spec, expected, swift, flags, environment); if (hit) return hit; }
+    if (spec.frontend === 'yonk' && fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')) && !await artifactCacheCurrent(spec)) {
+      // SwiftPM may consider a modified output up to date. Rebuild only this
+      // generated scratch; previously published apps live outside it.
+      fs.rmSync(spec.scratchPath, {recursive: true, force: true});
+    }
     fs.rmSync(path.join(spec.generatedRoot, 'build-state.json'), {force: true});
     for (const link of spec.links) {
       const target = path.join(spec.packageRoot, 'Dependencies', link.name);
@@ -488,13 +504,13 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
     const binary = path.join(binDirectory, spec.launcherProduct);
     fs.accessSync(binary, fs.constants.X_OK);
     if (spec.mode === 'deployment') await verifyDeploymentEngine(binary, env);
+    const artifacts = spec.frontend === 'yonk' ? await artifactDigest(binary, binDirectory) : undefined;
     if (frontendFingerprint(spec) !== stableFrontend) throw new Error('Managed frontend compilation inputs changed during build; retry to compile the resolved sources.');
     if (!engineEditReady(spec) || !terminalEditReady(spec) || !yonkOverlayReady(spec)) throw new Error('Generated workspace lost its exact editable dependencies during build; refusing to publish current state.');
     const resolvedInputs = resolutionFingerprint(spec);
     if (frontendFingerprint(spec) !== stableFrontend) throw new Error('Managed frontend compilation inputs changed during build; retry to compile the resolved sources.');
     if (fingerprint(spec, swift, flags, environment, false) !== stableInputs) throw new Error('Local compilation inputs changed during build; retry to compile the current sources.');
     if (resolvedLocalFingerprint(spec) !== stableLocalDependencies) throw new Error('Resolved local dependency compilation inputs changed during build; retry to compile the current sources.');
-    const artifacts = spec.frontend === 'yonk' ? await artifactDigest(binary, binDirectory) : undefined;
     const state = {binary, binDirectory, ...(artifacts ? {artifacts} : {}), fingerprint: combineFingerprints(combineFingerprints(stableInputs, stableLocalDependencies), resolvedInputs), toolchainVersion, ...(spec.terminalEdit ? {terminalSource: stableTerminalSource} : {}), ...(stableFrontendSource ? {frontendSource: stableFrontendSource} : {})};
     atomicWrite(path.join(spec.generatedRoot, 'build-state.json'), JSON.stringify(state, null, 2) + '\n');
     return resultFor(spec, state);
