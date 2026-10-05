@@ -120,3 +120,25 @@ test('invalid icon input preserves the prior app before signing', async t => {
   assert.deepEqual(f.calls, []);
   assert.equal(await fs.readFile(path.join(f.destination, 'old'), 'utf8'), 'qualified');
 });
+
+for (const cleanup of ['displaced app', 'publication helper']) test(`${cleanup} cleanup failure after commit does not report a failed replacement`, {skip: process.platform !== 'darwin'}, async t => {
+  const f = await fixture(t);
+  const {execFile} = await import('node:child_process'), {promisify} = await import('node:util');
+  const execute = promisify(execFile), source = path.join(f.root, 'main.c');
+  await fs.writeFile(source, 'int main(void) { return 0; }');
+  await execute('xcrun', ['clang', source, '-o', f.binary]);
+  const original = fs.rm, leftovers = [];
+  fs.rm = async function(file, ...args) {
+    const target = String(file);
+    if ((cleanup === 'displaced app' && target.startsWith(path.join(f.root, '.Story.app.'))) || (cleanup === 'publication helper' && path.basename(target).startsWith('gnusto-publish-'))) {
+      leftovers.push(target);
+      throw Object.assign(new Error('injected cleanup failure'), {code: 'EACCES'});
+    }
+    return original.call(this, file, ...args);
+  };
+  let result;
+  try { result = await stageApp({...f, operations: undefined}); }
+  finally { fs.rm = original; for (const file of leftovers) await fs.rm(file, {recursive: true, force: true}); }
+  assert.equal(result.app, f.destination);
+  await execute('/usr/bin/codesign', ['--verify', '--deep', '--strict', f.destination]);
+});

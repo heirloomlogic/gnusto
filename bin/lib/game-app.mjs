@@ -15,14 +15,23 @@ export function appFilename(title) {
   return encodeURIComponent(title).replace(/%20/g, ' ') + '.app';
 }
 export {appIdentity} from './game-build.mjs';
+async function cleanupPublished(file) {
+  try { await fs.rm(file, {recursive: true, force: true}); }
+  catch (error) { console.error(`App published; cleanup left ${file}: ${error.message}`); }
+}
 async function publish(app, destination, {signal} = {}) {
   const work = await fs.mkdtemp(path.join(os.tmpdir(), 'gnusto-publish-'));
+  let committed = false;
   try {
     const helper = path.join(work, 'publish');
     await execute('xcrun', ['clang', '-Wall', '-Werror', path.join(here, 'atomic-app-publish.c'), '-o', helper], {signal, timeout: 60000});
     signal?.throwIfAborted();
     await execute(helper, [app, destination], {timeout: 15000});
-  } finally { await fs.rm(work, {recursive: true, force: true}); }
+    committed = true;
+  } finally {
+    if (committed) await cleanupPublished(work);
+    else await fs.rm(work, {recursive: true, force: true});
+  }
 }
 const nativeOperations = {
   verifyIcon: async icon => {
@@ -58,6 +67,7 @@ export async function stageApp({binary, binDirectory = path.dirname(binary), des
   const parent = path.dirname(destination);
   await fs.mkdir(parent, {recursive: true});
   const temporary = path.join(parent, `.${path.basename(destination)}.${randomUUID()}.app`);
+  let committed = false;
   try {
     const contents = path.join(temporary, 'Contents'), resources = path.join(contents, 'Resources');
     await fs.mkdir(path.join(contents, 'MacOS'), {recursive: true});
@@ -86,8 +96,12 @@ export async function stageApp({binary, binDirectory = path.dirname(binary), des
     await assertCurrent();
     signal?.throwIfAborted();
     await operations.publish(temporary, destination, {signal});
+    committed = true;
     return {app: destination, binary: path.join(destination, 'Contents/MacOS/Game'), resources: names.map(name => path.join(destination, 'Contents/Resources', name))};
-  } finally { await fs.rm(temporary, {recursive: true, force: true}); }
+  } finally {
+    if (committed) await cleanupPublished(temporary);
+    else await fs.rm(temporary, {recursive: true, force: true});
+  }
 }
 
 export async function assembleGameApp(spec, built, {destinationDirectory = spec.generatedRoot, environment = process.env, swift = environment.GNUSTO_SWIFT || 'swift', signal} = {}) {
