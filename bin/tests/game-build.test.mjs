@@ -222,11 +222,20 @@ test('CLI prints one absolute binary path or JSON and rejects unknown games befo
   const warmed = spawnSync(cli, ['Story'], {env: environment, encoding: 'utf8'});
   assert.equal(warmed.status, 0, warmed.stderr); assert.equal(warmed.stdout, result.binary + '\n');
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 1);
+  const beforeYonk = f.log().length;
   const yonk = spawnSync(cli, ['Story', '--frontend', 'yonk', '--json'], {env: environment, encoding: 'utf8'});
-  assert.equal(yonk.status, 0, yonk.stderr); const yonkResult = JSON.parse(yonk.stdout);
-  assert.match(yonkResult.packageRoot, /Story\/yonk\/development\/package$/);
-  assert.match(fs.readFileSync(path.join(yonkResult.packageRoot, `Sources/${f.spec.launcherTarget}/main.swift`), 'utf8'), /Yonk\(Story\.game\)/);
-  assert.equal(f.log().filter(item => item.args.includes('--product')).length, 2);
+  if (process.platform === 'darwin') {
+    assert.equal(yonk.status, 0, yonk.stderr); const yonkResult = JSON.parse(yonk.stdout);
+    assert.match(yonkResult.packageRoot, /Story\/yonk\/development\/package$/);
+    assert.match(fs.readFileSync(path.join(yonkResult.packageRoot, `Sources/${f.spec.launcherTarget}/main.swift`), 'utf8'), /Yonk\(Story\.game\)/);
+    assert.equal(f.log().filter(item => item.args.includes('--product')).length, 2);
+  } else {
+    assert.equal(yonk.status, 2, yonk.stderr);
+    assert.equal(yonk.stdout, '');
+    assert.match(yonk.stderr, /Yonk development frontend requires macOS/);
+    assert.equal(f.log().length, beforeYonk);
+    assert.equal(fs.existsSync(path.join(f.packageRoot, '.build-launchers/Story/yonk')), false);
+  }
 });
 
 test('real path and URL author graphs share current Gnusto and resource-bearing source edits', {skip: process.env.GNUSTO_REAL_GRAPH !== '1', timeout: 1200000}, async t => {
