@@ -75,7 +75,7 @@ for (const script of ['run-game', 'export-game']) {
   }
   for (const frontend of ['unknown']) {
     test(`bin/${script} refuses ${frontend} before package resolution or building`, () => {
-      const result = spawnSync(path.join(repo, 'bin', script), ['Story', '--frontend', frontend], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package'}, encoding: 'utf8'});
+      const result = spawnSync(path.join(repo, 'bin', script), ['Story', '--frontend', frontend], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
       assert.equal(result.status, 2, result.stderr);
       assert.equal(result.stdout, '');
       assert.match(result.stderr, /unknown.*frontend/i);
@@ -91,8 +91,8 @@ test('bin/run-game refuses a missing Yonk checkout before package resolution or 
 });
 
 test('bin/export-game refuses unavailable Yonk export', () => {
-  const result = spawnSync(path.join(repo, 'bin/export-game'), ['Story', '--frontend', 'yonk'], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package'}, encoding: 'utf8'});
+  const result = spawnSync(path.join(repo, 'bin/export-game'), ['Story', '--frontend', 'yonk'], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
   assert.equal(result.status, 2, result.stderr);
   assert.equal(result.stdout, '');
-  assert.match(result.stderr, /not available yet/);
+  assert.match(result.stderr, process.platform === 'darwin' ? /GNUSTO_YONK_PATH/ : /macOS/);
 });

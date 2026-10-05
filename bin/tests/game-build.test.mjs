@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
-import {acquireBuildLock, buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
+import {acquireBuildLock, assertBuildCurrent, buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
 import {loadGames} from '../lib/game-catalog.mjs';
 const trait = 'traits: [.trait(name: "Playtest"), .default(enabledTraits: ["Playtest"])]';
 function fixture(t, {url = false} = {}) {
@@ -41,11 +41,14 @@ test('Yonk development specs use the public scene contract and an isolated front
   assert.match(f.spec.generatedRoot, /Story\/terminal\/development$/);
   assert.notEqual(yonk.scratchPath, f.spec.scratchPath);
 });
-test('Yonk rejects missing sources, unsupported platforms and deployment mode before Swift', t => {
+test('Yonk rejects missing sources and unsupported platforms before Swift', t => {
   const f = fixture(t);
   assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', yonkRoot: null, game: 'Story', platform: 'darwin'}), /GNUSTO_YONK_PATH/);
   assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'linux'}), /macOS/);
-  assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'}), /link 2|development/i);
+  const deployed = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+  assert.match(deployed.entryPoint, /PlaytestLaunch.serve/);
+  assert.match(deployed.entryPoint, /--gnusto-verify-app/);
+  assert.match(deployed.generatedRoot, /yonk\/deployment$/);
   assert.throws(() => makeBuildSpec({...f, frontend: 'unknown', game: 'Story'}), /Unknown frontend/);
   assert.equal(f.log().length, 0);
 });
@@ -607,3 +610,41 @@ test('deployment publishes state only after the direct engine probe returns unav
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 3);
   const count = f.log().length; assert.deepEqual(await buildGame(spec, f), built); assert.equal(f.log().length, count);
 });
+
+test('Yonk deployment checks the compiled engine trait and retains artifact provenance', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+  const built = await buildGame(spec, f);
+  await assertBuildCurrent(spec, built, f);
+  fs.appendFileSync(built.binary, '\n// changed build output');
+  await assert.rejects(assertBuildCurrent(spec, built, f), /artifacts changed/);
+  await assert.rejects(buildGame(spec, {...f, force: true, environment: {...f.environment, PROBE_MODE: 'enabled'}}), /without Playtest/);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+});
+
+test('app handoff refuses source edits after a successful build', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const built = await buildGame(spec, f);
+  fs.appendFileSync(path.join(f.packageRoot, 'Sources/content.swift'), '\n// new source');
+  await assert.rejects(assertBuildCurrent(spec, built, f), /inputs changed/);
+});
+
+for (const definition of ['catalog', 'author manifest', 'engine manifest']) {
+  for (const change of ['edit', 'delete']) test(`app specification rejects ${definition} ${change} while waiting for the build lock`, async t => {
+    const f = fixture(t);
+    const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+    const release = await acquireBuildLock(spec.generatedRoot);
+    t.after(release);
+    const waiting = buildGame(spec, f).then(result => ({result}), error => ({error}));
+    const file = definition === 'catalog' ? path.join(f.packageRoot, 'gnusto-games.json') : path.join(definition === 'author manifest' ? f.packageRoot : f.engineRoot, 'Package.swift');
+    if (change === 'delete') fs.unlinkSync(file);
+    else fs.appendFileSync(file, '\n');
+    await release();
+    const outcome = await waiting;
+    assert(outcome.error, 'a captured app specification must not label old metadata with a new definition fingerprint');
+    assert.match(outcome.error.message, /definition changed|ENOENT/);
+    assert.equal(f.log().length, 0);
+    assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+  });
+}

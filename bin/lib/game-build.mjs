@@ -3,13 +3,17 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
+import {artifactDigest} from './game-export.mjs';
 import {loadGames, resolveCatalogGame} from './game-catalog.mjs';
-const TOOL_VERSION = 4;
+const TOOL_VERSION = 5;
 const DEPLOYMENT_PROBE = '--gnusto-verify-engine-without-playtest';
 const DEPLOYMENT_PROOF = 'Gnusto.PlaytestLaunchError.unavailable';
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REMOTE_TERMINAL = 'https://github.com/HeirloomLogic/GnustoTerminal';
 const identity = location => path.basename(location.replace(/\/$/, '')).replace(/\.git$/i, '').toLowerCase();
+export function appIdentity(packageName, gameName) {
+  return 'org.gnusto.game.' + createHash('sha256').update(JSON.stringify([packageName, gameName])).digest('hex').slice(0, 32);
+}
 export function swiftStringLiteral(value) {
   return '"' + String(value).replace(/[\\"\x00-\x1f\x7f]/g, character => ({'\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r', '\t': '\\t'}[character] ?? `\\u{${character.charCodeAt(0).toString(16)}}`)) + '"';
 }
@@ -57,6 +61,11 @@ function yonkContract(root) {
 }
 function requireCurrentYonkManifest(spec) {
   if (spec.frontend !== 'yonk') return;
+  for (const [file, captured] of spec.definitions) {
+    let current;
+    try { current = fs.readFileSync(file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (current !== captured) throw new Error(`Yonk build definition changed after specification: ${file}; recreate the specification and retry.`);
+  }
   let current;
   try { current = fs.readFileSync(path.join(spec.yonkRoot, 'Package.swift'), 'utf8'); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -65,7 +74,6 @@ function requireCurrentYonkManifest(spec) {
 export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.env.GNUSTO_TERMINAL_PATH, yonkRoot = process.env.GNUSTO_YONK_PATH, frontend = 'terminal', game, mode = 'development', platform = process.platform}) {
   if (!['development', 'deployment'].includes(mode)) throw new Error(`Unknown build mode: ${mode}`);
   if (!['terminal', 'yonk'].includes(frontend)) throw new Error(`Unknown frontend: ${frontend}`);
-  if (frontend === 'yonk' && mode !== 'development') throw new Error('Yonk deployment and app export are not available yet; use development mode.');
   if (frontend === 'yonk' && platform !== 'darwin') throw new Error('The Yonk development frontend requires macOS.');
   if (frontend === 'yonk' && !yonkRoot) throw new Error('The coordinated prerelease Yonk frontend requires GNUSTO_YONK_PATH.');
   packageRoot = fs.realpathSync(packageRoot);
@@ -73,6 +81,7 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
   terminalRoot = frontend === 'terminal' && terminalRoot ? fs.realpathSync(terminalRoot) : null;
   yonkRoot = frontend === 'yonk' ? fs.realpathSync(yonkRoot) : null;
   const selectedYonkContract = yonkRoot ? yonkContract(yonkRoot) : null;
+  const definitions = frontend === 'yonk' ? [...new Set([path.join(packageRoot, 'Package.swift'), path.join(engineRoot, 'Package.swift'), path.join(packageRoot, 'gnusto-games.json')])].map(file => [file, fs.readFileSync(file, 'utf8')]) : [];
   const catalog = loadGames(packageRoot);
   game = resolveCatalogGame(catalog, typeof game === 'string' ? game : game?.name);
   const sameEngine = packageRoot === engineRoot;
@@ -108,17 +117,89 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
     dependencies.push(terminalRoot ? dependency('GnustoTerminal', 'Dependencies/gnustoterminal') : `.package(url: ${swiftStringLiteral(REMOTE_TERMINAL)}, branch: "main", traits: forwarded)`);
     if (!sameEngine && !engineEdit) dependencies.push(dependency('Gnusto', declaration.location));
     if (engineEdit) dependencies.push(`.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: forwarded)`);
-  } else dependencies.push(dependency('Yonk', 'Frontends/yonk'));
-  const targetDependencies = frontend === 'terminal' ? [`.product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)})`, '.product(name: "GnustoTerminal", package: "GnustoTerminal")', `.product(name: "Gnusto", package: ${swiftStringLiteral(sameEngine ? catalog.package : "Gnusto")})`] : [`.product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)})`, '.product(name: "Yonk", package: "Yonk")'];
+  } else {
+    dependencies.push(dependency('Yonk', 'Frontends/yonk'));
+    if (!sameEngine && !engineEdit) dependencies.push(dependency('Gnusto', declaration.location));
+    if (engineEdit) dependencies.push(`.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: forwarded)`);
+  }
+  const targetDependencies = frontend === 'terminal' ? [`.product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)})`, '.product(name: "GnustoTerminal", package: "GnustoTerminal")', `.product(name: "Gnusto", package: ${swiftStringLiteral(sameEngine ? catalog.package : "Gnusto")})`] : [`.product(name: ${swiftStringLiteral(game.product)}, package: ${swiftStringLiteral(catalog.package)})`, '.product(name: "Yonk", package: "Yonk")', `.product(name: "Gnusto", package: ${swiftStringLiteral(sameEngine ? catalog.package : "Gnusto")})`];
   const manifest = `// swift-tools-version: 6.2\nimport PackageDescription\n\nlet forwarded: Set<Package.Dependency.Trait> = [\n    .trait(name: "Playtest", condition: .when(traits: ["Playtest"]))\n]\nlet package = Package(\n    name: ${swiftStringLiteral(game.name + (frontend === 'terminal' ? 'TerminalBuild' : 'YonkBuild'))},\n    platforms: [.macOS(.v15)],\n    products: [.executable(name: ${swiftStringLiteral(launcherProduct)}, targets: [${swiftStringLiteral(launcherTarget)}])],\n    traits: [\n        .trait(name: "Playtest", description: "Enable the development MCP server."),\n        .default(enabledTraits: ["Playtest"]),\n    ],\n    dependencies: [\n        ${dependencies.join(',\n        ')},\n    ],\n    targets: [\n        .executableTarget(name: ${swiftStringLiteral(launcherTarget)}, dependencies: [\n            ${targetDependencies.join(',\n            ')},\n        ]),\n    ]\n)\n`;
   const terminalEntry = `import Gnusto\nimport GnustoTerminal\nimport ${game.module}\n\n#if canImport(Darwin)\nimport Darwin\n#elseif canImport(Glibc)\nimport Glibc\n#endif\n\n${mode === 'deployment' ? `// Build verification calls the engine directly; frontend policy cannot mask its trait.\nif CommandLine.arguments.dropFirst().elementsEqual([${swiftStringLiteral(DEPLOYMENT_PROBE)}]) {\n    do {\n        try await PlaytestLaunch.serve(${game.module}.${game.symbol}, environment: [:])\n    } catch PlaytestLaunchError.unavailable {\n        print(${swiftStringLiteral(DEPLOYMENT_PROOF)})\n        exit(0)\n    } catch {}\n    exit(1)\n}\n\n` : ''}let result = await TerminalLaunch.run(${game.module}.${game.symbol})\nexit(result)\n`;
-  const yonkEntry = `import AppKit\nimport SwiftUI\nimport Yonk\nimport ${game.module}\n\n@main\nstruct ${launcherTarget}App: App {\n    init() {\n        NSApplication.shared.setActivationPolicy(.regular)\n    }\n\n    var body: some Scene {\n        Yonk(${game.module}.${game.symbol})\n    }\n}\n`;
+  const yonkEntry = `import AppKit
+import Foundation
+import Gnusto
+import Metal
+import SwiftUI
+import Yonk
+import ${game.module}
+
+struct ${launcherTarget}App: App {
+    init() {
+        NSApplication.shared.setActivationPolicy(.regular)
+    }
+    var body: some Scene {
+        Yonk(${game.module}.${game.symbol})
+    }
+}
+
+@main
+struct ${launcherTarget} {
+    @MainActor static func verifyResources() throws {
+        guard let resources = Bundle.main.resourceURL,
+            let files = FileManager.default.enumerator(at: resources, includingPropertiesForKeys: nil)
+        else { throw CocoaError(.fileReadNoSuchFile) }
+        for case let file as URL in files where file.pathExtension == "metal" {
+            guard let device = MTLCreateSystemDefaultDevice() else { throw CocoaError(.featureUnsupported) }
+            _ = try device.makeLibrary(source: String(contentsOf: file, encoding: .utf8), options: nil)
+        }
+    }
+
+    @MainActor static func main() async {
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        if arguments == ["--gnusto-app-metadata"] {
+            let data = try! JSONSerialization.data(withJSONObject: ["title": ${game.module}.${game.symbol}.title])
+            print(String(decoding: data, as: UTF8.self))
+            return
+        }
+        ${mode === 'deployment' ? `if arguments == [${swiftStringLiteral(DEPLOYMENT_PROBE)}] {
+            do {
+                try await PlaytestLaunch.serve(${game.module}.${game.symbol}, environment: [:])
+            } catch PlaytestLaunchError.unavailable {
+                print(${swiftStringLiteral(DEPLOYMENT_PROOF)})
+                return
+            } catch {}
+            exit(1)
+        }` : ''}
+        if arguments == ["--gnusto-verify-app"] {
+            do {
+                try verifyResources()
+                ${mode === 'deployment' ? `do {
+                    try await PlaytestLaunch.serve(${game.module}.${game.symbol}, environment: [:])
+                    exit(1)
+                } catch PlaytestLaunchError.unavailable {}` : ''}
+                let data = try JSONSerialization.data(withJSONObject: ["title": ${game.module}.${game.symbol}.title])
+                print(String(decoding: data, as: UTF8.self))
+                return
+            } catch {
+                FileHandle.standardError.write(Data("App validation failed: \\(error)\\n".utf8))
+                exit(1)
+            }
+        }
+        guard arguments.isEmpty else {
+            FileHandle.standardError.write(Data("This Yonk app does not accept command-line input or MCP.\\n".utf8))
+            exit(2)
+        }
+        ${launcherTarget}App.main()
+    }
+}
+`;
   const yonkOverlayRoot = yonkRoot ? path.join(generatedPackage, 'Frontends/yonk') : null;
   const yonkEnginePath = sameEngine ? path.join(generatedPackage, 'Dependencies', gameIdentity) : engineRoot;
   const yonkEngineDependency = engineEdit ? `.package(url: ${swiftStringLiteral(engineEdit.url)}, branch: "main", traits: [.trait(name: "Playtest", condition: .when(traits: ["Playtest"]))])` : `.package(name: "Gnusto", path: ${swiftStringLiteral(yonkEnginePath)}, traits: [.trait(name: "Playtest", condition: .when(traits: ["Playtest"]))])`;
   // Preserve frontend targets, resources and settings; replace only its engine edge.
   const yonkOverlayManifest = yonkRoot ? selectedYonkContract.manifest.replace(selectedYonkContract.engineDeclaration, yonkEngineDependency) + '\npackage.traits.insert(.trait(name: "Playtest", description: "Forward the development engine trait."))\n' : null;
-  return {packageRoot: generatedPackage, gamePackageRoot: packageRoot, engineRoot, terminalRoot, yonkRoot, frontendRoot: terminalRoot || yonkRoot, frontend, game, mode, manifest, entryPoint: frontend === 'terminal' ? terminalEntry : yonkEntry, scratchPath, generatedRoot, links, engineDependencyPath, launcherProduct, launcherTarget, engineEdit, terminalEdit, bootstrapManifest, platform, defaultBuildFlags, selectedYonkContract, yonkOverlayRoot, yonkOverlayManifest};
+  const appIdentifier = appIdentity(catalog.package, game.name);
+  return {appIdentifier, definitions, packageRoot: generatedPackage, gamePackageRoot: packageRoot, engineRoot, terminalRoot, yonkRoot, frontendRoot: terminalRoot || yonkRoot, frontend, game, mode, manifest, entryPoint: frontend === 'terminal' ? terminalEntry : yonkEntry, scratchPath, generatedRoot, links, engineDependencyPath, launcherProduct, launcherTarget, engineEdit, terminalEdit, bootstrapManifest, platform, defaultBuildFlags, selectedYonkContract, yonkOverlayRoot, yonkOverlayManifest};
 }
 function buildFlags(environment) {
   let flags;
@@ -257,6 +338,13 @@ function yonkOverlayReady(spec) {
     requireCurrentYonkManifest(spec);
     return yonkOverlayEntries(spec).every(name => fs.realpathSync(path.join(spec.yonkOverlayRoot, name)) === fs.realpathSync(path.join(spec.yonkRoot, name))) && fs.readFileSync(path.join(spec.yonkOverlayRoot, 'Package.swift'), 'utf8') === spec.yonkOverlayManifest && JSON.stringify(JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'frontend-source.json'), 'utf8'))) === JSON.stringify(frontendSource(spec));
   } catch { return false; }
+}
+export async function assertBuildCurrent(spec, built, {swift = 'swift', environment = process.env} = {}) {
+  const current = fingerprint(spec, swiftExecutable(swift, environment), buildFlags(environment), environment);
+  if (current !== built.fingerprint || !cacheHit(spec, current)) throw new Error('Build inputs changed before app publication; rebuild and retry.');
+  const state = JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'build-state.json'), 'utf8'));
+  if (!state.artifacts || await artifactDigest(built.binary, built.binDirectory) !== state.artifacts) throw new Error('Build artifacts changed before app publication; rebuild and retry.');
+  if (fingerprint(spec, swiftExecutable(swift, environment), buildFlags(environment), environment) !== current) throw new Error('Build inputs changed during app validation; rebuild and retry.');
 }
 function resultFor(spec, state) { return {binary: state.binary, binDirectory: state.binDirectory, packageRoot: spec.packageRoot, scratchPath: spec.scratchPath, fingerprint: state.fingerprint}; }
 function cacheHit(spec, expected) {
@@ -406,7 +494,8 @@ export async function buildGame(spec, {force = false, swift = 'swift', environme
     if (frontendFingerprint(spec) !== stableFrontend) throw new Error('Managed frontend compilation inputs changed during build; retry to compile the resolved sources.');
     if (fingerprint(spec, swift, flags, environment, false) !== stableInputs) throw new Error('Local compilation inputs changed during build; retry to compile the current sources.');
     if (resolvedLocalFingerprint(spec) !== stableLocalDependencies) throw new Error('Resolved local dependency compilation inputs changed during build; retry to compile the current sources.');
-    const state = {binary, binDirectory, fingerprint: combineFingerprints(combineFingerprints(stableInputs, stableLocalDependencies), resolvedInputs), toolchainVersion, ...(spec.terminalEdit ? {terminalSource: stableTerminalSource} : {}), ...(stableFrontendSource ? {frontendSource: stableFrontendSource} : {})};
+    const artifacts = spec.frontend === 'yonk' ? await artifactDigest(binary, binDirectory) : undefined;
+    const state = {binary, binDirectory, ...(artifacts ? {artifacts} : {}), fingerprint: combineFingerprints(combineFingerprints(stableInputs, stableLocalDependencies), resolvedInputs), toolchainVersion, ...(spec.terminalEdit ? {terminalSource: stableTerminalSource} : {}), ...(stableFrontendSource ? {frontendSource: stableFrontendSource} : {})};
     atomicWrite(path.join(spec.generatedRoot, 'build-state.json'), JSON.stringify(state, null, 2) + '\n');
     return resultFor(spec, state);
   } finally { await unlock(); }
