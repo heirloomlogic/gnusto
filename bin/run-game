@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and run a catalog game with the terminal development frontend.
+# Build and run a catalog game with a generated development frontend.
 # Usage: bin/run-game <Game> [--frontend terminal|yonk]
 set -euo pipefail
 for arg in "$@"; do
@@ -24,11 +24,13 @@ while [[ $# -gt 0 ]]; do
 done
 case "$frontend" in
   terminal) ;;
-  yonk) fail 'yonk frontend is unavailable until milestone 2' ;;
+  yonk)
+    [[ "$(uname -s)" == Darwin ]] || fail 'yonk frontend requires macOS'
+    [[ -n "${GNUSTO_YONK_PATH:-}" ]] || fail 'yonk frontend requires GNUSTO_YONK_PATH during the coordinated prerelease' ;;
   *) fail "unknown frontend: $frontend" ;;
 esac
 [[ -n "$game" ]] || fail 'Usage: bin/run-game <Game> [--frontend terminal|yonk]'
 script_root="$(cd "$(dirname "$0")" && pwd)"
 export GNUSTO_PACKAGE_PATH="${GNUSTO_PACKAGE_PATH:-$script_root/..}"
-binary="$("$script_root/build-game" "$game" --mode development)"
+binary="$("$script_root/build-game" "$game" --frontend "$frontend" --mode development)"
 exec "$binary"

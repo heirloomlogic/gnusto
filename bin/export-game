@@ -18,13 +18,13 @@ try {
     else if (gameName !== undefined) throw new Error(`unexpected argument: ${word}`);
     else gameName = word;
   }
-  if (frontend === 'yonk') throw new Error('yonk frontend is unavailable until milestone 2');
+  if (frontend === 'yonk') throw new Error('yonk app export is not available yet; use bin/run-game --frontend yonk for development');
   if (frontend !== 'terminal') throw new Error(`unknown frontend: ${frontend}`);
   const packageRoot = path.resolve(process.env.GNUSTO_PACKAGE_PATH || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   const catalog = loadGames(packageRoot);
   if (gameName === undefined) { console.log(catalog.games.map(game => game.name).join('\n')); process.exit(0); }
   const game = resolveCatalogGame(catalog, gameName);
-  const spec = makeBuildSpec({packageRoot, engineRoot: findEngineRoot(packageRoot), terminalRoot: process.env.GNUSTO_TERMINAL_PATH, game, mode: 'deployment'});
+  const spec = makeBuildSpec({packageRoot, engineRoot: findEngineRoot(packageRoot), terminalRoot: process.env.GNUSTO_TERMINAL_PATH, frontend, game, mode: 'deployment'});
   console.error(`Building ${game.name} (release, no play-test server)…`);
   const built = await buildGame(spec, {swift: process.env.GNUSTO_SWIFT || 'swift'});
   const controller = new AbortController();

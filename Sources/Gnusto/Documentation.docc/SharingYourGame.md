@@ -33,7 +33,7 @@ printf 'look\nquit\nyes\n' | bin/run-game Zork1
 GNUSTO_PLAIN=1 bin/run-game Zork1
 ```
 
-Set `GNUSTO_TERMINAL_PATH` to a matching companion checkout during unpublished integration. The default remote dependency uses `main` until coordinated immutable releases exist. `bin/run-game Zork1 --frontend yonk` reports that the app front end is unavailable until milestone 2.
+Set `GNUSTO_TERMINAL_PATH` to a matching terminal checkout during unpublished integration. The default remote dependency uses `main` until coordinated immutable releases exist. On macOS, set `GNUSTO_YONK_PATH` to a coordinated Yonk checkout and use `bin/run-game Zork1 --frontend yonk` for a generated development app. Yonk `.app` export remains unavailable until the app packager can stage resources, privacy metadata and signing as one atomic distribution.
 
 ## Environment variables
 
@@ -83,7 +83,7 @@ bin/export-game Lighthouse   # stages dist/Lighthouse
 bin/export-game              # lists catalog game names
 ```
 
-Development/MCP and deployment have separate generated packages and caches under `.build-launchers/<Game>/`. Exporting cannot overwrite a development server. Warm launchers validate fingerprints without invoking SwiftPM; source edits, deletion, catalogs, dependencies and local front-end changes invalidate them. Build diagnostics go to stderr.
+Each frontend and mode has a separate generated package and cache under `.build-launchers/<Game>/<Frontend>/<Mode>/`. Exporting cannot overwrite a development server, and a Yonk development build cannot replace the terminal launcher. Warm launchers validate fingerprints without invoking SwiftPM; source edits, deletions, catalogs, dependencies and local frontend changes invalidate them. Build diagnostics go to stderr.
 
 A resource-free game is one executable at `dist/<Game>`. A resource-bearing game has a complete versioned distribution directory beside that path, which points to its executable through a relative link. Distribute the whole directory in that case. A failed build, invalid resource staging or unsupported package-built dynamic library leaves the prior export untouched. macOS uses the OS Swift runtime; Linux deployment defaults to a static Swift runtime. The scripts require Node during development and export; recipients do not.
 

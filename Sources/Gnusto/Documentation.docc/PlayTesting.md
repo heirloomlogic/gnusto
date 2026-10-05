@@ -71,7 +71,7 @@ The server is a second program, and it is larger than the engine it rides in. So
 bin/export-game MyGame
 ```
 
-`bin/export-game` builds a generated deployment launcher in release mode with Playtest disabled and writes the executable to `dist/MyGame`. Its package and scratch cache live under `.build-launchers/<Game>/deployment/`, separate from the development launcher under `.build-launchers/<Game>/development/`; exporting cannot replace the development MCP binary. Conditional Playtest forwarding spans the generated launcher, game package, GnustoTerminal and Gnusto, so disabling default traits for deployment removes the server across that whole graph. `bin/build-game`, `bin/run-game` and `bin/gnusto-mcp` select development mode with Playtest enabled. `swift test` keeps the game package’s default Playtest trait; it does not build a terminal launcher.
+`bin/export-game` builds a generated terminal deployment launcher in release mode with Playtest disabled and writes the executable to `dist/MyGame`. Its package and scratch cache live under `.build-launchers/<Game>/terminal/deployment/`, separate from terminal and Yonk development launchers under their respective frontend directories; exporting cannot replace the development MCP binary. Conditional Playtest forwarding spans the generated launcher, game package, GnustoTerminal and Gnusto, so disabling default traits for deployment removes the server across that whole graph. `bin/build-game`, `bin/run-game` and `bin/gnusto-mcp` select development mode with Playtest enabled. `swift test` keeps the game package’s default Playtest trait; it does not build a terminal launcher.
 
 `bin/gnusto-mcp` is the launcher, and a generated package gets a shim over it:
 
