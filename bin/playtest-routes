@@ -138,6 +138,14 @@ function readLanding(label, inventoryLabel) {
   // whose answers describe that landing but whose own turns are not part of it.
   const sig = distill.landingSignature(fs.readFileSync(file, 'utf8'))
   if (!sig || !sig.room) return { ok: false, detail: 'no [status] footer in the transcript' }
+  if (sig.openedRoom !== sig.room) {
+    return {
+      ok: false,
+      detail: `the route ends in ${sig.room}, but its required opening \`${LANDING_PROBE}\``
+        + ` moves the player to ${sig.openedRoom}. An MCP session would open there instead;`
+        + ' re-cut the route at a stable landing.',
+    }
+  }
   const inventoryFile = newestTranscript(inventoryLabel)
   if (!inventoryFile) return { ok: false, detail: `no transcript under ${inventoryLabel}` }
   const inventory = observationBefore(

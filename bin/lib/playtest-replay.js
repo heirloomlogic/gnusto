@@ -37,15 +37,18 @@ const timeoutFor = (n) => String(Math.max(120, Math.ceil(n / 2)))
 /// The footer is the harness's own line, not the game's, so it is the one thing in a
 /// transcript no game can re-voice — which is what makes reading it safe across seven
 /// games that share nothing else.
-function lastStatus(text) {
-  const hits = [...text.matchAll(/^\[status\] (.+)$/gm)]
-  if (!hits.length) return null
+function statusFields(line) {
   const fields = {}
-  for (const pair of hits[hits.length - 1][1].split('|')) {
+  for (const pair of line.split('|')) {
     const [k, ...v] = pair.trim().split('=')
     fields[k.trim()] = v.join('=').trim()
   }
   return fields
+}
+
+function lastStatus(text) {
+  const hits = [...text.matchAll(/^\[status\] (.+)$/gm)]
+  return hits.length ? statusFields(hits[hits.length - 1][1]) : null
 }
 
 const promptLine = (command) => `\n> ${command}\n`
@@ -59,6 +62,18 @@ const lastPromptIndex = (text, command) => text.lastIndexOf(promptLine(command))
 function statusBefore(text, command) {
   const at = lastPromptIndex(text, command)
   return at < 0 ? null : lastStatus(text.slice(0, at))
+}
+
+/// The status produced by the last occurrence of a command.
+///
+/// Reads the first footer after that prompt, rather than the transcript's last one:
+/// a landing trace can append another observer after `look`, and its footer belongs
+/// to that later command.
+function statusAfter(text, command) {
+  const at = lastPromptIndex(text, command)
+  if (at < 0) return null
+  const hit = text.slice(at + promptLine(command).length).match(/^\[status\] (.+)$/m)
+  return hit ? statusFields(hit[1]) : null
 }
 
 /// The reply to one command, read out of a transcript by its prompt line. The
@@ -103,5 +118,6 @@ function runReplay(prefix, name, commands, args) {
 }
 
 module.exports = {
-  replay, turnCap, timeoutFor, lastStatus, statusBefore, answerTo, observationBefore, runReplay,
+  replay, turnCap, timeoutFor, lastStatus, statusBefore, statusAfter, answerTo,
+  observationBefore, runReplay,
 }

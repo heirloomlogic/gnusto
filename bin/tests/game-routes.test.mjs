@@ -43,6 +43,12 @@ test('matching room, moves, score and inventory verifies', () => {
   assert.equal(landingMismatch(declared, observed), null)
 })
 
+test('non-string landing text cannot match the same printable response', () => {
+  assert.match(
+    landingMismatch({ ...declared, inventory: null }, { ...observed, carrying: 'null' }),
+    /inventory/)
+})
+
 test('landing status is captured before the observer look and inventory turns', () => {
   const transcript = [
     'Opening.',
@@ -61,12 +67,31 @@ test('landing status is captured before the observer look and inventory turns', 
 
   assert.deepEqual(landingSignature(transcript), {
     room: 'Forest',
+    openedRoom: 'Forest',
     moves: '7',
     score: '5',
     look: 'Forest A clearing.',
     inventory: 'You are carrying a brass lantern.',
     playable: true,
   })
+})
+
+test('landing signature distinguishes a route endpoint from a look-mutated opening', () => {
+  const transcript = [
+    'Opening.',
+    '[status] room=West of House | moves=0 | score=0 | turn=free',
+    '> down',
+    'Loud Room',
+    '[status] room=Loud Room | moves=7 | score=5 | turn=cost',
+    '> look',
+    'The roar flings you into the Deep Canyon.',
+    '[status] room=Deep Canyon | moves=8 | score=5 | turn=cost',
+    '',
+  ].join('\n')
+
+  const landing = landingSignature(transcript)
+  assert.equal(landing.room, 'Loud Room')
+  assert.equal(landing.openedRoom, 'Deep Canyon')
 })
 
 test('an inventory-only replay observes the same route endpoint before spending its turn', () => {
