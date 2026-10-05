@@ -189,7 +189,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:184]",
   "landing": {
     "room": "Shaft Room",
-    "moves": "181",
+    "moves": "179",
     "score": "210",
     "inventory": "You are carrying a jade figurine, a matchbook, a screwdriver, a clove of garlic, a brass lantern, and an ivory torch."
   }
