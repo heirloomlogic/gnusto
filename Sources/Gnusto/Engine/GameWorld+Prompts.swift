@@ -71,6 +71,18 @@ extension GameWorld {
             case .deathChoice: return .endGameChoice
             }
         }
+
+        /// The operation a confirmed front-end quit abandons, if any.
+        var abandonedOperation: TurnReport.OperationEvent? {
+            switch self {
+            case .saveFilename, .confirmSaveOverwrite:
+                return .init(kind: .save, outcome: .cancelled)
+            case .restoreFilename:
+                return .init(kind: .restore, outcome: .cancelled)
+            case .deathChoice:
+                return nil
+            }
+        }
     }
 
     /// The save prompt, with the names of the saves already on disk appended.

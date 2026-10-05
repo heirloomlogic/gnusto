@@ -24,6 +24,8 @@ struct QuitTests {
         let result = await world.requestQuit()
 
         #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == nil)
         // The same epilogue a typed `quit` prints.
         #expect(result.output.contains("Your score is"))
     }
@@ -44,8 +46,32 @@ struct QuitTests {
         let result = await world.requestQuit()
 
         #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == .init(kind: .save, outcome: .cancelled))
         // The quit was not written as a save named "quit".
         #expect(!FileManager.default.fileExists(atPath: savePath("quit", in: dir)))
+    }
+
+    @Test func requestQuitWhileASaveOverwritePromptIsPendingCancelsTheOperation() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-quit-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let world = try cachedWorld(MorgueGame(), seed: 1, saveDirectory: dir)
+        _ = await world.begin()
+        _ = await world.perform("save")
+        _ = await world.perform("slot")
+        let request = await world.perform("save")
+        #expect(request.report.operation == .init(kind: .save, outcome: .requested))
+        let overwrite = await world.perform("slot")
+        #expect(overwrite.report.operation == nil)
+        #expect(await world.inputContext == .saveOverwriteConfirmation)
+
+        let result = await world.requestQuit()
+
+        #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == .init(kind: .save, outcome: .cancelled))
     }
 
     @Test func requestQuitWhileARestoreFilenamePromptIsPendingStillQuits() async throws {
@@ -57,6 +83,8 @@ struct QuitTests {
 
         let result = await world.requestQuit()
         #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == .init(kind: .restore, outcome: .cancelled))
     }
 
     @Test func requestQuitFromTheDeathPromptEndsTheGame() async throws {
@@ -69,6 +97,24 @@ struct QuitTests {
 
         let result = await world.requestQuit()
         #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == nil)
+    }
+
+    @Test func requestQuitWhileADeathRestorePromptIsPendingCancelsTheOperation() async throws {
+        let world = try cachedWorld(MorgueGame(), seed: 1)
+        _ = await world.begin()
+        _ = await world.perform("take poison")
+        let request = await world.perform("restore")
+        #expect(request.report.operation == .init(kind: .restore, outcome: .requested))
+        #expect(await world.inputContext == .restoreFilename)
+
+        let result = await world.requestQuit()
+
+        #expect(result.isFinished)
+        #expect(result.report.input == .frontendQuit)
+        #expect(result.report.operation == .init(kind: .restore, outcome: .cancelled))
+        #expect(!result.output.contains("Your score is"))
     }
 
     @Test func requestQuitFromTheDeathPromptDoesNotPrintTheScoreTwice() async throws {

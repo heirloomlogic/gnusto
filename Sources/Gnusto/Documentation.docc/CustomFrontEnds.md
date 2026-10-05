@@ -35,7 +35,7 @@ Round-trip questions — "Which do you mean, the brass lantern or the brass hook
 
 Escape or Ctrl-C can cancel an open save or restore operation through ``GameWorld/cancelPendingInput()``. The method returns a free ``TurnResult`` when a save filename, overwrite confirmation, or restore filename is open, and `nil` for command input, parser clarification, or the post-death choice. Cancellation does not parse control input as a filename, read or write a file, spend a turn, tick a timer, change the random stream or undo snapshot, or end the session. Cancelling a restore selected after death returns to the post-death choice and includes that prompt in the output.
 
-A front end owns its quit confirmation. Escape dismisses that confirmation in the front end; once the player confirms, call ``GameWorld/requestQuit()``. Do not route quit confirmation through `cancelPendingInput()` or submit the string `quit` on the front end's behalf.
+A front end owns its quit confirmation. Escape dismisses that confirmation in the front end; once the player confirms, call ``GameWorld/requestQuit()``. A confirmed quit reports an open SAVE or RESTORE operation as cancelled before ending the session. Do not route quit confirmation through `cancelPendingInput()` or submit the string `quit` on the front end's behalf.
 
 ## Starting an importable game
 
@@ -130,7 +130,7 @@ A front end that dismisses its input field on death loses the game it was about 
 | ``TurnReport/OperationEvent/Outcome/requested`` | The engine opened that operation's filename prompt. Choosing RESTORE from the post-death prompt also produces this event. |
 | ``TurnReport/OperationEvent/Outcome/completed`` | SAVE wrote the file, or RESTORE validated the file and installed its state. |
 | ``TurnReport/OperationEvent/Outcome/failed`` | A name, path, file read, file write, format, game identity, or state validation failed. |
-| ``TurnReport/OperationEvent/Outcome/cancelled`` | The operation ended without reading, writing, or replacing state. This includes a blank filename, a declined overwrite, and `cancelPendingInput()`. |
+| ``TurnReport/OperationEvent/Outcome/cancelled`` | The operation ended without reading, writing, or replacing state. This includes a blank filename, a declined overwrite, `cancelPendingInput()`, and a confirmed front-end quit that abandons an open operation. |
 
 The filename answer that opens an overwrite confirmation has no second `requested` event: the SAVE command already reported the request, and the later confirmation reports only completion or cancellation. A front end can therefore react once to each stage without matching prose or reporting a successful disk operation from the verb alone.
 

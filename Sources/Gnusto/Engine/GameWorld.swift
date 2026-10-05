@@ -539,11 +539,13 @@ public actor GameWorld {
     ///
     /// - Returns: the final turn's output and status (`isFinished == true`), reported as a front-end quit.
     public func requestQuit() -> TurnResult {
+        let abandonedOperation = pendingPrompt?.abandonedOperation
         pendingPrompt = nil
         pendingClarification = nil
         if state.status != .playing {
             var result = quitAfterGameEnded()
             result.report.input = .frontendQuit
+            result.report.operation = abandonedOperation
             return result
         }
         var result = runTurn(
@@ -551,6 +553,7 @@ public actor GameWorld {
             snapshot: state)
         result.report = TurnReport()
         result.report.input = .frontendQuit
+        result.report.operation = abandonedOperation
         return result
     }
 
