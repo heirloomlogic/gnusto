@@ -55,10 +55,17 @@ function yonkContract(root) {
   if (!requirement) throw new Error(`${root}/Package.swift does not declare Yonk's supported fixed Gnusto revision`);
   return {engineURL: requirement[1], engineRevision: requirement[2], manifest, engineDeclaration: requirement[0]};
 }
+function requireCurrentYonkManifest(spec) {
+  if (spec.frontend !== 'yonk') return;
+  let current;
+  try { current = fs.readFileSync(path.join(spec.yonkRoot, 'Package.swift'), 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (current !== spec.selectedYonkContract.manifest) throw new Error('Yonk manifest changed after the build specification was created; recreate the specification and retry.');
+}
 export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.env.GNUSTO_TERMINAL_PATH, yonkRoot = process.env.GNUSTO_YONK_PATH, frontend = 'terminal', game, mode = 'development', platform = process.platform}) {
   if (!['development', 'deployment'].includes(mode)) throw new Error(`Unknown build mode: ${mode}`);
   if (!['terminal', 'yonk'].includes(frontend)) throw new Error(`Unknown frontend: ${frontend}`);
-  if (frontend === 'yonk' && mode !== 'development') throw new Error('Yonk deployment and app export belong to not available yet; use development mode.');
+  if (frontend === 'yonk' && mode !== 'development') throw new Error('Yonk deployment and app export are not available yet; use development mode.');
   if (frontend === 'yonk' && platform !== 'darwin') throw new Error('The Yonk development frontend requires macOS.');
   if (frontend === 'yonk' && !yonkRoot) throw new Error('The coordinated prerelease Yonk frontend requires GNUSTO_YONK_PATH.');
   packageRoot = fs.realpathSync(packageRoot);
@@ -83,6 +90,7 @@ export function makeBuildSpec({packageRoot, engineRoot, terminalRoot = process.e
   const engineIdentity = declaration?.kind === 'path' ? identity(declaration.location) : declaration?.kind === 'url' ? identity(declaration.location) : 'gnusto';
   if (!sameEngine && (gameIdentity === engineIdentity || gameIdentity === 'gnustoterminal' || catalog.package.toLowerCase() === 'gnusto' || catalog.package.toLowerCase() === 'gnustoterminal')) throw new Error(`Package identity collision: ${gameIdentity}; independent authors must use a distinct package identity.`);
   if (engineIdentity === 'gnustoterminal') throw new Error('Engine package identity collision with GnustoTerminal');
+  if (frontend === 'yonk' && (gameIdentity === 'yonk' || engineIdentity === 'yonk' || catalog.package.toLowerCase() === 'yonk')) throw new Error('Package identity collision with Yonk; select a distinct author and engine identity for this frontend.');
   requireTrait(packageRoot, catalog.package);
   requireTrait(engineRoot, 'Gnusto');
   if (terminalRoot) { requireTrait(terminalRoot, 'GnustoTerminal'); links.push({name: 'gnustoterminal', source: terminalRoot}); }
@@ -174,6 +182,8 @@ function resolvedLocalFingerprint(spec) {
 }
 function fingerprint(spec, swift, flags, environment, withResolution = true) {
   if (withResolution) return combineFingerprints(combineFingerprints(fingerprint(spec, swift, flags, environment, false), resolvedLocalFingerprint(spec)), resolutionFingerprint(spec));
+  // A spec contains transformed manifest text; live hashes must describe that text.
+  requireCurrentYonkManifest(spec);
   const hash = createHash('sha256');
   let selectedDeveloper = environment.DEVELOPER_DIR;
   if (!selectedDeveloper && process.platform === 'darwin') {
@@ -185,6 +195,7 @@ function fingerprint(spec, swift, flags, environment, withResolution = true) {
   }
   if (selectedDeveloper) hashTree(hash, path.join(selectedDeveloper, 'Toolchains/XcodeDefault.xctoolchain/usr/bin/swift'));
   for (const root of new Set([spec.gamePackageRoot, spec.engineRoot, spec.frontendRoot].filter(Boolean))) { hash.update(root); hashTree(hash, root); }
+  requireCurrentYonkManifest(spec);
   return hash.digest('hex');
 }
 function engineEditReady(spec) {
@@ -243,6 +254,7 @@ function prepareYonkOverlay(spec) {
 function yonkOverlayReady(spec) {
   if (spec.frontend !== 'yonk') return true;
   try {
+    requireCurrentYonkManifest(spec);
     return yonkOverlayEntries(spec).every(name => fs.realpathSync(path.join(spec.yonkOverlayRoot, name)) === fs.realpathSync(path.join(spec.yonkRoot, name))) && fs.readFileSync(path.join(spec.yonkOverlayRoot, 'Package.swift'), 'utf8') === spec.yonkOverlayManifest && JSON.stringify(JSON.parse(fs.readFileSync(path.join(spec.generatedRoot, 'frontend-source.json'), 'utf8'))) === JSON.stringify(frontendSource(spec));
   } catch { return false; }
 }
