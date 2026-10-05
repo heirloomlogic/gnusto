@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
-import {buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
+import {acquireBuildLock, buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
 import {loadGames} from '../lib/game-catalog.mjs';
 const trait = 'traits: [.trait(name: "Playtest"), .default(enabledTraits: ["Playtest"])]';
 function fixture(t, {url = false} = {}) {
@@ -85,6 +85,69 @@ test('Yonk refuses source mutation during compilation without publishing cache s
   await assert.rejects(buildGame(spec, {...f, environment: {...f.environment, MUTATE_DEPENDENCY: path.join(f.yonkRoot, 'Sources/Yonk/Yonk.swift')}}), /inputs changed/);
   assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
 });
+for (const change of ['edit', 'delete']) {
+  test(`Yonk rejects a ${change}d manifest after waiting for the actual build lock`, async t => {
+    const f = fixture(t);
+    const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+    const release = await acquireBuildLock(spec.generatedRoot);
+    t.after(release);
+    // buildGame reaches its lock await synchronously; this owner still holds it.
+    const waiting = buildGame(spec, f).then(result => ({result}), error => ({error}));
+    assert.equal(f.log().length, 0);
+    const manifest = path.join(f.yonkRoot, 'Package.swift');
+    if (change === 'delete') fs.unlinkSync(manifest);
+    else fs.appendFileSync(manifest, '\npackage.targets[0].resources = [.process("NewResources")]\n');
+    await release();
+    const outcome = await waiting;
+    assert(outcome.error, 'a stale manifest specification must not publish a build');
+    assert.match(outcome.error.message, /Yonk manifest changed|ENOENT/);
+    assert.equal(f.log().length, 0, 'reject before any Swift invocation');
+    assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+  });
+}
+test('Yonk refuses reused stale specs and a fresh spec preserves changed resource declarations', async t => {
+  const f = fixture(t);
+  const make = () => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const original = make();
+  await buildGame(original, f);
+  const stateFile = path.join(original.generatedRoot, 'build-state.json');
+  const oldState = fs.readFileSync(stateFile, 'utf8');
+  const manifest = path.join(f.yonkRoot, 'Package.swift');
+  fs.appendFileSync(manifest, '\npackage.targets[0].resources = [.process("NewResources")]\n');
+  const count = f.log().length;
+  await assert.rejects(buildGame(original, f), /Yonk manifest changed/);
+  assert.equal(f.log().length, count);
+  assert.equal(fs.readFileSync(stateFile, 'utf8'), oldState);
+  const current = make();
+  const built = await buildGame(current, f);
+  assert.match(fs.readFileSync(path.join(current.yonkOverlayRoot, 'Package.swift'), 'utf8'), /NewResources/);
+  const warmCount = f.log().length;
+  assert.deepEqual(await buildGame(current, f), built);
+  assert.equal(f.log().length, warmCount);
+  fs.unlinkSync(manifest);
+  await assert.rejects(buildGame(current, f), /Yonk manifest changed|ENOENT/);
+  assert.equal(f.log().length, warmCount);
+});
+for (const collision of ['directory', 'catalog', 'engine']) {
+  test(`Yonk rejects an author ${collision} identity collision before workspace creation`, t => {
+    const f = fixture(t);
+    if (collision === 'directory') {
+      const parent = path.join(f.root, 'authors'); fs.mkdirSync(parent);
+      const renamed = path.join(parent, 'YoNk'); fs.renameSync(f.packageRoot, renamed); f.packageRoot = renamed;
+    } else if (collision === 'catalog') {
+      const file = path.join(f.packageRoot, 'gnusto-games.json');
+      const catalog = JSON.parse(fs.readFileSync(file)); catalog.package = 'YoNk'; fs.writeFileSync(file, JSON.stringify(catalog));
+    } else {
+      const parent = path.join(f.root, 'engines'); fs.mkdirSync(parent);
+      const renamed = path.join(parent, 'YoNk'); fs.renameSync(f.engineRoot, renamed); f.engineRoot = renamed;
+      fs.writeFileSync(path.join(f.packageRoot, 'Package.swift'), `${trait}\n.package(name: "Gnusto", path: ${swiftStringLiteral(renamed)})`);
+    }
+    assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'}), /identity collision.*Yonk|identity collision.*yonk/i);
+    assert.equal(fs.existsSync(path.join(f.packageRoot, '.build-launchers')), false);
+    assert.equal(f.log().length, 0);
+    assert.doesNotThrow(() => makeBuildSpec({...f, frontend: 'terminal', game: 'Story', platform: 'darwin'}));
+  });
+}
 test('manifest uses the product separately from the module and forwards conditional traits', t => {
   const f = fixture(t);
   assert.match(f.spec.manifest, /product\(name: "StoryLibrary", package: "Story"\)/);
