@@ -146,11 +146,11 @@ struct PlaytestSeamTests {
         // the denominator a coverage count should be measured against.
         #expect(!clearing.isReachable)
         #expect(clearing.exits.count == 1)
-        #expect(clearing.exits[0].direction == "west")
+        #expect(clearing.exits[0].direction == .west)
         // The kind is reported and the closure is never called: the condition
         // would need a live turn frame, and running author code out of turn to
         // draw a map is exactly what the survey must not do.
-        #expect(clearing.exits[0].kind == "conditional")
+        #expect(clearing.exits[0].kind == .conditional)
         #expect(clearing.exits[0].destination == EntityID("forest"))
 
         let forest = try #require(survey.rooms.first { $0.id == EntityID("forest") })

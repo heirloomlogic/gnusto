@@ -329,21 +329,6 @@ struct PlaytestResolution: Sendable, Equatable {
 /// engine never intended, so the survey reports the exit's *kind* and its
 /// declared destination where there is one, and never calls the closure.
 struct PlaytestSurvey: Sendable {
-    /// One way out of a room.
-    struct Exit: Sendable {
-        /// The direction, as the map declared it (`"north"`).
-        let direction: String
-        /// What sort of exit it is: `"open"`, `"blocked"`, `"door"`,
-        /// `"conditional"` or `"dynamic"`.
-        let kind: String
-        /// Where it leads, when that is knowable without running author code.
-        /// `nil` for a blocked exit (it leads nowhere) and for a dynamic one
-        /// (it decides at `go` time).
-        let destination: EntityID?
-        /// The door item the exit hangs on, for a `"door"` exit.
-        let door: EntityID?
-    }
-
     /// One room.
     struct Room: Sendable {
         let id: EntityID
@@ -356,8 +341,9 @@ struct PlaytestSurvey: Sendable {
         /// against every declared room charges a tester for the street an actor
         /// waits out on.
         let isReachable: Bool
-        /// This room's exits, in direction order.
-        let exits: [Exit]
+        /// This room's exits, in alphabetical order of direction. The survey
+        /// leaves out ``DeclaredMap/Exit/isSecret`` when it renders them.
+        let exits: [DeclaredMap.Exit]
     }
 
     /// One declared fuse or daemon.
@@ -397,14 +383,12 @@ struct PlaytestSurvey: Sendable {
     init(_ definition: GameDefinition) {
         self.title = definition.title
         self.maxScore = definition.maxScore
-        self.rooms = definition.locations.keys.sorted().map { id in
+        self.rooms = DeclaredMap(definition).rooms.map { room in
             Room(
-                id: id,
-                name: definition.locationName(of: id),
-                isReachable: definition.reachableRooms.contains(id),
-                exits: (definition.exits[id] ?? [:])
-                    .sorted { $0.key.rawValue < $1.key.rawValue }
-                    .map { Exit($0.key, $0.value) })
+                id: room.id,
+                name: room.name,
+                isReachable: definition.reachableRooms.contains(room.id),
+                exits: room.exits.sorted { $0.direction.rawValue < $1.direction.rawValue })
         }
         self.timers = definition.timers.keys.sorted().map { name in
             let event = definition.timers[name]
@@ -433,35 +417,6 @@ struct PlaytestSurvey: Sendable {
 
         self.cast = definition.castIDs.sorted()
         self.warnings = definition.warnings
-    }
-}
-
-extension PlaytestSurvey.Exit {
-    /// Reads one exit's reportable shape, running nothing.
-    fileprivate init(_ direction: Direction, _ target: ExitTarget) {
-        self.direction = direction.rawValue
-        switch target {
-        case .to(let destination):
-            self.kind = "open"
-            self.destination = destination
-            self.door = nil
-        case .blocked:
-            self.kind = "blocked"
-            self.destination = nil
-            self.door = nil
-        case .door(let destination, let door):
-            self.kind = "door"
-            self.destination = destination
-            self.door = door
-        case .conditional(let destination, _, _):
-            self.kind = "conditional"
-            self.destination = destination
-            self.door = nil
-        case .dynamic:
-            self.kind = "dynamic"
-            self.destination = nil
-            self.door = nil
-        }
     }
 }
 
