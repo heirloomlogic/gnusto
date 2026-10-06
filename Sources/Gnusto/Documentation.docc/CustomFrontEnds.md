@@ -6,7 +6,7 @@ Putting the engine behind something that is not a terminal.
 
 ![Interchangeable theater frames present one shared scene of a lantern-lit doorway.](custom-front-ends.png)
 
-``GameWorld`` is an actor with three public methods — ``GameWorld/begin()``, ``GameWorld/perform(_:)`` and ``GameWorld/requestQuit()`` — and none of them knows what a terminal is. Everything a player sees comes back as a ``TurnResult``: a string, a ``StatusLine``, and a flag saying whether the game is over. The terminal front end is a client of those three methods, not a privileged part of the engine, and an iOS app is a client of exactly the same three.
+``GameWorld`` is an actor whose public play surface knows nothing about terminals. Everything a player sees comes back as a ``TurnResult``: a string, a ``StatusLine``, a flag saying whether the game is over, and a ``TurnReport`` describing what caused the result. The terminal front end is a client of that surface, not a privileged part of the engine, and an iOS app uses the same API.
 
 Which way in to take depends on whether your front end can afford to block.
 
@@ -23,10 +23,19 @@ show(turn.output, status: turn.status)
 // Later, when the player submits a line from a text field:
 turn = await world.perform(line)
 show(turn.output, status: turn.status)
+updateInput(for: await world.inputContext)
 if turn.isFinished { showEnding(turn.output) }
 ```
 
-The driver keeps no state of its own. Round-trip questions — "Which do you mean, the brass lantern or the brass hook?", a save filename, the RESTART / RESTORE / UNDO / QUIT prompt after a death — are pending state on the actor, so the next line you hand `perform` answers whichever one is open. The driver never has to know a question was asked.
+Round-trip questions — "Which do you mean, the brass lantern or the brass hook?", a save filename, the RESTART / RESTORE / UNDO / QUIT prompt after a death — are pending state on the actor, so the next line you hand `perform` answers whichever one is open. A front end that only reads lines can ignore that state. One that changes completion, voice, or keyboard behavior reads ``GameWorld/inputContext``.
+
+## Input context and cancellation
+
+``InputContext`` says what the next submitted line means. ``InputContext/command`` is ordinary parser input; ``InputContext/clarification`` is an answer the parser will splice into an ambiguous command; the save filename, overwrite confirmation, restore filename, and post-death choice cases identify the engine's other prompts. The query is read-only: it does not walk a turn, mutate scratch or live state, or consume randomness.
+
+Escape or Ctrl-C can cancel an open save or restore operation through ``GameWorld/cancelPendingInput()``. The method returns a free ``TurnResult`` when a save filename, overwrite confirmation, or restore filename is open, and `nil` for command input, parser clarification, or the post-death choice. Cancellation does not parse control input as a filename, read or write a file, spend a turn, tick a timer, change the random stream or undo snapshot, or end the session. Cancelling a restore selected after death returns to the post-death choice and includes that prompt in the output.
+
+A front end owns its quit confirmation. Escape dismisses that confirmation in the front end; once the player confirms, call ``GameWorld/requestQuit()``. A confirmed quit reports an open SAVE or RESTORE operation as cancelled before ending the session. Do not route quit confirmation through `cancelPendingInput()` or submit the string `quit` on the front end's behalf.
 
 ## Starting an importable game
 
@@ -112,7 +121,20 @@ A front end that dismisses its input field on death loses the game it was about 
 
 ## What a turn did
 
-``TurnResult/report`` says what the turn did besides print, for a front end that draws a map or listens for speech. ``TurnReport/understood`` and ``TurnReport/unknownWords`` say how the parser read the line. ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives. The report is filled in by ``GameWorld/perform(_:)`` only; the opening and a front end's quit carry an empty one.
+``TurnResult/report`` says what caused a result and what happened besides printing. ``TurnReport/input`` distinguishes initialization, parsed commands, parser rejection, clarification requests and answers, engine-prompt answers, cancellation, and a confirmed front-end quit. ``TurnReport/understood`` and ``TurnReport/unknownWords`` remain the parser facts: `understood` is false for every result that did not produce a command, including prompt answers and cancellation, so it is too broad to select an unknown-command sound by itself. Use ``TurnReport/InputEvent/parserRejection`` for that decision.
+
+``TurnReport/operation`` is present only when SAVE or RESTORE changes stage. Its kind is save or restore, and its outcome has exact semantics:
+
+| Outcome | Meaning |
+|---|---|
+| ``TurnReport/OperationEvent/Outcome/requested`` | The engine opened that operation's filename prompt. Choosing RESTORE from the post-death prompt also produces this event. |
+| ``TurnReport/OperationEvent/Outcome/completed`` | SAVE wrote the file, or RESTORE validated the file and installed its state. |
+| ``TurnReport/OperationEvent/Outcome/failed`` | A name, path, file read, file write, format, game identity, or state validation failed. |
+| ``TurnReport/OperationEvent/Outcome/cancelled`` | The operation ended without reading, writing, or replacing state. This includes a blank filename, a declined overwrite, `cancelPendingInput()`, and a confirmed front-end quit that abandons an open operation. |
+
+The filename answer that opens an overwrite confirmation has no second `requested` event: the SAVE command already reported the request, and the later confirmation reports only completion or cancellation. A front end can therefore react once to each stage without matching prose or reporting a successful disk operation from the verb alone.
+
+``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives.
 
 A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
 
@@ -209,9 +231,14 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``GameWorld/begin()``
 - ``GameWorld/perform(_:)``
 - ``GameWorld/requestQuit()``
+- ``GameWorld/inputContext``
+- ``GameWorld/cancelPendingInput()``
+- ``InputContext``
 - ``TurnResult``
 - ``TurnResult/report``
 - ``TurnReport``
+- ``TurnReport/InputEvent``
+- ``TurnReport/OperationEvent``
 - ``GameWorld/mapView()``
 - ``RoomMapView``
 - ``MapExit``

@@ -76,9 +76,12 @@ struct TurnReportTests {
         #expect(report.movement == nil)
     }
 
-    @Test func theOpeningCarriesAnEmptyReport() async throws {
+    @Test func theOpeningReportsInitialization() async throws {
         let world = try GameWorld(game: CartographyGame(), seed: 0)
-        #expect(await world.begin().report == TurnReport())
+        let report = await world.begin().report
+        #expect(report.input == .initialization)
+        #expect(report.operation == nil)
+        #expect(report.movement == nil)
     }
 }
 
@@ -186,7 +189,10 @@ extension TurnReportTests {
     @Test func restoreFilenameRelocatesAndIsNotAParsedCommand() async throws {
         let world = try await world()
         #expect(await world.perform("save").report.understood)
-        #expect(await world.perform("hall-slot").report == TurnReport())
+        let saved = await world.perform("hall-slot").report
+        #expect(saved.input == .promptAnswered(.saveFilename))
+        #expect(saved.operation == .init(kind: .save, outcome: .completed))
+        #expect(saved.movement == nil)
         _ = await world.perform("north")
         #expect(await world.perform("restore").report.movement == nil)
         let result = await world.perform("hall-slot")
@@ -199,9 +205,17 @@ extension TurnReportTests {
         let world = try await world()
         _ = await world.perform("save")
         _ = await world.perform("hall-slot")
-        for answer in ["missing-slot", "", "hall-slot"] {
+        let answers: [(String, TurnReport.InputEvent, TurnReport.OperationEvent.Outcome)] = [
+            ("missing-slot", .promptAnswered(.restoreFilename), .failed),
+            ("", .cancelled(.restoreFilename), .cancelled),
+            ("hall-slot", .promptAnswered(.restoreFilename), .completed),
+        ]
+        for (answer, input, outcome) in answers {
             _ = await world.perform("restore")
-            #expect(await world.perform(answer).report == TurnReport())
+            let report = await world.perform(answer).report
+            #expect(report.input == input)
+            #expect(report.operation == .init(kind: .restore, outcome: outcome))
+            #expect(report.movement == nil)
         }
         #expect(await world.perform("restart").report.movement == nil)
         #expect(await world.perform("undo").report.movement == nil)
@@ -246,17 +260,21 @@ extension TurnReportTests {
         #expect(result.report.movement == .walked(from: EntityID("study"), to: EntityID("attic"), direction: .north))
     }
 
-    @Test func openingAndQuitReportsStayEmptyEvenWhenOutputHooksMove() async throws {
+    @Test func openingAndQuitEventsReportNoMovementEvenWhenOutputHooksMove() async throws {
         let world = try GameWorld(game: ReportOutputHookGame(), seed: 0)
         let opening = await world.begin()
-        #expect(opening.report == TurnReport())
+        #expect(opening.report.input == .initialization)
+        #expect(opening.report.movement == nil)
         #expect(opening.status.locationID == kitchen)
         #expect(opening.output.contains("opening carried you"))
         let quitting = await world.requestQuit()
-        #expect(quitting.report == TurnReport())
+        #expect(quitting.report.input == .frontendQuit)
+        #expect(quitting.report.movement == nil)
         #expect(quitting.status.locationID == garden)
         #expect(quitting.output.contains("closing carried you"))
-        #expect(await world.requestQuit().report == TurnReport())
+        let repeatedQuit = await world.requestQuit().report
+        #expect(repeatedQuit.input == .frontendQuit)
+        #expect(repeatedQuit.movement == nil)
     }
 
     @Test func commandMovementStillReportsInTheOutputHookGame() async throws {

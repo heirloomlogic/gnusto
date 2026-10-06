@@ -3,6 +3,46 @@ import Foundation
 extension GameWorld {
     // MARK: - Save / restore / death-prompt flow
 
+    /// The kind of input ``perform(_:)`` will consume next.
+    ///
+    /// Reading this value changes no world or session state and consumes no
+    /// randomness, so an event-driven front end may query it whenever it
+    /// updates completion, voice, or keyboard behavior.
+    public var inputContext: InputContext {
+        pendingPrompt?.inputContext
+            ?? (pendingClarification == nil ? .command : .clarification)
+    }
+
+    /// Cancels an open save or restore prompt without parsing a line or
+    /// running a turn.
+    ///
+    /// This returns `nil` when ordinary command input, a parser clarification,
+    /// or the post-death choice is open. A restore selected from the death
+    /// choice returns to that choice after cancellation. No cancellation reads
+    /// or writes a file, advances a timer, changes the world, or ends the game.
+    ///
+    /// - Returns: a free cancellation result, or `nil` when no cancellable prompt is open.
+    public func cancelPendingInput() -> TurnResult? {
+        guard let prompt = pendingPrompt else { return nil }
+        let kind: TurnReport.OperationEvent.Kind
+        let result: TurnResult
+        switch prompt {
+        case .saveFilename, .confirmSaveOverwrite:
+            kind = .save
+            pendingPrompt = nil
+            result = freeReply(definition.text.cancelled())
+        case .restoreFilename(let returnToDeathPrompt):
+            kind = .restore
+            pendingPrompt = nil
+            result = restoreFailed(definition.text.cancelled(), returnToDeathPrompt)
+        case .deathChoice:
+            return nil
+        }
+        var cancellation = result.reporting(.init(kind: kind, outcome: .cancelled))
+        cancellation.report.input = .cancelled(prompt.inputContext)
+        return cancellation
+    }
+
     /// An open engine prompt. Unlike a clarification, the next input line
     /// *is* the answer — raw, untokenized (filenames carry dots and slashes
     /// the tokenizer would mangle) — and normal parsing doesn't happen.
@@ -21,6 +61,28 @@ extension GameWorld {
         /// is armed, every input line is an answer — normal commands are
         /// unreachable until the player picks an exit.
         case deathChoice
+
+        /// The public meaning of the next line while this prompt is open.
+        var inputContext: InputContext {
+            switch self {
+            case .saveFilename: return .saveFilename
+            case .confirmSaveOverwrite: return .saveOverwriteConfirmation
+            case .restoreFilename: return .restoreFilename
+            case .deathChoice: return .endGameChoice
+            }
+        }
+
+        /// The operation a confirmed front-end quit abandons, if any.
+        var abandonedOperation: TurnReport.OperationEvent? {
+            switch self {
+            case .saveFilename, .confirmSaveOverwrite:
+                return .init(kind: .save, outcome: .cancelled)
+            case .restoreFilename:
+                return .init(kind: .restore, outcome: .cancelled)
+            case .deathChoice:
+                return nil
+            }
+        }
     }
 
     /// The save prompt, with the names of the saves already on disk appended.
@@ -55,15 +117,18 @@ extension GameWorld {
         switch prompt {
         case .saveFilename:
             guard !line.isEmpty else {
-                return freeReply(definition.text.cancelled())
+                return freeReply(definition.text.cancelled()).reporting(
+                    .init(kind: .save, outcome: .cancelled))
             }
             if savePathsRestricted, SaveStore.isExplicitPath(line) {
-                return freeReply(definition.text.savePathRefused())
+                return freeReply(definition.text.savePathRefused()).reporting(
+                    .init(kind: .save, outcome: .failed))
             }
             // `resolve`, which touches no disk, for the one refusal that is
             // about the name alone.
             guard SaveStore.resolve(line, in: saveDirectory) != nil else {
-                return freeReply(definition.text.saveNameUnusable())
+                return freeReply(definition.text.saveNameUnusable()).reporting(
+                    .init(kind: .save, outcome: .failed))
             }
             // Asked before anything is written, because writing is the part
             // there is no undo for.
@@ -80,18 +145,21 @@ extension GameWorld {
             // asked again would swallow a second line, and the lines a
             // scripted session sends after a save are commands.
             guard ["yes", "y"].contains(line.lowercased()) else {
-                return freeReply(definition.text.saveNotReplaced(displayed))
+                return freeReply(definition.text.saveNotReplaced(displayed)).reporting(
+                    .init(kind: .save, outcome: .cancelled))
             }
             return writeSave(named: name)
 
         case .restoreFilename(let returnToDeathPrompt):
             guard !line.isEmpty else {
-                return restoreFailed(definition.text.cancelled(), returnToDeathPrompt)
+                return restoreFailed(definition.text.cancelled(), returnToDeathPrompt).reporting(
+                    .init(kind: .restore, outcome: .cancelled))
             }
             if savePathsRestricted, SaveStore.isExplicitPath(line) {
                 return
                     restoreFailed(
-                        definition.text.savePathRefused(), returnToDeathPrompt)
+                        definition.text.savePathRefused(), returnToDeathPrompt
+                    ).reporting(.init(kind: .restore, outcome: .failed))
             }
             do {
                 // `locate`, not `resolve`: the restore prompt offers what the
@@ -99,7 +167,8 @@ extension GameWorld {
                 // from rather than recompute a path from the name shown.
                 guard let url = SaveStore.locate(line, in: saveDirectory) else {
                     return restoreFailed(
-                        definition.text.saveNameUnusable(), returnToDeathPrompt)
+                        definition.text.saveNameUnusable(), returnToDeathPrompt
+                    ).reporting(.init(kind: .restore, outcome: .failed))
                 }
                 let restored = try SaveFile.read(
                     from: url, matching: definition, pristineState: initialState)
@@ -112,13 +181,16 @@ extension GameWorld {
                     // failed." A crafted file learns nothing about which check
                     // caught it.
                     return restoreFailed(definition.text.restoreFailed(), returnToDeathPrompt)
+                        .reporting(.init(kind: .restore, outcome: .failed))
                 case .unsupportedFormat:
                     // Told apart from the pair above on purpose; see
                     // `SaveFile.ReadError`.
                     return restoreFailed(
-                        definition.text.saveVersionMismatch(), returnToDeathPrompt)
+                        definition.text.saveVersionMismatch(), returnToDeathPrompt
+                    ).reporting(.init(kind: .restore, outcome: .failed))
                 case .wrongGame:
                     return restoreFailed(definition.text.wrongGameSave(), returnToDeathPrompt)
+                        .reporting(.init(kind: .restore, outcome: .failed))
                 }
             }
 
@@ -128,7 +200,8 @@ extension GameWorld {
                 return performRestart()
             case "restore":
                 pendingPrompt = .restoreFilename(returnToDeathPrompt: true)
-                return freeReply(restorePromptText())
+                return freeReply(restorePromptText()).reporting(
+                    .init(kind: .restore, outcome: .requested))
             case "undo":
                 guard undoSnapshot != nil else {
                     pendingPrompt = .deathChoice
@@ -155,15 +228,18 @@ extension GameWorld {
     private func writeSave(named name: String) -> TurnResult {
         do {
             guard let url = try SaveStore.resolveForWrite(name, in: saveDirectory) else {
-                return freeReply(definition.text.saveNameUnusable())
+                return freeReply(definition.text.saveNameUnusable()).reporting(
+                    .init(kind: .save, outcome: .failed))
             }
             try SaveFile.write(
                 state, title: definition.title,
                 declaredTimerNames: definition.timers.keys.sorted(),
                 declaredLocations: definition.locations.keys.sorted(), to: url)
-            return freeReply(definition.text.saved())
+            return freeReply(definition.text.saved()).reporting(
+                .init(kind: .save, outcome: .completed))
         } catch {
-            return freeReply(definition.text.saveFailed())
+            return freeReply(definition.text.saveFailed()).reporting(
+                .init(kind: .save, outcome: .failed))
         }
     }
 
@@ -179,7 +255,7 @@ extension GameWorld {
             frame.say(definition.text.restored(), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
-        return commit(frame)
+        return commit(frame).reporting(.init(kind: .restore, outcome: .completed))
     }
 
     /// A failed or cancelled restore — re-arming the death prompt when the

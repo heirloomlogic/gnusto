@@ -64,8 +64,9 @@ public struct TurnResult: Sendable {
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
     // Round-trip questions (disambiguation, save/restore filenames) are
-    // pending state on the GameWorld actor: the next input line answers
-    // them, so the driver never needs to know a question is open.
+    // pending state on the GameWorld actor: the next input line answers them.
+    // A line-oriented driver may ignore that state; an event-driven one reads
+    // `inputContext` and may cancel a filename prompt explicitly.
 }
 
 /// The game world: owns all state, serializes all mutation, and runs the
@@ -262,7 +263,7 @@ public actor GameWorld {
 
     /// The opening of the game: intro, banner, and the first look around.
     ///
-    /// - Returns: the opening turn's output and status, with an empty report.
+    /// - Returns: the opening turn's output and status, reported as initialization.
     public func begin() -> TurnResult {
         let frame = turnFrame(lookCommand)
         Ctx.$frame.withValue(frame) {
@@ -273,6 +274,7 @@ public actor GameWorld {
         }
         var result = commit(frame)
         result.report = TurnReport()
+        result.report.input = .initialization
         return result
     }
 
@@ -287,7 +289,7 @@ public actor GameWorld {
         let origin = state.playerLocation
         let (performed, audit) = performAudited(input)
         var result = performed
-        result.report = report(of: audit, from: origin, recorded: performed.report.movement)
+        result.report = report(of: audit, from: origin, basedOn: performed.report)
         return result
     }
 
@@ -311,11 +313,15 @@ public actor GameWorld {
         pendingCorrection = nil
 
         if let prompt = pendingPrompt {
+            let context = inputContext
             pendingPrompt = nil
             let result = answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
             // The line was an answer, not a command: no verb was read from it,
             // so every parse field stays empty and `answeredPrompt` says why.
-            return (result, TurnAudit(answeredPrompt: true))
+            let inputEvent: TurnReport.InputEvent =
+                result.report.operation?.outcome == .cancelled
+                ? .cancelled(context) : .promptAnswered(context)
+            return (result, TurnAudit(answeredPrompt: true, input: inputEvent))
         }
 
         // One walk of the world per line, not per parse: nothing between the
@@ -339,7 +345,7 @@ public actor GameWorld {
                 // rest of the line was reported when it was typed.
                 return performParsed(
                     parsed, tokens: augmented, scope: scope, correction: correction,
-                    unknown: unknownWords(in: tokens))
+                    unknown: unknownWords(in: tokens), input: .clarificationAnswered)
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
                 // question. Anything else means the line wasn't an answer —
@@ -347,7 +353,12 @@ public actor GameWorld {
                 if let context = error.clarification {
                     pendingClarification = context
                     let result = freeReply(error.playerMessage(definition.text))
-                    return (result, TurnAudit(unknownWords: unknownWords(in: tokens)))
+                    return (
+                        result,
+                        TurnAudit(
+                            unknownWords: unknownWords(in: tokens),
+                            input: .clarificationAnswered)
+                    )
                 }
                 // Only a line the player offered *as an answer* is mended in
                 // the spliced sentence. A line that changes the subject is
@@ -359,7 +370,8 @@ public actor GameWorld {
 
         return performLine(
             tokens: tokens, rawInput: input, scope: scope, correction: correction,
-            mendable: mendable)
+            mendable: mendable,
+            input: mendable == nil ? nil : .clarificationAnswered)
     }
 
     /// Whether a line typed while a clarifying question was open reads as an
@@ -404,10 +416,11 @@ public actor GameWorld {
     ///   - correction: the OOPS context this line may spend, if it is an OOPS.
     ///   - mendable: the line a later OOPS should mend, when that is not this
     ///     one — an answer to a question is mended in its spliced sentence.
+    ///   - input: the causal input event when the caller has already classified it.
     /// - Returns: the turn's output and status, and the parse record.
     private func performLine(
         tokens: [String], rawInput: String, scope: Scope, correction: Correction? = nil,
-        mendable: [String]? = nil
+        mendable: [String]? = nil, input: TurnReport.InputEvent? = nil
     ) -> (result: TurnResult, audit: TurnAudit) {
         let unknown = unknownWords(in: tokens)
         switch parser.parse(tokens: tokens, rawInput: rawInput, scope: scope) {
@@ -423,10 +436,12 @@ public actor GameWorld {
             }
             pendingClarification = error.clarification
             let result = freeReply(error.playerMessage(definition.text))
-            return (result, TurnAudit(unknownWords: unknown))
+            let inputEvent = input ?? (error.clarification == nil ? .parserRejection : .clarificationRequested)
+            return (result, TurnAudit(unknownWords: unknown, input: inputEvent))
         case .success(let parsed):
             return performParsed(
-                parsed, tokens: tokens, scope: scope, correction: correction, unknown: unknown)
+                parsed, tokens: tokens, scope: scope, correction: correction, unknown: unknown,
+                input: input ?? .command)
         }
     }
 
@@ -434,20 +449,22 @@ public actor GameWorld {
     /// back to the parser, and everything else, which is a turn.
     private func performParsed(
         _ parsed: ParsedCommand, tokens: [String], scope: Scope,
-        correction: Correction?, unknown: [String]
+        correction: Correction?, unknown: [String],
+        input: TurnReport.InputEvent = .command
     ) -> (result: TurnResult, audit: TurnAudit) {
         switch parsed.intent {
         case .again, .oops:
             switch rewritten(parsed, correction: correction) {
             case .line(let tokens):
                 return performLine(
-                    tokens: tokens, rawInput: tokens.joined(separator: " "), scope: scope)
+                    tokens: tokens, rawInput: tokens.joined(separator: " "), scope: scope,
+                    input: input)
             case .refusal(let line):
-                return (freeReply(line), TurnAudit(unknownWords: unknown))
+                return (freeReply(line), TurnAudit(unknownWords: unknown, input: input))
             }
         default:
             let result = armDeathPromptIfNeeded(run(parsed, tokens: tokens))
-            return (result, TurnAudit(parsed, unknownWords: unknown))
+            return (result, TurnAudit(parsed, unknownWords: unknown, input: input))
         }
     }
 
@@ -520,15 +537,23 @@ public actor GameWorld {
     /// exit the typed `quit` answer takes at the death prompt: stop reading,
     /// say nothing more.
     ///
-    /// - Returns: the final turn's output and status (`isFinished == true`), with an empty report.
+    /// - Returns: the final turn's output and status (`isFinished == true`), reported as a front-end quit.
     public func requestQuit() -> TurnResult {
+        let abandonedOperation = pendingPrompt?.abandonedOperation
         pendingPrompt = nil
         pendingClarification = nil
-        if state.status != .playing { return quitAfterGameEnded() }
+        if state.status != .playing {
+            var result = quitAfterGameEnded()
+            result.report.input = .frontendQuit
+            result.report.operation = abandonedOperation
+            return result
+        }
         var result = runTurn(
             Command(intent: .quit, verbPhrase: "quit", rawInput: "quit"),
             snapshot: state)
         result.report = TurnReport()
+        result.report.input = .frontendQuit
+        result.report.operation = abandonedOperation
         return result
     }
 
@@ -567,10 +592,12 @@ public actor GameWorld {
         case .restart: return performRestart()
         case .save:
             pendingPrompt = .saveFilename
-            return freeReply(savePromptText())
+            return freeReply(savePromptText()).reporting(
+                .init(kind: .save, outcome: .requested))
         case .restore:
             pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
-            return freeReply(restorePromptText())
+            return freeReply(restorePromptText()).reporting(
+                .init(kind: .restore, outcome: .requested))
         case .verbose: return setDescriptionMode(.verbose)
         case .brief: return setDescriptionMode(.brief)
         case .superbrief: return setDescriptionMode(.superbrief)
