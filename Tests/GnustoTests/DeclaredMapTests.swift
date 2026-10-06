@@ -90,7 +90,7 @@ struct DeclaredMapTests {
     }
 
     /// The join key: the ID a walk reports is the ID the export lists, with the
-    /// same name and region.
+    /// same name and region, and the exit walked is one the export lists.
     @Test func aZorkWalkLandsOnRoomsTheExportLists() async throws {
         let prepared = try PreparedGame(Zork1())
         let rooms = Dictionary(
@@ -98,11 +98,19 @@ struct DeclaredMapTests {
         let world = GameWorld(prepared: prepared, seed: 0)
         _ = await world.begin()
         var visited: [EntityID] = []
+        var walks = 0
         for command in ["look", "north", "east", "open window", "west", "west", "east", "up"] {
             let result = await world.perform(command)
             let view = await world.mapView()
-            if case .walked(_, let to, _)? = result.report.movement {
+            if case .walked(let from, let to, let direction)? = result.report.movement {
                 #expect(to == view.id)
+                let exit = try #require(
+                    rooms[from]?.exits.first { $0.direction == direction },
+                    "\(from) has no \(direction) exit in the export")
+                if exit.kind != .blocked, exit.kind != .dynamic {
+                    #expect(exit.destination == to)
+                }
+                walks += 1
             }
             let room = try #require(rooms[view.id], "\(view.id) is not in the export")
             #expect(room.name == view.name)
@@ -111,6 +119,7 @@ struct DeclaredMapTests {
         }
         // The route really moved: six distinct rooms from West of House to the attic.
         #expect(Set(visited).count == 6)
+        #expect(walks > 0)
     }
 }
 

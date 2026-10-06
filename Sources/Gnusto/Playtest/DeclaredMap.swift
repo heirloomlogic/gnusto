@@ -13,12 +13,20 @@
 /// messages and room descriptions are not in it. A move a rule makes, such as
 /// `arrive(at:)`, is not an exit and is not in it either.
 ///
+/// It lists exits as declared, whatever the world's state. A `hidden` door
+/// that ``GameWorld/mapView()`` leaves out until it is revealed is listed as a
+/// `door` exit. A conditional exit whose condition is false is listed, and so
+/// are the exits of a dark room.
+///
 /// Encoding it with a `JSONEncoder` whose output formatting includes
 /// `.sortedKeys` gives the same bytes every time for the same game. Optional
 /// fields that are `nil` are left out of the JSON.
 ///
-/// Part of the `Playtest` package trait: a build with
-/// `--disable-default-traits` does not contain it.
+/// It exists only when Gnusto is compiled with its `Playtest` package trait,
+/// which is on by default. `--disable-default-traits` turns that trait off only
+/// in the package it is passed to. A package that depends on Gnusto turns it
+/// off through its dependency's `traits:`, as a package made by `bin/new-game`
+/// does by forwarding its own `Playtest` trait.
 public struct DeclaredMap: Sendable, Codable, Equatable {
     /// One declared room.
     public struct Room: Sendable, Codable, Equatable {
