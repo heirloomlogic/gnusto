@@ -19,7 +19,8 @@
 /// are the exits of a dark room.
 ///
 /// Encoding it with a `JSONEncoder` whose output formatting includes
-/// `.sortedKeys` gives the same bytes every time for the same game. Optional
+/// `.sortedKeys` gives the same bytes every time for the same game. Room, door
+/// and destination IDs are encoded as plain strings (`"kitchen"`), and optional
 /// fields that are `nil` are left out of the JSON.
 ///
 /// It exists only when Gnusto is compiled with its `Playtest` package trait,
@@ -103,6 +104,72 @@ extension DeclaredMap.Exit {
             case .conditional(let destination, _, _): (.conditional, destination, nil)
             case .dynamic: (.dynamic, nil, nil)
             }
+    }
+}
+
+// IDs are written as bare strings rather than as `EntityID`'s own keyed form,
+// so a checked-in export reads `"id": "kitchen"`.
+extension DeclaredMap.Room {
+    private enum CodingKeys: String, CodingKey {
+        case id, name, region, exits
+    }
+
+    /// Reads a room whose ID is a plain string.
+    ///
+    /// - Parameter decoder: the decoder to read from.
+    /// - Throws: if a field is missing or has the wrong type.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = EntityID(try container.decode(String.self, forKey: .id))
+        name = try container.decode(String.self, forKey: .name)
+        region = try container.decodeIfPresent(String.self, forKey: .region)
+        exits = try container.decode([DeclaredMap.Exit].self, forKey: .exits)
+    }
+
+    /// Writes the room with its ID as a plain string, leaving out a `nil`
+    /// region.
+    ///
+    /// - Parameter encoder: the encoder to write to.
+    /// - Throws: if the encoder fails.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id.raw, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(region, forKey: .region)
+        try container.encode(exits, forKey: .exits)
+    }
+}
+
+extension DeclaredMap.Exit {
+    private enum CodingKeys: String, CodingKey {
+        case direction, kind, destination, door, isSecret
+    }
+
+    /// Reads an exit whose destination and door are plain strings.
+    ///
+    /// - Parameter decoder: the decoder to read from.
+    /// - Throws: if a field is missing or has the wrong type.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        direction = try container.decode(Direction.self, forKey: .direction)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        destination = try container.decodeIfPresent(String.self, forKey: .destination).map(EntityID.init)
+        door = try container.decodeIfPresent(String.self, forKey: .door).map(EntityID.init)
+        isSecret = try container.decode(Bool.self, forKey: .isSecret)
+    }
+
+    /// Writes the exit with its destination and door as plain strings,
+    /// leaving out whichever is `nil`.
+    ///
+    /// - Parameter encoder: the encoder to write to.
+    /// - Throws: if the encoder fails.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(direction, forKey: .direction)
+        try container.encode(kind, forKey: .kind)
+        try container.encodeIfPresent(destination?.raw, forKey: .destination)
+        try container.encodeIfPresent(door?.raw, forKey: .door)
+        try container.encode(isSecret, forKey: .isSecret)
     }
 }
 

@@ -82,6 +82,25 @@ struct DeclaredMapTests {
         #expect(try JSONDecoder().decode(DeclaredMap.self, from: first) == map)
     }
 
+    /// IDs are bare strings in the JSON, and a `nil` field is left out.
+    @Test func idsEncodeAsPlainStrings() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let map = try PreparedGame(CartographyGame()).declaredMap
+        let json = String(decoding: try encoder.encode(map), as: UTF8.self)
+        #expect(
+            json.contains(
+                #"{"exits":[{"destination":"hall","direction":"south","isSecret":false,"kind":"open"},"#
+                    + #"{"direction":"east","isSecret":false,"kind":"dynamic"},"#
+                    + #"{"destination":"loft","direction":"up","isSecret":true,"kind":"open"}],"#
+                    + #""id":"kitchen","name":"Kitchen"}"#))
+        #expect(
+            json.contains(
+                #"{"destination":"cellar","direction":"down","door":"trapDoor","isSecret":false,"kind":"door"}"#))
+        #expect(json.contains(#""region":"Maze""#))
+        #expect(!json.contains("raw"))
+    }
+
     @Test func aPackagedGameReachesTheSameMap() throws {
         let packaged = PackagedGame { CartographyGame() }
         let packagedMap = try PreparedGame(packaged.makeGame()).declaredMap
