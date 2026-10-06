@@ -2307,14 +2307,15 @@ extension PlaytestSurvey.Room {
     }
 }
 
-extension PlaytestSurvey.Exit {
-    /// One exit as JSON. The two optional fields are omitted rather than sent
-    /// as null: a dynamic exit does not have an unknown destination, it has no
-    /// destination to know until somebody walks it.
+extension DeclaredMap.Exit {
+    /// One exit as the survey renders it, without the secret flag. The two
+    /// optional fields are omitted rather than sent as null: a dynamic exit
+    /// does not have an unknown destination, it has no destination to know
+    /// until somebody walks it.
     fileprivate var json: JSONValue {
         var entry: [String: JSONValue] = [
-            "direction": .string(direction),
-            "kind": .string(kind),
+            "direction": .string(direction.rawValue),
+            "kind": .string(kind.rawValue),
         ]
         if let destination {
             entry["destination"] = .string(destination.raw)

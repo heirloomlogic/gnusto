@@ -116,6 +116,8 @@ A front end that dismisses its input field on death loses the game it was about 
 
 A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
 
+A tool that lays out the whole map ahead of play needs every room at once, which `mapView()` will not give. ``PreparedGame/declaredMap`` returns a ``DeclaredMap``: every declared room with its ID, name and region, and every exit with its direction, kind, declared destination, door and ``MapEntry/secret`` flag. It is read from the declarations and calls no exit condition or dynamic destination, so a dynamic exit has no destination in it. Its room IDs are the ones `mapView()` and ``TurnReport/movement`` report. It is part of the `Playtest` package trait, so a build with `--disable-default-traits` does not have it.
+
 ## Completion candidates
 
 ``CompletionCandidates`` is a snapshot of what Tab can offer for the *next* input line: every verb word, the nouns and adjectives of the items currently in scope, the movement words, and the save slots on disk.
@@ -213,6 +215,8 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``GameWorld/mapView()``
 - ``RoomMapView``
 - ``MapExit``
+- ``PreparedGame/declaredMap``
+- ``DeclaredMap``
 - ``PreparedGame``
 - ``PackagedGame``
 - ``DisplayWidth``
