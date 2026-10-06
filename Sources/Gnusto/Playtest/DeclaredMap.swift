@@ -117,7 +117,7 @@ extension DeclaredMap.Room {
     /// Reads a room whose ID is a plain string.
     ///
     /// - Parameter decoder: the decoder to read from.
-    /// - Throws: if a field is missing or has the wrong type.
+    /// - Throws: if a required field is missing or any field has the wrong type.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = EntityID(try container.decode(String.self, forKey: .id))
@@ -148,7 +148,7 @@ extension DeclaredMap.Exit {
     /// Reads an exit whose destination and door are plain strings.
     ///
     /// - Parameter decoder: the decoder to read from.
-    /// - Throws: if a field is missing or has the wrong type.
+    /// - Throws: if a required field is missing or any field has the wrong type.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         direction = try container.decode(Direction.self, forKey: .direction)
