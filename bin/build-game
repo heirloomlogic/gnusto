@@ -3,14 +3,15 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadGames, resolveCatalogGame} from './lib/game-catalog.mjs';
 import {findEngineRoot, makeBuildSpec, buildGame} from './lib/game-build.mjs';
-const usage = 'Usage: bin/build-game <Game> [--mode development|deployment] [--force] [--json]';
+const usage = 'Usage: bin/build-game <Game> [--frontend terminal|yonk] [--mode development|deployment] [--force] [--json]';
 try {
   const words = process.argv.slice(2);
   if (words.includes('--help') || words.includes('-h')) { console.log(usage); process.exit(0); }
-  let mode = 'development', force = false, json = false, gameName;
+  let frontend = 'terminal', mode = 'development', force = false, json = false, gameName;
   while (words.length) {
     const word = words.shift();
     if (word === '--mode') { mode = words.shift(); if (!['development', 'deployment'].includes(mode)) throw new Error('--mode requires development or deployment'); }
+    else if (word === '--frontend' || word.startsWith('--frontend=')) { frontend = word === '--frontend' ? words.shift() : word.slice('--frontend='.length); if (!frontend || frontend.startsWith('-')) throw new Error('--frontend needs a value'); }
     else if (word === '--force') force = true;
     else if (word === '--json') json = true;
     else if (word.startsWith('-')) throw new Error(`Unknown option: ${word}`);
@@ -21,7 +22,7 @@ try {
   const packageRoot = path.resolve(process.env.GNUSTO_PACKAGE_PATH || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   const game = resolveCatalogGame(loadGames(packageRoot), gameName);
   const engineRoot = findEngineRoot(packageRoot);
-  const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot: process.env.GNUSTO_TERMINAL_PATH, game, mode});
+  const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot: process.env.GNUSTO_TERMINAL_PATH, yonkRoot: process.env.GNUSTO_YONK_PATH, frontend, game, mode});
   const result = await buildGame(spec, {force, swift: process.env.GNUSTO_SWIFT || 'swift'});
   console.log(json ? JSON.stringify(result) : result.binary);
 } catch (error) { console.error(`gnusto: ${error.message}`); process.exitCode = 2; }

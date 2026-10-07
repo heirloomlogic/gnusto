@@ -45,7 +45,7 @@ for (const game of games) {
   assert.equal(build.status, 0, build.stderr);
   const binary = build.stdout.trim();
   assert(path.isAbsolute(binary));
-  assert(binary.startsWith(path.join(root, '.build-launchers', game.name, 'development')));
+  assert(binary.startsWith(path.join(root, '.build-launchers', game.name, 'terminal', 'development')));
   const saves = path.join(evidence, game.name, 'saves');
   fs.mkdirSync(saves, {recursive: true});
   const transcript = path.join(evidence, `${game.name}.transcript`);
