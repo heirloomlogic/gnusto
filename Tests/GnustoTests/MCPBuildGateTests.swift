@@ -41,34 +41,34 @@ struct MCPBuildGateTests {
             let repository = URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             for package in Set([game, engine, terminal]) {
-                try write("// source\n", to: package.appendingPathComponent("Sources/Example/Game.swift"))
-                try write(
+                try FixtureFile.write("// source\n", to: package.appendingPathComponent("Sources/Example/Game.swift"))
+                try FixtureFile.write(
                     "// manifest\n.trait(name: \"Playtest\")\n", to: package.appendingPathComponent("Package.swift"))
-                try write("{}\n", to: package.appendingPathComponent("Package.resolved"))
+                try FixtureFile.write("{}\n", to: package.appendingPathComponent("Package.resolved"))
             }
             if game != engine {
-                try write(
+                try FixtureFile.write(
                     "// manifest\n.trait(name: \"Playtest\")\n.package(name: \"Gnusto\", path: \"\(engine.path)\")\n",
                     to: game.appendingPathComponent("Package.swift"))
             }
-            try write(
+            try FixtureFile.write(
                 #"{"version":1,"package":"Zwank","games":[{"name":"Zwank","product":"StoryLibrary","module":"StoryModule","symbol":"game"}]}"#,
                 to: game.appendingPathComponent("gnusto-games.json"))
             for tool in [
                 "bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs",
                 "bin/lib/game-export.mjs", "bin/lib/game-app.mjs",
             ] {
-                try write(
+                try FixtureFile.write(
                     String(contentsOf: repository.appendingPathComponent(tool), encoding: .utf8),
                     to: engine.appendingPathComponent(tool), executable: !tool.hasSuffix(".mjs"))
             }
-            try write(
+            try FixtureFile.write(
                 #"""
                 #!/bin/sh
                 printf '{"method":"ready","mode":"%s"}\n' "$1"
                 """#,
                 to: root.appendingPathComponent("launcher-template"), executable: true)
-            try write(
+            try FixtureFile.write(
                 #"""
                 #!/bin/sh
                 printf '%s\n' "$*" >> "$FAKE_CALLS"
@@ -114,22 +114,6 @@ struct MCPBuildGateTests {
                 to: root.appendingPathComponent("fake-bin/swift"), executable: true)
         }
 
-        func write(_ text: String, to path: URL, executable: Bool = false) throws {
-            try FileManager.default.createDirectory(
-                at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
-            // Other tests launch processes while fixtures are being written.
-            // Do not let a child inherit a writable script descriptor: on Linux
-            // that keeps exec from opening the script (ETXTBSY) after we close it.
-            let descriptor = open(path.path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, mode_t(0o600))
-            guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-            let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
-            defer { try? file.close() }
-            try file.write(contentsOf: Data(text.utf8))
-            if executable {
-                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path.path)
-            }
-        }
-
         func date(_ path: URL, seconds: TimeInterval) throws {
             try FileManager.default.setAttributes(
                 [.modificationDate: Date(timeIntervalSince1970: seconds)], ofItemAtPath: path.path)
@@ -142,13 +126,13 @@ struct MCPBuildGateTests {
                     domain: "MCPBuildGateTests", code: Int(built.status),
                     userInfo: [NSLocalizedDescriptionKey: built.stderr])
             }
-            try write("", to: calls)
+            try FixtureFile.write("", to: calls)
             try date(cache, seconds: 2000)
         }
 
         func edit(_ path: URL) throws {
             let previous = try String(contentsOf: path, encoding: .utf8)
-            try write(previous + "\n// changed input\n", to: path)
+            try FixtureFile.write(previous + "\n// changed input\n", to: path)
         }
 
         var buildCalls: [String] {
