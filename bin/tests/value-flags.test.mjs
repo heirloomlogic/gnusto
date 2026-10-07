@@ -66,33 +66,3 @@ test('bin/gnusto-mcp refuses an unknown game before building', () => {
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /Unknown game: not a game\. Available games:/)
 })
-
-for (const script of ['run-game', 'export-game']) {
-  for (const args of [['Story', '--frontend'], ['Story', '--frontend', ''], ['Story', '--frontend=']]) {
-    test(`bin/${script} refuses missing frontend value ${JSON.stringify(args)}`, () => {
-      expectRefusal(run(script, args), script, '--frontend');
-    });
-  }
-  for (const frontend of ['unknown']) {
-    test(`bin/${script} refuses ${frontend} before package resolution or building`, () => {
-      const result = spawnSync(path.join(repo, 'bin', script), ['Story', '--frontend', frontend], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
-      assert.equal(result.status, 2, result.stderr);
-      assert.equal(result.stdout, '');
-      assert.match(result.stderr, /unknown.*frontend/i);
-    });
-  }
-}
-
-test('bin/run-game refuses a missing Yonk checkout before package resolution or building', () => {
-  const result = spawnSync(path.join(repo, 'bin/run-game'), ['Story', '--frontend', 'yonk'], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
-  assert.equal(result.status, 2, result.stderr);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, process.platform === 'darwin' ? /GNUSTO_YONK_PATH/ : /requires macOS/);
-});
-
-test('bin/export-game refuses unavailable Yonk export', () => {
-  const result = spawnSync(path.join(repo, 'bin/export-game'), ['Story', '--frontend', 'yonk'], {env: {...process.env, GNUSTO_PACKAGE_PATH: '/nonexistent/package', GNUSTO_YONK_PATH: ''}, encoding: 'utf8'});
-  assert.equal(result.status, 2, result.stderr);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, process.platform === 'darwin' ? /GNUSTO_YONK_PATH/ : /macOS/);
-});

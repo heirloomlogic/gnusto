@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {randomUUID, createHash} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 
@@ -11,7 +11,7 @@ async function exists(file) { try { await fs.access(file); return true; } catch 
 
 // Derive resources from linked modules, rather than copying stale bundles left
 // beside an executable by a previous dependency graph.
-export async function linkedResources(binary, binDirectory, {app = false} = {}) {
+async function linkedResources(binary, binDirectory) {
   const description = path.join(binDirectory, 'description.json');
   const names = new Set();
   if (await exists(description)) {
@@ -24,7 +24,6 @@ export async function linkedResources(binary, binDirectory, {app = false} = {}) 
       if (forbidden.test(command.moduleName)) throw new Error(`Test-only module in deployment graph: ${command.moduleName}`);
       for (const input of command.inputs ?? []) if (path.basename(input.name) === 'resource_bundle_accessor.swift') {
         const source = await fs.readFile(input.name, 'utf8');
-        if (app && !source.includes('Bundle.main.resourceURL')) throw new Error('This SwiftPM resource accessor cannot relocate into a signed app; build with --build-system swiftbuild.');
         for (const match of source.matchAll(/appendingPathComponent\("([^"/\\]+\.(?:bundle|resources))"\)/g)) names.add(match[1]);
       }
     }
@@ -169,7 +168,7 @@ async function validateELF(binary, bytes) {
     if (!classified) throw unsupportedLibrary(library, 'not resolved to the supported OS runtime');
   }
 }
-export async function validateRuntime(binary) {
+async function validateRuntime(binary) {
   const bytes = await header(binary);
   if (bytes.subarray(0, 2).toString() === '#!') {
     // CLI test/build shims are scripts; their interpreter is explicit, unlike a
@@ -184,7 +183,7 @@ export async function validateRuntime(binary) {
   throw new Error(`Cannot classify executable runtime dependencies on ${process.platform}: ${binary}`);
 }
 
-export async function validateTree(directory) {
+async function validateTree(directory) {
   for (const entry of await fs.readdir(directory, {withFileTypes: true})) {
     const file = path.join(directory, entry.name);
     if (entry.isSymbolicLink()) throw new Error(`Resource bundle contains a nonportable symbolic link: ${file}`);
@@ -234,22 +233,4 @@ export async function stageTerminalExport({binary, binDirectory = path.dirname(b
     await fs.rm(temporary, {force: true});
     if (!committed && names.length) await fs.rm(distribution, {recursive: true, force: true});
   }
-}
-
-export async function digestFiles(files) {
-  const hash = createHash('sha256');
-  async function visit(file, relative) {
-    const stat = await fs.lstat(file);
-    if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) throw new Error(`Nonportable app input: ${file}`);
-    hash.update(JSON.stringify([relative, stat.mode & 0o777, stat.isDirectory()]));
-    if (stat.isDirectory()) for (const child of (await fs.readdir(file)).sort()) await visit(path.join(file, child), path.join(relative, child));
-    else hash.update(await fs.readFile(file));
-  }
-  for (const [name, file] of files) await visit(file, name);
-  return hash.digest('hex');
-}
-
-export async function artifactDigest(binary, binDirectory) {
-  const names = await linkedResources(binary, binDirectory);
-  return digestFiles([["binary", binary], ...names.map(name => [name, path.join(binDirectory, name)])]);
 }

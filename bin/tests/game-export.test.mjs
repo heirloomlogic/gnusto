@@ -193,7 +193,7 @@ test('export lists catalog names without Swift and builds deployment separately'
   assert.equal(spawnSync(path.join(f.author, 'dist', 'Story'), {input: 'deployed\n', encoding: 'utf8'}).stdout, 'deployed\n');
 });
 
-for (const scenario of ['missing terminal', 'unknown frontend', 'missing frontend', 'failed Swift']) {
+for (const scenario of ['missing terminal', 'unknown option', 'failed Swift']) {
   test(`failed export (${scenario}) preserves the prior executable`, async t => {
     const f = await cliFixture(t);
     const destination = path.join(f.author, 'dist', 'Story');
@@ -201,8 +201,7 @@ for (const scenario of ['missing terminal', 'unknown frontend', 'missing fronten
     await fs.copyFile(f.destination, destination);
     let args = ['Story'], env = {};
     if (scenario === 'missing terminal') env.GNUSTO_TERMINAL_PATH = path.join(f.root, 'absent');
-    if (scenario === 'unknown frontend') args.push('--frontend', 'unknown');
-    if (scenario === 'missing frontend') args.push('--frontend');
+    if (scenario === 'unknown option') args.push('--bogus');
     if (scenario === 'failed Swift') env.FAIL_BUILD = '1';
     const failed = f.command('export-game', args, env);
     assert.equal(failed.status, 2, failed.stderr);
