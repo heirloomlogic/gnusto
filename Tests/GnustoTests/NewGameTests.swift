@@ -273,21 +273,22 @@ struct NewGameTests {
         let released = root.appendingPathComponent("released")
         try "GNUSTO_PACKAGE_PATH\n".write(to: released, atomically: true, encoding: .utf8)
         let git = fakeBin.appendingPathComponent("git")
-        try #"""
-        #!/bin/sh
-        case "$1" in
-          tag) echo 99.0.0 ;;
-          show)
-            [ "$2" != "99.0.0:${GNUSTO_TEST_MISSING_RELEASED_FILE:-}" ] || exit 1
-            case "$2" in
-              *:Package.swift) printf '%s\n' "${GNUSTO_TEST_RELEASED_MANIFEST:-.trait(name: \"Playtest\")} " ;;
-              *:Sources/Gnusto/Engine/PackagedGame.swift) cat "$GNUSTO_TEST_FACTORY" ;;
-              *) cat "$GNUSTO_TEST_RELEASED_TOOL" ;;
-            esac ;;
-          *) exit 1 ;;
-        esac
-        """#.write(to: git, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: git.path)
+        try FixtureFile.write(
+            #"""
+            #!/bin/sh
+            case "$1" in
+              tag) echo 99.0.0 ;;
+              show)
+                [ "$2" != "99.0.0:${GNUSTO_TEST_MISSING_RELEASED_FILE:-}" ] || exit 1
+                case "$2" in
+                  *:Package.swift) printf '%s\n' "${GNUSTO_TEST_RELEASED_MANIFEST:-.trait(name: \"Playtest\")} " ;;
+                  *:Sources/Gnusto/Engine/PackagedGame.swift) cat "$GNUSTO_TEST_FACTORY" ;;
+                  *) cat "$GNUSTO_TEST_RELEASED_TOOL" ;;
+                esac ;;
+              *) exit 1 ;;
+            esac
+            """#,
+            to: git, executable: true)
         return [
             "PATH": fakeBin.path + ":" + (ProcessInfo.processInfo.environment["PATH"] ?? ""),
             "GNUSTO_TEST_RELEASED_TOOL": released.path,
@@ -360,10 +361,8 @@ struct NewGameTests {
         .map { "bin/lib/\($0)" }
         let files = ["Package.swift", "Sources/Gnusto/Engine/PackagedGame.swift"] + shims + libraries
         for file in files where file != missing {
-            let target = engine.appendingPathComponent(file)
-            try FileManager.default.createDirectory(
-                at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: Self.packageRoot.appendingPathComponent(file), to: target)
+            try FixtureFile.copy(
+                Self.packageRoot.appendingPathComponent(file), to: engine.appendingPathComponent(file))
         }
         let destination = root.appendingPathComponent("Zwank")
         let generated = try Self.newGame(["Zwank", destination.path, "--dep-path", engine.path])

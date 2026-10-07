@@ -39,18 +39,15 @@ struct PlaytestPathTests {
         let tools = FileManager.default.temporaryDirectory.appendingPathComponent("replay-tools-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tools) }
         let bin = tools.appendingPathComponent("bin")
-        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
             at: tools.appendingPathComponent("Sources/Gnusto"), withIntermediateDirectories: true)
-        try FileManager.default.copyItem(
-            at: packageRoot.appendingPathComponent("bin/lib"), to: bin.appendingPathComponent("lib"))
+        try FixtureFile.copy(packageRoot.appendingPathComponent("bin/lib"), to: bin.appendingPathComponent("lib"))
         for tool in ["playtest-replay", "gnusto-mcp"] {
-            try FileManager.default.copyItem(
-                at: packageRoot.appendingPathComponent("bin/\(tool)"), to: bin.appendingPathComponent(tool))
+            try FixtureFile.copy(
+                packageRoot.appendingPathComponent("bin/\(tool)"), to: bin.appendingPathComponent(tool))
         }
-        let builder = bin.appendingPathComponent("build-game")
-        try "#!/bin/sh\nprintf '/bin/echo\\n'\n".write(to: builder, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: builder.path)
+        try FixtureFile.write(
+            "#!/bin/sh\nprintf '/bin/echo\\n'\n", to: bin.appendingPathComponent("build-game"), executable: true)
         var environment = ProcessInfo.processInfo.environment
         for name in ["GNUSTO_PACKAGE_PATH", "GNUSTO_INVOCATION_DIR", "GNUSTO_REPO"] {
             environment.removeValue(forKey: name)
@@ -93,9 +90,8 @@ struct PlaytestPathTests {
     @Test func shimKeepsCallerPathsAndDefaultPackageSeparate() throws {
         let game = try Self.scratch()
         defer { try? FileManager.default.removeItem(at: game) }
-        try FileManager.default.copyItem(
-            at: Self.packageRoot.appendingPathComponent("bin/templates/bin"),
-            to: game.appendingPathComponent("bin"))
+        try FixtureFile.copy(
+            Self.packageRoot.appendingPathComponent("bin/templates/bin"), to: game.appendingPathComponent("bin"))
         let notes = game.appendingPathComponent("notes")
         try FileManager.default.createDirectory(at: notes, withIntermediateDirectories: true)
         try Self.recordBinary("Zwank", in: game)
@@ -117,9 +113,8 @@ struct PlaytestPathTests {
     @Test func shimResolvesExplicitPackagePathAgainstCaller() throws {
         let game = try Self.scratch()
         defer { try? FileManager.default.removeItem(at: game) }
-        try FileManager.default.copyItem(
-            at: Self.packageRoot.appendingPathComponent("bin/templates/bin"),
-            to: game.appendingPathComponent("bin"))
+        try FixtureFile.copy(
+            Self.packageRoot.appendingPathComponent("bin/templates/bin"), to: game.appendingPathComponent("bin"))
         let notes = game.appendingPathComponent("notes")
         let other = notes.appendingPathComponent("Other")
         try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
