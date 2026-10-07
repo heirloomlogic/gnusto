@@ -20,10 +20,8 @@ struct GeneratedResolverTests {
             directory = URL(fileURLWithPath: String(cString: resolved))
             package = directory.appendingPathComponent("Gnusto")
             engine = directory.appendingPathComponent(engineName)
-            try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(
-                at: Self.template.appendingPathComponent("bin"),
-                to: package.appendingPathComponent("bin"))
+            try FixtureFile.copy(
+                Self.template.appendingPathComponent("bin"), to: package.appendingPathComponent("bin"))
             try write("", at: package.appendingPathComponent("Package.swift"))
             try write("", at: engine.appendingPathComponent("Sources/Gnusto/marker"))
             try write("", at: engine.appendingPathComponent("bin/lib/playtest-focus.js"))
@@ -42,12 +40,7 @@ struct GeneratedResolverTests {
         }
 
         func write(_ text: String, at url: URL, executable: Bool = false) throws {
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try text.write(to: url, atomically: true, encoding: .utf8)
-            if executable {
-                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-            }
+            try FixtureFile.write(text, to: url, executable: executable)
         }
 
         func clean() { try? FileManager.default.removeItem(at: directory) }
