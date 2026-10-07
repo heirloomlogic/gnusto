@@ -133,7 +133,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:128]",
   "landing": {
     "room": "Mirror Room",
-    "moves": "127",
+    "moves": "125",
     "score": "157",
     "inventory": "You are carrying a matchbook, a screwdriver, a trunk of jewels, a brass lantern, a platinum bar, and an ivory torch."
   }

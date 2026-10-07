@@ -49,7 +49,7 @@
 'use strict'
 
 const { LANDING_PROBE, LANDING_INVENTORY } = require('./playtest-focus')
-const { answerTo, lastStatus } = require('./playtest-replay')
+const { observationBefore, statusAfter, statusBefore } = require('./playtest-replay')
 
 /// Every `[status]` footer's `turn=` field, in order.
 ///
@@ -62,22 +62,25 @@ function turnCosts(text) {
 
 /// The landing a candidate produced, in the form the predicate compares.
 ///
-/// Built on `lastStatus` rather than beside it. `bin/lib/playtest-replay.js`'s own
+/// Built on `statusBefore` rather than beside it. `bin/lib/playtest-replay.js`'s own
 /// header says why a second footer parser is not allowed to exist here: the footer is
 /// the harness's own line, a JS copy of it beside the engine's `StatusFooter` is
 /// already two ways to disagree, and a third would live in whatever front door came
-/// next. This is that front door.
+/// next. The status immediately before the appended `look` is the route's landing;
+/// the probe commands after it are observers and may spend turns themselves.
 ///
-/// - Returns: `{ room, moves, score, look, inventory, playable }`, or `null` for a
-///   transcript with no footer in it at all — which is a replay that never ran, not a
-///   landing that differs, and the caller has to tell those apart.
+/// - Returns: `{ room, openedRoom, moves, score, look, inventory, playable }`, or
+///   `null` for a transcript without the footers around its landing probe — which is
+///   a replay that never completed, not a landing that differs.
 function landingSignature(text) {
-  const fields = lastStatus(text)
-  if (!fields) return null
+  const fields = statusBefore(text, LANDING_PROBE)
+  const opened = statusAfter(text, LANDING_PROBE)
+  if (!fields || !opened) return null
   const look = answer(text, LANDING_PROBE)
   const inventory = answer(text, LANDING_INVENTORY)
   return {
     room: fields.room || '',
+    openedRoom: opened.room || '',
     // Carried but never compared. A shrunk route has fewer moves by construction, so
     // the predicate must not read it — the manifest records it because a person
     // choosing between two routes does.
@@ -103,11 +106,11 @@ function landingSignature(text) {
 /// `look` itself and the probe appended after it is the one that describes the landing.
 /// Folded here because the shrink compares two of these for equality across runs, and
 /// a wrap that differs by a newline is not a landing that differs.
-const answer = (text, command) => (answerTo(text, command) || '').replace(/\s+/g, ' ').trim()
+const answer = (text, command) => observationBefore(text, command)?.answer || ''
 
 /// Two landings, compared as the shrink's predicate compares them.
 const sameLanding = (a, b) => !!a && !!b
-  && a.room === b.room && a.score === b.score
+  && a.room === b.room && a.openedRoom === b.openedRoom && a.score === b.score
   && a.look === b.look && a.inventory === b.inventory
 
 /// The indices of the commands that cost no turn, read off the run's own footers.

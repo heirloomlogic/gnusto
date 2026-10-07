@@ -40,7 +40,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:35]",
   "landing": {
     "room": "Treasure Room",
-    "moves": "37",
+    "moves": "35",
     "score": "65",
     "inventory": "You are carrying a set of skeleton keys, a clove of garlic, a brass lantern, and an elvish sword."
   }
