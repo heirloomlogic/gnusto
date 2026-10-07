@@ -10,7 +10,7 @@ test('new-game excludes populated template launcher caches from the archive', t 
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   // Exercise the actual generator with a private template, without altering a live cache.
   fs.cpSync('bin', path.join(root, 'bin'), {recursive: true, filter: source => !source.split(path.sep).some(part => part.startsWith('.build') || part === 'node_modules')});
-  const cache = path.join(root, 'bin/templates/.build-launchers/MyGame/terminal/deployment/scratch');
+  const cache = path.join(root, 'bin/templates/.build-launchers/MyGame/deployment/scratch');
   fs.mkdirSync(cache, {recursive: true});
   fs.writeFileSync(path.join(cache, 'MyGame-sentinel'), 'MyGame absolute stale provenance');
   const destination = path.join(root, 'FreshStory');

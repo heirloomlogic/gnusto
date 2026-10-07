@@ -21,7 +21,7 @@ Use the returned path, including when piping commands; its private launcher name
 printf 'look\nquit\ny\n' | "$(bin/build-game MyGame)"
 ```
 
-The tools require Swift 6.2 or newer and Node.js. For a coordinated prerelease checkout, set `GNUSTO_TERMINAL_PATH` to its GnustoTerminal checkout before running, exporting or preflighting the game. On macOS, set `GNUSTO_YONK_PATH` to its Yonk checkout and run `bin/run-game MyGame --frontend yonk` to generate and launch a development app. Yonk `.app` export remains a later packaging step.
+The tools require Swift 6.2 or newer and Node.js. For a coordinated prerelease checkout, set `GNUSTO_TERMINAL_PATH` to its `GnustoTerminal` checkout before running, exporting or preflighting the game.
 
 ## Let an agent play-test it
 
@@ -34,8 +34,7 @@ Automated rounds require Python 3 and an authenticated Claude Code installation 
 The tools are shims over the resolved Gnusto checkout. Run `swift package resolve` once to resolve a version dependency. Updating Gnusto updates the tools too.
 
 - `bin/run-game MyGame` builds and plays the generated terminal development launcher.
-- `bin/run-game MyGame --frontend yonk` builds and launches the generated Yonk development app on macOS.
-- `bin/build-game MyGame` prints the absolute path of a generated launcher; `--frontend yonk` selects Yonk and `--force` rebuilds it.
+- `bin/build-game MyGame` prints the absolute path of that launcher; `--force` rebuilds it.
 - `bin/gnusto-mcp MyGame` serves the game's MCP protocol on stdio; `.mcp.json` runs it for your client.
 - `bin/playtest-preflight MyGame` checks the server and prepares the round arguments. Add `--headless` to dispatch through Claude Code.
 - `bin/playtest-routes MyGame list` lists committed deep starts; `verify` replays them to check their landings.

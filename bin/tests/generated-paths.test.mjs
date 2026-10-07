@@ -99,7 +99,7 @@ test('run and MCP use the generated author package binary through their shims', 
   const forced = spawnSync(path.join(f.game, 'bin/gnusto-mcp'), ['Probe'], { cwd: f.notes, env: { ...f.env, GNUSTO_MCP_BUILD: '1' }, encoding: 'utf8' })
   assert.equal(forced.status, 0, forced.stderr)
   const calls = readFileSync(path.join(f.game, 'build.log'), 'utf8').trim().split('\n')
-  assert.deepEqual(calls, [`${f.game}|Probe --frontend terminal --mode development`, `${f.game}|Probe --mode development`, `${f.game}|Probe --mode development --force`])
+  assert.deepEqual(calls, [`${f.game}|Probe --mode development`, `${f.game}|Probe --mode development`, `${f.game}|Probe --mode development --force`])
 })
 
 test('replay prints and validates an absolute author path while reading caller-relative commands', (t) => {
