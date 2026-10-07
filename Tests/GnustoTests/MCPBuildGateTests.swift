@@ -18,7 +18,7 @@ struct MCPBuildGateTests {
 
         var cache: URL { game.appendingPathComponent(".context/playtest/.bin/Zwank.path") }
         var binary: URL { generated.appendingPathComponent("scratch/products/GnustoGeneratedLauncher") }
-        var generated: URL { game.appendingPathComponent(".build-launchers/Zwank/development") }
+        var generated: URL { game.appendingPathComponent(".build-launchers/Zwank/terminal/development") }
         var calls: URL { root.appendingPathComponent("swift-calls") }
 
         init(layout: String = "local") throws {
@@ -54,7 +54,10 @@ struct MCPBuildGateTests {
             try FixtureFile.write(
                 #"{"version":1,"package":"Zwank","games":[{"name":"Zwank","product":"StoryLibrary","module":"StoryModule","symbol":"game"}]}"#,
                 to: game.appendingPathComponent("gnusto-games.json"))
-            for tool in ["bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs"] {
+            for tool in [
+                "bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs",
+                "bin/lib/game-export.mjs", "bin/lib/game-app.mjs",
+            ] {
                 try FixtureFile.write(
                     String(contentsOf: repository.appendingPathComponent(tool), encoding: .utf8),
                     to: engine.appendingPathComponent(tool), executable: !tool.hasSuffix(".mjs"))
@@ -73,8 +76,8 @@ struct MCPBuildGateTests {
                 if [ "$1" = package ]; then
                   shift
                   [ "$#" = 7 ] || exit 93
-                  [ "$1" = --package-path ] && [ "$2" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/package" ] || exit 94
-                  [ "$3" = --scratch-path ] && [ "$4" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/scratch" ] || exit 93
+                  [ "$1" = --package-path ] && [ "$2" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/terminal/development/package" ] || exit 94
+                  [ "$3" = --scratch-path ] && [ "$4" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/terminal/development/scratch" ] || exit 93
                   [ "$5" = show-dependencies ] && [ "$6" = --format ] && [ "$7" = json ] || exit 93
                   [ -d "$GNUSTO_ENGINE_PATH" ] || exit 95
                   printf '{"identity":"package","dependencies":[{"identity":"gnusto","name":"Gnusto","path":"%s","dependencies":[]}]}\n' "$GNUSTO_REPO"
@@ -94,7 +97,7 @@ struct MCPBuildGateTests {
                     *) exit 93 ;;
                   esac
                 done
-                [ "$package" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/development/package" ] || exit 94
+                [ "$package" = "$GNUSTO_PACKAGE_PATH/.build-launchers/Zwank/terminal/development/package" ] || exit 94
                 [ -d "$GNUSTO_ENGINE_PATH" ] || exit 95
                 if [ "$show" = 1 ]; then
                   printf '%s/products\n' "$scratch"

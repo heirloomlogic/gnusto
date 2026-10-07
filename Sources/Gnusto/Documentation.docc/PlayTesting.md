@@ -71,7 +71,7 @@ The server is a second program, and it is larger than the engine it rides in. So
 bin/export-game MyGame
 ```
 
-`bin/export-game` builds a generated deployment launcher in release mode with Playtest disabled and writes the executable to `dist/MyGame`. Its package and scratch cache live under `.build-launchers/<Game>/deployment/`, separate from the development launcher under `.build-launchers/<Game>/development/`; exporting cannot replace the development MCP binary. Conditional Playtest forwarding spans the generated launcher, game package, GnustoTerminal and Gnusto, so disabling default traits for deployment removes the server across that whole graph. `bin/build-game`, `bin/run-game` and `bin/gnusto-mcp` select development mode with Playtest enabled. `swift test` keeps the game package’s default Playtest trait; it does not build a terminal launcher.
+`bin/export-game` builds a generated terminal deployment launcher in release mode with Playtest disabled and writes the executable to `dist/MyGame`. Its package and scratch cache live under `.build-launchers/<Game>/terminal/deployment/`, separate from terminal and Yonk development launchers under their respective frontend directories; exporting cannot replace the development MCP binary. Conditional Playtest forwarding spans the generated launcher, game package, GnustoTerminal and Gnusto, so disabling default traits for deployment removes the server across that whole graph. `bin/build-game`, `bin/run-game` and `bin/gnusto-mcp` select development mode with Playtest enabled. `swift test` keeps the game package’s default Playtest trait; it does not build a terminal launcher.
 
 `bin/gnusto-mcp` is the launcher, and a generated package gets a shim over it:
 
@@ -130,7 +130,7 @@ A game whose map outruns a session's budget cannot be tested at its far end on f
 
 `open` takes a route by name and plays it silently. The tester is handed the frame it stopped on and never the commands: `recall` will not read them back, and the rooms the route crossed are not credited as anything the tester covered. `closing.json` records `prefixTurns`, so a round can say how much of a session was the harness walking rather than the tester playing.
 
-A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. If it no longer ends where its manifest claims, it is stale, and the failure says which room it ends in now.
+A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. Verification replays the route twice at its declared seed, with `look` and `inventory` each serving as the first observer of the route endpoint. Their pre-observer room, engine move count and score must agree, and the opening `look` must leave the player in that room because its result is the frame an MCP session opens on. The complete result is then compared with the declared landing: room and inventory are exact strings, while moves and score compare their printed numeric values. The move count comes from game status and is independent of the number of commands or captured frames. A difference in any field makes the route stale, and the failure names the field and both values.
 
 **A game with no routes needs nothing.** `.playtest/` starts empty, every session opens at turn zero, and a game's routes accumulate out of the sessions that found somewhere worth returning to.
 

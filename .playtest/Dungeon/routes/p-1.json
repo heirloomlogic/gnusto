@@ -664,7 +664,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:659]",
   "landing": {
     "room": "Tiny Room",
-    "moves": "646",
+    "moves": "644",
     "score": "586",
     "inventory": "You are carrying a set of skeleton keys, a welcome mat, a matchbook, and a brass lantern."
   }

@@ -724,7 +724,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:719]",
   "landing": {
     "room": "Slide Room",
-    "moves": "706",
+    "moves": "704",
     "score": "596",
     "inventory": "You are carrying a matchbook, a brass lantern, and a blue crystal sphere."
   }

@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
-import {buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
+import {acquireBuildLock, assertBuildCurrent, buildGame, makeBuildSpec, swiftStringLiteral} from '../lib/game-build.mjs';
 import {loadGames} from '../lib/game-catalog.mjs';
 const trait = 'traits: [.trait(name: "Playtest"), .default(enabledTraits: ["Playtest"])]';
 function fixture(t, {url = false} = {}) {
@@ -12,18 +12,144 @@ function fixture(t, {url = false} = {}) {
   const packageRoot = path.join(root, 'author-story');
   const engineRoot = path.join(root, 'engine space " $(touch sentinel)');
   const terminalRoot = path.join(root, 'terminal');
-  for (const dir of [packageRoot, engineRoot, terminalRoot]) { fs.mkdirSync(path.join(dir, 'Sources'), {recursive: true}); fs.writeFileSync(path.join(dir, 'Sources', 'content.swift'), '// content'); }
+  const yonkRoot = path.join(root, 'yonk');
+  for (const dir of [packageRoot, engineRoot, terminalRoot, yonkRoot]) { fs.mkdirSync(path.join(dir, 'Sources'), {recursive: true}); fs.writeFileSync(path.join(dir, 'Sources', 'content.swift'), '// content'); }
   fs.writeFileSync(path.join(engineRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}`);
   fs.writeFileSync(path.join(terminalRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}`);
+  fs.mkdirSync(path.join(yonkRoot, 'Sources/Yonk'), {recursive: true});
+  fs.writeFileSync(path.join(yonkRoot, 'Sources/Yonk/Yonk.swift'), '// Yonk source');
+  fs.writeFileSync(path.join(yonkRoot, 'Package.swift'), `// swift-tools-version: 6.2\nimport PackageDescription\nlet package = Package(name: "Yonk", products: [.library(name: "Yonk", targets: ["Yonk"])], dependencies: [.package(url: "https://github.com/HeirloomLogic/Gnusto.git", revision: "${'3'.repeat(40)}")], targets: [.target(name: "Yonk", dependencies: [.product(name: "Gnusto", package: "Gnusto")])])`);
   fs.writeFileSync(path.join(packageRoot, 'Package.swift'), `// swift-tools-version: 6.2\n${trait}\n.package(name: "Gnusto", ${url ? 'url: "https://github.com/HeirloomLogic/Gnusto", branch: "main"' : `path: ${swiftStringLiteral(engineRoot)}`}, traits: forwarded)`);
   fs.writeFileSync(path.join(packageRoot, 'gnusto-games.json'), JSON.stringify({version: 1, package: 'Story', games: [{name: 'Story', product: 'StoryLibrary', module: 'Story', symbol: 'game'}]}));
   const swift = path.join(root, 'fake-swift');
-  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){\n const scratch=a[a.indexOf('--scratch-path')+1], pkg=a[a.indexOf('--package-path')+1];fs.mkdirSync(scratch,{recursive:true});const file=path.join(scratch,'workspace-state.json');\n const workspace=fs.existsSync(file)?JSON.parse(fs.readFileSync(file)):{object:{dependencies:[]}};\n if(a.includes('edit')){\n  const id=a[a.indexOf('edit')+1];const remote=id==='gnustoterminal';const location='https://github.com/HeirloomLogic/'+(remote?'GnustoTerminal':'Gnusto');\n  const dependency={packageRef:{identity:id,kind:'remoteSourceControl',location},state:{name:'edited',path:remote?null:a[a.indexOf('--path')+1]}};\n  if(remote){dependency.subpath=id;dependency.basedOn={packageRef:dependency.packageRef,state:{name:'sourceControlCheckout',checkoutState:{branch:'main',revision:'a'.repeat(40)}}};const dir=path.join(pkg,'Packages',id);fs.mkdirSync(path.join(dir,'.git'),{recursive:true});fs.writeFileSync(path.join(dir,'.git/HEAD'),'a'.repeat(40));fs.writeFileSync(path.join(dir,'Package.swift'),'traits: [.trait(name: "Playtest")]');fs.writeFileSync(path.join(dir,'source.swift'),'BeforeEdit');}\n  workspace.object.dependencies=workspace.object.dependencies.filter(d=>d.packageRef.identity!==id);workspace.object.dependencies.push(dependency);fs.writeFileSync(file,JSON.stringify(workspace));\n }else{\n  if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}if(process.env.LOSE_FRONTEND_EDIT){workspace.object.dependencies.find(d=>d.packageRef.identity==='gnustoterminal').state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}\n  const edited=workspace.object.dependencies.find(d=>d.packageRef.identity==='gnusto');\n  console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:edited?.state.path||process.env.GNUSTO_ENGINE_PATH},...workspace.object.dependencies.filter(d=>d.packageRef.identity==='gnustoterminal').map(d=>({identity:d.packageRef.identity,name:'GnustoTerminal',path:path.join(pkg,'Packages',d.subpath)}))]}));\n }process.exit(0);\n}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_DEPENDENCY){if(process.env.DELETE_DEPENDENCY)fs.unlinkSync(process.env.MUTATE_DEPENDENCY);else fs.writeFileSync(process.env.MUTATE_DEPENDENCY,'AfterEdit');} if(process.env.MUTATE_FRONTEND){const pkg=a[a.indexOf('--package-path')+1];fs.writeFileSync(path.join(pkg,'Packages/gnustoterminal/source.swift'),'AfterEdit');} if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),a.includes('--disable-default-traits') ? '#!/usr/bin/env node\\n' + (process.env.PROBE_MODE === 'enabled' ? 'process.exit(1)' : 'console.log("Gnusto.PlaytestLaunchError.unavailable")') : process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
+  fs.writeFileSync(swift, `#!/usr/bin/env node\nimport fs from 'node:fs';\nimport path from 'node:path';\nconst a=process.argv.slice(2); fs.appendFileSync(process.env.LOG, JSON.stringify({args:a,engine:process.env.GNUSTO_ENGINE_PATH})+'\\n');\nif(a[0]==='--version'){console.log('Fake Swift 6.4');process.exit(0)}\nif(process.env.FAIL){process.exit(1)}\nif(a[0]==='package'){\n const scratch=a[a.indexOf('--scratch-path')+1], pkg=a[a.indexOf('--package-path')+1];fs.mkdirSync(scratch,{recursive:true});const file=path.join(scratch,'workspace-state.json');\n const workspace=fs.existsSync(file)?JSON.parse(fs.readFileSync(file)):{object:{dependencies:[]}};\n if(a.includes('edit')){\n  const id=a[a.indexOf('edit')+1];const remote=id==='gnustoterminal';const location='https://github.com/HeirloomLogic/'+(remote?'GnustoTerminal':'Gnusto');\n  const dependency={packageRef:{identity:id,kind:'remoteSourceControl',location},state:{name:'edited',path:remote?null:a[a.indexOf('--path')+1]}};\n  if(remote){dependency.subpath=id;dependency.basedOn={packageRef:dependency.packageRef,state:{name:'sourceControlCheckout',checkoutState:{branch:'main',revision:'a'.repeat(40)}}};const dir=path.join(pkg,'Packages',id);fs.mkdirSync(path.join(dir,'.git'),{recursive:true});fs.writeFileSync(path.join(dir,'.git/HEAD'),'a'.repeat(40));fs.writeFileSync(path.join(dir,'Package.swift'),'traits: [.trait(name: "Playtest")]');fs.writeFileSync(path.join(dir,'source.swift'),'BeforeEdit');}\n  workspace.object.dependencies=workspace.object.dependencies.filter(d=>d.packageRef.identity!==id);workspace.object.dependencies.push(dependency);fs.writeFileSync(file,JSON.stringify(workspace));\n }else{\n  if(process.env.LOSE_EDIT){workspace.object.dependencies[0].state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}if(process.env.LOSE_FRONTEND_EDIT){workspace.object.dependencies.find(d=>d.packageRef.identity==='gnustoterminal').state.name='sourceControlCheckout';fs.writeFileSync(file,JSON.stringify(workspace));}\n  const edited=workspace.object.dependencies.find(d=>d.packageRef.identity==='gnusto');\n  const manifest=fs.readFileSync(path.join(pkg,'Package.swift'),'utf8');console.log(JSON.stringify({identity:'package',dependencies:[{identity:'gnusto',name:'Gnusto',path:edited?.state.path||process.env.GNUSTO_ENGINE_PATH},...workspace.object.dependencies.filter(d=>d.packageRef.identity==='gnustoterminal').map(d=>({identity:d.packageRef.identity,name:'GnustoTerminal',path:path.join(pkg,'Packages',d.subpath)})),...(manifest.includes('package: \"Yonk\"')?[{identity:'yonk',name:'Yonk',path:path.join(pkg,'Frontends/yonk')}]:[])]}));\n }process.exit(0);\n}\nconst scratch=a[a.indexOf('--scratch-path')+1]; const bin=path.join(scratch,'out','Products','Debug');\nif(a.includes('--show-bin-path')) { if(process.env.MUTATE_DEPENDENCY){if(process.env.DELETE_DEPENDENCY)fs.unlinkSync(process.env.MUTATE_DEPENDENCY);else fs.writeFileSync(process.env.MUTATE_DEPENDENCY,'AfterEdit');} if(process.env.MUTATE_FRONTEND){const pkg=a[a.indexOf('--package-path')+1];fs.writeFileSync(path.join(pkg,'Packages/gnustoterminal/source.swift'),'AfterEdit');} if(process.env.MUTATE_SOURCE && !fs.existsSync(process.env.MUTATE_MARKER)){fs.writeFileSync(process.env.READ_SOURCE,'AfterEdit');fs.writeFileSync(process.env.MUTATE_MARKER,'done');} console.log(bin); }\nelse { await new Promise(r=>setTimeout(r,40)); fs.mkdirSync(bin,{recursive:true}); fs.writeFileSync(path.join(bin,a[a.indexOf('--product')+1]),a.includes('--disable-default-traits') ? '#!/usr/bin/env node\\n' + (process.env.PROBE_MODE === 'enabled' ? 'process.exit(1)' : 'console.log("Gnusto.PlaytestLaunchError.unavailable")') : process.env.READ_SOURCE ? fs.readFileSync(process.env.READ_SOURCE) : 'binary'); fs.chmodSync(path.join(bin,a[a.indexOf('--product')+1]),0o755); }\n`);
   fs.chmodSync(swift, 0o755);
   const environment = {...process.env, LOG: path.join(root, 'invocations'), GNUSTO_SWIFT_BUILD_FLAGS: '["--jobs","2"]'};
   const spec = makeBuildSpec({packageRoot, engineRoot, terminalRoot, game: loadGames(packageRoot).games[0], mode: 'development'});
   const log = () => fs.existsSync(environment.LOG) ? fs.readFileSync(environment.LOG, 'utf8').trim().split('\n').map(JSON.parse) : [];
-  return {root, packageRoot, engineRoot, terminalRoot, swift, environment, spec, log};
+  return {root, packageRoot, engineRoot, terminalRoot, yonkRoot, swift, environment, spec, log};
+}
+test('Yonk development specs use the public scene contract and an isolated frontend cache', t => {
+  const f = fixture(t);
+  const yonk = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'development', platform: 'darwin'});
+  assert.match(yonk.entryPoint, /Yonk\(Story\.game\)/);
+  assert.match(yonk.entryPoint, /import SwiftUI/);
+  assert.match(yonk.manifest, /product\(name: "Yonk", package: "Yonk"\)/);
+  assert.equal(yonk.frontend, 'yonk');
+  assert.equal(yonk.frontendRoot, fs.realpathSync(f.yonkRoot));
+  assert.match(yonk.generatedRoot, /Story\/yonk\/development$/);
+  assert.match(f.spec.generatedRoot, /Story\/terminal\/development$/);
+  assert.notEqual(yonk.scratchPath, f.spec.scratchPath);
+});
+test('Yonk rejects missing sources and unsupported platforms before Swift', t => {
+  const f = fixture(t);
+  assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', yonkRoot: null, game: 'Story', platform: 'darwin'}), /GNUSTO_YONK_PATH/);
+  assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'linux'}), /macOS/);
+  const deployed = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+  assert.match(deployed.entryPoint, /PlaytestLaunch.serve/);
+  assert.match(deployed.entryPoint, /--gnusto-verify-app/);
+  assert.match(deployed.generatedRoot, /yonk\/deployment$/);
+  assert.throws(() => makeBuildSpec({...f, frontend: 'unknown', game: 'Story'}), /Unknown frontend/);
+  assert.equal(f.log().length, 0);
+});
+test('Yonk source edits and deletions invalidate its warm development cache', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  let previous = await buildGame(spec, f);
+  const source = path.join(f.yonkRoot, 'Sources/Yonk/Yonk.swift');
+  fs.writeFileSync(source, '// changed Yonk source');
+  let next = await buildGame(spec, f); assert.notEqual(next.fingerprint, previous.fingerprint); previous = next;
+  fs.unlinkSync(source);
+  next = await buildGame(spec, f); assert.notEqual(next.fingerprint, previous.fingerprint);
+  const count = f.log().length;
+  assert.deepEqual(await buildGame(spec, f), next); assert.equal(f.log().length, count);
+});
+test('Yonk overlays retain frontend resources and bind URL authors to the edited engine', async t => {
+  const f = fixture(t, {url: true});
+  const manifestFile = path.join(f.yonkRoot, 'Package.swift');
+  const original = fs.readFileSync(manifestFile, 'utf8').replace('package: "Gnusto")])]', 'package: "Gnusto")], resources: [.process("Resources")])]');
+  fs.writeFileSync(manifestFile, original);
+  const resource = path.join(f.yonkRoot, 'Sources/Yonk/Resources/shader.metal');
+  fs.mkdirSync(path.dirname(resource), {recursive: true}); fs.writeFileSync(resource, 'shader source');
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  await buildGame(spec, f);
+  assert.match(spec.yonkOverlayManifest, /resources: \[.process\("Resources"\)\]/);
+  assert.match(spec.yonkOverlayManifest, /url: "https:\/\/github.com\/HeirloomLogic\/Gnusto", branch: "main"/);
+  assert.doesNotMatch(spec.yonkOverlayManifest, /name: "Gnusto", path:/);
+  assert.equal(fs.realpathSync(path.join(spec.yonkOverlayRoot, 'Sources/Yonk/Resources/shader.metal')), fs.realpathSync(resource));
+  assert.equal(fs.readFileSync(manifestFile, 'utf8'), original);
+  const previous = await buildGame(spec, f);
+  fs.unlinkSync(resource);
+  assert.notEqual((await buildGame(spec, f)).fingerprint, previous.fingerprint);
+});
+test('Yonk refuses source mutation during compilation without publishing cache state', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  await assert.rejects(buildGame(spec, {...f, environment: {...f.environment, MUTATE_DEPENDENCY: path.join(f.yonkRoot, 'Sources/Yonk/Yonk.swift')}}), /inputs changed/);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+});
+for (const change of ['edit', 'delete']) {
+  test(`Yonk rejects a ${change}d manifest after waiting for the actual build lock`, async t => {
+    const f = fixture(t);
+    const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+    const release = await acquireBuildLock(spec.generatedRoot);
+    t.after(release);
+    // buildGame reaches its lock await synchronously; this owner still holds it.
+    const waiting = buildGame(spec, f).then(result => ({result}), error => ({error}));
+    assert.equal(f.log().length, 0);
+    const manifest = path.join(f.yonkRoot, 'Package.swift');
+    if (change === 'delete') fs.unlinkSync(manifest);
+    else fs.appendFileSync(manifest, '\npackage.targets[0].resources = [.process("NewResources")]\n');
+    await release();
+    const outcome = await waiting;
+    assert(outcome.error, 'a stale manifest specification must not publish a build');
+    assert.match(outcome.error.message, /Yonk manifest changed|ENOENT/);
+    assert.equal(f.log().length, 0, 'reject before any Swift invocation');
+    assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+  });
+}
+test('Yonk refuses reused stale specs and a fresh spec preserves changed resource declarations', async t => {
+  const f = fixture(t);
+  const make = () => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const original = make();
+  await buildGame(original, f);
+  const stateFile = path.join(original.generatedRoot, 'build-state.json');
+  const oldState = fs.readFileSync(stateFile, 'utf8');
+  const manifest = path.join(f.yonkRoot, 'Package.swift');
+  fs.appendFileSync(manifest, '\npackage.targets[0].resources = [.process("NewResources")]\n');
+  const count = f.log().length;
+  await assert.rejects(buildGame(original, f), /Yonk manifest changed/);
+  assert.equal(f.log().length, count);
+  assert.equal(fs.readFileSync(stateFile, 'utf8'), oldState);
+  const current = make();
+  const built = await buildGame(current, f);
+  assert.match(fs.readFileSync(path.join(current.yonkOverlayRoot, 'Package.swift'), 'utf8'), /NewResources/);
+  const warmCount = f.log().length;
+  assert.deepEqual(await buildGame(current, f), built);
+  assert.equal(f.log().length, warmCount);
+  fs.unlinkSync(manifest);
+  await assert.rejects(buildGame(current, f), /Yonk manifest changed|ENOENT/);
+  assert.equal(f.log().length, warmCount);
+});
+for (const collision of ['directory', 'catalog', 'engine']) {
+  test(`Yonk rejects an author ${collision} identity collision before workspace creation`, t => {
+    const f = fixture(t);
+    if (collision === 'directory') {
+      const parent = path.join(f.root, 'authors'); fs.mkdirSync(parent);
+      const renamed = path.join(parent, 'YoNk'); fs.renameSync(f.packageRoot, renamed); f.packageRoot = renamed;
+    } else if (collision === 'catalog') {
+      const file = path.join(f.packageRoot, 'gnusto-games.json');
+      const catalog = JSON.parse(fs.readFileSync(file)); catalog.package = 'YoNk'; fs.writeFileSync(file, JSON.stringify(catalog));
+    } else {
+      const parent = path.join(f.root, 'engines'); fs.mkdirSync(parent);
+      const renamed = path.join(parent, 'YoNk'); fs.renameSync(f.engineRoot, renamed); f.engineRoot = renamed;
+      fs.writeFileSync(path.join(f.packageRoot, 'Package.swift'), `${trait}\n.package(name: "Gnusto", path: ${swiftStringLiteral(renamed)})`);
+    }
+    assert.throws(() => makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'}), /identity collision.*Yonk|identity collision.*yonk/i);
+    assert.equal(fs.existsSync(path.join(f.packageRoot, '.build-launchers')), false);
+    assert.equal(f.log().length, 0);
+    assert.doesNotThrow(() => makeBuildSpec({...f, frontend: 'terminal', game: 'Story', platform: 'darwin'}));
+  });
 }
 test('manifest uses the product separately from the module and forwards conditional traits', t => {
   const f = fixture(t);
@@ -91,7 +217,7 @@ test('CLI prints one absolute binary path or JSON and rejects unknown games befo
   const {spawnSync} = await import('node:child_process');
   const f = fixture(t);
   const cli = path.resolve('bin/build-game');
-  const environment = {...f.environment, GNUSTO_PACKAGE_PATH: f.packageRoot, GNUSTO_REPO: f.engineRoot, GNUSTO_TERMINAL_PATH: f.terminalRoot, GNUSTO_SWIFT: f.swift};
+  const environment = {...f.environment, GNUSTO_PACKAGE_PATH: f.packageRoot, GNUSTO_REPO: f.engineRoot, GNUSTO_TERMINAL_PATH: f.terminalRoot, GNUSTO_YONK_PATH: f.yonkRoot, GNUSTO_SWIFT: f.swift};
   const unknown = spawnSync(cli, ['Nobody'], {env: environment, encoding: 'utf8'});
   assert.equal(unknown.status, 2); assert.equal(unknown.stdout, ''); assert.equal(f.log().length, 0);
   const built = spawnSync(cli, ['Story', '--json'], {env: environment, encoding: 'utf8'});
@@ -99,6 +225,20 @@ test('CLI prints one absolute binary path or JSON and rejects unknown games befo
   const warmed = spawnSync(cli, ['Story'], {env: environment, encoding: 'utf8'});
   assert.equal(warmed.status, 0, warmed.stderr); assert.equal(warmed.stdout, result.binary + '\n');
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 1);
+  const beforeYonk = f.log().length;
+  const yonk = spawnSync(cli, ['Story', '--frontend', 'yonk', '--json'], {env: environment, encoding: 'utf8'});
+  if (process.platform === 'darwin') {
+    assert.equal(yonk.status, 0, yonk.stderr); const yonkResult = JSON.parse(yonk.stdout);
+    assert.match(yonkResult.packageRoot, /Story\/yonk\/development\/package$/);
+    assert.match(fs.readFileSync(path.join(yonkResult.packageRoot, `Sources/${f.spec.launcherTarget}/main.swift`), 'utf8'), /Yonk\(Story\.game\)/);
+    assert.equal(f.log().filter(item => item.args.includes('--product')).length, 2);
+  } else {
+    assert.equal(yonk.status, 2, yonk.stderr);
+    assert.equal(yonk.stdout, '');
+    assert.match(yonk.stderr, /Yonk development frontend requires macOS/);
+    assert.equal(f.log().length, beforeYonk);
+    assert.equal(fs.existsSync(path.join(f.packageRoot, '.build-launchers/Story/yonk')), false);
+  }
 });
 
 test('real path and URL author graphs share current Gnusto and resource-bearing source edits', {skip: process.env.GNUSTO_REAL_GRAPH !== '1', timeout: 1200000}, async t => {
@@ -469,4 +609,126 @@ test('deployment publishes state only after the direct engine probe returns unav
   const built = await buildGame(spec, f);
   assert.equal(f.log().filter(item => item.args.includes('--product')).length, 3);
   const count = f.log().length; assert.deepEqual(await buildGame(spec, f), built); assert.equal(f.log().length, count);
+});
+
+test('Yonk deployment checks the compiled engine trait and retains artifact provenance', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+  const built = await buildGame(spec, f);
+  await assertBuildCurrent(spec, built, f);
+  fs.appendFileSync(built.binary, '\n// changed build output');
+  await assert.rejects(assertBuildCurrent(spec, built, f), /artifacts changed/);
+  await assert.rejects(buildGame(spec, {...f, force: true, environment: {...f.environment, PROBE_MODE: 'enabled'}}), /without Playtest/);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+});
+
+test('app handoff refuses source edits after a successful build', async t => {
+  const f = fixture(t);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const built = await buildGame(spec, f);
+  fs.appendFileSync(path.join(f.packageRoot, 'Sources/content.swift'), '\n// new source');
+  await assert.rejects(assertBuildCurrent(spec, built, f), /inputs changed/);
+});
+
+for (const definition of ['catalog', 'author manifest', 'engine manifest']) {
+  for (const change of ['edit', 'delete']) test(`app specification rejects ${definition} ${change} while waiting for the build lock`, async t => {
+    const f = fixture(t);
+    const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', mode: 'deployment', platform: 'darwin'});
+    const release = await acquireBuildLock(spec.generatedRoot);
+    t.after(release);
+    const waiting = buildGame(spec, f).then(result => ({result}), error => ({error}));
+    const file = definition === 'catalog' ? path.join(f.packageRoot, 'gnusto-games.json') : path.join(definition === 'author manifest' ? f.packageRoot : f.engineRoot, 'Package.swift');
+    if (change === 'delete') fs.unlinkSync(file);
+    else fs.appendFileSync(file, '\n');
+    await release();
+    const outcome = await waiting;
+    assert(outcome.error, 'a captured app specification must not label old metadata with a new definition fingerprint');
+    assert.match(outcome.error.message, /definition changed|ENOENT/);
+    assert.equal(f.log().length, 0);
+    assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+  });
+}
+
+for (const mutation of ['binary', 'resource', 'deleted resource']) test(`mutated Yonk ${mutation} rebuilds without --force and becomes warm again`, async t => {
+  const f = fixture(t);
+  fs.appendFileSync(f.swift, `\nif(a[0]==='build' && !a.includes('--show-bin-path')) {\n const resource=path.join(bin,'Yonk_Yonk.bundle');fs.mkdirSync(resource,{recursive:true});fs.writeFileSync(path.join(resource,'CRTShaders.metal'),'original shader');\n const accessor=path.join(bin,'resource_bundle_accessor.swift');fs.writeFileSync(accessor,'Bundle.main.resourceURL.appendingPathComponent("Yonk_Yonk.bundle")');\n fs.writeFileSync(path.join(bin,'description.json'),JSON.stringify({writeCommands:{[path.join(bin,a[a.indexOf('--product')+1]+'.product/Objects.LinkFileList')]:{inputs:[{kind:'file',name:'yonk.o'}]}},swiftCommands:{Yonk:{moduleName:'Yonk',objects:['yonk.o'],inputs:[{name:accessor}]}}}));\n}\n`);
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const built = await buildGame(spec, f), resource = path.join(built.binDirectory, 'Yonk_Yonk.bundle/CRTShaders.metal');
+  if (mutation === 'binary') fs.appendFileSync(built.binary, 'corruption');
+  else if (mutation === 'resource') fs.writeFileSync(resource, 'corruption');
+  else fs.unlinkSync(resource);
+  await buildGame(spec, f);
+  assert.equal(f.log().filter(row => row.args.includes('--product')).length, 2);
+  assert.equal(fs.readFileSync(resource, 'utf8'), 'original shader');
+  await assertBuildCurrent(spec, built, f);
+  const calls = f.log().length;
+  await buildGame(spec, f);
+  assert.equal(f.log().length, calls);
+});
+
+for (const source of ['game', 'local dependency']) for (const mutation of ['edit', 'delete']) test(`${source} ${mutation} during artifact hashing cannot publish build state`, async t => {
+  const f = fixture(t), promises = (await import('node:fs/promises')).default;
+  const dependency = source === 'local dependency' ? recordAdditionalDependency(f, 'fileSystem') : null;
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  if (dependency) {
+    fs.mkdirSync(spec.scratchPath, {recursive: true});
+    fs.copyFileSync(path.join(f.spec.scratchPath, 'workspace-state.json'), path.join(spec.scratchPath, 'workspace-state.json'));
+  }
+  const file = dependency ? path.join(dependency, 'Sources/shared.swift') : path.join(f.packageRoot, 'Sources/content.swift');
+  const original = promises.readFile;
+  let changed = false;
+  promises.readFile = async function(fileToRead, ...args) {
+    const bytes = await original.call(this, fileToRead, ...args);
+    if (!changed && String(fileToRead) === path.join(spec.scratchPath, 'out/Products/Debug', spec.launcherProduct)) {
+      changed = true;
+      if (mutation === 'edit') fs.appendFileSync(file, '\n// changed during hashing'); else fs.unlinkSync(file);
+    }
+    return bytes;
+  };
+  try { await assert.rejects(buildGame(spec, f), /inputs changed/); }
+  finally { promises.readFile = original; }
+  assert(changed);
+  assert.equal(fs.existsSync(path.join(spec.generatedRoot, 'build-state.json')), false);
+});
+
+for (const scenario of ['unrelated Metal data', 'missing required shader']) test(`generated app verifier handles ${scenario}`, {skip: process.platform !== 'darwin'}, async t => {
+  const f = fixture(t), {spawnSync} = await import('node:child_process');
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'});
+  const helper = spec.entryPoint.slice(spec.entryPoint.indexOf('    @MainActor static func verifyResources()'), spec.entryPoint.indexOf('    @MainActor static func main()'));
+  const app = path.join(f.root, 'Probe.app'), resources = path.join(app, 'Contents/Resources'), executable = path.join(app, 'Contents/MacOS/Game');
+  fs.mkdirSync(path.dirname(executable), {recursive: true});
+  fs.mkdirSync(path.join(resources, 'Yonk_Yonk.bundle'), {recursive: true});
+  fs.writeFileSync(path.join(app, 'Contents/Info.plist'), '<plist version="1.0"><dict><key>CFBundleExecutable</key><string>Game</string><key>CFBundleIdentifier</key><string>org.gnusto.shader-probe</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>');
+  if (scenario === 'unrelated Metal data') {
+    fs.writeFileSync(path.join(resources, 'Yonk_Yonk.bundle/CRTShaders.metal'), '#include <metal_stdlib>\nusing namespace metal; kernel void probe() {}');
+    fs.mkdirSync(path.join(resources, 'Author_Data.bundle'));
+    fs.writeFileSync(path.join(resources, 'Author_Data.bundle/data.metal'), 'raw story data, not Metal source');
+  }
+  const swift = path.join(f.root, 'Probe.swift');
+  fs.writeFileSync(swift, `import Foundation\nimport Metal\n@main struct Probe {\n${helper}\n@MainActor static func main() { do { try verifyResources() } catch { print(error); exit(1) } }\n}\n`);
+  const compile = spawnSync('xcrun', ['swiftc', '-parse-as-library', swift, '-o', executable], {encoding: 'utf8'});
+  assert.equal(compile.status, 0, compile.stderr);
+  const result = spawnSync(executable, {encoding: 'utf8'});
+  assert.equal(result.status, scenario === 'unrelated Metal data' ? 0 : 1, result.stdout + result.stderr);
+});
+
+test('source edits during a warm artifact check rebuild rather than returning the old cache', async t => {
+  const f = fixture(t), promises = (await import('node:fs/promises')).default;
+  const spec = makeBuildSpec({...f, frontend: 'yonk', game: 'Story', platform: 'darwin'}), previous = await buildGame(spec, f);
+  const original = promises.readFile;
+  let changed = false;
+  promises.readFile = async function(file, ...args) {
+    const bytes = await original.call(this, file, ...args);
+    if (!changed && String(file) === previous.binary) {
+      changed = true;
+      fs.appendFileSync(path.join(f.packageRoot, 'Sources/content.swift'), '\n// changed during warm hashing');
+    }
+    return bytes;
+  };
+  let built;
+  try { built = await buildGame(spec, f); } finally { promises.readFile = original; }
+  assert(changed);
+  assert.notEqual(built.fingerprint, previous.fingerprint);
+  assert.equal(f.log().filter(row => row.args.includes('--product')).length, 2);
+  await assertBuildCurrent(spec, built, f);
 });

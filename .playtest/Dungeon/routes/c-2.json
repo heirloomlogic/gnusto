@@ -229,7 +229,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:224]",
   "landing": {
     "room": "Machine Room",
-    "moves": "220",
+    "moves": "218",
     "score": "225",
     "inventory": "You are carrying a small pile of coal, a screwdriver, and an ivory torch."
   }

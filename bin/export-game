@@ -18,21 +18,28 @@ try {
     else if (gameName !== undefined) throw new Error(`unexpected argument: ${word}`);
     else gameName = word;
   }
-  if (frontend === 'yonk') throw new Error('yonk frontend is unavailable until milestone 2');
-  if (frontend !== 'terminal') throw new Error(`unknown frontend: ${frontend}`);
+  if (frontend === 'yonk' && process.platform !== 'darwin') throw new Error('yonk frontend requires macOS');
+  if (frontend === 'yonk' && !process.env.GNUSTO_YONK_PATH) throw new Error('yonk frontend requires GNUSTO_YONK_PATH during the coordinated prerelease');
+  if (!['terminal', 'yonk'].includes(frontend)) throw new Error(`unknown frontend: ${frontend}`);
   const packageRoot = path.resolve(process.env.GNUSTO_PACKAGE_PATH || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   const catalog = loadGames(packageRoot);
   if (gameName === undefined) { console.log(catalog.games.map(game => game.name).join('\n')); process.exit(0); }
   const game = resolveCatalogGame(catalog, gameName);
-  const spec = makeBuildSpec({packageRoot, engineRoot: findEngineRoot(packageRoot), terminalRoot: process.env.GNUSTO_TERMINAL_PATH, game, mode: 'deployment'});
+  const spec = makeBuildSpec({packageRoot, engineRoot: findEngineRoot(packageRoot), terminalRoot: process.env.GNUSTO_TERMINAL_PATH, frontend, game, mode: 'deployment'});
   console.error(`Building ${game.name} (release, no play-test server)…`);
   const built = await buildGame(spec, {swift: process.env.GNUSTO_SWIFT || 'swift'});
   const controller = new AbortController();
   const interrupt = () => controller.abort();
   process.once('SIGINT', interrupt); process.once('SIGTERM', interrupt);
   let staged;
-  try { staged = await stageTerminalExport({...built, destination: path.join(packageRoot, 'dist', game.name), signal: controller.signal}); }
+  try { staged = frontend === 'yonk'
+    ? await (await import('./lib/game-app.mjs')).assembleGameApp(spec, built, {destinationDirectory: path.join(packageRoot, 'dist'), signal: controller.signal})
+    : await stageTerminalExport({...built, destination: path.join(packageRoot, 'dist', game.name), signal: controller.signal}); }
   finally { process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt); }
+  if (frontend === 'yonk') {
+    console.log(`Exported ${path.relative(packageRoot, staged.app)}. Share the complete .app directory with another macOS 15+ user. This ad-hoc signature is not notarization.`);
+    process.exit(0);
+  }
   console.log(`\n✔ Exported dist/${game.name}\n\nPlay it:      ./dist/${game.name}`);
   if (staged.resources.length) {
     console.log(`Share it:     distribute the complete directory ${path.relative(packageRoot, path.dirname(staged.resources[0]))}, including the executable and resource bundles.`);

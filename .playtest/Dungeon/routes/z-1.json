@@ -34,7 +34,7 @@
   "derivedFrom": "DungeonWalkthroughTests.route[0:29]",
   "landing": {
     "room": "Maze",
-    "moves": "31",
+    "moves": "29",
     "score": "40",
     "inventory": "You are carrying a jewel-encrusted egg, a set of skeleton keys, a clove of garlic, a brass lantern, and an elvish sword."
   }

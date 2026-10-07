@@ -52,6 +52,12 @@ let world = GameWorld(prepared: prepared)
 
 Launchers that support the engine's environment settings read ``SeedRequest``, ``StatusFooter`` and ``TranscriptRequest`` before constructing their handler. ``TranscriptRequest/init(gameTitled:environment:)`` takes the prepared game's title, resolves `GNUSTO_TRANSCRIPT`, and preflights the file by opening and closing it. Report its ``TranscriptRequest/complaint`` before an alternate-screen handler starts, then pass ``TranscriptRequest/url`` to the REPL. The request uses the same path rules and recorder as in-session `script` commands.
 
+Gnusto can generate a development launcher for the [Yonk](https://github.com/HeirloomLogic/Yonk) SwiftUI front end on macOS. Set `GNUSTO_YONK_PATH` to the coordinated Yonk checkout, then run `bin/run-game MyGame --frontend yonk`. The ignored package imports the selected game library and constructs `Yonk(MyGame.game)`; the game and engine libraries do not depend on Yonk. `bin/build-game MyGame --frontend yonk` prints the generated executable path without launching it.
+
+The generator records the exact Yonk path, its declared Gnusto revision and a source fingerprint. Its generated dependency overlay points at that source tree while binding Yonk to the same selected engine as the game, including an independent author package that declares Gnusto by path or URL. Terminal and Yonk use separate caches under `.build-launchers/<Game>/<Frontend>/<Mode>/`; edits and deletions in the game, engine or selected front end invalidate the corresponding warm launcher.
+
+Development and export use the same app assembler. `bin/export-game <Game> --frontend yonk` stages an ad-hoc-signed `.app` with linked resource bundles, stable bundle metadata and microphone/speech usage descriptions. See <doc:SharingYourGame> for the supported resource layout, optional ICNS icon, atomic replacement and remaining frontend qualification gates.
+
 An MCP launcher calls ``PlaytestLaunch/serve(_:environment:)`` with the factory and environment. The facade serves the real play-test server when the `Playtest` package trait is enabled, and throws ``PlaytestLaunchError/unavailable`` when it is disabled. Call it before creating a playing world or IO handler: MCP stdout belongs exclusively to the protocol.
 
 ## What a handler has to implement
@@ -136,7 +142,7 @@ The filename answer that opens an overwrite confirmation has no second `requeste
 
 ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives.
 
-A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. It leaves out a hidden door until it is revealed, a conditional exit while its condition is false, and every exit of a dark room. It flags an exit declared ``MapEntry/secret``, which a map should not draw until it has been walked.
+A map also needs to know what to draw around the room the player is in. ``GameWorld/mapView()`` returns a ``RoomMapView``: the room's ID and name, its ``mapRegion(_:)`` label, and the exits a map may show, each a ``MapExit``. It never says where an exit leads; a map learns that from ``TurnReport/movement`` when the player walks it. ``RoomMapView/exitObservation`` is ``RoomMapView/ExitObservation/complete`` when the exit dictionary is authoritative for what the player can currently observe. An empty complete dictionary removes unwalked stubs, but it does not claim the game's authored topology has no hidden or currently unavailable exits. ``RoomMapView/ExitObservation/unobserved`` means the exits could not be observed, as in darkness, so a map keeps what it learned on earlier visits. The dictionary is empty in that case. A hidden door remains omitted until it is revealed, and a conditional exit remains omitted while its condition is false. An exit declared ``MapEntry/secret`` is flagged so a map can leave it undrawn until the player has walked it.
 
 A tool that lays out the whole map ahead of play needs every room at once, which `mapView()` will not give. ``PreparedGame/declaredMap`` returns a ``DeclaredMap``: every declared room with its ID, name and region, and every exit with its direction, kind, declared destination, door and ``MapEntry/secret`` flag. It is read from the declarations and calls no exit condition or dynamic destination, so a dynamic exit has no destination in it. It lists exits as declared, whatever the world's state: a hidden door is a `door` exit before it is revealed, and a dark room's exits are listed too. Its room IDs are the ones `mapView()` and ``TurnReport/movement`` report. It exists only when Gnusto is compiled with its `Playtest` package trait, which is on by default. `--disable-default-traits` turns that trait off only in the package it is passed to, so a package that depends on Gnusto turns it off through its dependency's `traits:`, as a package made by `bin/new-game` does.
 
@@ -241,6 +247,7 @@ Gnusto supports iOS 18, whose floor comes from `Synchronization.Mutex`, and keep
 - ``TurnReport/OperationEvent``
 - ``GameWorld/mapView()``
 - ``RoomMapView``
+- ``RoomMapView/ExitObservation``
 - ``MapExit``
 - ``PreparedGame/declaredMap``
 - ``DeclaredMap``
