@@ -54,7 +54,10 @@ struct MCPBuildGateTests {
             try write(
                 #"{"version":1,"package":"Zwank","games":[{"name":"Zwank","product":"StoryLibrary","module":"StoryModule","symbol":"game"}]}"#,
                 to: game.appendingPathComponent("gnusto-games.json"))
-            for tool in ["bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs"] {
+            for tool in [
+                "bin/gnusto-mcp", "bin/build-game", "bin/lib/game-build.mjs", "bin/lib/game-catalog.mjs",
+                "bin/lib/game-export.mjs", "bin/lib/game-app.mjs",
+            ] {
                 try write(
                     String(contentsOf: repository.appendingPathComponent(tool), encoding: .utf8),
                     to: engine.appendingPathComponent(tool), executable: !tool.hasSuffix(".mjs"))
