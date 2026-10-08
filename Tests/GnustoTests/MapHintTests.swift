@@ -1,3 +1,4 @@
+import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
@@ -34,6 +35,39 @@ struct MapHintTests {
         expectDiagnostic(
             SecretPlacementGame(),
             "the placement of \"coin\" is declared .secret; only an exit can be secret.")
+    }
+
+    /// `.mapsTo(_:)` is recorded for a map and nothing else: walking the exit
+    /// still goes where the closure says.
+    @Test func aMapDestinationIsRecordedAndWalkingIgnoresIt() async throws {
+        let (definition, _) = try Bootstrap.build(MapsToGame())
+        guard case .dynamic(_, let mapsTo)? = definition.exits[EntityID("hall")]?[.up] else {
+            Issue.record("the hall's up exit is not dynamic")
+            return
+        }
+        #expect(mapsTo == EntityID("attic"))
+        #expect(!definition.reachableRooms.contains(EntityID("cellar")))
+
+        let up = turnOutput(of: "up", in: try await play(MapsToGame(), ["up"]))
+        #expect(up.contains("Cellar"))
+        #expect(!up.contains("Attic"))
+    }
+
+    @Test func mapsToAfterAnythingButADynamicExitIsFatal() {
+        let error = #expect(throws: BootstrapError.self) { try Bootstrap.build(BadMapsToGame()) }
+        let diagnostics = error?.diagnostics ?? []
+        #expect(
+            diagnostics.contains(
+                "the north exit from \"hall\" is declared .mapsTo(_:); only a dynamic exit can name a map destination.")
+        )
+        #expect(
+            diagnostics.contains(
+                "the placement of \"coin\" is declared .mapsTo(_:); only a dynamic exit can name a map destination."))
+        #expect(
+            diagnostics.contains(
+                "the map destination of \"hall\"'s east exit references a location the bootstrap never registered; "
+                    + "it must be a stored property of the game, or of a content bundle the game both stores and "
+                    + "lists in `var content`."))
     }
 
     @Test func aDuplicateOrBlankRegionIsFatal() {

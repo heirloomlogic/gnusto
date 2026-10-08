@@ -39,10 +39,12 @@ extension Dungeon {
         // `SLIDE-EXIT`. The chute always takes you; what the rope decides is
         // where you land. A dynamic exit rather than a conditional one for
         // exactly that reason — there is no refusal here, only two
-        // destinations.
+        // destinations. A map draws it to the chute's top stretch, whose `up`
+        // is the way back.
         mirrors.slideRoom.exit(
             .down,
-            toward: { chuteRopeRigged ? palantirWing.slideOne : house.cellar })
+            toward: { chuteRopeRigged ? palantirWing.slideOne : house.cellar }
+        ).mapsTo(palantirWing.slideOne)
 
         // Up out of the top stretch is the Slide Room again; down out of the
         // bottom stretch and off the ledge is the Cellar, both one-way.

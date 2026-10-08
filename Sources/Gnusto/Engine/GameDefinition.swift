@@ -10,8 +10,9 @@ enum ExitTarget: Sendable {
     /// An exit whose destination is resolved at `go` time rather than declared
     /// — the non-Euclidean passage. The other cases carry an `EntityID` the
     /// bootstrap resolved; this one carries the closure that produces one, so
-    /// it can answer differently on different turns.
-    case dynamic(destination: @Sendable () -> EntityID)
+    /// it can answer differently on different turns. `mapsTo` is the room a
+    /// map draws it to, if the author named one; nothing at play time reads it.
+    case dynamic(destination: @Sendable () -> EntityID, mapsTo: EntityID?)
 }
 
 extension String {

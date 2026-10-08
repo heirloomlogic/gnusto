@@ -593,7 +593,7 @@ enum DefaultActions {
             // current turn's state (globals, proxies) via `Ctx.current`.
             guard condition() else { try refuse(blocked) }
             try enter(destination, frame: frame, direction: direction, announcing: aside)
-        case .dynamic(let destination):
+        case .dynamic(let destination, _):
             // Same reason as the conditional gate: the closure reads this
             // turn's state through `Ctx.current`. Nothing downstream checks
             // that the room it names has anything to do with `direction` —
@@ -685,7 +685,7 @@ enum DefaultActions {
                     }
             case .conditional(let destination, _, _):
                 return gatedOnly && destination == there
-            case .dynamic(let destination):
+            case .dynamic(let destination, _):
                 // Second-class like a conditional, so an ordinary exit onto the
                 // same room still wins. This is the one kind whose destination
                 // has to be *run* to be compared — `&&` keeps that off the

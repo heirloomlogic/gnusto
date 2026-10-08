@@ -326,8 +326,9 @@ struct PlaytestResolution: Sendable, Equatable {
 /// hand over stays out by construction. A `.conditional` or `.dynamic` exit
 /// carries an author closure that has to run inside a live turn frame; running
 /// one out of turn to fill in a map would execute game code at a moment the
-/// engine never intended, so the survey reports the exit's *kind* and its
-/// declared destination where there is one, and never calls the closure.
+/// engine never intended, so the survey reports the exit's *kind*, the
+/// destination an `open`, `door` or `conditional` exit declares, and never
+/// calls the closure.
 struct PlaytestSurvey: Sendable {
     /// One room.
     struct Room: Sendable {

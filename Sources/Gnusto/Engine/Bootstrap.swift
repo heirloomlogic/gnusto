@@ -473,10 +473,27 @@ enum Bootstrap {
             }
         }
 
+        /// What a map entry that is not a dynamic exit declares, in a diagnostic's words, or `nil` for a dynamic exit.
+        func notDynamicExitSubject(of entry: MapEntry) -> String? {
+            switch entry.kind {
+            case .dynamicExit:
+                return nil
+            case .exit(let from, let direction, _), .blockedExit(let from, let direction, _),
+                .doorExit(let from, let direction, _, _), .conditionalExit(let from, let direction, _, _, _):
+                return "the \(direction) exit from \"\(registry.id(for: from)?.raw ?? "a location")\""
+            case .placement, .playerStart, .lockKey:
+                return nonExitSubject(of: entry)
+            }
+        }
+
         let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
         for entry in mapEntries {
             if entry.isSecret, let subject = nonExitSubject(of: entry) {
                 diagnostics.append("\(subject) is declared .secret; only an exit can be secret.")
+            }
+            if entry.mapDestination != nil, let subject = notDynamicExitSubject(of: entry) {
+                diagnostics.append(
+                    "\(subject) is declared .mapsTo(_:); only a dynamic exit can name a map destination.")
             }
             switch entry.kind {
             case .exit(let from, let direction, let to):
@@ -551,12 +568,18 @@ enum Bootstrap {
                 // wrapper is what makes that message findable: `fromID` and
                 // `direction` are in scope here and nowhere downstream — see
                 // `TurnFrame.dynamicDestination(_:from:toward:)`.
+                // The map destination is a plain room reference, so it is
+                // resolved like any other exit's. Only `DeclaredMap` reads it.
+                let mapsTo = entry.mapDestination.flatMap {
+                    resolveLocation($0, role: "the map destination of \"\(fromID)\"'s \(direction) exit")
+                }
                 claimExit(
                     .dynamic(
                         destination: {
                             Ctx.current.dynamicDestination(
                                 destination(), from: fromID, toward: direction)
-                        }),
+                        },
+                        mapsTo: mapsTo),
                     direction, from: fromID, secret: entry.isSecret)
 
             case .placement(let itemToken, let target):

@@ -169,6 +169,8 @@ closure:
 - **It is not validated at bootstrap, and an invalid destination traps.** The other four kinds name a room the bootstrap resolves at launch; this one is opaque until it runs, and running it at launch would prove nothing, because it may answer differently every turn. So a destination that isn't a stored property of the game — a `Location` built inside the closure, say — compiles and boots, and the first time anything asks the exit where it leads the engine stops the game with a `fatalError` naming the source room, the direction, and the name the returned `Location` declares. There is no in-game refusal to fall back on; this is an authoring mistake, and it is as fatal in a shipped binary as it is in a test.
 - **It contributes no destination to the reachable-room set**, described below.
 
+A map has nowhere to draw it either, until ``MapEntry/mapsTo(_:)`` names a room; see "Hints for a map".
+
 ## Computing the direction
 
 The general forms take a ``Direction`` value, which is what a loop needs. Dungeon's
@@ -250,11 +252,22 @@ more one-liners.
 
 ## Hints for a map
 
-Two declarations exist only for a front end that draws a map as the player explores. Nothing in a turn reads them, and most games need neither.
+These declarations exist only for a front end that draws a map. Nothing in a turn reads them, and most games need none of them.
 
 ``mapRegion(_:)`` draws every room declaring the same label as one shape. A maze is the reason: its rooms look alike to the player, and a map that drew each one would solve it for them. Zork 1's nineteen maze rooms each declare `mapRegion("Maze")`.
 
 ``MapEntry/secret``, written after an exit, keeps that exit off a map until the player has gone through it: `behindFalls.west(hiddenCave).secret`. A door declared `hidden` is already left off until it is revealed, and a conditional exit while its condition is false, so `.secret` is only for an exit that is always open and should still be a surprise. After a blocked exit, or after anything that is not an exit, it is a bootstrap error.
+
+``MapEntry/mapsTo(_:)``, written after a dynamic exit, names the room a map draws it to. A dynamic exit names no room until it is walked, so a tool that lays out the whole map before play has nowhere to draw it without one. Dungeon draws each carousel passage to where it leads once the floor is still:
+
+```swift
+crossroads.roundRoom.exit(
+    heading,
+    toward: { … }
+).mapsTo(destination)
+```
+
+``DeclaredMap`` reports that room as the exit's destination. Walking the exit still goes wherever the closure says, the room is not added to the reachable-room set, and ``GameWorld/mapView()`` still says nothing about where the exit leads. After anything that is not a dynamic exit, it is a bootstrap error.
 
 ## Topics
 
@@ -271,6 +284,7 @@ Two declarations exist only for a front end that draws a map as the player explo
 
 - ``mapRegion(_:)``
 - ``MapEntry/secret``
+- ``MapEntry/mapsTo(_:)``
 
 ### Placing the player, the cast, and the props
 

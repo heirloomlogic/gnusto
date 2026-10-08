@@ -207,6 +207,10 @@ public struct Location: Sendable, Equatable {
     ///   want; when it isn't, declare an ordinary exit as well, from whichever
     ///   room you want the adjacency to hold from.
     ///
+    /// A tool that lays out the whole map before play has nowhere to draw
+    /// this exit either. ``MapEntry/mapsTo(_:)`` names a room to draw it to,
+    /// and changes nothing about where it leads.
+    ///
     /// - Parameters:
     ///   - direction: the direction the exit lies in.
     ///   - destination: evaluated at `go` time; the room the exit leads to.

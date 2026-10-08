@@ -9,7 +9,8 @@
 /// ``TurnReport/movement`` report at runtime, so a tool can match the two.
 ///
 /// Reading it calls no author closure: a conditional exit's condition and a
-/// dynamic exit's destination are never run. It holds no prose, so blocked-exit
+/// dynamic exit's destination are never run. A dynamic exit reports the room
+/// its author named with ``MapEntry/mapsTo(_:)``, if any. It holds no prose, so blocked-exit
 /// messages and room descriptions are not in it. A move a rule makes, such as
 /// `arrive(at:)`, is not an exit and is not in it either.
 ///
@@ -62,9 +63,10 @@ public struct DeclaredMap: Sendable, Codable, Equatable {
         public let direction: Direction
         /// How it was declared.
         public let kind: Kind
-        /// The declared destination of an `open`, `door` or `conditional` exit.
-        /// `nil` for `blocked`, which leads nowhere, and for `dynamic`, which
-        /// names no destination until it is walked.
+        /// The declared destination of an `open`, `door` or `conditional` exit,
+        /// or the room a `dynamic` exit was declared to map to with
+        /// ``MapEntry/mapsTo(_:)``. `nil` for `blocked`, which leads nowhere,
+        /// and for a `dynamic` exit that declares no map destination.
         public let destination: EntityID?
         /// The door item of a `door` exit; `nil` otherwise.
         public let door: EntityID?
@@ -102,7 +104,7 @@ extension DeclaredMap.Exit {
             case .blocked: (.blocked, nil, nil)
             case .door(let destination, let door): (.door, destination, door)
             case .conditional(let destination, _, _): (.conditional, destination, nil)
-            case .dynamic: (.dynamic, nil, nil)
+            case .dynamic(_, let mapsTo): (.dynamic, mapsTo, nil)
             }
     }
 }
