@@ -133,7 +133,7 @@ Here the destination is the closure, and the exit is always passable:
 
 ```swift
 mirrors.slideRoom.down(mapsTo: palantirWing.slideOne) {
-    palantirWing.chuteRopeRigged ? palantirWing.slideOne : house.cellar
+    chuteRopeRigged ? palantirWing.slideOne : house.cellar
 }
 ```
 
