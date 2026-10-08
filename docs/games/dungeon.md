@@ -433,7 +433,7 @@ door, the hatch.
 
 **But "rewrites exits" is the wrong shape for the problem, and no exit kind
 fits it.** Since the Bank of Zork spike, a destination *can* be computed at `go`
-time — ``Location/exit(_:toward:)``, below. That still does not help here, for
+time — ``Location/exit(_:mapsTo:toward:)``, below. That still does not help here, for
 two reasons that outlast it. An exit answers *where you go*, and walking one
 square north inside the puzzle is not travel between rooms at all: there is no
 destination to compute, and routing it through an exit would fire the room's
@@ -535,7 +535,7 @@ destination's `onEnter` rules and leaves a boarded vehicle behind. At the Bank
 that is survivable. At the balloon (spiked next) it is not.
 
 So the answer is **a fifth exit kind, then ordinary in-game rules on top of it**:
-``Location/exit(_:toward:)``, whose destination is a closure evaluated in the live
+``Location/exit(_:mapsTo:toward:)``, whose destination is a closure evaluated in the live
 turn frame and which travels through the same `enter()` as every other passable
 exit.
 

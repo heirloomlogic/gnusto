@@ -159,28 +159,23 @@ struct MapsToGame: Game {
 
     var map: WorldMap {
         player.starts(in: hall)
-        hall.up { cellar }.mapsTo(attic)
+        hall.up(mapsTo: attic) { cellar }
         attic.down(hall)
         cellar.up(hall)
     }
 }
 
-/// `.mapsTo(_:)` after a plain exit, a placement, and naming a room the
-/// bootstrap never registered.
+/// A dynamic exit whose `mapsTo:` names a room the bootstrap never registered.
 struct BadMapsToGame: Game {
     let title = "Bad Maps To"
-    let intro = "A hall and a coin."
+    let intro = "A hall."
 
     let hall = Location { name("Hall") }
     let attic = Location { name("Attic") }
-    let coin = Item { name("coin") }
     var nowhere: Location { Location { name("Nowhere") } }
 
     var map: WorldMap {
         player.starts(in: hall)
-        hall.north(attic).mapsTo(attic)
-        coin.starts(in: hall).mapsTo(attic)
-        hall.east { attic }.mapsTo(nowhere)
-        attic.south(hall)
+        hall.east(mapsTo: nowhere) { attic }
     }
 }

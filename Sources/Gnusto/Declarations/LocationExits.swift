@@ -7,6 +7,7 @@
 //   room.west(forest, when: { flag }, otherwise: "…") // live-condition gate
 //   room.east(blocked: "A wall blocks the way.")      // blocked with a message
 //   room.up { storm ? attic : roof }                  // destination chosen at go time
+//   room.up(mapsTo: attic) { storm ? attic : roof }   // … and drawn to the attic on a map
 //
 // The five families (plain / via / when / blocked / toward) repeat once per
 // direction. Keeping them one-liners means the compass vocabulary reads
@@ -531,97 +532,133 @@ extension Location {
 
     /// A north exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func north(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.north, toward: destination) }
+    ) -> MapEntry { exit(.north, mapsTo: mapsTo, toward: destination) }
 
     /// A south exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func south(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.south, toward: destination) }
+    ) -> MapEntry { exit(.south, mapsTo: mapsTo, toward: destination) }
 
     /// An east exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func east(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.east, toward: destination) }
+    ) -> MapEntry { exit(.east, mapsTo: mapsTo, toward: destination) }
 
     /// A west exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func west(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.west, toward: destination) }
+    ) -> MapEntry { exit(.west, mapsTo: mapsTo, toward: destination) }
 
     /// A northeast exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func northeast(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.northeast, toward: destination) }
+    ) -> MapEntry { exit(.northeast, mapsTo: mapsTo, toward: destination) }
 
     /// A northwest exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func northwest(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.northwest, toward: destination) }
+    ) -> MapEntry { exit(.northwest, mapsTo: mapsTo, toward: destination) }
 
     /// A southeast exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func southeast(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.southeast, toward: destination) }
+    ) -> MapEntry { exit(.southeast, mapsTo: mapsTo, toward: destination) }
 
     /// A southwest exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func southwest(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.southwest, toward: destination) }
+    ) -> MapEntry { exit(.southwest, mapsTo: mapsTo, toward: destination) }
 
     /// An up exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func up(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.up, toward: destination) }
+    ) -> MapEntry { exit(.up, mapsTo: mapsTo, toward: destination) }
 
     /// A down exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func down(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.down, toward: destination) }
+    ) -> MapEntry { exit(.down, mapsTo: mapsTo, toward: destination) }
 
     /// An in exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func `in`(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.in, toward: destination) }
+    ) -> MapEntry { exit(.in, mapsTo: mapsTo, toward: destination) }
 
     /// An out exit whose destination is chosen at `go` time.
     ///
-    /// - Parameter destination: evaluated at `go` time; the room it leads to.
+    /// - Parameters:
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
+    ///   - destination: evaluated at `go` time; the room it leads to.
     /// - Returns: the map entry for this exit.
     public func out(
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
-    ) -> MapEntry { exit(.out, toward: destination) }
+    ) -> MapEntry { exit(.out, mapsTo: mapsTo, toward: destination) }
 }

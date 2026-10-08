@@ -193,9 +193,9 @@ private struct ExitTrapGame: Game {
             onCall()
             return garden
         }
-        hall.west {
+        hall.west(mapsTo: cellar) {
             onCall()
             return garden
-        }.mapsTo(cellar)
+        }
     }
 }

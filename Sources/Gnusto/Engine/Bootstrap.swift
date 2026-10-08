@@ -473,27 +473,10 @@ enum Bootstrap {
             }
         }
 
-        /// What a map entry that is not a dynamic exit declares, in a diagnostic's words, or `nil` for a dynamic exit.
-        func notDynamicExitSubject(of entry: MapEntry) -> String? {
-            switch entry.kind {
-            case .dynamicExit:
-                return nil
-            case .exit(let from, let direction, _), .blockedExit(let from, let direction, _),
-                .doorExit(let from, let direction, _, _), .conditionalExit(let from, let direction, _, _, _):
-                return "the \(direction) exit from \"\(registry.id(for: from)?.raw ?? "a location")\""
-            case .placement, .playerStart, .lockKey:
-                return nonExitSubject(of: entry)
-            }
-        }
-
         let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
         for entry in mapEntries {
             if entry.isSecret, let subject = nonExitSubject(of: entry) {
                 diagnostics.append("\(subject) is declared .secret; only an exit can be secret.")
-            }
-            if entry.mapDestination != nil, let subject = notDynamicExitSubject(of: entry) {
-                diagnostics.append(
-                    "\(subject) is declared .mapsTo(_:); only a dynamic exit can name a map destination.")
             }
             switch entry.kind {
             case .exit(let from, let direction, let to):
@@ -554,23 +537,24 @@ enum Bootstrap {
                     .conditional(to: toID, condition: condition, blocked: blocked),
                     direction, from: fromID, secret: entry.isSecret)
 
-            case .dynamicExit(let from, let direction, let destination):
+            case .dynamicExit(let from, let direction, let mapsTo, let destination):
                 guard
                     let fromID = resolveLocation(
                         from, role: "the source of a dynamic \(direction) exit")
                 else { continue }
                 // The destination is a closure, so there is nothing to resolve
                 // here and nothing to add to `reachableRooms` — see
-                // `Location.exit(_:toward:)` for what that costs. Claiming the
+                // `Location.exit(_:mapsTo:toward:)` for what that costs. Claiming the
                 // direction is still checked: it is the one mistake this exit
                 // kind can make that bootstrap can still catch.
                 // The result is checked instead when the closure runs, and the
                 // wrapper is what makes that message findable: `fromID` and
                 // `direction` are in scope here and nowhere downstream — see
                 // `TurnFrame.dynamicDestination(_:from:toward:)`.
+
                 // The map destination is a plain room reference, so it is
                 // resolved like any other exit's. Only `DeclaredMap` reads it.
-                let mapsTo = entry.mapDestination.flatMap {
+                let mapsToID = mapsTo.flatMap {
                     resolveLocation($0, role: "the map destination of \"\(fromID)\"'s \(direction) exit")
                 }
                 claimExit(
@@ -579,7 +563,7 @@ enum Bootstrap {
                             Ctx.current.dynamicDestination(
                                 destination(), from: fromID, toward: direction)
                         },
-                        mapsTo: mapsTo),
+                        mapsTo: mapsToID),
                     direction, from: fromID, secret: entry.isSecret)
 
             case .placement(let itemToken, let target):
@@ -1183,7 +1167,7 @@ enum Bootstrap {
                         .conditional(let destination, _, _):
                         destination
                     // A dynamic exit names no room until it runs, so it can
-                    // contribute none — documented on `exit(_:toward:)`.
+                    // contribute none — documented on `exit(_:mapsTo:toward:)`.
                     case .blocked, .dynamic:
                         nil
                     }

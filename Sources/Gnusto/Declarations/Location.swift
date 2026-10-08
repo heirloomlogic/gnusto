@@ -208,19 +208,31 @@ public struct Location: Sendable, Equatable {
     ///   room you want the adjacency to hold from.
     ///
     /// A tool that lays out the whole map before play has nowhere to draw
-    /// this exit either. ``MapEntry/mapsTo(_:)`` names a room to draw it to,
-    /// and changes nothing about where it leads.
+    /// this exit either. `mapsTo` names the room to draw it to:
+    ///
+    /// ```swift
+    /// slideRoom.exit(.down, mapsTo: chute) { ropeRigged ? chute : cellar }
+    /// ```
+    ///
+    /// ``DeclaredMap`` reports that room as the exit's destination. Nothing
+    /// else reads it: walking the exit still goes wherever the closure says,
+    /// the room is not added to the reachable-room set or the adjacency, and
+    /// ``GameWorld/mapView()`` still reports the exit's ``MapExit`` kind as
+    /// `unknownDestination`.
     ///
     /// - Parameters:
     ///   - direction: the direction the exit lies in.
+    ///   - mapsTo: the room a map draws the exit to; `nil` leaves it undrawn.
     ///   - destination: evaluated at `go` time; the room the exit leads to.
     /// - Returns: the map entry declaring the exit.
     public func exit(
         _ direction: Direction,
+        mapsTo: Location? = nil,
         toward destination: @escaping @Sendable () -> Location
     ) -> MapEntry {
         MapEntry(
-            kind: .dynamicExit(from: token, direction: direction, destination: destination))
+            kind: .dynamicExit(
+                from: token, direction: direction, mapsTo: mapsTo?.token, destination: destination))
     }
 
     // MARK: - Rule factories

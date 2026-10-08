@@ -18,9 +18,10 @@ public struct MapEntry: Sendable {
             condition: @Sendable () -> Bool, blocked: String)
         /// An exit whose *destination* is chosen at `go` time. The other four
         /// kinds name their destination up front; this one names a closure,
-        /// which is what a non-Euclidean passage needs.
+        /// which is what a non-Euclidean passage needs. `mapsTo` is the room a
+        /// map draws it to, if the author named one.
         case dynamicExit(
-            from: RefToken, direction: Direction,
+            from: RefToken, direction: Direction, mapsTo: RefToken?,
             destination: @Sendable () -> Location)
         case placement(item: RefToken, target: PlacementTarget)
         case playerStart(RefToken)
@@ -61,31 +62,6 @@ public struct MapEntry: Sendable {
     public var secret: MapEntry {
         var entry = self
         entry.isSecret = true
-        return entry
-    }
-
-    /// The room a map draws this dynamic exit to. Set by ``mapsTo(_:)``.
-    var mapDestination: RefToken?
-
-    /// This dynamic exit, drawn on a map as a passage to `room`.
-    ///
-    /// A dynamic exit names no room until it is walked, so a tool that lays out the whole map before play has nowhere to draw it. Name the room it belongs next to on the finished map:
-    ///
-    /// ```swift
-    /// var map: WorldMap {
-    ///     slideRoom.down { ropeRigged ? chute : cellar }.mapsTo(chute)
-    /// }
-    /// ```
-    ///
-    /// ``DeclaredMap`` reports `room` as the exit's destination. Nothing else reads it. Walking the exit still goes wherever the closure says. The room is not added to the rooms the engine treats as reachable or adjacent, and ``GameWorld/mapView()`` still reports the exit's ``MapExit`` kind as `unknownDestination`.
-    ///
-    /// Written after anything that is not a dynamic exit, it is a bootstrap error.
-    ///
-    /// - Parameter room: the room the exit leads to on the map.
-    /// - Returns: this entry with its map destination set.
-    public func mapsTo(_ room: Location) -> MapEntry {
-        var entry = self
-        entry.mapDestination = room.token
         return entry
     }
 }
