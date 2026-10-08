@@ -537,26 +537,31 @@ enum Bootstrap {
                     .conditional(to: toID, condition: condition, blocked: blocked),
                     direction, from: fromID, secret: entry.isSecret)
 
-            case .dynamicExit(let from, let direction, let destination):
+            case .dynamicExit(let from, let direction, let mapsTo, let destination):
                 guard
                     let fromID = resolveLocation(
                         from, role: "the source of a dynamic \(direction) exit")
                 else { continue }
                 // The destination is a closure, so there is nothing to resolve
                 // here and nothing to add to `reachableRooms` — see
-                // `Location.exit(_:toward:)` for what that costs. Claiming the
-                // direction is still checked: it is the one mistake this exit
-                // kind can make that bootstrap can still catch.
-                // The result is checked instead when the closure runs, and the
+                // `Location.exit(_:mapsTo:toward:)` for what that costs. The
+                // bootstrap still checks the direction's claim, and resolves the
+                // map destination, which is a plain room reference like any
+                // other exit's; only `DeclaredMap` reads it.
+                // The closure's result is checked when it runs, and the
                 // wrapper is what makes that message findable: `fromID` and
                 // `direction` are in scope here and nowhere downstream — see
                 // `TurnFrame.dynamicDestination(_:from:toward:)`.
+                let mapsToID = mapsTo.flatMap {
+                    resolveLocation($0, role: "the map destination of \"\(fromID)\"'s \(direction) exit")
+                }
                 claimExit(
                     .dynamic(
                         destination: {
                             Ctx.current.dynamicDestination(
                                 destination(), from: fromID, toward: direction)
-                        }),
+                        },
+                        mapsTo: mapsToID),
                     direction, from: fromID, secret: entry.isSecret)
 
             case .placement(let itemToken, let target):
@@ -1160,7 +1165,7 @@ enum Bootstrap {
                         .conditional(let destination, _, _):
                         destination
                     // A dynamic exit names no room until it runs, so it can
-                    // contribute none — documented on `exit(_:toward:)`.
+                    // contribute none — documented on `exit(_:mapsTo:toward:)`.
                     case .blocked, .dynamic:
                         nil
                     }

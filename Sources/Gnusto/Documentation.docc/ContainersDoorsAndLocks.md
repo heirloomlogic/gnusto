@@ -309,7 +309,7 @@ var map: WorldMap {
 }
 ```
 
-A conditional exit decides *whether* the player moves. When what you need to decide is *where* they arrive — one passage that leads to different rooms on different turns — use ``Location/exit(_:toward:)``, whose destination is the closure rather than the gate:
+A conditional exit decides *whether* the player moves. When what you need to decide is *where* they arrive — one passage that leads to different rooms on different turns — use ``Location/exit(_:mapsTo:toward:)``, whose destination is the closure rather than the gate:
 
 ```swift
 @Global var lastViewingRoom = ViewingSide.west

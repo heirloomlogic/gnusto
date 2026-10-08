@@ -33,6 +33,34 @@ struct DeclaredMapCoverageTests {
         try expectComplete(Dungeon())
     }
 
+    /// Every dynamic exit in Dungeon names a room for a map, and that room is
+    /// one the map lists. The survey describes play, so it still reports no
+    /// destination for any of them.
+    @Test func everyDungeonDynamicExitHasAMapDestination() throws {
+        let prepared = try PreparedGame(Dungeon())
+        let rooms = Dictionary(uniqueKeysWithValues: prepared.declaredMap.rooms.map { ($0.id, $0) })
+        let dynamic = rooms.values.flatMap { room in
+            room.exits.filter { $0.kind == .dynamic }.map { (room.id, $0) }
+        }
+        // The nine carousel exits and the slide room's way down.
+        #expect(dynamic.count == 10)
+        for (roomID, exit) in dynamic {
+            let destination = try #require(exit.destination, "\(roomID) \(exit.direction)")
+            #expect(rooms[destination] != nil, "\(roomID) \(exit.direction)")
+        }
+        func destination(_ room: String, _ direction: Direction) -> EntityID? {
+            rooms[EntityID(room)]?.exits.first { $0.direction == direction }?.destination
+        }
+        #expect(destination("DungeonRoundRoom.roundRoom", .north) == EntityID("DungeonTemple.engravingsCave"))
+        #expect(destination("DungeonMirror.slideRoom", .down) == EntityID("DungeonPalantir.slideOne"))
+
+        let survey = PlaytestSurvey(prepared.definition).json
+        let surveyed = try #require(survey["rooms"]?.arrayValue).flatMap { $0["exits"]?.arrayValue ?? [] }
+        let surveyedDynamic = surveyed.filter { $0["kind"]?.stringValue == "dynamic" }
+        #expect(surveyedDynamic.count == dynamic.count)
+        #expect(surveyedDynamic.allSatisfy { $0["destination"] == nil })
+    }
+
     /// The survey reads its exits through the export but keeps listing them in
     /// alphabetical order of direction, as it did before the export existed.
     @Test func theSurveyListsExitsAlphabetically() throws {

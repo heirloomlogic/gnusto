@@ -1397,16 +1397,15 @@ struct Dungeon: Game {
         // out. Travelling through the exit rather than assigning
         // `player.location` is what keeps the East-West Passage's five points
         // payable: they are an `onEnter` award, and only `enter()` runs those.
+        // A map draws each passage to where it leads once the floor is still.
         let exits = carouselExits
         for (heading, destination) in exits {
-            crossroads.roundRoom.exit(
-                heading,
-                toward: {
-                    // A read, not a roll: a dynamic exit's closure may be asked
-                    // more than once in a turn, and `FOLLOW` asks all eight.
-                    crossroads.carouselSpinning
-                        ? exits[crossroads.carouselTwist % exits.count].1 : destination
-                })
+            crossroads.roundRoom.exit(heading, mapsTo: destination) {
+                // A read, not a roll: a dynamic exit's closure may be asked
+                // more than once in a turn, and `FOLLOW` may ask every one.
+                crossroads.carouselSpinning
+                    ? exits[crossroads.carouselTwist % exits.count].1 : destination
+            }
         }
 
         // The Deep Ravine's west crawl, which milestone 2 left as a seam: it

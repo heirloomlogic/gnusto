@@ -132,25 +132,23 @@ Its `otherwise:` refusal follows the same rule as `blocked:`: explicitly blank t
 Here the destination is the closure, and the exit is always passable:
 
 ```swift
-mirrors.slideRoom.exit(
-    .down,
-    toward: { palantirWing.chuteRopeRigged ? palantirWing.slideOne : house.cellar })
+mirrors.slideRoom.down(mapsTo: palantirWing.slideOne) {
+    chuteRopeRigged ? palantirWing.slideOne : house.cellar
+}
 ```
 
 That is Dungeon's chute: it always takes you, and what the rope decides is where
 you land. Nothing downstream checks that the room the closure names has anything
 to do with the direction, which is what makes a non-Euclidean passage possible at
-all. Dungeon's Round Room is eight headings over one turning floor:
+all. Dungeon's Round Room is nine headings over one turning floor:
 
 ```swift
 let exits = carouselExits
 for (heading, destination) in exits {
-    crossroads.roundRoom.exit(
-        heading,
-        toward: {
-            crossroads.carouselSpinning
-                ? exits[crossroads.carouselTwist % exits.count].1 : destination
-        })
+    crossroads.roundRoom.exit(heading, mapsTo: destination) {
+        crossroads.carouselSpinning
+            ? exits[crossroads.carouselTwist % exits.count].1 : destination
+    }
 }
 ```
 
@@ -160,7 +158,7 @@ is the difference between this and assigning ``Player/location`` from a rule,
 where neither happens — and it is why the Round Room's carousel can still pay out
 an `onEnter` award.
 
-The general form is ``Location/exit(_:toward:)``. Three things come with the
+The general form is ``Location/exit(_:mapsTo:toward:)``. Three things come with the
 closure:
 
 - **It is a read.** It may run more than once in a turn — `FOLLOW` asks it which
@@ -168,6 +166,8 @@ closure:
   rather than change any. A die rolled here is rolled twice.
 - **It is not validated at bootstrap, and an invalid destination traps.** The other four kinds name a room the bootstrap resolves at launch; this one is opaque until it runs, and running it at launch would prove nothing, because it may answer differently every turn. So a destination that isn't a stored property of the game — a `Location` built inside the closure, say — compiles and boots, and the first time anything asks the exit where it leads the engine stops the game with a `fatalError` naming the source room, the direction, and the name the returned `Location` declares. There is no in-game refusal to fall back on; this is an authoring mistake, and it is as fatal in a shipped binary as it is in a test.
 - **It contributes no destination to the reachable-room set**, described below.
+
+A map has nowhere to draw it either, until `mapsTo:` names a room; see "Hints for a map".
 
 ## Computing the direction
 
@@ -250,11 +250,19 @@ more one-liners.
 
 ## Hints for a map
 
-Two declarations exist only for a front end that draws a map as the player explores. Nothing in a turn reads them, and most games need neither.
+These declarations exist only for a front end that draws a map. Nothing in a turn reads them, and most games need none of them.
 
 ``mapRegion(_:)`` draws every room declaring the same label as one shape. A maze is the reason: its rooms look alike to the player, and a map that drew each one would solve it for them. Zork 1's nineteen maze rooms each declare `mapRegion("Maze")`.
 
 ``MapEntry/secret``, written after an exit, keeps that exit off a map until the player has gone through it: `behindFalls.west(hiddenCave).secret`. A door declared `hidden` is already left off until it is revealed, and a conditional exit while its condition is false, so `.secret` is only for an exit that is always open and should still be a surprise. After a blocked exit, or after anything that is not an exit, it is a bootstrap error.
+
+The `mapsTo:` argument of a dynamic exit names the room a map draws it to. A dynamic exit names no room until it is walked, so a tool that lays out the whole map before play has nowhere to draw it without one. Dungeon draws each carousel passage to where it leads once the floor is still:
+
+```swift
+crossroads.roundRoom.exit(heading, mapsTo: destination) { … }
+```
+
+``DeclaredMap`` reports that room as the exit's destination. Walking the exit still goes wherever the closure says, the room is not added to the reachable-room set, and ``GameWorld/mapView()`` still says nothing about where the exit leads. Only a dynamic exit takes `mapsTo:`; every other kind already names its room or leads nowhere.
 
 ## Topics
 
@@ -264,7 +272,7 @@ Two declarations exist only for a front end that draws a map as the player explo
 - ``Location/exit(_:blocked:)``
 - ``Location/exit(_:to:via:)``
 - ``Location/exit(_:to:when:otherwise:)``
-- ``Location/exit(_:toward:)``
+- ``Location/exit(_:mapsTo:toward:)``
 - ``Direction``
 
 ### Hints for a map

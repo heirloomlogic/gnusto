@@ -63,7 +63,13 @@ struct DeclaredMapTests {
         _ = try JSONEncoder().encode(map)
         #expect(calls.withLock { $0 } == 0)
         let hall = try room("hall", in: map)
-        #expect(hall.exits.map(\.kind) == [.conditional, .dynamic])
+        // A dynamic exit reports the room it maps to, or no destination at all.
+        #expect(
+            hall.exits.map(\.summary) == [
+                "north conditional garden",
+                "east dynamic",
+                "west dynamic cellar",
+            ])
 
         // The closures are live: walking the dynamic exit calls one.
         let world = GameWorld(prepared: prepared, seed: 0)
@@ -155,7 +161,8 @@ extension DeclaredMap.Exit {
     }
 }
 
-/// One conditional and one dynamic exit, both reporting every call.
+/// One conditional exit and two dynamic ones, all reporting every call. The
+/// west exit is drawn to the cellar on a map, and walked to the garden.
 private struct ExitTrapGame: Game {
     let title = "Exit Trap"
     let intro = "A trap for a map reader."
@@ -169,6 +176,10 @@ private struct ExitTrapGame: Game {
         name("Garden")
         description("A garden.")
     }
+    let cellar = Location {
+        name("Cellar")
+        description("A cellar.")
+    }
 
     var map: WorldMap {
         player.starts(in: hall)
@@ -179,6 +190,10 @@ private struct ExitTrapGame: Game {
                 return true
             }, otherwise: "Shut.")
         hall.east {
+            onCall()
+            return garden
+        }
+        hall.west(mapsTo: cellar) {
             onCall()
             return garden
         }

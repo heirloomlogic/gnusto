@@ -64,7 +64,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Location/exit(_:to:)``
 - ``Location/exit(_:to:via:)``
 - ``Location/exit(_:to:when:otherwise:)``
-- ``Location/exit(_:toward:)``
+- ``Location/exit(_:mapsTo:toward:)``
 
 ### Describing Entities
 

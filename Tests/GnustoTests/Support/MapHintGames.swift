@@ -138,3 +138,44 @@ struct SecretStartAndLockGame: Game {
         box.lockedBy(key).secret
     }
 }
+
+/// A dynamic exit drawn to the attic on a map and walked to the cellar.
+struct MapsToGame: Game {
+    let title = "Maps To"
+    let intro = "A hall with a shifting stair."
+
+    let hall = Location {
+        name("Hall")
+        description("A hall. A stair leads up.")
+    }
+    let attic = Location {
+        name("Attic")
+        description("An attic.")
+    }
+    let cellar = Location {
+        name("Cellar")
+        description("A cellar.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        hall.up(mapsTo: attic) { cellar }
+        attic.down(hall)
+        cellar.up(hall)
+    }
+}
+
+/// A dynamic exit whose `mapsTo:` names a room the bootstrap never registered.
+struct BadMapsToGame: Game {
+    let title = "Bad Maps To"
+    let intro = "A hall."
+
+    let hall = Location { name("Hall") }
+    let attic = Location { name("Attic") }
+    var nowhere: Location { Location { name("Nowhere") } }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        hall.east(mapsTo: nowhere) { attic }
+    }
+}

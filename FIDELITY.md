@@ -1627,7 +1627,7 @@ which is the checksum on reading the tables out of `dung.355` (#156).
   to do with where you come out. Zork I's Round Room is a three-way junction with
   cave-ins. `CAROUSEL-FLIP` starts clear and the only thing that clears it is the
   triangular button in the Machine Room, so in this milestone the room always
-  spins. The three passages built here are declared with ``Location/exit(_:toward:)``
+  spins. The three passages built here are declared with ``Location/exit(_:mapsTo:toward:)``
   — the dynamic exit — so the East-West Passage's five points, which are an
   `onEnter` award, still get paid; the draw is taken once per attempt in a
   `before(.go)` rule, as `CAROUSEL-OUT` does.

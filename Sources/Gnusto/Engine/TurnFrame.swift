@@ -332,7 +332,7 @@ final class TurnFrame: Sendable {
     /// The id a dynamic exit's destination closure named, or a diagnostic
     /// naming the exit that produced it.
     ///
-    /// `Bootstrap` wraps every `exit(_:toward:)` closure in a call to this and
+    /// `Bootstrap` wraps every `exit(_:mapsTo:toward:)` closure in a call to this and
     /// stores the wrapper as the exit's destination, so whatever asks a dynamic
     /// exit where it leads — travel, FOLLOW, anything added later — asks
     /// through here. That is why the check is written once rather than at each
