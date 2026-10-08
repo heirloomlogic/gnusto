@@ -132,25 +132,23 @@ Its `otherwise:` refusal follows the same rule as `blocked:`: explicitly blank t
 Here the destination is the closure, and the exit is always passable:
 
 ```swift
-mirrors.slideRoom.exit(
-    .down,
-    toward: { palantirWing.chuteRopeRigged ? palantirWing.slideOne : house.cellar })
+mirrors.slideRoom.down(mapsTo: palantirWing.slideOne) {
+    palantirWing.chuteRopeRigged ? palantirWing.slideOne : house.cellar
+}
 ```
 
 That is Dungeon's chute: it always takes you, and what the rope decides is where
 you land. Nothing downstream checks that the room the closure names has anything
 to do with the direction, which is what makes a non-Euclidean passage possible at
-all. Dungeon's Round Room is eight headings over one turning floor:
+all. Dungeon's Round Room is nine headings over one turning floor:
 
 ```swift
 let exits = carouselExits
 for (heading, destination) in exits {
-    crossroads.roundRoom.exit(
-        heading,
-        toward: {
-            crossroads.carouselSpinning
-                ? exits[crossroads.carouselTwist % exits.count].1 : destination
-        })
+    crossroads.roundRoom.exit(heading, mapsTo: destination) {
+        crossroads.carouselSpinning
+            ? exits[crossroads.carouselTwist % exits.count].1 : destination
+    }
 }
 ```
 

@@ -2312,8 +2312,8 @@ extension DeclaredMap.Exit {
     /// optional fields are omitted rather than sent as null: a dynamic exit
     /// does not have an unknown destination, it has no destination to know
     /// until somebody walks it. That holds for one declared with `mapsTo:`
-    /// too: the survey describes play, and the room a
-    /// map draws the exit to is not always the room walking it reaches.
+    /// too: the survey describes play, and the room a map draws the exit to
+    /// is not always the room walking it reaches.
     fileprivate var json: JSONValue {
         var entry: [String: JSONValue] = [
             "direction": .string(direction.rawValue),

@@ -328,8 +328,9 @@ struct PlaytestResolution: Sendable, Equatable {
 /// one out of turn to fill in a map would execute game code at a moment the
 /// engine never intended, so the survey never calls the closure. A room's
 /// `exits` carry the destination an `open`, `door` or `conditional` exit
-/// declares, and the map destination a `dynamic` exit names with `mapsTo:`. The JSON rendering leaves the dynamic one out,
-/// because it describes play and not the map.
+/// declares, and the map destination a `dynamic` exit names with `mapsTo:`.
+/// The JSON rendering leaves the dynamic one out, because it describes play
+/// and not the map.
 struct PlaytestSurvey: Sendable {
     /// One room.
     struct Room: Sendable {

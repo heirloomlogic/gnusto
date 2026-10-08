@@ -544,16 +544,14 @@ enum Bootstrap {
                 else { continue }
                 // The destination is a closure, so there is nothing to resolve
                 // here and nothing to add to `reachableRooms` — see
-                // `Location.exit(_:mapsTo:toward:)` for what that costs. Claiming the
-                // direction is still checked: it is the one mistake this exit
-                // kind can make that bootstrap can still catch.
-                // The result is checked instead when the closure runs, and the
+                // `Location.exit(_:mapsTo:toward:)` for what that costs. The
+                // bootstrap still checks the direction's claim, and resolves the
+                // map destination, which is a plain room reference like any
+                // other exit's; only `DeclaredMap` reads it.
+                // The closure's result is checked when it runs, and the
                 // wrapper is what makes that message findable: `fromID` and
                 // `direction` are in scope here and nowhere downstream — see
                 // `TurnFrame.dynamicDestination(_:from:toward:)`.
-
-                // The map destination is a plain room reference, so it is
-                // resolved like any other exit's. Only `DeclaredMap` reads it.
                 let mapsToID = mapsTo.flatMap {
                     resolveLocation($0, role: "the map destination of \"\(fromID)\"'s \(direction) exit")
                 }

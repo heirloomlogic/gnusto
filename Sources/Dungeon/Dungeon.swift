@@ -1402,7 +1402,7 @@ struct Dungeon: Game {
         for (heading, destination) in exits {
             crossroads.roundRoom.exit(heading, mapsTo: destination) {
                 // A read, not a roll: a dynamic exit's closure may be asked
-                // more than once in a turn, and `FOLLOW` asks all eight.
+                // more than once in a turn, and `FOLLOW` may ask every one.
                 crossroads.carouselSpinning
                     ? exits[crossroads.carouselTwist % exits.count].1 : destination
             }
