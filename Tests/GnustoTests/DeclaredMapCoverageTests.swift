@@ -42,7 +42,8 @@ struct DeclaredMapCoverageTests {
         let dynamic = rooms.values.flatMap { room in
             room.exits.filter { $0.kind == .dynamic }.map { (room.id, $0) }
         }
-        #expect(!dynamic.isEmpty)
+        // The nine carousel exits and the slide room's way down.
+        #expect(dynamic.count == 10)
         for (roomID, exit) in dynamic {
             let destination = try #require(exit.destination, "\(roomID) \(exit.direction)")
             #expect(rooms[destination] != nil, "\(roomID) \(exit.direction)")

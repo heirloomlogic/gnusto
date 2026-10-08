@@ -46,7 +46,9 @@ struct MapHintTests {
             return
         }
         #expect(mapsTo == EntityID("attic"))
-        #expect(!definition.reachableRooms.contains(EntityID("cellar")))
+        // Nothing else leads to the attic, so a map destination that leaked
+        // into the reachable set would be the only way it got there.
+        #expect(!definition.reachableRooms.contains(EntityID("attic")))
 
         let up = turnOutput(of: "up", in: try await play(MapsToGame(), ["up"]))
         #expect(up.contains("Cellar"))
