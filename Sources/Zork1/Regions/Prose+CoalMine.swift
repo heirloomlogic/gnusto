@@ -87,13 +87,17 @@ extension Prose {
         can be seen a heavy iron chain.
         """
 
-    static let machineRoom = """
-        This is a large, cold room whose sole exit is to the north. In one corner
-        there is a machine which is reminiscent of a clothes dryer. On its face is
-        a switch which is labelled "START". The switch does not appear to be
-        manipulable by any human hand (unless the fingers are about 1/16 by 1/4
-        inch). On the front of the machine is a large lid, which is closed.
+    /// `MACHINE-ROOM-FCN` M-LOOK, including its live state branches.
+    static func machineRoom(lidOpen: Bool) -> String {
         """
+        This is a large, cold room whose sole exit is to the north. In one
+        corner there is a machine which is reminiscent of a clothes
+        dryer. On its face is a switch which is labelled "START".
+        The switch does not appear to be manipulable by any human hand (unless the
+        fingers are about 1/16 by 1/4 inch). On the front of the machine is a large
+        lid, which is \(lidOpen ? "open." : "closed.")
+        """
+    }
 
     // MARK: - Items
 

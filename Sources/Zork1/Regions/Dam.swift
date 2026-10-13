@@ -11,8 +11,8 @@ import GnustoScoring
 /// lingers unless the tube's gunk plugs the leak.
 ///
 /// The bolt, the gates, and the water they move are the region's cross-region
-/// seam: draining or filling sets the Round Room bundle's ``waterMoving`` (which
-/// the Loud Room reads), and the trunk pays into the house's trophy case. A
+/// seam: the Loud Room reads this bundle's gates and water level through
+/// host-wired rules, and the trunk pays into the house's trophy case. A
 /// bundle can't reach another bundle's `@Global` or entities from its own
 /// rules, so those pieces — the `turn bolt with wrench` rule and the eight-turn
 /// drain/refill fuses — are host-wired in ``Zork1``, the same way the troll's
@@ -23,7 +23,6 @@ struct ZorkDam: GameContent {
 
     let damRoom = Location {
         name("Dam")
-        description(Prose.dam)
     }
 
     let damLobby = Location {
@@ -45,7 +44,6 @@ struct ZorkDam: GameContent {
 
     let reservoirSouth = Location {
         name("Reservoir South")
-        description(Prose.reservoirSouth)
         dark
         trait(.waterSource, true)
     }
@@ -55,14 +53,12 @@ struct ZorkDam: GameContent {
     /// closing the gates while you stand here does exactly that (host-wired).
     let reservoir = Location {
         name("Reservoir")
-        description(Prose.reservoir)
         dark
         trait(.waterSource, true)
     }
 
     let reservoirNorth = Location {
         name("Reservoir North")
-        description(Prose.reservoirNorth)
         dark
         trait(.waterSource, true)
     }
@@ -351,6 +347,11 @@ struct ZorkDam: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        damRoom.describe { Prose.dam(lowTide: reservoirDrained, gatesOpen: gatesOpen, bubbleGlowing: bubbleGlowing) }
+        reservoirSouth.describe { Prose.reservoirSouth(lowTide: reservoirDrained, gatesOpen: gatesOpen) }
+        reservoirNorth.describe { Prose.reservoirNorth(lowTide: reservoirDrained, gatesOpen: gatesOpen) }
+        reservoir.describe { Prose.reservoir(lowTide: reservoirDrained) }
+
         // Bare `turn bolt` — the engine's stub verb, promoted to a line that
         // actually helps. The bolt is the one fixture in the game that needs a
         // tool named, so "The bolt doesn't turn." would be a dead end where

@@ -84,7 +84,6 @@ struct ZorkRiver: GameContent {
 
     let aragainFalls = Location {
         name("Aragain Falls")
-        description(Prose.aragainFalls)
     }
 
     /// The middle of the solid rainbow, reachable only while it holds. Waving the
@@ -421,6 +420,8 @@ struct ZorkRiver: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        aragainFalls.describe { Prose.aragainFalls(rainbowSolid: rainbowSolid) }
+
         // The current. Each river stretch, on entry, reloads the drift countdown
         // for that stretch's dwell (see ``driftDelay()``). Paddling downstream
         // re-enters the next room and resets the count; sitting still lets the

@@ -19,8 +19,7 @@ import GnustoScoring
 /// The Loud Room is the region's one puzzle. On still water it garbles every
 /// command but movement and looking, until the player says `echo` — after
 /// which the acoustics settle and the platinum bar can be taken. While the
-/// dam's gates drive water through (a state the dam region owns and will set,
-/// via ``waterMoving``), the room is instead too loud to bear and scrambles the
+/// open gates drain a still-high reservoir, the room is instead too loud to bear and scrambles the
 /// player out to a random neighbour. That ejection is this region's only source
 /// of randomness, and it stays dormant until the dam turns the water on.
 struct ZorkRoundRoom: GameContent {
@@ -54,7 +53,6 @@ struct ZorkRoundRoom: GameContent {
 
     let deepCanyon = Location {
         name("Deep Canyon")
-        description(Prose.deepCanyon)
         dark
     }
 
@@ -66,16 +64,10 @@ struct ZorkRoundRoom: GameContent {
 
     let loudRoom = Location {
         name("Loud Room")
-        description(Prose.loudRoom)
         dark
     }
 
     // MARK: - Loud Room state
-
-    /// Whether the dam's gates are driving water through the depths. False
-    /// until the dam region (a later phase) opens the sluice; while true, the
-    /// Loud Room is unbearable and ejects anyone who enters.
-    @Global var waterMoving = false
 
     /// Whether saying `echo` has quieted the Loud Room's acoustics. Once set,
     /// the room stops garbling commands and the platinum bar can be taken.
@@ -182,13 +174,19 @@ struct ZorkRoundRoom: GameContent {
 
     // MARK: - Rules
 
-    var rules: Rules {
+    /// The same source predicate drives the room's prose and its command handling.
+    func isQuiet(dam: ZorkDam) -> Bool {
+        loudRoomAcousticsFixed || (!dam.gatesOpen && dam.reservoirDrained)
+    }
+
+    /// Host-wired because the acoustics depend on the dam's live gate and water level.
+    @RuleBuilder func acoustics(dam: ZorkDam) -> Rules {
         // While the gates drive water through, the Loud Room is unbearable: it
         // scrambles the player out to one of three neighbours at the start of
         // the turn. The guard comes before the draw, so still-water turns never
         // touch the random stream — the dam region will exercise this path.
         loudRoom.beforeEachTurn {
-            guard waterMoving else { return }
+            guard dam.gatesOpen, !dam.reservoirDrained else { return }
             let bounces = [dampCave, roundRoom, deepCanyon]
             say(Prose.loudRoomEjects)
             arrive(at: bounces[random(0...(bounces.count - 1))])
@@ -202,7 +200,7 @@ struct ZorkRoundRoom: GameContent {
         // SACREDBIT rule below), so it answers with the roar rather than a bare
         // echo. Every other command echoes.
         loudRoom.before {
-            guard !loudRoomAcousticsFixed, !waterMoving else { return }
+            guard !isQuiet(dam: dam), !(dam.gatesOpen && !dam.reservoirDrained) else { return }
             guard command.intent != .go,
                 command.intent != .look,
                 command.intent != .echo,
@@ -215,17 +213,20 @@ struct ZorkRoundRoom: GameContent {
         }
 
         // The platinum bar is sacred while the room roars — untakeable until
-        // the acoustics are fixed (the original's SACREDBIT). Saying `echo`
-        // lifts the lock.
+        // the acoustics are fixed, or the water temporarily silences the room.
+        // Only `echo` clears the thief's separate SACREDBIT-equivalent guard.
         platinumBar.before(.take) {
-            try require(loudRoomAcousticsFixed, else: Prose.platinumBarTooLoud)
+            guard player.location == loudRoom else { return }
+            try require(isQuiet(dam: dam), else: Prose.platinumBarTooLoud)
         }
 
         // Saying `echo` on still water settles the acoustics for good, so the
         // platinum bar becomes takeable. Once fixed (or when the water is
         // moving), `echo` falls through to its ordinary reply.
         loudRoom.before(.echo) {
-            guard !waterMoving, $loudRoomAcousticsFixed.trips() else { return }
+            guard !isQuiet(dam: dam), !(dam.gatesOpen && !dam.reservoirDrained),
+                $loudRoomAcousticsFixed.trips()
+            else { return }
             try reply(Prose.loudRoomAcousticsFixed)
         }
     }

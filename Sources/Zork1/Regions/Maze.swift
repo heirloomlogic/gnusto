@@ -159,14 +159,12 @@ struct ZorkMaze: GameContent {
     /// door up; opening it from below is the way out to daylight.
     let gratingRoom = Location {
         name("Grating Room")
-        description(Prose.gratingRoom)
         dark
     }
 
     /// Home of the cyclops, who bars the stair up to the Treasure Room.
     let cyclopsRoom = Location {
         name("Cyclops Room")
-        description(Prose.cyclopsRoom)
         dark
     }
 
@@ -196,7 +194,6 @@ struct ZorkMaze: GameContent {
         adjectives("hungry", "giant", "one", "eyed")
         pronoun(.he)
         description(Prose.cyclops)
-        firstSight(Prose.cyclopsPresence)
     }
 
     // MARK: - Items
@@ -292,7 +289,7 @@ struct ZorkMaze: GameContent {
 
     /// Whether the cyclops has eaten the lunch and now wants a drink. The water
     /// only puts him to sleep while this is true.
-    @Latch var cyclopsThirsty
+    @Global var cyclopsThirsty = false
 
     /// Whether the cyclops's hunger has been roused — by an attack, or by the
     /// lunch that leaves him desperate for a drink. Once set, the wrath timer
@@ -458,6 +455,11 @@ struct ZorkMaze: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        cyclops.presence {
+            Prose.cyclopsPresence(sleeping: cyclopsSubdued, thirsty: cyclopsThirsty, provoked: cyclopsProvoked)
+        }
+        cyclopsRoom.describe { Prose.cyclopsRoom(fled: eastWallOpen) }
+
         // ATTACK's weapon is the indirect object, whose rules precede the victim's.
         rustyKnife.before(.attack) {
             guard command.indirectObject == rustyKnife, let target = command.directObject else { return }

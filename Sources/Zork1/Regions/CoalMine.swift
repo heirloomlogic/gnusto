@@ -122,7 +122,6 @@ struct ZorkCoalMine: GameContent {
 
     let machineRoom = Location {
         name("Machine Room")
-        description(Prose.machineRoom)
         dark
     }
 
@@ -405,6 +404,8 @@ struct ZorkCoalMine: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        machineRoom.describe { Prose.machineRoom(lidOpen: machine.isOpen) }
+
         // HELD? follows containment regardless of whether a holder is open.
         // A carried flame can ignite the gas even inside a closed container.
         gasRoom.afterEachTurn {

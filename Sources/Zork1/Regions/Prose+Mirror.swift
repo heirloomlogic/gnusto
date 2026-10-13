@@ -12,22 +12,40 @@ extension Prose {
         briefly narrows even further.
         """
 
-    static let mirrorRoomNorth = """
-        You are in a large square room with tall ceilings. On the south wall
-        is an enormous mirror which fills the entire wall. There are exits
-        on the other three sides of the room.
-        """
+    /// `MIRROR-ROOM` M-LOOK, including its live state branches.
+    static func mirrorRoomNorth(broken: Bool) -> String {
+        let detail =
+            broken
+            ? """
+            Unfortunately, the mirror has been destroyed by your recklessness.
+            """ : ""
+        return """
+            You are in a large square room with tall ceilings. On the south wall
+            is an enormous mirror which fills the entire wall. There are exits
+            on the other three sides of the room.
+            \(detail)
+            """
+    }
 
     static let windingPassage = """
         This is a winding passage. It seems that there are only exits
         on the east and north.
         """
 
-    static let mirrorRoomSouth = """
-        You are in a large square room with tall ceilings. On the south wall
-        is an enormous mirror which fills the entire wall. There are exits
-        on the other three sides of the room.
-        """
+    /// `MIRROR-ROOM` M-LOOK, including its live state branches.
+    static func mirrorRoomSouth(broken: Bool) -> String {
+        let detail =
+            broken
+            ? """
+            Unfortunately, the mirror has been destroyed by your recklessness.
+            """ : ""
+        return """
+            You are in a large square room with tall ceilings. On the south wall
+            is an enormous mirror which fills the entire wall. There are exits
+            on the other three sides of the room.
+            \(detail)
+            """
+    }
 
     static let coldPassage = """
         This is a cold and damp corridor where a long east-west passageway
