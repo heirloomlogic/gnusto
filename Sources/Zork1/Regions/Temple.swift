@@ -36,7 +36,6 @@ struct ZorkTemple: GameContent {
 
     let domeRoom = Location {
         name("Dome Room")
-        description(Prose.domeRoom)
         dark
     }
 
@@ -44,7 +43,6 @@ struct ZorkTemple: GameContent {
     /// torch away and the room falls dark like any other.
     let torchRoom = Location {
         name("Torch Room")
-        description(Prose.torchRoom)
         dark
     }
 
@@ -78,7 +76,6 @@ struct ZorkTemple: GameContent {
 
     let entranceToHades = Location {
         name("Entrance to Hades")
-        description(Prose.entranceToHades)
         dark
     }
 
@@ -413,6 +410,10 @@ struct ZorkTemple: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        domeRoom.describe { Prose.domeRoom(ropeTied: ropeTiedToRailing) }
+        torchRoom.describe { Prose.torchRoom(ropeTied: ropeTiedToRailing) }
+        entranceToHades.describe { Prose.entranceToHades(spiritsBanished: ghostsBanished) }
+
         // The ivory torch never goes out.
         torch.before(.turnOff) {
             try refuse(Prose.torchWontExtinguish)

@@ -6,10 +6,19 @@
 extension Prose {
     // MARK: - AboveGround: house exterior
 
-    static let westOfHouse = """
-        You are standing in an open field west of a white house, with a
-        boarded front door.
-        """
+    /// `WEST-HOUSE` M-LOOK, including its live state branches.
+    static func westOfHouse(won: Bool) -> String {
+        let detail =
+            won
+            ? """
+            A secret path leads southwest into the forest.
+            """ : ""
+        return """
+            You are standing in an open field west of a white house, with a boarded
+            front door.
+            \(detail)
+            """
+    }
 
     static let northOfHouse = """
         You are facing the north side of a white house. There is no door
@@ -92,10 +101,21 @@ extension Prose {
         pale is tucked into a nest high up among the leaves.
         """
 
-    static let upATree = """
-        You are about 10 feet above the ground nestled among some large
-        branches. The nearest branch above you is above your reach.
-        """
+    /// TREE-ROOM and PRINT-CONTENTS: the original requires more than one loose object below.
+    static func upATree(below names: [String]) -> String {
+        let ground: String
+        if names.count > 1, let last = names.last {
+            let first = names.dropLast().map { "a \($0)" }.joined(separator: ", ")
+            ground = "On the ground below you can see:  \(first), and a \(last)."
+        } else {
+            ground = ""
+        }
+        return """
+            You are about 10 feet above the ground nestled among some large
+            branches. The nearest branch above you is above your reach.
+            \(ground)
+            """
+    }
 
     /// `NEST`'s `FDESC` (`1dungeon.zil:1145`), the listing channel and nothing
     /// else — it is `CONTBIT OPENBIT`, so the original examines it by looking

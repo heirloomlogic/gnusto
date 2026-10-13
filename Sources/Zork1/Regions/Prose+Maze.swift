@@ -24,14 +24,41 @@ extension Prose {
         You have come to a dead end in the maze.
         """
 
-    static let gratingRoom = """
-        You are in a small room near the maze. There are twisty passages in the
-        immediate vicinity.
-        """
+    /// `MAZE-11-FCN` M-LOOK, including its live state branches.
+    static func gratingRoom(open: Bool, locked: Bool) -> String {
+        let grating: String
+        if open {
+            grating = """
+                Above you is an open grating with sunlight pouring in.
+                """
+        } else if locked {
+            grating = """
+                Above you is a grating locked with a skull-and-crossbones lock.
+                """
+        } else {
+            grating = """
+                Above you is a grating.
+                """
+        }
+        return """
+            You are in a small room near the maze. There are twisty passages
+            in the immediate vicinity.
+            \(grating)
+            """
+    }
 
-    static let cyclopsRoom = """
-        This room has an exit on the northwest, and a staircase leading up.
-        """
+    /// `CYCLOPS-ROOM-FCN` M-LOOK, including its live state branches.
+    static func cyclopsRoom(fled: Bool) -> String {
+        let detail =
+            fled
+            ? """
+            The east wall, previously solid, now has a cyclops-sized opening in it.
+            """ : ""
+        return """
+            This room has an exit on the northwest, and a staircase leading up.
+            \(detail)
+            """
+    }
 
     static let treasureRoom = """
         This is a large room, whose east wall is solid granite. A number of
@@ -50,11 +77,33 @@ extension Prose {
         A hungry cyclops is standing at the foot of the stairs.
         """
 
-    static let cyclopsPresence = """
-        A cyclops, who looks prepared to eat horses (much less mere adventurers),
-        blocks the staircase. From his state of health, and the bloodstains on the
-        walls, you gather that he is not very friendly, though he likes people.
-        """
+    /// `CYCLOPS-ROOM-FCN` M-LOOK, including its live state branches.
+    static func cyclopsPresence(sleeping: Bool, thirsty: Bool, provoked: Bool) -> String {
+        if sleeping {
+            return """
+                The cyclops is sleeping blissfully at the foot of the stairs.
+                """
+        }
+        if thirsty {
+            return """
+                The cyclops, having eaten the hot peppers, appears to be gasping.
+                His enflamed tongue protrudes from his man-sized mouth.
+                """
+        }
+        if provoked {
+            return """
+                The cyclops is standing in the corner, eyeing you closely. I don't
+                think he likes you very much. He looks extremely hungry, even for a
+                cyclops.
+                """
+        }
+        return """
+            A cyclops, who looks prepared to eat horses (much less mere
+            adventurers), blocks the staircase. From his state of health, and
+            the bloodstains on the walls, you gather that he is not very
+            friendly, though he likes people.
+            """
+    }
 
     static let cyclopsBlocksStairs = "The cyclops doesn't look like he'll let you past."
 

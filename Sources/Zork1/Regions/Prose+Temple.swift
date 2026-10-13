@@ -13,18 +13,38 @@ extension Prose {
         You have entered a low cave with passages leading northwest and east.
         """
 
-    static let domeRoom = """
-        You are at the periphery of a large dome, which forms the ceiling
-        of another room below. Protecting you from a precipitous drop is a
-        wooden railing which circles the dome.
-        """
+    /// `DOME-ROOM-FCN` M-LOOK, including its live state branches.
+    static func domeRoom(ropeTied: Bool) -> String {
+        let detail =
+            ropeTied
+            ? """
+            Hanging down from the railing is a rope which ends about ten feet
+            from the floor below.
+            """ : ""
+        return """
+            You are at the periphery of a large dome, which forms the ceiling
+            of another room below. Protecting you from a precipitous drop is a
+            wooden railing which circles the dome.
+            \(detail)
+            """
+    }
 
-    static let torchRoom = """
-        This is a large room with a prominent doorway leading to a down
-        staircase. Above you is a large dome. Up around the edge of the
-        dome (20 feet up) is a wooden railing. In the center of the room
-        sits a white marble pedestal.
-        """
+    /// `TORCH-ROOM-FCN` M-LOOK, including its live state branches.
+    static func torchRoom(ropeTied: Bool) -> String {
+        let detail =
+            ropeTied
+            ? """
+            A piece of rope descends from the railing above, ending some
+            five feet above your head.
+            """ : ""
+        return """
+            This is a large room with a prominent doorway leading to a down
+            staircase. Above you is a large dome. Up around the edge of the
+            dome (20 feet up) is a wooden railing. In the center of the room
+            sits a white marble pedestal.
+            \(detail)
+            """
+    }
 
     static let temple = """
         This is the north end of a large temple. On the east wall is an
@@ -50,16 +70,27 @@ extension Prose {
         forbidding staircase leading down.
         """
 
-    static let entranceToHades = """
-        You are outside a large gateway, on which is inscribed
+    /// `LLD-ROOM` M-LOOK, including its live state branches.
+    static func entranceToHades(spiritsBanished: Bool) -> String {
+        let spirits =
+            spiritsBanished
+            ? ""
+            : """
+            The way through the gate is barred by evil spirits, who jeer at your
+            attempts to pass.
+            """
+        return """
+            You are outside a large gateway, on which is inscribed
 
-          Abandon every hope
-          all ye who enter here!
+              Abandon every hope
+              all ye who enter here!
 
-        The gate is open; through it you can see a desolation, with a pile of
-        mangled bodies in one corner. Thousands of voices, lamenting some
-        hideous fate, can be heard.
-        """
+            The gate is open; through it you can see a desolation, with a pile of
+            mangled bodies in one corner. Thousands of voices, lamenting some
+            hideous fate, can be heard.
+            \(spirits)
+            """
+    }
 
     static let landOfDead = """
         You have entered the Land of the Living Dead. Thousands of lost souls

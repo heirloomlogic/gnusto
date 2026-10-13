@@ -34,7 +34,6 @@ struct ZorkMirror: GameContent {
     /// mirror can be found and touched without a lamp. See `FIDELITY.md`.
     let mirrorRoomNorth = Location {
         name("Mirror Room")
-        description(Prose.mirrorRoomNorth)
     }
 
     let windingPassage = Location {
@@ -47,7 +46,6 @@ struct ZorkMirror: GameContent {
     /// twin.
     let mirrorRoomSouth = Location {
         name("Mirror Room")
-        description(Prose.mirrorRoomSouth)
         dark
     }
 
@@ -213,6 +211,9 @@ struct ZorkMirror: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        mirrorRoomNorth.describe { Prose.mirrorRoomNorth(broken: mirrorBroken) }
+        mirrorRoomSouth.describe { Prose.mirrorRoomSouth(broken: mirrorBroken) }
+
         // Touching a mirror whisks the player to the other Mirror Room, the only
         // passage between the map's two halves — and swaps whatever loose items
         // lie on the two rooms' floors, as the original does (fixtures, the

@@ -21,19 +21,16 @@ extension TraitKey<Bool> {
 /// A full 350-point playthrough is exercised end-to-end by `Zork1WalkthroughTests`.
 struct Zork1: Game {
     let title = "Zork I: The Great Underground Empire"
-    let tagline = "Nineteen treasures wait in the dark beneath a white house."
+    let tagline = "Infocom interactive fiction - a fantasy story"
 
     /// The game's ceiling: 350 points, as in the original — all of it reachable,
     /// across the nineteen treasures (found and cased) and the five event awards.
     /// Depositing the last treasure reveals the map to the Stone Barrow, and
     /// entering it wins.
     let maxScore = 350
-    let intro = """
-        An adventure awaits amid a ruined empire buried underground. A white
-        house stands on a forgotten lawn; below it lie caverns, a dam, a
-        temple, a coal mine, a river, and a maze — and treasures enough to
-        fill a barrow, if you can carry them home past the thief.
-        """
+    // GO prints V-VERSION and V-LOOK. Credits belong in the banner below,
+    // shared with VERSION; intro would print them ahead of the title.
+    let intro = ""
 
     /// The stock engine lines re-skinned to Zork's own originals, for the
     /// handful that differ from Gnusto's classic voice. Each is the verbatim
@@ -41,6 +38,21 @@ struct Zork1: Game {
     /// line not set here keeps the engine default, which already matches Zork.
     var text: GameText {
         var text = GameText()
+        // V-VERSION capitalization belongs to presentation; title is also the save-directory identity.
+        text.banner = .naming {
+            """
+            ZORK I: The Great Underground Empire<br>\($0.tagline)<br>
+            Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc.
+
+            Original source released under the MIT License by Microsoft,
+            Team Xbox, and Activision in 2025.<br>
+            Copyright (c) 2025 Microsoft.<br>
+            Independent Swift adaptation by Heirloom Logic.<br>
+            ZORK is a trademark of its respective owner.
+
+            Engine Gnusto
+            """
+        }
         // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
         text.pitchBlack = "It is pitch black. You are likely to be eaten by a grue."
         // Examining an ordinary thing (gverbs.zil V-EXAMINE).
@@ -308,6 +320,7 @@ struct Zork1: Game {
     }
 
     var rules: Rules {
+        roundRoom.acoustics(dam: dam)
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures(treasureRoster, into: house.trophyCase)
@@ -324,6 +337,16 @@ struct Zork1: Game {
             try reply(Prose.verbKnockDoor)
         }
 
+        // These room reports cross bundle boundaries, as their puzzles do.
+        roundRoom.deepCanyon.describe {
+            Prose.deepCanyon(lowTide: dam.reservoirDrained, gatesOpen: dam.gatesOpen)
+        }
+        roundRoom.loudRoom.describe {
+            Prose.loudRoom(quiet: roundRoom.isQuiet(dam: dam))
+        }
+        maze.gratingRoom.describe {
+            Prose.gratingRoom(open: aboveGround.grating.isOpen, locked: aboveGround.grating.isLocked)
+        }
         // Behind House ends its paragraph on the state of the kitchen window,
         // as `EAST-HOUSE` does. The room is `ZorkAboveGround`'s and the window
         // is `ZorkHouse`'s, so the sentence that reads both is the host's.
@@ -385,16 +408,13 @@ struct Zork1: Game {
         // The dam bolt. Turning it works the sluice gates, but only with the
         // wrench and only while the panel is charged (the yellow button's green
         // bubble). Opening the gates drains the reservoir; closing them fills it
-        // — an eight-turn passage in either case, during which water is moving
-        // through the depths and the Loud Room becomes unbearable. The bolt is a
-        // dam entity but its effect reaches into ``ZorkRoundRoom``'s
-        // ``waterMoving`` and arms the host fuses below, so it's the host's to
-        // wire — same as the troll's east exit and the chimney gate above.
+        // over eight turns in either direction. The Loud Room reads these same
+        // gate/level flags: draining roars, while refilling a low reservoir is
+        // temporarily quiet. The host owns the fuses and the cross-region rules.
         dam.bolt.before(.turnWith) {
             try require(command.indirectObject == dam.wrench, else: Prose.boltNeedsWrench)
             try require(dam.bubbleGlowing, else: Prose.boltWontTurn)
             dam.gatesOpen.toggle()
-            roundRoom.waterMoving = true
             if dam.gatesOpen {
                 stopFuse("damRefill")
                 startFuse("damDrain", after: 8)
@@ -617,7 +637,7 @@ struct Zork1: Game {
             guard !maze.cyclopsSubdued else { try reply(Prose.cyclopsAlreadyGone) }
             if offered == house.lunch {
                 house.lunch.vanish()
-                maze.$cyclopsThirsty.trips()
+                maze.cyclopsThirsty = true
                 // The peppers leave him desperate for a drink: his hunger is
                 // roused now, so the wrath timer starts counting. Give him the
                 // water soon or become the drink yourself (see ``ZorkMaze``).
@@ -630,6 +650,7 @@ struct Zork1: Game {
             if givingWater {
                 guard maze.cyclopsThirsty else { try reply(Prose.cyclopsNotThirsty) }
                 house.water.vanish()
+                maze.cyclopsThirsty = false
                 maze.cyclopsSubdued = true
                 try reply(Prose.cyclopsDrinksAndSleeps)
             }
@@ -863,19 +884,17 @@ struct Zork1: Game {
         // holding it, either shore, and the bed between them. The gates work
         // their eight-turn count regardless; a player who turned the bolt and
         // then climbed out to the lawn is simply not told, and finds a drained
-        // reservoir when he comes back down. The Loud Room hears the same news
-        // from its own description, which `waterMoving` rewrites.
+        // reservoir when he comes back down. The Loud Room's description and
+        // acoustics both read the updated gate/level state.
         fuse("damDrain", after: 8) {
             dam.reservoirDrained = true
             dam.trunk.reveal()
-            roundRoom.waterMoving = false
             say(
                 Prose.reservoirEmpties,
                 from: dam.damRoom, dam.reservoirSouth, dam.reservoir, dam.reservoirNorth)
         }
         fuse("damRefill", after: 8) {
             dam.reservoirDrained = false
-            roundRoom.waterMoving = false
             if player.location == dam.reservoir {
                 try die(Prose.reservoirRefillDrowns)
             }

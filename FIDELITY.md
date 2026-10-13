@@ -9,6 +9,20 @@ entry below is grouped by the task that introduced it.
 
 ## Task 8 — Zork 1 slice: White House (`Sources/Zork1/`)
 
+### Opening and room-description fidelity pass (October 2026)
+
+Compared the opening, static room paragraphs, and the historical room-action `M-LOOK` branches against [historicalsource/zork1 at `97b7b3d68c075dd9af7da499c3e9690ada3471fd`](https://github.com/historicalsource/zork1/tree/97b7b3d68c075dd9af7da499c3e9690ada3471fd). The opening had acquired a plot summary and a treasure-count tagline; `GO` (`1dungeon.zil:2637`) prints `V-VERSION` and then `V-LOOK`, without an introductory story paragraph. The summary is removed, and the displayed title and subtitle now use `V-VERSION`'s words. The game's stable title (and hence its save-directory identity) is unchanged; capitalization is a banner override. The startup and `VERSION` banner retain the historical Infocom copyright notice and add Microsoft's 2025 MIT source release, the independent Heirloom Logic adaptation, trademark attribution, and `Engine Gnusto`. The original release/serial/interpreter identifiers and "All rights reserved" line are omitted; no current build identifier is exposed to game code. Full licensing and port provenance remain in `THIRD_PARTY_NOTICES`.
+
+Several room paragraphs had transcribed only a routine's initial `TELL`, losing the clauses that describe its current puzzle state. These now read the port's existing state and reproduce the corresponding source words:
+
+- `WEST-HOUSE`: the secret southwest path after the ancient map appears. `TREE-ROOM`: its ground-contents sentence when more than one loose object lies on the Forest Path, excluding the port's fixed scenery objects.
+- `DAM-ROOM-FCN`, `RESERVOIR-SOUTH-FCN`, `RESERVOIR-FCN`, and `RESERVOIR-NORTH-FCN`: all four gate/water-level combinations, the lake versus mud, and the control panel's glowing bubble.
+- `DEEP-CANYON-F` and `LOUD-ROOM-FCN`: the current water sounds, and the Loud Room's solved or temporarily quiet state.
+- `MAZE-11-FCN` and `CYCLOPS-ROOM-FCN`: the grating's lock/open state, the cyclops-shaped opening, and the cyclops's initial, hungry, thirsty, and sleeping descriptions. The actor's live presence rule carries his sentence so it is not printed twice; the room carries the opening left behind when he flees.
+- `MIRROR-ROOM`, `DOME-ROOM-FCN`, `TORCH-ROOM-FCN`, `LLD-ROOM`, `FALLS-ROOM`, and `MACHINE-ROOM-FCN`: the broken mirror, tied rope from both ends, spirits barring Hades, solid versus insubstantial rainbow, and open versus closed machine lid.
+
+`Zork1DescriptionFidelityTests` checks rendered reports across these states, plus opening order and a real OPEN/LOOK/CLOSE/UNDO machine-lid route. Two state corrections keep these sentences true: drinking clears the cyclops's thirst so waking him describes hunger, and the Loud Room reads the dam's actual gate/level flags for ejection, echoing, and taking the bar. Closing the gates over a drained reservoir is temporarily quiet, not an ejection; the refill fuse ends that quiet. Its existing eight-turn timing, combat, travel, and resurrection models are otherwise retained. The other recorded departures remain, including invented scenery examination responses and the shortened ending's historical alternate branch; this is source comparison and port execution, not equivalence testing against a historical executable.
+
 ### Prose
 
 - **Room and item descriptions were swapped for the original Zork I text**, from the `historicalsource/zork1` archive under the MIT license (see `THIRD_PARTY_NOTICES` at the repo root for provenance). Each description is a named constant or state-dependent function on `Prose`, declared in `Sources/Zork1/Prose.swift` and its `Prose+*.swift` extensions, and the swap was applied one constant at a time. Room and item *names* ("West of House", "brass lantern", "jewel-encrusted egg") are the iconic proper nouns and were always used as-is.
@@ -337,23 +351,8 @@ directory-agnostic; this only organizes the many regions still to come).
 
 ### The Loud Room
 
-- **The acoustics puzzle is the original's SACREDBIT + read-loop** *(closed in the
-  fidelity pass — was a match-all garble rule)*. On still water the room runs the
-  original's read-loop: every command but movement, looking, `echo`, and taking the
-  bar echoes the last word of your input back (`loudRoomEcho`). The platinum bar
-  carries its own take-lock — the `SACREDBIT`, modeled as `platinumBar.before(.take)`
-  — so it is untakeable until `echo` sets `loudRoomAcousticsFixed` and lifts the lock.
-  One small liberty: taking the bar while loud answers with the roar (the take-lock's
-  message) rather than an echo, so the SACREDBIT is the live, observable mechanism.
-- **The water-driven ejection is present but dormant.** While `waterMoving` is
-  true the room scrambles the player out to one random neighbour (Damp Cave,
-  Round Room, or Deep Canyon — the original's `LOUD-RUNS` set) — this region's
-  only RNG draw, guarded so still-water turns never touch the stream.
-  `waterMoving` defaults false and is owned here but driven by the dam region
-  (T5); until then the ejection path is unexercised. Its exact end-of-turn
-  timing (the original ejects at `M-END`, after the command) is modeled as a
-  start-of-turn `beforeEachTurn` bounce and will be revisited when T5 wires and
-  tests the water state.
+- **The acoustics puzzle preserves the port's read-loop approximation.** In an unsolved, noisy Loud Room, every command but movement, looking, `echo`, and taking the bar echoes the last word of the input. Taking the bar there has its own noise refusal; `echo` permanently quiets the room and removes its protection from the thief. Closing the gates over a drained reservoir also allows normal commands and taking the bar until refill completes, without solving the acoustics or removing that theft protection. Once outside the Loud Room, taking the bar is ordinary acquisition regardless of the water state.
+- **The water-driven ejection reads the dam's actual state.** Open gates with a still-high reservoir eject the player to a random neighbour (Damp Cave, Round Room, or Deep Canyon), as `LOUD-ROOM-FCN` tests `GATES-OPEN` and `LOW-TIDE`. Closed gates over a low reservoir are temporarily quiet. The port still ejects at the start of the next turn (`beforeEachTurn`), whereas the original ejects at `M-END` after the command.
 - **The platinum bar carries the original's numbers** (weight/`SIZE` 20, find
   10, case 5) and is in the host `scoring.treasures` roster.
 
@@ -408,18 +407,8 @@ has been waiting on since Phase 10.4.
 ### Mechanics simplified or deferred
 
 - The Maintenance Room flood climbs one body-part step each turn: ankles, shins, knees, hips, waist, chest, neck, then drowning. The blue button starts `damFlood` only at `floodLevel == 0` and reveals the leak; after the terminal tick, the persisted level seals both north and east entrances from the Dam Lobby, stops the daemon, and kills anyone still inside. Save/restore preserves the sealing; undo can restore the preceding rising-water state. [I-MAINT-ROOM](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1343) munges the room before drowning, and [GOTO](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/gverbs.zil#L2067) refuses the destination before moving. The port retains its one-step-per-turn cadence; the original uses `WATER-LEVEL` values through 14 and repeats body-part rungs. An active leak can be repaired with `plug leak with putty` or PUT IN/ON the gunk, matching [LEAK-FUNCTION and FIX-MAINT-LEAK](https://github.com/historicalsource/zork1/blob/97b7b3d68c075dd9af7da499c3e9690ada3471fd/1actions.zil#L1362). PLUG's source aliases GLUE/PATCH/REPAIR/FIX share the repair intent. Repair sets the level to -1 and stops the timer before its next tick, leaves the blue button jammed, and persists through save/restore; undo resumes the prior flood. The tube still subsumes the source's separately extracted putty and accepts putty/material/gunk vocabulary. Leak repair leaves that material in place, including reachable floor material for PLUG; PUT requires it held. The independent boat patch still consumes the tube. Route tests cover both repairs in sequence, refusals, neck-height rescue and persistence. Historical evidence is archived ZIL, not a historical executable replay. (#701)
-- **`waterMoving` is driven across the bundle boundary by the host.** The Loud
-  Room (in `ZorkRoundRoom`) reads `waterMoving`, but a bundle can't reach another
-  bundle's `@Global` from its own rules, so the `turn bolt with wrench` rule and
-  the eight-turn `damDrain`/`damRefill` fuses — the only writers of `waterMoving`
-  — live in the host (`Zork1.swift`), the same way `cellar.trollDefeated` is
-  written from the host. The original keeps a single global flag both areas share
-  directly.
-- **The gates take a flat eight turns to drain or refill** (the original's
-  `GATE-INT`), driving `waterMoving` for the duration (the Loud Room ejects while
-  it runs) and toggling `reservoirDrained` when they settle. Draining reveals the
-  trunk of jewels (`hidden` until the drain fuse calls `reveal()`); refilling
-  while standing on the reservoir bed drowns you.
+- **The host wires the Loud Room directly to the dam's flags.** `roundRoom.acoustics(dam:)` and the room descriptions read `gatesOpen` and `reservoirDrained`; the redundant `waterMoving` flag is removed. The bolt and drain/refill fuses remain host-owned. This keeps the spoken water state and command handling on the same source predicates.
+- **The gates take a flat eight turns to drain or refill**, toggling `reservoirDrained` when the fuse fires. Draining reveals the trunk of jewels; refilling while standing on the reservoir bed drowns the player. During refill of a drained reservoir, the Loud Room is temporarily quiet until the water returns.
 - **The bolt requires the charged panel, not just the wrench.** `turn bolt with
   wrench` refuses unless the yellow button has set `bubbleGlowing` (the original's
   green bubble / `GATE-FLAG`); the brown button clears it. The red button toggles

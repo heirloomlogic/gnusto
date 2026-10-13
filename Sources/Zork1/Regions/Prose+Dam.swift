@@ -6,11 +6,42 @@
 extension Prose {
     // MARK: - Rooms
 
-    static let dam = """
-        You are standing on the top of the Flood Control Dam #3, which was
-        quite a tourist attraction in times far distant. There are paths to
-        the north, south, and west, and a scramble down.
-        """
+    /// `DAM-ROOM-FCN` M-LOOK, including its live state branches.
+    static func dam(lowTide: Bool, gatesOpen: Bool, bubbleGlowing: Bool) -> String {
+        let water: String
+        switch (lowTide, gatesOpen) {
+        case (true, true):
+            water = """
+                The water level behind the dam is low: The sluice gates have been
+                opened. Water rushes through the dam and downstream.
+                """
+        case (false, true):
+            water = """
+                The sluice gates are open, and water rushes through the dam. The
+                water level behind the dam is still high.
+                """
+        case (true, false):
+            water = """
+                The sluice gates are closed. The water level in the reservoir is
+                quite low, but the level is rising quickly.
+                """
+        case (false, false):
+            water = """
+                The sluice gates on the dam are closed. Behind the dam, there can be
+                seen a wide reservoir. Water is pouring over the top of the now
+                abandoned dam.
+                """
+        }
+        let glow = bubbleGlowing ? " which is glowing serenely" : ""
+        return """
+            You are standing on the top of the Flood Control Dam #3, which was
+            quite a tourist attraction in times far distant. There are paths to
+            the north, south, and west, and a scramble down.
+            \(water)
+            There is a control panel here, on which a large metal bolt is mounted.
+            Directly above the bolt is a small green plastic bubble\(glow).
+            """
+    }
 
     static let damLobby = """
         This room appears to have been the waiting room for groups touring
@@ -34,22 +65,89 @@ extension Prose {
         way downstream.
         """
 
-    static let reservoirSouth = """
-        You are in a long room on the south shore of a large lake, far
-        too deep and wide for crossing. There is a path along the stream to
-        the east or west, a steep pathway climbing southwest along the edge of
-        a chasm, and a path leading into a canyon to the southeast.
-        """
+    /// `RESERVOIR-SOUTH-FCN` M-LOOK, including its live state branches.
+    static func reservoirSouth(lowTide: Bool, gatesOpen: Bool) -> String {
+        let water: String
+        switch (lowTide, gatesOpen) {
+        case (true, true):
+            water = """
+                You are in a long room, to the north of which was formerly a lake.
+                However, with the water level lowered, there is merely a wide stream
+                running through the center of the room.
+                """
+        case (false, true):
+            water = """
+                You are in a long room. To the north is a large lake, too deep
+                to cross. You notice, however, that the water level appears to be
+                dropping at a rapid rate. Before long, it might be possible to cross
+                to the other side from here.
+                """
+        case (true, false):
+            water = """
+                You are in a long room, to the north of which is a wide area which
+                was formerly a reservoir, but now is merely a stream. You notice,
+                however, that the level of the stream is rising quickly and that
+                before long it will be impossible to cross here.
+                """
+        case (false, false):
+            water = """
+                You are in a long room on the south shore of a large lake, far
+                too deep and wide for crossing.
+                """
+        }
+        return """
+            \(water)
+            There is a path along the stream to the east or west, a steep pathway
+            climbing southwest along the edge of a chasm, and a path leading into a
+            canyon to the southeast.
+            """
+    }
 
-    static let reservoir = """
-        You are on what used to be a large lake, but which is now a large
-        mud pile. There are "shores" to the north and south.
-        """
+    /// `RESERVOIR-FCN` M-LOOK, including its live state branches.
+    static func reservoir(lowTide: Bool) -> String {
+        lowTide
+            ? """
+            You are on what used to be a large lake, but which is now a large
+            mud pile. There are "shores" to the north and south.
+            """
+            : """
+            You are on the lake. Beaches can be seen north and south.
+            Upstream a small stream enters the lake through a narrow cleft
+            in the rocks. The dam can be seen downstream.
+            """
+    }
 
-    static let reservoirNorth = """
-        You are in a large cavernous room, north of a large lake. There is a
-        slimy stairway leaving the room to the north.
-        """
+    /// `RESERVOIR-NORTH-FCN` M-LOOK, including its live state branches.
+    static func reservoirNorth(lowTide: Bool, gatesOpen: Bool) -> String {
+        let water: String
+        switch (lowTide, gatesOpen) {
+        case (true, true):
+            water = """
+                You are in a large cavernous room, the south of which was formerly
+                a lake. However, with the water level lowered, there is merely
+                a wide stream running through there.
+                """
+        case (false, true):
+            water = """
+                You are in a large cavernous area. To the south is a wide lake,
+                whose water level appears to be falling rapidly.
+                """
+        case (true, false):
+            water = """
+                You are in a cavernous area, to the south of which is a very wide
+                stream. The level of the stream is rising rapidly, and it appears
+                that before long it will be impossible to cross to the other side.
+                """
+        case (false, false):
+            water = """
+                You are in a large cavernous room, north of a large lake.
+                """
+        }
+        return """
+            \(water)
+            There is a slimy stairway leaving the room to the north.
+            """
+    }
 
     static let streamView = """
         You are standing on a path beside a gently flowing stream. The path

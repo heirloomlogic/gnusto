@@ -25,21 +25,52 @@ extension Prose {
         on the south side of the chasm, where a crack opens into a passage.
         """
 
-    static let deepCanyon = """
-        You are on the south edge of a deep canyon. Passages lead off to the
-        east, northwest and southwest. A stairway leads down.
-        """
+    /// `DEEP-CANYON-F` M-LOOK, including its live state branches.
+    static func deepCanyon(lowTide: Bool, gatesOpen: Bool) -> String {
+        let sound: String
+        if gatesOpen && !lowTide {
+            sound = """
+                You can hear a loud roaring sound, like that of rushing water, from
+                below.
+                """
+        } else if !gatesOpen && lowTide {
+            sound = ""
+        } else {
+            sound = """
+                You can hear the sound of flowing water from below.
+                """
+        }
+        return """
+            You are on the south edge of a deep canyon. Passages lead off to the
+            east, northwest and southwest. A stairway leads down.
+            \(sound)
+            """
+    }
 
     static let dampCave = """
         This cave has exits to the west and east, and narrows to a crack toward
         the south. The earth is particularly damp here.
         """
 
-    static let loudRoom = """
-        This is a large room with a ceiling which cannot be detected from
-        the ground. There is a narrow passage from east to west and a stone
-        stairway leading upward.
-        """
+    /// `LOUD-ROOM-FCN` M-LOOK, including its live state branches.
+    static func loudRoom(quiet: Bool) -> String {
+        let sound =
+            quiet
+            ? """
+            The room is eerie in its quietness.
+            """
+            : """
+            The room is deafeningly loud with an
+            undetermined rushing sound. The sound seems to reverberate from all
+            of the walls, making it difficult even to think.
+            """
+        return """
+            This is a large room with a ceiling which cannot be detected from
+            the ground. There is a narrow passage from east to west and a stone
+            stairway leading upward.
+            \(sound)
+            """
+    }
 
     // MARK: - The platinum bar
 

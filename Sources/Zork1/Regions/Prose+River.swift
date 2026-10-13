@@ -62,10 +62,22 @@ extension Prose {
         This is a sand-filled cave whose exit is to the southwest.
         """
 
-    static let aragainFalls = """
-        You are at the top of Aragain Falls, an enormous waterfall with a drop of
-        about 450 feet. The only path here is on the north end.
-        """
+    /// `FALLS-ROOM` M-LOOK, including its live state branches.
+    static func aragainFalls(rainbowSolid: Bool) -> String {
+        let rainbow =
+            rainbowSolid
+            ? """
+            A solid rainbow spans the falls.
+            """
+            : """
+            A beautiful rainbow can be seen over the falls and to the west.
+            """
+        return """
+            You are at the top of Aragain Falls, an enormous waterfall with a
+            drop of about 450 feet. The only path here is on the north end.
+            \(rainbow)
+            """
+    }
 
     static let onRainbow = """
         You are on top of a rainbow (I bet you never thought you would walk on a

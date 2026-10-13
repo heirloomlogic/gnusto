@@ -9,7 +9,6 @@ struct ZorkAboveGround: GameContent {
 
     let westOfHouse = Location {
         name("West of House")
-        description(Prose.westOfHouse)
     }
 
     let northOfHouse = Location {
@@ -93,7 +92,6 @@ struct ZorkAboveGround: GameContent {
 
     let upATree = Location {
         name("Up a Tree")
-        description(Prose.upATree)
     }
 
     /// Scenery in `forestPath`. `climb tree` reaches the perch above (the
@@ -493,6 +491,14 @@ struct ZorkAboveGround: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        upATree.describe {
+            // TREE-ROOM requires at least two objects on PATH. Exclude the port's
+            // fixed scenery: the source's trees and forest are local globals.
+            let below = forestPath.contents.filter { $0.isTakable && $0.isRevealed }.map(\.name)
+            return Prose.upATree(below: below)
+        }
+        westOfHouse.describe { Prose.westOfHouse(won: ancientMap.isRevealed) }
+
         clearingGrating.onEnter {
             if !gratingDiscovered { grating.conceal() }
         }
