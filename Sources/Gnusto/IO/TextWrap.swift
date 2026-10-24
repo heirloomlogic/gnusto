@@ -110,6 +110,10 @@ public enum TextWrap {
     /// preformatted line is never folded into its neighbors, never re-packed,
     /// and never de-indented.
     ///
+    /// The rule: a line is preformatted when it starts with two spaces or with
+    /// a tab. One leading space is prose. ``plain(_:)`` and ``wrap(_:width:)``
+    /// both decide forms by calling this function.
+    ///
     /// Two spaces, because that is the smallest extra indent any game target
     /// uses (the Hades inscription, `Prose+Temple.swift`) and because nothing
     /// else in a game target is indented at all — so the threshold has no false
@@ -117,7 +121,7 @@ public enum TextWrap {
     ///
     /// - Parameter line: one line of the text, with its indentation intact.
     /// - Returns: `true` when the line is a literal block rather than prose.
-    static func isPreformatted(_ line: Substring) -> Bool {
+    public static func isPreformatted(_ line: some StringProtocol) -> Bool {
         line.hasPrefix("  ") || line.hasPrefix("\t")
     }
 
