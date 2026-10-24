@@ -6,14 +6,15 @@ import Testing
 /// can call it.
 struct TextWrapPublicTests {
     @Test(
-        "Two spaces or a tab is a form, one space or none is prose, and wrap() agrees",
+        "Two spaces or a tab is a form, one space, none or a blank line is not, and wrap() agrees",
         arguments: [
             ("  two spaces", true), ("\ttab", true), ("   three", true),
-            (" one space", false), ("none", false),
+            (" one space", false), ("none", false), ("  ", false), ("\t", false),
         ])
     func classifiesTheWayWrapDoes(line: String, isForm: Bool) {
         #expect(TextWrap.isPreformatted(line) == isForm)
-        // A form never folds into the prose above it; anything else does.
+        // wrap() puts a form on its own line under the prose, folds a prose
+        // line into it, and drops a blank line at the end of the text.
         #expect((TextWrap.wrap("above\n\(line)", width: 80).count == 2) == isForm)
     }
 }
