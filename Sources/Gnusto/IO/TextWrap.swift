@@ -101,7 +101,7 @@ public enum TextWrap {
     /// so ``plain(_:)`` and the reflowing renderer cannot disagree about
     /// where a line breaks or whether it keeps its indent.
     static func segments(of line: Substring) -> (isForm: Bool, parts: [String]) {
-        (isPreformatted(line), line.components(separatedBy: lineBreak))
+        (isIndented(line), line.components(separatedBy: lineBreak))
     }
 
     /// Whether a line is **preformatted** — indented past the paragraph margin,
@@ -110,6 +110,12 @@ public enum TextWrap {
     /// preformatted line is never folded into its neighbors, never re-packed,
     /// and never de-indented.
     ///
+    /// The rule: a line is preformatted when it starts with two spaces or with
+    /// a tab and is not blank. One leading space is prose, and a line of only
+    /// whitespace is a blank line, which both channels read as a paragraph
+    /// break. ``plain(_:)`` and ``wrap(_:width:)`` decide which non-blank lines
+    /// are forms with the same indent test this function uses.
+    ///
     /// Two spaces, because that is the smallest extra indent any game target
     /// uses (the Hades inscription, `Prose+Temple.swift`) and because nothing
     /// else in a game target is indented at all — so the threshold has no false
@@ -117,7 +123,15 @@ public enum TextWrap {
     ///
     /// - Parameter line: one line of the text, with its indentation intact.
     /// - Returns: `true` when the line is a literal block rather than prose.
-    static func isPreformatted(_ line: Substring) -> Bool {
+    public static func isPreformatted(_ line: some StringProtocol) -> Bool {
+        isIndented(line) && !line.allSatisfy(\.isWhitespace)
+    }
+
+    /// The indent half of ``isPreformatted(_:)``. The internal callers use it
+    /// because the blank check would be repeated work for them: `isSoftBreak`
+    /// and `wrap` set blank lines aside first, and in ``plain(_:)`` a blank
+    /// line has no `<br>` to split, so its answer changes nothing.
+    private static func isIndented(_ line: some StringProtocol) -> Bool {
         line.hasPrefix("  ") || line.hasPrefix("\t")
     }
 
@@ -160,8 +174,8 @@ public enum TextWrap {
     private static func isSoftBreak(between previous: Substring, and next: Substring) -> Bool {
         !previous.allSatisfy(\.isWhitespace)
             && !next.allSatisfy(\.isWhitespace)
-            && !isPreformatted(previous)
-            && !isPreformatted(next)
+            && !isIndented(previous)
+            && !isIndented(next)
     }
 
     /// Reflows `text` into visual lines no wider than `width` columns.
