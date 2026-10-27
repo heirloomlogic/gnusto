@@ -256,6 +256,7 @@ extension GameWorld {
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame).reporting(.init(kind: .restore, outcome: .completed, file: url))
+            .replacingWorld(.restore)
     }
 
     /// A failed or cancelled restore — re-arming the death prompt when the

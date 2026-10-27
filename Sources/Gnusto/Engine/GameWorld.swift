@@ -1119,7 +1119,7 @@ public actor GameWorld {
             frame.say(definition.text.undone(), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
-        return commit(frame)
+        return commit(frame).replacingWorld(.undo)
     }
 
     /// Rewinds to the pristine post-bootstrap opening — seed included, so
@@ -1128,7 +1128,7 @@ public actor GameWorld {
         state = initialState
         undoSnapshot = nil
         pendingClarification = nil
-        return begin()
+        return begin().replacingWorld(.restart)
     }
 
     /// Takes the player's new description-mode preference and confirms it.

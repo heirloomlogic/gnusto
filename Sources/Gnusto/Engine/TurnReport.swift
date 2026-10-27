@@ -101,6 +101,17 @@ public struct TurnReport: Sendable, Equatable {
         }
     }
 
+    /// The engine command that replaced the whole world.
+    public enum WorldReplacement: Sendable, Equatable {
+        /// UNDO put back the world as it stood before the last turn.
+        case undo
+        /// RESTART put back the world as it stood before the opening, and
+        /// played the opening again.
+        case restart
+        /// RESTORE installed the world read from a save file.
+        case restore
+    }
+
     /// How the player came to stand somewhere else when a turn ended.
     public enum Movement: Sendable, Equatable {
         /// The player went out of `from` through an exit: `north`, `go up`,
@@ -112,7 +123,8 @@ public struct TurnReport: Sendable, Equatable {
         /// a rule's `arrive(at:)`, a spell, a fall, or multiple room changes.
         case teleported(from: EntityID, to: EntityID)
         /// UNDO, RESTART or RESTORE replaced the world, and the player stands
-        /// in `to`. Nothing was walked.
+        /// in `to`. Nothing was walked. ``TurnReport/worldReplacement`` says
+        /// which of the three it was.
         case relocated(to: EntityID)
     }
 
@@ -129,6 +141,13 @@ public struct TurnReport: Sendable, Equatable {
 
     /// A save or restore stage change caused by this result, when there was one.
     public internal(set) var operation: OperationEvent?
+
+    /// The command that replaced the whole world, or `nil` when nothing did.
+    ///
+    /// It is set whether or not the player ends up in another room, so a
+    /// RESTART typed in the room the game opens in is still reported. A
+    /// RESTORE that completes reports both this and a completed ``operation``.
+    public internal(set) var worldReplacement: WorldReplacement?
 
     /// How the player's location changed during the turn, or `nil` when they
     /// ended it where they began it. An exit that leads back into the room it
@@ -155,9 +174,7 @@ extension GameWorld {
         report.input = audit.input
         let destination = state.playerLocation
         guard destination != origin else { return report }
-        if audit.answeredPrompt || audit.intent == .undo
-            || audit.intent == .restart || audit.intent == .restore
-        {
+        if preliminary.worldReplacement != nil {
             report.movement = .relocated(to: destination)
         } else if case .walked(let from, let to, let direction) = preliminary.movement,
             from == origin, to == destination
@@ -176,6 +193,13 @@ extension TurnResult {
     func reporting(_ operation: TurnReport.OperationEvent) -> TurnResult {
         var result = self
         result.report.operation = operation
+        return result
+    }
+
+    /// Marks the result as one whose command replaced the whole world.
+    func replacingWorld(_ replacement: TurnReport.WorldReplacement) -> TurnResult {
+        var result = self
+        result.report.worldReplacement = replacement
         return result
     }
 }
