@@ -32,10 +32,11 @@ struct WorldReplacementTests {
         return world
     }
 
-    @Test func anOopsCorrectedRestartInSuperbriefIsARestart() async throws {
+    @Test(arguments: ["brief", "superbrief"])
+    func anOopsCorrectedRestartIsARestart(mode: String) async throws {
         let (world, westOfHouse) = try await zork()
         _ = await world.perform("north")
-        _ = await world.perform("superbrief")
+        _ = await world.perform(mode)
         #expect(await world.perform("restrat").report.worldReplacement == nil)
         let result = await world.perform("oops restart")
         #expect(result.report.worldReplacement == .restart)
@@ -88,17 +89,18 @@ struct WorldReplacementTests {
         #expect(await world.perform("missing-slot").report.worldReplacement == nil)
     }
 
-    @Test func eachEndGameChoiceReportsWhatReplacedTheWorld() async throws {
+    @Test(arguments: ["brief", "superbrief"])
+    func eachEndGameChoiceReportsWhatReplacedTheWorld(mode: String) async throws {
         let answers: [(String, TurnReport.WorldReplacement)] = [
             ("restart", .restart), ("RESTART", .restart), ("undo", .undo),
         ]
         for (answer, replacement) in answers {
             let world = try await morgue()
-            _ = await world.perform("superbrief")
+            _ = await world.perform(mode)
             _ = await world.perform("take poison")
             #expect(await world.inputContext == .endGameChoice)
             let report = await world.perform(answer).report
-            #expect(report.worldReplacement == replacement, "\(answer)")
+            #expect(report.worldReplacement == replacement, "\(mode) / \(answer)")
             #expect(report.input == .promptAnswered(.endGameChoice))
             // The player died where they stood, so nothing moved.
             #expect(report.movement == nil)
