@@ -1,3 +1,5 @@
+import Foundation
+
 /// What kind of input the engine will consume next.
 ///
 /// A direct-world front end can use this to choose completion and voice rules
@@ -76,11 +78,26 @@ public struct TurnReport: Sendable, Equatable {
         public let kind: Kind
         /// The operation's new stage.
         public let outcome: Outcome
+        /// The save file written or read, present only when the operation
+        /// completed.
+        ///
+        /// A front end that keeps its own state beside a save, such as a map,
+        /// stores it against this file on a completed SAVE and loads it back on
+        /// a completed RESTORE. The engine does not say which file a RESTORE
+        /// read any other way: a restore leaves the file untouched.
+        public let file: URL?
 
         /// Constructs an immutable operation event.
-        public init(kind: Kind, outcome: Outcome) {
+        ///
+        /// - Parameters:
+        ///   - kind: The save or restore operation that changed stage.
+        ///   - outcome: The operation's new stage.
+        ///   - file: The save file written or read, when the operation
+        ///     completed.
+        public init(kind: Kind, outcome: Outcome, file: URL? = nil) {
             self.kind = kind
             self.outcome = outcome
+            self.file = file
         }
     }
 

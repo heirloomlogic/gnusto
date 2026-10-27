@@ -191,7 +191,9 @@ extension TurnReportTests {
         #expect(await world.perform("save").report.understood)
         let saved = await world.perform("hall-slot").report
         #expect(saved.input == .promptAnswered(.saveFilename))
-        #expect(saved.operation == .init(kind: .save, outcome: .completed))
+        #expect(saved.operation?.kind == .save)
+        #expect(saved.operation?.outcome == .completed)
+        #expect(saved.operation?.file?.lastPathComponent == "hall-slot.gnusto")
         #expect(saved.movement == nil)
         _ = await world.perform("north")
         #expect(await world.perform("restore").report.movement == nil)
@@ -214,7 +216,10 @@ extension TurnReportTests {
             _ = await world.perform("restore")
             let report = await world.perform(answer).report
             #expect(report.input == input)
-            #expect(report.operation == .init(kind: .restore, outcome: outcome))
+            #expect(report.operation?.kind == .restore)
+            #expect(report.operation?.outcome == outcome)
+            // Only a completed restore names the file it read.
+            #expect(report.operation?.file?.lastPathComponent == (outcome == .completed ? "hall-slot.gnusto" : nil))
             #expect(report.movement == nil)
         }
         #expect(await world.perform("restart").report.movement == nil)

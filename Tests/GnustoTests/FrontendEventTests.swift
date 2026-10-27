@@ -36,6 +36,18 @@ struct FrontendEventTests {
             .appendingPathComponent("gnusto-frontend-\(label)-\(UUID().uuidString)", isDirectory: true)
     }
 
+    /// Whether `file` is the `slot` save in `directory`.
+    ///
+    /// The engine may name the file by the path it computed or by the
+    /// directory entry it found, and the two spell a temporary directory
+    /// differently on macOS, where `/var` is a link to `/private/var`.
+    private func isSlot(_ file: URL?, in directory: URL) -> Bool {
+        guard let file else { return false }
+        return file.lastPathComponent == "slot.gnusto"
+            && file.deletingLastPathComponent().resolvingSymlinksInPath().path
+                == directory.resolvingSymlinksInPath().path
+    }
+
     private func world(
         seed: UInt64 = 0, saveDirectory: URL? = nil
     ) async throws -> GameWorld {
@@ -92,7 +104,9 @@ struct FrontendEventTests {
 
         let completed = await world.perform("slot")
         #expect(completed.report.input == .promptAnswered(.saveFilename))
-        #expect(completed.report.operation == .init(kind: .save, outcome: .completed))
+        #expect(completed.report.operation?.kind == .save)
+        #expect(completed.report.operation?.outcome == .completed)
+        #expect(isSlot(completed.report.operation?.file, in: directory))
         #expect(await world.inputContext == .command)
 
         #expect((await world.perform("save")).report.operation == .init(kind: .save, outcome: .requested))
@@ -104,6 +118,14 @@ struct FrontendEventTests {
         let declined = await world.perform("no")
         #expect(declined.report.input == .cancelled(.saveOverwriteConfirmation))
         #expect(declined.report.operation == .init(kind: .save, outcome: .cancelled))
+
+        // A yes to the overwrite question names the file it replaced.
+        _ = await world.perform("save")
+        _ = await world.perform("slot")
+        let replaced = await world.perform("yes")
+        #expect(replaced.report.input == .promptAnswered(.saveOverwriteConfirmation))
+        #expect(replaced.report.operation?.outcome == .completed)
+        #expect(isSlot(replaced.report.operation?.file, in: directory))
 
         _ = await world.perform("save")
         _ = await world.perform("slot")
@@ -136,7 +158,9 @@ struct FrontendEventTests {
 
         let completed = await world.perform("slot")
         #expect(completed.report.input == .promptAnswered(.restoreFilename))
-        #expect(completed.report.operation == .init(kind: .restore, outcome: .completed))
+        #expect(completed.report.operation?.kind == .restore)
+        #expect(completed.report.operation?.outcome == .completed)
+        #expect(isSlot(completed.report.operation?.file, in: directory))
 
         _ = await world.perform("restore")
         let failed = await world.perform("missing")

@@ -134,6 +134,8 @@ A front end that dismisses its input field on death loses the game it was about 
 | ``TurnReport/OperationEvent/Outcome/failed`` | A name, path, file read, file write, format, game identity, or state validation failed. |
 | ``TurnReport/OperationEvent/Outcome/cancelled`` | The operation ended without reading, writing, or replacing state. This includes a blank filename, a declined overwrite, `cancelPendingInput()`, and a confirmed front-end quit that abandons an open operation. |
 
+A completed event also carries ``TurnReport/OperationEvent/file``, the save file SAVE wrote or RESTORE read; every other outcome leaves it `nil`. A front end that keeps state of its own beside a save, such as the map the player had drawn, stores it against that file on a completed SAVE and loads it back on a completed RESTORE. Nothing else says which file a RESTORE read, since restoring leaves the file untouched.
+
 The filename answer that opens an overwrite confirmation has no second `requested` event: the SAVE command already reported the request, and the later confirmation reports only completion or cancellation. A front end can therefore react once to each stage without matching prose or reporting a successful disk operation from the verb alone.
 
 ``TurnReport/movement`` says whether the player moved, and how: ``TurnReport/Movement/walked(from:to:direction:)`` through an exit, ``TurnReport/Movement/teleported(from:to:)`` when the game put them somewhere, and ``TurnReport/Movement/relocated(to:)`` when UNDO, RESTART or RESTORE replaced the world. Rooms are named by their ``EntityID``, never by display name, for the reason ``StatusLine/locationID`` gives.
