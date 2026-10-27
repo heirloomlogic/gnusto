@@ -172,7 +172,7 @@ extension GameWorld {
                 }
                 let restored = try SaveFile.read(
                     from: url, matching: definition, pristineState: initialState)
-                return performRestore(restored)
+                return performRestore(restored, from: url)
             } catch {
                 switch error {
                 case .unreadable, .inconsistent:
@@ -236,7 +236,7 @@ extension GameWorld {
                 declaredTimerNames: definition.timers.keys.sorted(),
                 declaredLocations: definition.locations.keys.sorted(), to: url)
             return freeReply(definition.text.saved()).reporting(
-                .init(kind: .save, outcome: .completed))
+                .init(kind: .save, outcome: .completed, file: url))
         } catch {
             return freeReply(definition.text.saveFailed()).reporting(
                 .init(kind: .save, outcome: .failed))
@@ -244,7 +244,7 @@ extension GameWorld {
     }
 
     /// Swaps a validated save's state in and shows the player where they are.
-    private func performRestore(_ restored: WorldState) -> TurnResult {
+    private func performRestore(_ restored: WorldState, from url: URL) -> TurnResult {
         // Already reconciled with what this build declares — see
         // `SaveFile.reconcile(_:with:pristineState:declaredTimerNames:declaredLocations:)`.
         state = restored
@@ -255,7 +255,7 @@ extension GameWorld {
             frame.say(definition.text.restored(), aside: true)
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
-        return commit(frame).reporting(.init(kind: .restore, outcome: .completed))
+        return commit(frame).reporting(.init(kind: .restore, outcome: .completed, file: url))
     }
 
     /// A failed or cancelled restore — re-arming the death prompt when the
